@@ -5,33 +5,49 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.server
+    container_name: myweb-backend
     ports:
       - "3002:3002"
-    env_file:
-      - ../.env.production
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - DB_PATH=/app/data/myweb.db
+      - CORS_ORIGIN=http://localhost:50001
     volumes:
       - ../server/data:/app/data
-      - ../server/logs:/app/logs
       - ../server/uploads:/app/uploads
+      - ../server/logs:/app/logs
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   frontend:
     build:
       context: ..
       dockerfile: docker/Dockerfile.client
-    ports:
-      - "50001:80"
+    container_name: myweb-frontend
     depends_on:
       - backend
     restart: unless-stopped
 
   nginx:
     image: nginx:alpine
+    container_name: myweb-nginx
     ports:
-      - "80:80"
+      - "50001:80"
     volumes:
-      - ./nginx.conf.template:/etc/nginx/conf.d/default.conf
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template
+      - ../server/uploads:/usr/share/nginx/html/uploads:ro
     depends_on:
       - frontend
       - backend
+    environment:
+      - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
     restart: unless-stopped
+
+volumes:
+  myweb_data:
+  myweb_uploads:

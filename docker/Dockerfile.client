@@ -1,21 +1,31 @@
-# Frontend Dockerfile
-FROM node:18-alpine
+FROM node:18-alpine as builder
 
+# 设置工作目录
 WORKDIR /app
 
-# Copy package files
+# 复制package.json
 COPY client/package*.json ./
-RUN npm ci --only=production
 
-# Copy source code
+# 安装依赖
+RUN npm ci
+
+# 复制源代码
 COPY client/ .
 
-# Build the app
+# 构建应用
 RUN npm run build
 
-# Serve with nginx
+# 生产阶段
 FROM nginx:alpine
-COPY --from=0 /app/dist /usr/share/nginx/html
-COPY docker/nginx.conf.template /etc/nginx/conf.d/default.conf
 
+# 复制构建文件
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 复制nginx配置
+COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
+
+# 暴露端口
 EXPOSE 80
+
+# 启动nginx
+CMD ["nginx", "-g", "daemon off;"]

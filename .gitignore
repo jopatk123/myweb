@@ -21,6 +21,8 @@ npm-debug.log*
 # Database
 *.db
 *.sqlite
+*.db-shm
+*.db-wal
 
 # OS generated files
 .DS_Store
