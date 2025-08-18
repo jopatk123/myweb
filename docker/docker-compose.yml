@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server
+    ports:
+      - "3002:3002"
+    env_file:
+      - ../.env.production
+    volumes:
+      - ../server/data:/app/data
+      - ../server/logs:/app/logs
+      - ../server/uploads:/app/uploads
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.client
+    ports:
+      - "50001:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped

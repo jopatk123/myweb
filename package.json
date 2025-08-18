@@ -1,0 +1,22 @@
+{
+  "name": "myweb",
+  "version": "1.0.0",
+  "description": "MyWeb Project",
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "dev:fe": "cd client && npm run dev",
+    "dev:be": "cd server && npm run dev",
+    "test:fe": "cd client && npm run test:cov",
+    "test:be": "cd server && npm run test:cov",
+    "commit": "git-cz"
+  },
+  "devDependencies": {
+    "commitizen": "^4.3.0",
+    "cz-conventional-changelog": "^3.3.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  }
+}
