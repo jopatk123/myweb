@@ -4,34 +4,9 @@
 export class WallpaperModel {
   constructor(db) {
     this.db = db;
-    this.initTable();
   }
 
-  async initTable() {
-    const sql = `
-      CREATE TABLE IF NOT EXISTS wallpapers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        filename VARCHAR(255) NOT NULL,
-        original_name VARCHAR(255) NOT NULL,
-        file_path VARCHAR(500) NOT NULL,
-        file_size INTEGER NOT NULL,
-        mime_type VARCHAR(100) NOT NULL,
-        group_id INTEGER REFERENCES wallpaper_groups(id) ON DELETE SET NULL,
-        is_active BOOLEAN DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        deleted_at DATETIME DEFAULT NULL
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_wallpapers_group_id ON wallpapers(group_id);
-      CREATE INDEX IF NOT EXISTS idx_wallpapers_is_active ON wallpapers(is_active);
-      CREATE INDEX IF NOT EXISTS idx_wallpapers_deleted_at ON wallpapers(deleted_at);
-    `;
-    
-    return this.db.exec(sql);
-  }
-
-  async findAll(groupId = null, activeOnly = false) {
+  findAll(groupId = null, activeOnly = false) {
     let sql = 'SELECT * FROM wallpapers WHERE deleted_at IS NULL';
     const params = [];
 
@@ -46,25 +21,25 @@ export class WallpaperModel {
 
     sql += ' ORDER BY created_at DESC';
     
-    return this.db.all(sql, params);
+    return this.db.prepare(sql).all(params);
   }
 
-  async findById(id) {
-    return this.db.get('SELECT * FROM wallpapers WHERE id = ? AND deleted_at IS NULL', [id]);
+  findById(id) {
+    return this.db.prepare('SELECT * FROM wallpapers WHERE id = ? AND deleted_at IS NULL').get(id);
   }
 
-  async create(data) {
+  create(data) {
     const { filename, originalName, filePath, fileSize, mimeType, groupId } = data;
     const sql = `
       INSERT INTO wallpapers (filename, original_name, file_path, file_size, mime_type, group_id)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
     
-    const result = await this.db.run(sql, [filename, originalName, filePath, fileSize, mimeType, groupId]);
-    return this.findById(result.lastID);
+    const result = this.db.prepare(sql).run(filename, originalName, filePath, fileSize, mimeType, groupId);
+    return this.findById(result.lastInsertRowid);
   }
 
-  async update(id, data) {
+  update(id, data) {
     const fields = [];
     const params = [];
 
@@ -81,34 +56,34 @@ export class WallpaperModel {
     params.push(id);
 
     const sql = `UPDATE wallpapers SET ${fields.join(', ')} WHERE id = ?`;
-    await this.db.run(sql, params);
+    this.db.prepare(sql).run(params);
     
     return this.findById(id);
   }
 
-  async delete(id) {
+  delete(id) {
     const sql = 'UPDATE wallpapers SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?';
-    return this.db.run(sql, [id]);
+    return this.db.prepare(sql).run(id);
   }
 
-  async setActive(id) {
+  setActive(id) {
     // 先取消所有活跃状态
-    await this.db.run('UPDATE wallpapers SET is_active = 0');
+    this.db.prepare('UPDATE wallpapers SET is_active = 0').run();
     // 设置指定壁纸为活跃
-    return this.db.run('UPDATE wallpapers SET is_active = 1 WHERE id = ?', [id]);
+    return this.db.prepare('UPDATE wallpapers SET is_active = 1 WHERE id = ?').run(id);
   }
 
-  async getActive() {
-    return this.db.get('SELECT * FROM wallpapers WHERE is_active = 1 AND deleted_at IS NULL');
+  getActive() {
+    return this.db.prepare('SELECT * FROM wallpapers WHERE is_active = 1 AND deleted_at IS NULL').get();
   }
 
-  async getRandomByGroup(groupId) {
+  getRandomByGroup(groupId) {
     const sql = `
       SELECT * FROM wallpapers 
       WHERE group_id = ? AND deleted_at IS NULL 
       ORDER BY RANDOM() 
       LIMIT 1
     `;
-    return this.db.get(sql, [groupId]);
+    return this.db.prepare(sql).get(groupId);
   }
 }

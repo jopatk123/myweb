@@ -4,49 +4,25 @@
 export class WallpaperGroupModel {
   constructor(db) {
     this.db = db;
-    this.initTable();
   }
 
-  async initTable() {
-    const sql = `
-      CREATE TABLE IF NOT EXISTS wallpaper_groups (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name VARCHAR(100) NOT NULL UNIQUE,
-        description TEXT,
-        is_default BOOLEAN DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        deleted_at DATETIME DEFAULT NULL
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_wallpaper_groups_name ON wallpaper_groups(name);
-      CREATE INDEX IF NOT EXISTS idx_wallpaper_groups_deleted_at ON wallpaper_groups(deleted_at);
-
-      -- 插入默认分组
-      INSERT OR IGNORE INTO wallpaper_groups (name, description, is_default) 
-      VALUES ('默认', '系统默认壁纸分组', 1);
-    `;
-    
-    return this.db.exec(sql);
+  findAll() {
+    return this.db.prepare('SELECT * FROM wallpaper_groups WHERE deleted_at IS NULL ORDER BY is_default DESC, created_at ASC').all();
   }
 
-  async findAll() {
-    return this.db.all('SELECT * FROM wallpaper_groups WHERE deleted_at IS NULL ORDER BY is_default DESC, created_at ASC');
+  findById(id) {
+    return this.db.prepare('SELECT * FROM wallpaper_groups WHERE id = ? AND deleted_at IS NULL').get(id);
   }
 
-  async findById(id) {
-    return this.db.get('SELECT * FROM wallpaper_groups WHERE id = ? AND deleted_at IS NULL', [id]);
-  }
-
-  async create(data) {
+  create(data) {
     const { name, description } = data;
     const sql = 'INSERT INTO wallpaper_groups (name, description) VALUES (?, ?)';
     
-    const result = await this.db.run(sql, [name, description]);
-    return this.findById(result.lastID);
+    const result = this.db.prepare(sql).run(name, description);
+    return this.findById(result.lastInsertRowid);
   }
 
-  async update(id, data) {
+  update(id, data) {
     const fields = [];
     const params = [];
 
@@ -63,23 +39,23 @@ export class WallpaperGroupModel {
     params.push(id);
 
     const sql = `UPDATE wallpaper_groups SET ${fields.join(', ')} WHERE id = ?`;
-    await this.db.run(sql, params);
+    this.db.prepare(sql).run(params);
     
     return this.findById(id);
   }
 
-  async delete(id) {
+  delete(id) {
     // 检查是否为默认分组
-    const group = await this.findById(id);
+    const group = this.findById(id);
     if (group?.is_default) {
       throw new Error('不能删除默认分组');
     }
 
     const sql = 'UPDATE wallpaper_groups SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?';
-    return this.db.run(sql, [id]);
+    return this.db.prepare(sql).run(id);
   }
 
-  async getDefault() {
-    return this.db.get('SELECT * FROM wallpaper_groups WHERE is_default = 1 AND deleted_at IS NULL');
+  getDefault() {
+    return this.db.prepare('SELECT * FROM wallpaper_groups WHERE is_default = 1 AND deleted_at IS NULL').get();
   }
 }

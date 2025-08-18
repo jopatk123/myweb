@@ -9,12 +9,12 @@ export class WallpaperService {
     this.groupModel = new WallpaperGroupModel(db);
   }
 
-  async getAllWallpapers(groupId = null) {
+  getAllWallpapers(groupId = null) {
     return this.wallpaperModel.findAll(groupId);
   }
 
-  async getWallpaperById(id) {
-    const wallpaper = await this.wallpaperModel.findById(id);
+  getWallpaperById(id) {
+    const wallpaper = this.wallpaperModel.findById(id);
     if (!wallpaper) {
       throw new Error('壁纸不存在');
     }
@@ -31,7 +31,7 @@ export class WallpaperService {
 
     // 如果没有指定分组，使用默认分组
     if (!groupId) {
-      const defaultGroup = await this.groupModel.getDefault();
+      const defaultGroup = this.groupModel.getDefault();
       groupId = defaultGroup.id;
     }
 
@@ -45,13 +45,13 @@ export class WallpaperService {
     });
   }
 
-  async updateWallpaper(id, data) {
-    const wallpaper = await this.getWallpaperById(id);
+  updateWallpaper(id, data) {
+    const wallpaper = this.getWallpaperById(id);
     return this.wallpaperModel.update(id, data);
   }
 
   async deleteWallpaper(id) {
-    const wallpaper = await this.getWallpaperById(id);
+    const wallpaper = this.getWallpaperById(id);
     
     // 删除文件
     try {
@@ -63,55 +63,55 @@ export class WallpaperService {
     return this.wallpaperModel.delete(id);
   }
 
-  async setActiveWallpaper(id) {
-    await this.getWallpaperById(id); // 验证壁纸存在
+  setActiveWallpaper(id) {
+    this.getWallpaperById(id); // 验证壁纸存在
     return this.wallpaperModel.setActive(id);
   }
 
-  async getActiveWallpaper() {
+  getActiveWallpaper() {
     return this.wallpaperModel.getActive();
   }
 
-  async getRandomWallpaper(groupId) {
+  getRandomWallpaper(groupId) {
     if (!groupId) {
-      const defaultGroup = await this.groupModel.getDefault();
+      const defaultGroup = this.groupModel.getDefault();
       groupId = defaultGroup.id;
     }
 
-    const wallpaper = await this.wallpaperModel.getRandomByGroup(groupId);
+    const wallpaper = this.wallpaperModel.getRandomByGroup(groupId);
     if (wallpaper) {
-      await this.wallpaperModel.setActive(wallpaper.id);
+      this.wallpaperModel.setActive(wallpaper.id);
     }
     return wallpaper;
   }
 
   // 分组相关方法
-  async getAllGroups() {
+  getAllGroups() {
     return this.groupModel.findAll();
   }
 
-  async getGroupById(id) {
-    const group = await this.groupModel.findById(id);
+  getGroupById(id) {
+    const group = this.groupModel.findById(id);
     if (!group) {
       throw new Error('分组不存在');
     }
     return group;
   }
 
-  async createGroup(data) {
+  createGroup(data) {
     return this.groupModel.create(data);
   }
 
-  async updateGroup(id, data) {
-    await this.getGroupById(id); // 验证分组存在
+  updateGroup(id, data) {
+    this.getGroupById(id); // 验证分组存在
     return this.groupModel.update(id, data);
   }
 
-  async deleteGroup(id) {
-    const group = await this.getGroupById(id);
+  deleteGroup(id) {
+    const group = this.getGroupById(id);
     
     // 检查分组下是否有壁纸
-    const wallpapers = await this.wallpaperModel.findAll(id);
+    const wallpapers = this.wallpaperModel.findAll(id);
     if (wallpapers.length > 0) {
       throw new Error('分组下还有壁纸，无法删除');
     }
