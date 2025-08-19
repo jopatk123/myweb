@@ -18,6 +18,7 @@
       </button>
       <button @click="$emit('upload-wallpaper')" class="btn btn-primary">上传壁纸</button>
       <button @click="$emit('random-wallpaper')" class="btn btn-accent">随机切换</button>
+      <button @click="$emit('open-main-window')" class="btn btn-info">打开桌面</button>
     </div>
   </div>
 </template>

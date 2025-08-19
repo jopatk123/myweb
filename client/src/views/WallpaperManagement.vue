@@ -28,6 +28,7 @@
         @random-wallpaper="randomWallpaper(selectedGroupId || null)"
         @bulk-delete="handleBulkDelete"
         @bulk-move="showMoveModal = true"
+        @open-main-window="openMainWindow"
       />
 
       <!-- 工具栏 -->
