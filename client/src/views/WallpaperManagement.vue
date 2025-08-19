@@ -34,11 +34,8 @@
       <!-- 工具栏 -->
       <WallpaperToolbar v-model:keyword="keyword" />
 
-      <!-- 筛选条（占位） -->
+      <!-- 筛选条（占位）已移除固定标签 -->
       <div class="filters-row">
-        <span class="filter-chip">类型</span>
-        <span class="filter-chip">缩略图</span>
-        <span class="filter-chip">描述</span>
         <span class="filter-chip" v-if="selectedGroupId">分组: {{ displayCurrentGroup }}</span>
       </div>
 

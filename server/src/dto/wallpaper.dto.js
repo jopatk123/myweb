@@ -14,14 +14,12 @@ export const wallpaperSchemas = {
 
   // 创建分组验证
   createGroup: Joi.object({
-    name: Joi.string().min(1).max(100).required(),
-    description: Joi.string().max(500).optional()
+    name: Joi.string().min(1).max(100).required()
   }),
 
   // 更新分组验证
   updateGroup: Joi.object({
-    name: Joi.string().min(1).max(100).optional(),
-    description: Joi.string().max(500).optional()
+    name: Joi.string().min(1).max(100).optional()
   }),
 
   // 查询参数验证

@@ -80,7 +80,7 @@ export class WallpaperController {
         });
       }
 
-      const { groupId, name, description } = req.body;
+      const { groupId, name } = req.body;
       // 存储到数据库的 file_path 应为 web 可访问的相对路径（例如: uploads/wallpapers/<filename>）
       // 这样前端可以直接用 `${API_BASE}/${file_path}` 访问；同时删除时再解析到磁盘路径
       const webPath = path.posix.join('uploads', 'wallpapers', req.file.filename);
@@ -91,8 +91,7 @@ export class WallpaperController {
         filePath: webPath,
         fileSize: req.file.size,
         mimeType: req.file.mimetype,
-        name: name || req.file.originalname, // 如果没有提供名称，则使用原始文件名
-        description: description || null
+        name: name || req.file.originalname // 如果没有提供名称，则使用原始文件名
       };
 
       const wallpaper = await this.service.uploadWallpaper(fileData, groupId);
@@ -110,7 +109,10 @@ export class WallpaperController {
   async updateWallpaper(req, res, next) {
     try {
       const { id } = req.params;
-      const wallpaper = await this.service.updateWallpaper(id, req.body);
+      // 移除不再支持的字段
+      const data = { ...req.body };
+      if (data.description !== undefined) delete data.description;
+      const wallpaper = await this.service.updateWallpaper(id, data);
       res.json({
         code: 200,
         data: wallpaper,

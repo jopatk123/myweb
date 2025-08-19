@@ -47,12 +47,12 @@ export function useWallpaper() {
   };
 
   // 上传壁纸
-  const uploadWallpaper = async (file, groupId = null, name, description, onUploadProgress) => {
+  const uploadWallpaper = async (file, groupId = null, name, onUploadProgress) => {
     loading.value = true;
     error.value = null;
 
     try {
-      const response = await wallpaperApi.uploadWallpaper(file, groupId, name, description, onUploadProgress);
+      const response = await wallpaperApi.uploadWallpaper(file, groupId, name, onUploadProgress);
       await fetchWallpapers(groupId); // 刷新列表
       return response.data;
     } catch (err) {

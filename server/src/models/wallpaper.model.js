@@ -36,13 +36,13 @@ export class WallpaperModel {
   }
 
   create(data) {
-    const { filename, originalName, filePath, fileSize, mimeType, groupId, name, description } = data;
+    const { filename, originalName, filePath, fileSize, mimeType, groupId, name } = data;
     const sql = `
-      INSERT INTO wallpapers (filename, original_name, file_path, file_size, mime_type, group_id, name, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO wallpapers (filename, original_name, file_path, file_size, mime_type, group_id, name)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     
-    const result = this.db.prepare(sql).run(filename, originalName, filePath, fileSize, mimeType, groupId, name, description);
+    const result = this.db.prepare(sql).run(filename, originalName, filePath, fileSize, mimeType, groupId, name);
     return this.findById(result.lastInsertRowid);
   }
 

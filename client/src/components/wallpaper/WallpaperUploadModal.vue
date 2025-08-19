@@ -25,11 +25,7 @@
 						<input type="text" id="wallpaper-name" v-model="wallpaperName" placeholder="请输入壁纸名称" />
 					</div>
 
-					<!-- 描述输入 -->
-					<div class="form-group">
-						<label for="wallpaper-description">描述：</label>
-						<textarea id="wallpaper-description" v-model="wallpaperDescription" placeholder="请输入壁纸描述（可选）"></textarea>
-					</div>
+					<!-- 描述已移除 -->
 
 					<!-- 文件选择 -->
 					<div class="form-group">
@@ -86,7 +82,6 @@ const { uploadWallpaper } = useWallpaper();
 
 const selectedGroupId = ref('');
 const wallpaperName = ref('');
-const wallpaperDescription = ref('');
 const selectedFiles = ref([]);
 const uploading = ref(false);
 const uploadProgress = ref(0);
@@ -129,7 +124,6 @@ const handleUpload = async () => {
 			fileItem.file,
 			selectedGroupId.value || null,
 			wallpaperName.value,
-			wallpaperDescription.value,
 			(progress) => { uploadProgress.value = progress; }
 		);
 		emit('uploaded');

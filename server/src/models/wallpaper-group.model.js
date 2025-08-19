@@ -15,10 +15,10 @@ export class WallpaperGroupModel {
   }
 
   create(data) {
-    const { name, description } = data;
-    const sql = 'INSERT INTO wallpaper_groups (name, description) VALUES (?, ?)';
+    const { name } = data;
+    const sql = 'INSERT INTO wallpaper_groups (name) VALUES (?)';
     
-    const result = this.db.prepare(sql).run(name, description);
+    const result = this.db.prepare(sql).run(name);
     return this.findById(result.lastInsertRowid);
   }
 

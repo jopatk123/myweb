@@ -28,7 +28,7 @@ export const wallpaperApi = {
   },
 
   // 上传壁纸
-  uploadWallpaper(file, groupId = null, name, description, onUploadProgress) {
+  uploadWallpaper(file, groupId = null, name, onUploadProgress) {
     const formData = new FormData();
     formData.append('image', file);
     if (groupId) {
@@ -36,9 +36,6 @@ export const wallpaperApi = {
     }
     if (name) {
       formData.append('name', name);
-    }
-    if (description) {
-      formData.append('description', description);
     }
 
     return api.post('/wallpapers', formData, {

@@ -29,7 +29,7 @@ export class WallpaperService {
   }
 
   async uploadWallpaper(fileData, groupId = null) {
-    const { filename, originalName, filePath, fileSize, mimeType, name, description } = fileData;
+    const { filename, originalName, filePath, fileSize, mimeType, name } = fileData;
     
     // 验证文件类型
     if (!mimeType.startsWith('image/')) {
@@ -43,8 +43,7 @@ export class WallpaperService {
       fileSize,
       mimeType,
       groupId,
-      name,
-      description
+      name
     });
   }
 

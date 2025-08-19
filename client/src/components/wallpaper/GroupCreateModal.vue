@@ -20,16 +20,7 @@
             />
           </div>
 
-          <div class="form-group">
-            <label for="groupDescription">分组描述：</label>
-            <textarea
-              id="groupDescription"
-              v-model="formData.description"
-              placeholder="请输入分组描述（可选）"
-              rows="3"
-              maxlength="500"
-            ></textarea>
-          </div>
+          <!-- 分组描述已移除 -->
 
           <!-- 错误提示 -->
           <div v-if="error" class="error-message">
@@ -63,8 +54,7 @@ const emit = defineEmits(['close', 'created']);
 const { createGroup } = useWallpaper();
 
 const formData = reactive({
-  name: '',
-  description: ''
+  name: ''
 });
 
 const loading = ref(false);
@@ -78,8 +68,7 @@ const handleCreate = async () => {
 
   try {
     await createGroup({
-      name: formData.name.trim(),
-      description: formData.description.trim() || null
+      name: formData.name.trim()
     });
     
     emit('created');
