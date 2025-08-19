@@ -2,6 +2,11 @@ import { WallpaperModel } from '../models/wallpaper.model.js';
 import { WallpaperGroupModel } from '../models/wallpaper-group.model.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM 下没有 __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class WallpaperService {
   constructor(db) {
@@ -16,7 +21,9 @@ export class WallpaperService {
   getWallpaperById(id) {
     const wallpaper = this.wallpaperModel.findById(id);
     if (!wallpaper) {
-      throw new Error('壁纸不存在');
+  const err = new Error('壁纸不存在');
+  err.status = 404;
+  throw err;
     }
     return wallpaper;
   }
@@ -135,7 +142,9 @@ export class WallpaperService {
   getGroupById(id) {
     const group = this.groupModel.findById(id);
     if (!group) {
-      throw new Error('分组不存在');
+  const err = new Error('分组不存在');
+  err.status = 404;
+  throw err;
     }
     return group;
   }
