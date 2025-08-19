@@ -126,6 +126,43 @@ export class WallpaperController {
     }
   }
 
+  // 批量删除壁纸
+  async deleteWallpapers(req, res, next) {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
+      }
+      await this.service.deleteMultipleWallpapers(ids);
+      res.json({
+        code: 200,
+        message: '批量删除成功'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // 批量移动壁纸
+  async moveWallpapers(req, res, next) {
+    try {
+      const { ids, groupId } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
+      }
+      if (groupId === undefined) {
+        return res.status(400).json({ code: 400, message: '请提供目标分组ID' });
+      }
+      await this.service.moveMultipleWallpapers(ids, groupId);
+      res.json({
+        code: 200,
+        message: '批量移动成功'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // 设置活跃壁纸
   async setActiveWallpaper(req, res, next) {
     try {

@@ -3,6 +3,7 @@
     <table>
       <thead>
         <tr>
+          <th><input type="checkbox" @change="toggleSelectAll" :checked="allSelected" /></th>
           <th>名称</th>
           <th>缩略图</th>
           <th>文件大小</th>
@@ -12,6 +13,7 @@
       </thead>
       <tbody>
         <tr v-for="wallpaper in wallpapers" :key="wallpaper.id" :class="{ active: activeWallpaper?.id === wallpaper.id }">
+          <td><input type="checkbox" :value="wallpaper.id" v-model="selectedIds" /></td>
           <td>{{ wallpaper.name || wallpaper.original_name }}</td>
           <td>
             <img :src="getWallpaperUrl(wallpaper)" :alt="wallpaper.name" class="thumbnail" />
@@ -29,7 +31,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
   wallpapers: {
@@ -39,10 +41,38 @@ const props = defineProps({
   activeWallpaper: {
     type: Object,
     default: null
+  },
+  modelValue: {
+    type: Array,
+    default: () => []
   }
 });
 
-defineEmits(['set-active', 'delete']);
+const emit = defineEmits(['set-active', 'delete', 'update:modelValue']);
+
+const selectedIds = ref([...props.modelValue]);
+
+watch(selectedIds, (newValue) => {
+  emit('update:modelValue', newValue);
+});
+
+watch(() => props.modelValue, (newValue) => {
+  if (JSON.stringify(newValue) !== JSON.stringify(selectedIds.value)) {
+    selectedIds.value = [...newValue];
+  }
+});
+
+const allSelected = computed(() => {
+  return props.wallpapers.length > 0 && selectedIds.value.length === props.wallpapers.length;
+});
+
+const toggleSelectAll = (event) => {
+  if (event.target.checked) {
+    selectedIds.value = props.wallpapers.map(w => w.id);
+  } else {
+    selectedIds.value = [];
+  }
+};
 
 const getWallpaperUrl = (wallpaper) => {
   if (!wallpaper) return null;

@@ -64,6 +64,16 @@ export const wallpaperApi = {
     return api.delete(`/wallpapers/${id}`);
   },
 
+  // 批量删除壁纸
+  deleteWallpapers(ids) {
+    return api.delete('/wallpapers', { data: { ids } });
+  },
+
+  // 批量移动壁纸
+  moveWallpapers(ids, groupId) {
+    return api.put('/wallpapers/move', { ids, groupId });
+  },
+
   // 设置活跃壁纸
   setActiveWallpaper(id) {
     return api.put(`/wallpapers/${id}/active`);

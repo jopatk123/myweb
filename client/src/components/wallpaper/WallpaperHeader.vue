@@ -2,16 +2,35 @@
   <div class="page-header">
     <h1>壁纸管理</h1>
     <div class="action-buttons">
-      <button @click="$emit('open-main-window')" class="btn btn-info">主窗口</button>
+      <button 
+        @click="$emit('bulk-delete')" 
+        class="btn btn-danger" 
+        :disabled="selectedCount === 0"
+      >
+        删除 ({{ selectedCount }})
+      </button>
+      <button 
+        @click="$emit('bulk-move')" 
+        class="btn btn-secondary" 
+        :disabled="selectedCount === 0"
+      >
+        移动 ({{ selectedCount }})
+      </button>
       <button @click="$emit('upload-wallpaper')" class="btn btn-primary">上传壁纸</button>
       <button @click="$emit('random-wallpaper')" class="btn btn-accent">随机切换</button>
-      <button class="btn btn-secondary" disabled>更多…</button>
     </div>
   </div>
 </template>
 
 <script setup>
-defineEmits(['open-main-window', 'upload-wallpaper', 'random-wallpaper']);
+defineProps({
+  selectedCount: {
+    type: Number,
+    default: 0
+  }
+});
+
+defineEmits(['open-main-window', 'upload-wallpaper', 'random-wallpaper', 'bulk-delete', 'bulk-move']);
 </script>
 
 <style scoped>
@@ -38,12 +57,18 @@ defineEmits(['open-main-window', 'upload-wallpaper', 'random-wallpaper']);
   font-size: 14px;
   transition: background-color 0.3s ease;
 }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn-primary { background: #007bff; color: white; }
-.btn-primary:hover { background: #0056b3; }
+.btn-primary:hover:not(:disabled) { background: #0056b3; }
 .btn-secondary { background: #6c757d; color: white; }
-.btn-secondary:hover { background: #545b62; }
+.btn-secondary:hover:not(:disabled) { background: #545b62; }
 .btn-accent { background: #28a745; color: white; }
-.btn-accent:hover { background: #1e7e34; }
+.btn-accent:hover:not(:disabled) { background: #1e7e34; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-danger:hover:not(:disabled) { background: #c82333; }
 .btn-info { background: #17a2b8; color: white; }
-.btn-info:hover { background: #138496; }
+.btn-info:hover:not(:disabled) { background: #138496; }
 </style>

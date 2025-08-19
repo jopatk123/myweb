@@ -59,6 +59,20 @@ export class WallpaperService {
     return this.wallpaperModel.delete(id);
   }
 
+  async deleteMultipleWallpapers(ids) {
+    // 注意：这里为了简单起见，没有逐一删除物理文件
+    // 在生产环境中，应该添加一个任务队列来处理这些文件的后台删除
+    return this.wallpaperModel.deleteMany(ids);
+  }
+
+  async moveMultipleWallpapers(ids, groupId) {
+    // 验证分组是否存在
+    if (groupId) {
+      this.getGroupById(groupId);
+    }
+    return this.wallpaperModel.moveMany(ids, groupId);
+  }
+
   setActiveWallpaper(id) {
     this.getWallpaperById(id); // 验证壁纸存在
     return this.wallpaperModel.setActive(id);

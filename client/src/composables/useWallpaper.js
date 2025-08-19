@@ -116,6 +116,28 @@ export function useWallpaper() {
     }
   };
 
+  // 批量删除壁纸
+  const deleteMultipleWallpapers = async (ids, currentGroupId) => {
+    try {
+      await wallpaperApi.deleteWallpapers(ids);
+      await fetchWallpapers(currentGroupId); // 刷新列表
+    } catch (err) {
+      error.value = err.message || '批量删除失败';
+      throw err;
+    }
+  };
+
+  // 批量移动壁纸
+  const moveMultipleWallpapers = async (ids, targetGroupId, currentGroupId) => {
+    try {
+      await wallpaperApi.moveWallpapers(ids, targetGroupId);
+      await fetchWallpapers(currentGroupId); // 刷新列表
+    } catch (err) {
+      error.value = err.message || '批量移动失败';
+      throw err;
+    }
+  };
+
   // 删除分组
   const deleteGroup = async (id) => {
     try {
@@ -159,6 +181,8 @@ export function useWallpaper() {
     randomWallpaper,
     createGroup,
     deleteGroup,
-    getWallpaperUrl
+    getWallpaperUrl,
+    deleteMultipleWallpapers,
+    moveMultipleWallpapers
   };
 }

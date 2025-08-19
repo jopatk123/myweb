@@ -66,6 +66,20 @@ export class WallpaperModel {
     return this.db.prepare(sql).run(id);
   }
 
+  deleteMany(ids) {
+    if (!ids || ids.length === 0) return null;
+    const placeholders = ids.map(() => '?').join(', ');
+    const sql = `UPDATE wallpapers SET deleted_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`;
+    return this.db.prepare(sql).run(...ids);
+  }
+
+  moveMany(ids, groupId) {
+    if (!ids || ids.length === 0) return null;
+    const placeholders = ids.map(() => '?').join(', ');
+    const sql = `UPDATE wallpapers SET group_id = ? WHERE id IN (${placeholders})`;
+    return this.db.prepare(sql).run(groupId, ...ids);
+  }
+
   setActive(id) {
     // 先取消所有活跃状态
     this.db.prepare('UPDATE wallpapers SET is_active = 0').run();

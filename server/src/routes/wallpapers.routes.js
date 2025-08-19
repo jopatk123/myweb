@@ -12,6 +12,11 @@ export function createWallpaperRoutes(db) {
   router.get('/:id', (req, res, next) => controller.getWallpaper(req, res, next));
   
   router.post('/', controller.upload.single('image'), (req, res, next) => controller.uploadWallpaper(req, res, next));
+  
+  // 批量操作
+  router.delete('/', (req, res, next) => controller.deleteWallpapers(req, res, next));
+  router.put('/move', (req, res, next) => controller.moveWallpapers(req, res, next));
+
   router.put('/:id', (req, res, next) => controller.updateWallpaper(req, res, next));
   router.put('/:id/active', (req, res, next) => controller.setActiveWallpaper(req, res, next));
   router.delete('/:id', (req, res, next) => controller.deleteWallpaper(req, res, next));

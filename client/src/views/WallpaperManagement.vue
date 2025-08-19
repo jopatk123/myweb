@@ -22,9 +22,11 @@
     <main class="content-area">
       <!-- 顶部 -->
       <WallpaperHeader
-        @open-main-window="openMainWindow"
+        :selected-count="selectedIds.length"
         @upload-wallpaper="showUploadModal = true"
         @random-wallpaper="randomWallpaper(selectedGroupId || null)"
+        @bulk-delete="handleBulkDelete"
+        @bulk-move="showMoveModal = true"
       />
 
       <!-- 工具栏 -->
@@ -45,6 +47,7 @@
       <!-- 内容列表 -->
       <WallpaperList
         v-if="!loading"
+        v-model="selectedIds"
         :wallpapers="filteredWallpapers"
         :active-wallpaper="activeWallpaper"
         @set-active="setActiveWallpaper"
@@ -71,6 +74,13 @@
         @close="showGroupModal = false"
         @created="onGroupCreated"
       />
+      <GroupMoveModal
+        v-if="showMoveModal"
+        :count="selectedIds.length"
+        :groups="groups"
+        @close="showMoveModal = false"
+        @confirm="handleBulkMove"
+      />
     </main>
   </div>
 </template>
@@ -84,6 +94,7 @@ import WallpaperToolbar from '@/components/wallpaper/WallpaperToolbar.vue';
 import WallpaperList from '@/components/wallpaper/WallpaperList.vue';
 import WallpaperUploadModal from '@/components/wallpaper/WallpaperUploadModal.vue';
 import GroupCreateModal from '@/components/wallpaper/GroupCreateModal.vue';
+import GroupMoveModal from '@/components/wallpaper/GroupMoveModal.vue';
 
 const {
   wallpapers,
@@ -97,17 +108,39 @@ const {
   setActiveWallpaper,
   deleteWallpaper,
   randomWallpaper,
+  deleteMultipleWallpapers,
+  moveMultipleWallpapers,
 } = useWallpaper();
 
 const selectedGroupId = ref('');
 const showUploadModal = ref(false);
 const showGroupModal = ref(false);
+const showMoveModal = ref(false);
 const keyword = ref('');
+const selectedIds = ref([]);
+
+// 批量删除
+const handleBulkDelete = async () => {
+  if (selectedIds.value.length === 0) return;
+  if (confirm(`确定要删除选中的 ${selectedIds.value.length} 张壁纸吗？`)) {
+    await deleteMultipleWallpapers(selectedIds.value, selectedGroupId.value);
+    selectedIds.value = []; // 清空选择
+  }
+};
+
+// 批量移动
+const handleBulkMove = async (targetGroupId) => {
+  if (selectedIds.value.length === 0) return;
+  await moveMultipleWallpapers(selectedIds.value, targetGroupId, selectedGroupId.value);
+  selectedIds.value = []; // 清空选择
+  showMoveModal.value = false;
+};
 
 // 侧栏分组选择
 const selectGroup = (id) => {
   selectedGroupId.value = id || '';
   fetchWallpapers(selectedGroupId.value || null);
+  selectedIds.value = []; // 切换分组时清空选择
 };
 
 // 壁纸上传成功处理
