@@ -1,6 +1,6 @@
-```markdown
-# 通用项目结构规范（AI-Ready）
 
+# 通用项目结构规范（AI-Ready）
+Specific project implementation needs to be adjusted according to actual needs;
 ---
 
 ## 1. 元信息约定（Meta）

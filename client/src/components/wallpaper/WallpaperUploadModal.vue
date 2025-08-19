@@ -1,139 +1,83 @@
 <template>
-  <div class="modal-overlay" @click="$emit('close')">
-    <div class="modal-content" @click.stop>
-      <div class="modal-header">
-        <h3>上传壁纸</h3>
-        <button @click="$emit('close')" class="close-btn">&times;</button>
-      </div>
+	<div class="modal-overlay" @click="$emit('close')">
+		<div class="modal-content" @click.stop>
+			<div class="modal-header">
+				<h3>上传壁纸</h3>
+				<button @click="$emit('close')" class="close-btn">&times;</button>
+			</div>
 
-      <div class="modal-body">
-        <form @submit.prevent="handleUpload">
-          <!-- 分组选择 -->
-          <div class="form-group">
-            <label>选择分组：</label>
-            <select v-model="selectedGroupId">
-              <option value="">默认分组</option>
-              <option v-for="group in groups" :key="group.id" :value="group.id">
-                {{ group.name }}
-              </option>
-            </select>
-          </div>
+			<div class="modal-body">
+				<form @submit.prevent="handleUpload">
+					<!-- 分组选择 -->
+					<div class="form-group">
+						<label>选择分组：</label>
+						<select v-model="selectedGroupId">
+							<option value="">默认分组</option>
+							<option v-for="group in groups" :key="group.id" :value="group.id">
+								{{ group.name }}
+							</option>
+						</select>
+					</div>
 
-          <!-- 名称输入 -->
-          <div class="form-group">
-            <label for="wallpaper-name">名称：</label>
-            <input type="text" id="wallpaper-name" v-model="wallpaperName" placeholder="请输入壁纸名称" />
-          </div>
+					<!-- 名称输入 -->
+					<div class="form-group">
+						<label for="wallpaper-name">名称：</label>
+						<input type="text" id="wallpaper-name" v-model="wallpaperName" placeholder="请输入壁纸名称" />
+					</div>
 
-          <!-- 描述输入 -->
-          <div class="form-group">
-            <label for="wallpaper-description">描述：</label>
-            <textarea id="wallpaper-description" v-model="wallpaperDescription" placeholder="请输入壁纸描述（可选）"></textarea>
-          </div>
+					<!-- 描述输入 -->
+					<div class="form-group">
+						<label for="wallpaper-description">描述：</label>
+						<textarea id="wallpaper-description" v-model="wallpaperDescription" placeholder="请输入壁纸描述（可选）"></textarea>
+					</div>
 
-          <!-- 文件选择 -->
-          <div class="form-group">
-            <label>选择图片：</label>
-            <div class="file-input-wrapper">
-              <input
-                ref="fileInput"
-                type="file"
-                accept="image/*"
-                multiple
-                @change="handleFileSelect"
-                class="file-input"
-              />
-              <div
-                class="file-input-display"
-                @click="$refs.fileInput.click()"
-                @dragover.prevent="onDragOver"
-                @dragleave.prevent="onDragLeave"
-                @drop.prevent="onDrop"
-                :class="{ 'drag-over': isDragOver }"
-              >
-                <span v-if="selectedFiles.length === 0">
-                  点击选择图片文件<br>
-                  <small>最小分辨率：800x600，超过7680x4320会自动压缩<br>处理后文件大小不超过10MB</small>
-                </span>
-                <span v-else>已选择 {{ selectedFiles.length }} 个文件</span>
-              </div>
-            </div>
-          </div>
+					<!-- 文件选择 -->
+					<div class="form-group">
+						<label>选择图片：</label>
+						<FileDropzone accept="image/*" :multiple="false" @files-selected="handleFiles">
+							<span v-if="selectedFiles.length === 0">
+								点击选择图片文件<br>
+								<small>最小分辨率：800x600，超过7680x4320会自动压缩<br>处理后文件大小不超过10MB</small>
+							</span>
+							<span v-else>已选择 {{ selectedFiles.length }} 个文件</span>
+						</FileDropzone>
+					</div>
 
-          <!-- 文件预览 -->
-          <div v-if="selectedFiles.length > 0" class="file-preview">
-            <div
-              v-for="(file, index) in selectedFiles"
-              :key="index"
-              class="preview-item"
-            >
-              <img :src="file.preview" :alt="file.name" />
-              <div class="preview-info">
-                <p class="file-name">{{ file.name }}</p>
-                <p class="file-size">
-                  {{ formatFileSize(file.size) }}
-                  <span v-if="file.wasCompressed" class="compressed-info">
-                    (原始: {{ formatFileSize(file.originalSize) }})
-                  </span>
-                </p>
-                <p v-if="file.width && file.height" class="file-resolution">
-                  {{ file.width }}x{{ file.height }}
-                  <span v-if="file.wasCompressed" class="compressed-info">
-                    (原始: {{ file.originalWidth }}x{{ file.originalHeight }})
-                  </span>
-                </p>
-                <p v-if="file.wasCompressed" class="compression-notice">已自动压缩</p>
-              </div>
-              <button
-                type="button"
-                @click="removeFile(index)"
-                class="remove-btn"
-              >
-                &times;
-              </button>
-            </div>
-          </div>
+					<!-- 文件预览 -->
+					<FilePreviewList :items="selectedFiles" @remove="removeFile" />
 
-          <!-- 错误提示 -->
-          <div v-if="error" class="error-message">
-            {{ error }}
-          </div>
+					<!-- 错误提示 -->
+					<div v-if="error" class="error-message">{{ error }}</div>
 
-          <!-- 上传进度 -->
-          <div v-if="uploading" class="upload-progress">
-            <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: uploadProgress + '%' }"></div>
-            </div>
-            <p>上传中... {{ uploadProgress }}%</p>
-          </div>
+					<!-- 上传进度 -->
+					<div v-if="uploading" class="upload-progress">
+						<div class="progress-bar">
+							<div class="progress-fill" :style="{ width: uploadProgress + '%' }"></div>
+						</div>
+						<p>上传中... {{ uploadProgress }}%</p>
+					</div>
 
-          <div class="modal-actions">
-            <button type="button" @click="$emit('close')" class="btn btn-secondary">
-              取消
-            </button>
-            <button
-              type="submit"
-              :disabled="selectedFiles.length === 0 || uploading"
-              class="btn btn-primary"
-            >
-              {{ uploading ? '上传中...' : '上传' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+					<div class="modal-actions">
+						<button type="button" @click="$emit('close')" class="btn btn-secondary">取消</button>
+						<button type="submit" :disabled="selectedFiles.length === 0 || uploading" class="btn btn-primary">
+							{{ uploading ? '上传中...' : '上传' }}
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
 </template>
 
 <script setup>
 import { ref } from 'vue';
 import { useWallpaper } from '@/composables/useWallpaper.js';
+import { processImageFile } from '@/composables/useImageProcessing.js';
+import FileDropzone from '@/components/wallpaper/upload/FileDropzone.vue';
+import FilePreviewList from '@/components/wallpaper/upload/FilePreviewList.vue';
 
 const props = defineProps({
-  groups: {
-    type: Array,
-    default: () => []
-  }
+	groups: { type: Array, default: () => [] }
 });
 
 const emit = defineEmits(['close', 'uploaded']);
@@ -148,201 +92,53 @@ const uploading = ref(false);
 const uploadProgress = ref(0);
 const error = ref('');
 
-// 压缩图片函数
-const compressImage = (img, maxWidth, maxHeight, quality = 0.8) => {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // 计算新的尺寸，保持宽高比
-    let { width, height } = img;
-    
-    if (width > maxWidth || height > maxHeight) {
-      const ratio = Math.min(maxWidth / width, maxHeight / height);
-      width = Math.floor(width * ratio);
-      height = Math.floor(height * ratio);
-    }
-    
-    canvas.width = width;
-    canvas.height = height;
-    
-    // 绘制压缩后的图片
-    ctx.drawImage(img, 0, 0, width, height);
-    
-    // 转换为Blob
-    canvas.toBlob((blob) => {
-      resolve({
-        blob,
-        width,
-        height
-      });
-    }, 'image/jpeg', quality);
-  });
-};
-
-// 将Blob转换为File
-const blobToFile = (blob, fileName) => {
-  return new File([blob], fileName, {
-    type: blob.type,
-    lastModified: Date.now()
-  });
-};
-
-const isDragOver = ref(false);
-
-// 统一处理文件数组（供选择与拖放共用）
 const handleFiles = async (filesArray) => {
-  const files = Array.from(filesArray || []);
-  if (files.length === 0) return;
+	const files = Array.from(filesArray || []);
+	if (files.length === 0) return;
 
-  const file = files[0];
-  selectedFiles.value = [];
-  error.value = '';
+	const file = files[0];
+	selectedFiles.value = [];
+	error.value = '';
+	wallpaperName.value = file.name.split('.').slice(0, -1).join('.');
 
-  // 自动填充名称
-  wallpaperName.value = file.name.split('.').slice(0, -1).join('.');
-
-  try {
-    if (!file.type.startsWith('image/')) {
-      error.value = '只支持图片文件';
-      return;
-    }
-
-    const img = new Image();
-    const imageLoadPromise = new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-    });
-
-    const reader = new FileReader();
-    const fileReadPromise = new Promise((resolve) => {
-      reader.onload = (e) => {
-        img.src = e.target.result;
-        resolve(e.target.result);
-      };
-    });
-
-    reader.readAsDataURL(file);
-    const preview = await fileReadPromise;
-    await imageLoadPromise;
-
-    const minWidth = 800;
-    const minHeight = 600;
-    if (img.width < minWidth || img.height < minHeight) {
-      error.value = `图片分辨率过低，最小支持 ${minWidth}x${minHeight}`;
-      return;
-    }
-
-    let processedFile = file;
-    let finalWidth = img.width;
-    let finalHeight = img.height;
-    let wasCompressed = false;
-
-    const maxWidth = 7680;
-    const maxHeight = 4320;
-    if (img.width > maxWidth || img.height > maxHeight) {
-      const compressed = await compressImage(img, maxWidth, maxHeight);
-      processedFile = blobToFile(compressed.blob, file.name);
-      finalWidth = compressed.width;
-      finalHeight = compressed.height;
-      wasCompressed = true;
-    }
-
-    if (processedFile.size > 10 * 1024 * 1024) {
-      if (wasCompressed) {
-        const recompressed = await compressImage(img, maxWidth, maxHeight, 0.6);
-        processedFile = blobToFile(recompressed.blob, file.name);
-        if (processedFile.size > 10 * 1024 * 1024) {
-          error.value = '图片压缩后仍超过10MB，请选择更小的图片';
-          return;
-        }
-      } else {
-        error.value = '文件大小超过10MB，请选择更小的图片';
-        return;
-      }
-    }
-
-    selectedFiles.value.push({
-      file: processedFile,
-      originalFile: file,
-      name: file.name,
-      size: processedFile.size,
-      originalSize: file.size,
-      width: finalWidth,
-      height: finalHeight,
-      originalWidth: img.width,
-      originalHeight: img.height,
-      wasCompressed,
-      preview
-    });
-
-  } catch (err) {
-    console.error('处理图片时出错:', err);
-    error.value = '处理图片时出错，请重试';
-  }
+	try {
+		const item = await processImageFile(file, {
+			minWidth: 800,
+			minHeight: 600,
+			maxWidth: 7680,
+			maxHeight: 4320,
+			maxSizeMB: 10
+		});
+		selectedFiles.value.push(item);
+	} catch (err) {
+		console.error('处理图片时出错:', err);
+		error.value = err.message || '处理图片时出错，请重试';
+	}
 };
 
-// 旧的文件选择包装器，保持input兼容
-const handleFileSelect = async (event) => {
-  await handleFiles(event.target.files);
-};
+const removeFile = (index) => { selectedFiles.value.splice(index, 1); };
 
-// 拖放处理
-const onDragOver = (e) => {
-  isDragOver.value = true;
-};
-
-const onDragLeave = (e) => {
-  isDragOver.value = false;
-};
-
-const onDrop = async (e) => {
-  isDragOver.value = false;
-  const dtFiles = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : [];
-  if (dtFiles.length === 0) return;
-  await handleFiles(dtFiles);
-};
-
-// 移除文件
-const removeFile = (index) => {
-  selectedFiles.value.splice(index, 1);
-};
-
-// 格式化文件大小
-const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-// 处理上传
 const handleUpload = async () => {
-  if (selectedFiles.value.length === 0) return;
-
-  uploading.value = true;
-  uploadProgress.value = 0;
-  error.value = '';
-
-  try {
-    const fileItem = selectedFiles.value[0];
-    await uploadWallpaper(
-      fileItem.file,
-      selectedGroupId.value || null,
-      wallpaperName.value,
-      wallpaperDescription.value,
-      (progress) => {
-        uploadProgress.value = progress;
-      }
-    );
-    emit('uploaded');
-  } catch (err) {
-    error.value = err.message || '上传失败';
-  } finally {
-    uploading.value = false;
-    uploadProgress.value = 0;
-  }
+	if (selectedFiles.value.length === 0) return;
+	uploading.value = true;
+	uploadProgress.value = 0;
+	error.value = '';
+	try {
+		const fileItem = selectedFiles.value[0];
+		await uploadWallpaper(
+			fileItem.file,
+			selectedGroupId.value || null,
+			wallpaperName.value,
+			wallpaperDescription.value,
+			(progress) => { uploadProgress.value = progress; }
+		);
+		emit('uploaded');
+	} catch (err) {
+		error.value = err.message || '上传失败';
+	} finally {
+		uploading.value = false;
+		uploadProgress.value = 0;
+	}
 };
 </script>
 
@@ -421,115 +217,6 @@ const handleUpload = async () => {
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
-}
-
-.file-input-wrapper {
-  position: relative;
-}
-
-.file-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.file-input-display {
-  border: 2px dashed #ddd;
-  border-radius: 4px;
-  padding: 40px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.3s ease;
-}
-
-.file-input-display.drag-over {
-  border-color: #007bff;
-  background: rgba(0, 123, 255, 0.04);
-}
-
-.file-input-display:hover {
-  border-color: #007bff;
-}
-
-.file-input-display small {
-  color: #666;
-  font-size: 12px;
-  margin-top: 8px;
-  display: block;
-}
-
-.file-preview {
-  margin-top: 20px;
-}
-
-.preview-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  margin-bottom: 10px;
-}
-
-.preview-item img {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-
-.preview-info {
-  flex: 1;
-}
-
-.file-name {
-  margin: 0 0 4px 0;
-  font-weight: 500;
-  color: #333;
-}
-
-.file-size {
-  margin: 0;
-  font-size: 12px;
-  color: #666;
-}
-
-.file-resolution {
-  margin: 0;
-  font-size: 12px;
-  color: #007bff;
-  font-weight: 500;
-}
-
-.compressed-info {
-  color: #666;
-  font-weight: normal;
-}
-
-.compression-notice {
-  margin: 0;
-  font-size: 11px;
-  color: #28a745;
-  font-weight: 500;
-}
-
-.remove-btn {
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
-
-.remove-btn:hover {
-  background: #c82333;
 }
 
 .error-message {
