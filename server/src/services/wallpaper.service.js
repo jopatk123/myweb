@@ -48,20 +48,40 @@ export class WallpaperService {
 
   async deleteWallpaper(id) {
     const wallpaper = this.getWallpaperById(id);
-    
-    // 删除文件
+    if (!wallpaper) return; // 壁纸不存在或已被删除
+
+    // 先删除物理文件
     try {
       await fs.unlink(wallpaper.file_path);
     } catch (error) {
-      console.warn('删除文件失败:', error.message);
+      // 如果文件不存在，可以忽略错误，否则向上抛出
+      if (error.code !== 'ENOENT') {
+        console.error('删除物理文件失败:', error);
+        throw new Error('删除物理文件失败');
+      }
     }
 
+    // 再从数据库删除
     return this.wallpaperModel.delete(id);
   }
 
   async deleteMultipleWallpapers(ids) {
-    // 注意：这里为了简单起见，没有逐一删除物理文件
-    // 在生产环境中，应该添加一个任务队列来处理这些文件的后台删除
+    const wallpapers = this.wallpaperModel.findManyByIds(ids);
+    if (!wallpapers || wallpapers.length === 0) return;
+
+    // 1. 批量删除物理文件
+    for (const wallpaper of wallpapers) {
+      try {
+        await fs.unlink(wallpaper.file_path);
+      } catch (error) {
+        if (error.code !== 'ENOENT') {
+          console.error(`删除文件 ${wallpaper.file_path} 失败:`, error);
+          // 选择性地决定是否因为单个文件删除失败而中断整个过程
+        }
+      }
+    }
+
+    // 2. 批量从数据库删除
     return this.wallpaperModel.deleteMany(ids);
   }
 

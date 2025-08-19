@@ -28,6 +28,13 @@ export class WallpaperModel {
     return this.db.prepare('SELECT * FROM wallpapers WHERE id = ? AND deleted_at IS NULL').get(id);
   }
 
+  findManyByIds(ids) {
+    if (!ids || ids.length === 0) return [];
+    const placeholders = ids.map(() => '?').join(', ');
+    const sql = `SELECT * FROM wallpapers WHERE id IN (${placeholders}) AND deleted_at IS NULL`;
+    return this.db.prepare(sql).all(...ids);
+  }
+
   create(data) {
     const { filename, originalName, filePath, fileSize, mimeType, groupId, name, description } = data;
     const sql = `

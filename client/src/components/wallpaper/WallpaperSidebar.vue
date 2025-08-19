@@ -32,7 +32,7 @@ defineProps({
     required: true
   },
   selectedGroupId: {
-    type: String,
+    type: [String, Number],
     required: true
   }
 });

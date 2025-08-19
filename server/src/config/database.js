@@ -54,16 +54,14 @@ function initTables(db) {
   const wallpaperTableSql = `
     CREATE TABLE IF NOT EXISTS wallpapers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      filename VARCHAR(255) NOT NULL,
-      original_name VARCHAR(255) NOT NULL,
-      file_path VARCHAR(500) NOT NULL,
-      file_size INTEGER NOT NULL,
-      mime_type VARCHAR(100) NOT NULL,
+      mime_type TEXT,
       group_id INTEGER REFERENCES wallpaper_groups(id) ON DELETE SET NULL,
-      is_active BOOLEAN DEFAULT 0,
+      name TEXT,
+      description TEXT,
+      is_active INTEGER DEFAULT 0,
+      deleted_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      deleted_at DATETIME DEFAULT NULL
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE INDEX IF NOT EXISTS idx_wallpapers_group_id ON wallpapers(group_id);
