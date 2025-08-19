@@ -51,6 +51,7 @@
         :active-wallpaper="activeWallpaper"
         @set-active="handleSetActive"
         @delete="deleteWallpaper($event, selectedGroupId)"
+        @edit="openEditModal"
       />
 
       <Toast v-model:modelValue="showToast" :message="toastMessage" type="success" />
@@ -82,6 +83,7 @@
         @close="showMoveModal = false"
         @confirm="handleBulkMove"
       />
+      <WallpaperEditModal v-if="showEditModal" :wallpaper="editingWallpaper" @close="showEditModal = false" @saved="onEditSaved" />
     </main>
   </div>
 </template>
@@ -94,6 +96,7 @@ import WallpaperHeader from '@/components/wallpaper/WallpaperHeader.vue';
 import WallpaperToolbar from '@/components/wallpaper/WallpaperToolbar.vue';
 import WallpaperList from '@/components/wallpaper/WallpaperList.vue';
 import WallpaperUploadModal from '@/components/wallpaper/WallpaperUploadModal.vue';
+import WallpaperEditModal from '@/components/wallpaper/WallpaperEditModal.vue';
 import GroupCreateModal from '@/components/wallpaper/GroupCreateModal.vue';
 import GroupMoveModal from '@/components/wallpaper/GroupMoveModal.vue';
 import Toast from '@/components/common/Toast.vue';
@@ -119,6 +122,8 @@ const selectedGroupId = ref('');
 const showUploadModal = ref(false);
 const showGroupModal = ref(false);
 const showMoveModal = ref(false);
+const showEditModal = ref(false);
+const editingWallpaper = ref(null);
 const keyword = ref('');
 const selectedIds = ref([]);
 
@@ -156,6 +161,19 @@ const onWallpaperUploaded = () => {
 const onGroupCreated = () => {
   showGroupModal.value = false;
   fetchGroups();
+};
+
+// 打开编辑对话框
+const openEditModal = (wallpaper) => {
+  editingWallpaper.value = wallpaper;
+  showEditModal.value = true;
+};
+
+const onEditSaved = async () => {
+  showEditModal.value = false;
+  editingWallpaper.value = null;
+  await fetchWallpapers(selectedGroupId.value || null);
+  displayToast('编辑保存成功');
 };
 
 // 删除分组（来自侧栏按钮）

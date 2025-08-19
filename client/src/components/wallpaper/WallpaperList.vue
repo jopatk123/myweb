@@ -22,6 +22,7 @@
           <td>{{ new Date(wallpaper.created_at).toLocaleString() }}</td>
           <td>
             <button @click="$emit('set-active', wallpaper.id)" class="btn btn-sm btn-primary">设为背景</button>
+            <button @click="$emit('edit', wallpaper)" class="btn btn-sm btn-secondary">编辑</button>
             <button @click="$emit('delete', wallpaper.id)" class="btn btn-sm btn-danger">删除</button>
           </td>
         </tr>
@@ -48,7 +49,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['set-active', 'delete', 'update:modelValue']);
+const emit = defineEmits(['set-active', 'delete', 'edit', 'update:modelValue']);
 
 const selectedIds = ref([...props.modelValue]);
 

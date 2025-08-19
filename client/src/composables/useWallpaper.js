@@ -90,6 +90,18 @@ export function useWallpaper() {
     }
   };
 
+  // 更新壁纸（例如修改名称）
+  const updateWallpaper = async (id, data) => {
+    try {
+      const response = await wallpaperApi.updateWallpaper(id, data);
+      await fetchWallpapers();
+      return response.data;
+    } catch (err) {
+      error.value = err.message || '更新失败';
+      throw err;
+    }
+  };
+
   // 随机切换壁纸
   const randomWallpaper = async (groupId = null) => {
     try {
@@ -178,6 +190,7 @@ export function useWallpaper() {
     uploadWallpaper,
     setActiveWallpaper,
     deleteWallpaper,
+    updateWallpaper,
     randomWallpaper,
     createGroup,
     deleteGroup,
