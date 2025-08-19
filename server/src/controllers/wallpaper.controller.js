@@ -2,11 +2,16 @@ import { WallpaperService } from '../services/wallpaper.service.js';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { fileURLToPath } from 'url';
+
+// 解析当前模块目录（ESM 无 __dirname）
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 配置文件上传
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/wallpapers/');
+    cb(null, path.join(__dirname, '../../uploads/wallpapers'));
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);

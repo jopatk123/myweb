@@ -27,6 +27,8 @@ export async function initDatabase() {
   
   // 创建表
   initTables(db);
+  // 迁移: 确保缺失列存在
+  ensureWallpaperColumns(db);
   
   console.log(`📊 Database initialized: ${dbPath}`);
   
@@ -81,4 +83,25 @@ function initTables(db) {
   insertDefaultGroup.run('默认', '系统默认壁纸分组', 1);
   
   console.log('📊 Database tables initialized');
+}
+
+function ensureWallpaperColumns(db) {
+  const existingColumns = db.prepare('PRAGMA table_info(wallpapers)').all();
+  const existingColumnNames = new Set(existingColumns.map(col => col.name));
+
+  const maybeAddColumn = (name, type) => {
+    if (!existingColumnNames.has(name)) {
+      db.prepare(`ALTER TABLE wallpapers ADD COLUMN ${name} ${type}`).run();
+      console.log(`🛠️ Added column to wallpapers: ${name} ${type}`);
+    }
+  };
+
+  // 与模型一致: filename, original_name, file_path, file_size
+  maybeAddColumn('filename', 'TEXT');
+  maybeAddColumn('original_name', 'TEXT');
+  maybeAddColumn('file_path', 'TEXT');
+  maybeAddColumn('file_size', 'INTEGER');
+  // 也需要: name, description（旧库可能缺失）
+  maybeAddColumn('name', 'TEXT');
+  maybeAddColumn('description', 'TEXT');
 }
