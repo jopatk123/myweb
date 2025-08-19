@@ -3,6 +3,9 @@
     <div class="header">
       <h1>壁纸管理</h1>
       <div class="actions">
+        <button @click="openMainWindow" class="btn btn-info">
+          打开主窗口
+        </button>
         <button @click="showUploadModal = true" class="btn btn-primary">
           上传壁纸
         </button>
@@ -144,6 +147,11 @@ const onWallpaperUploaded = () => {
 const onGroupCreated = () => {
   showGroupModal.value = false;
   fetchGroups();
+};
+
+// 打开主窗口
+const openMainWindow = () => {
+  window.open('/', '_blank');
 };
 
 // 初始化
@@ -337,5 +345,14 @@ onMounted(async () => {
 .btn-sm {
   padding: 6px 12px;
   font-size: 12px;
+}
+
+.btn-info {
+  background: #17a2b8;
+  color: white;
+}
+
+.btn-info:hover {
+  background: #138496;
 }
 </style>

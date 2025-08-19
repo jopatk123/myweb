@@ -32,7 +32,10 @@
                 class="file-input"
               />
               <div class="file-input-display" @click="$refs.fileInput.click()">
-                <span v-if="selectedFiles.length === 0">点击选择图片文件</span>
+                <span v-if="selectedFiles.length === 0">
+                  点击选择图片文件<br>
+                  <small>最小分辨率：800x600，超过7680x4320会自动压缩<br>处理后文件大小不超过10MB</small>
+                </span>
                 <span v-else>已选择 {{ selectedFiles.length }} 个文件</span>
               </div>
             </div>
@@ -48,7 +51,19 @@
               <img :src="file.preview" :alt="file.name" />
               <div class="preview-info">
                 <p class="file-name">{{ file.name }}</p>
-                <p class="file-size">{{ formatFileSize(file.size) }}</p>
+                <p class="file-size">
+                  {{ formatFileSize(file.size) }}
+                  <span v-if="file.wasCompressed" class="compressed-info">
+                    (原始: {{ formatFileSize(file.originalSize) }})
+                  </span>
+                </p>
+                <p v-if="file.width && file.height" class="file-resolution">
+                  {{ file.width }}x{{ file.height }}
+                  <span v-if="file.wasCompressed" class="compressed-info">
+                    (原始: {{ file.originalWidth }}x{{ file.originalHeight }})
+                  </span>
+                </p>
+                <p v-if="file.wasCompressed" class="compression-notice">已自动压缩</p>
               </div>
               <button
                 type="button"
@@ -112,37 +127,145 @@ const uploading = ref(false);
 const uploadProgress = ref(0);
 const error = ref('');
 
+// 压缩图片函数
+const compressImage = (img, maxWidth, maxHeight, quality = 0.8) => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // 计算新的尺寸，保持宽高比
+    let { width, height } = img;
+    
+    if (width > maxWidth || height > maxHeight) {
+      const ratio = Math.min(maxWidth / width, maxHeight / height);
+      width = Math.floor(width * ratio);
+      height = Math.floor(height * ratio);
+    }
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // 绘制压缩后的图片
+    ctx.drawImage(img, 0, 0, width, height);
+    
+    // 转换为Blob
+    canvas.toBlob((blob) => {
+      resolve({
+        blob,
+        width,
+        height
+      });
+    }, 'image/jpeg', quality);
+  });
+};
+
+// 将Blob转换为File
+const blobToFile = (blob, fileName) => {
+  return new File([blob], fileName, {
+    type: blob.type,
+    lastModified: Date.now()
+  });
+};
+
 // 处理文件选择
-const handleFileSelect = (event) => {
+const handleFileSelect = async (event) => {
   const files = Array.from(event.target.files);
   selectedFiles.value = [];
   error.value = '';
 
-  files.forEach(file => {
-    // 验证文件类型
-    if (!file.type.startsWith('image/')) {
-      error.value = '只支持图片文件';
-      return;
-    }
+  for (const file of files) {
+    try {
+      // 验证文件类型
+      if (!file.type.startsWith('image/')) {
+        error.value = '只支持图片文件';
+        continue;
+      }
 
-    // 验证文件大小 (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      error.value = '文件大小不能超过10MB';
-      return;
-    }
-
-    // 创建预览
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      selectedFiles.value.push({
-        file,
-        name: file.name,
-        size: file.size,
-        preview: e.target.result
+      // 创建图片对象
+      const img = new Image();
+      const imageLoadPromise = new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
       });
-    };
-    reader.readAsDataURL(file);
-  });
+
+      // 读取文件
+      const reader = new FileReader();
+      const fileReadPromise = new Promise((resolve) => {
+        reader.onload = (e) => {
+          img.src = e.target.result;
+          resolve(e.target.result);
+        };
+      });
+      
+      reader.readAsDataURL(file);
+      const preview = await fileReadPromise;
+      await imageLoadPromise;
+
+      // 检查最小分辨率
+      const minWidth = 800;
+      const minHeight = 600;
+      
+      if (img.width < minWidth || img.height < minHeight) {
+        error.value = `图片分辨率过低，最小支持 ${minWidth}x${minHeight}`;
+        continue;
+      }
+
+      let processedFile = file;
+      let finalWidth = img.width;
+      let finalHeight = img.height;
+      let wasCompressed = false;
+
+      // 检查是否需要压缩
+      const maxWidth = 7680;
+      const maxHeight = 4320;
+      
+      if (img.width > maxWidth || img.height > maxHeight) {
+        // 需要压缩
+        const compressed = await compressImage(img, maxWidth, maxHeight);
+        processedFile = blobToFile(compressed.blob, file.name);
+        finalWidth = compressed.width;
+        finalHeight = compressed.height;
+        wasCompressed = true;
+      }
+
+      // 检查处理后的文件大小
+      if (processedFile.size > 10 * 1024 * 1024) {
+        // 如果还是太大，尝试降低质量
+        if (wasCompressed) {
+          const recompressed = await compressImage(img, maxWidth, maxHeight, 0.6);
+          processedFile = blobToFile(recompressed.blob, file.name);
+          
+          // 再次检查大小
+          if (processedFile.size > 10 * 1024 * 1024) {
+            error.value = '图片压缩后仍超过10MB，请选择更小的图片';
+            continue;
+          }
+        } else {
+          error.value = '文件大小超过10MB，请选择更小的图片';
+          continue;
+        }
+      }
+
+      // 添加到选择列表
+      selectedFiles.value.push({
+        file: processedFile,
+        originalFile: file,
+        name: file.name,
+        size: processedFile.size,
+        originalSize: file.size,
+        width: finalWidth,
+        height: finalHeight,
+        originalWidth: img.width,
+        originalHeight: img.height,
+        wasCompressed,
+        preview
+      });
+
+    } catch (err) {
+      console.error('处理图片时出错:', err);
+      error.value = '处理图片时出错，请重试';
+    }
+  }
 };
 
 // 移除文件
@@ -287,6 +410,13 @@ const handleUpload = async () => {
   border-color: #007bff;
 }
 
+.file-input-display small {
+  color: #666;
+  font-size: 12px;
+  margin-top: 8px;
+  display: block;
+}
+
 .file-preview {
   margin-top: 20px;
 }
@@ -322,6 +452,25 @@ const handleUpload = async () => {
   margin: 0;
   font-size: 12px;
   color: #666;
+}
+
+.file-resolution {
+  margin: 0;
+  font-size: 12px;
+  color: #007bff;
+  font-weight: 500;
+}
+
+.compressed-info {
+  color: #666;
+  font-weight: normal;
+}
+
+.compression-notice {
+  margin: 0;
+  font-size: 11px;
+  color: #28a745;
+  font-weight: 500;
 }
 
 .remove-btn {

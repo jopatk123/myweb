@@ -20,10 +20,14 @@ body {
   line-height: 1.6;
   color: #333;
   background: #f5f5f5;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 #app {
   min-height: 100vh;
+  width: 100%;
 }
 
 /* 全局样式 */

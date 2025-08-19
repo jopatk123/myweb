@@ -54,8 +54,8 @@ onMounted(() => {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   z-index: -1;
   overflow: hidden;
 }
@@ -74,9 +74,10 @@ onMounted(() => {
 .user-wallpaper {
   width: 100%;
   height: 100%;
-  background-size: cover;
+  background-size: 100% 100%;
   background-position: center;
   background-repeat: no-repeat;
+  background-attachment: fixed;
   transition: opacity 0.5s ease;
 }
 
@@ -110,6 +111,20 @@ onMounted(() => {
 @media (max-width: 768px) {
   .user-wallpaper {
     background-attachment: scroll;
+    background-size: 100% 100%;
+  }
+}
+
+/* 确保在所有设备上都能铺满 */
+@media (orientation: portrait) {
+  .user-wallpaper {
+    background-size: 100% 100%;
+  }
+}
+
+@media (orientation: landscape) {
+  .user-wallpaper {
+    background-size: 100% 100%;
   }
 }
 </style>
