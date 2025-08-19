@@ -75,13 +75,15 @@ export class WallpaperController {
         });
       }
 
-      const { groupId } = req.body;
+      const { groupId, name, description } = req.body;
       const fileData = {
         filename: req.file.filename,
         originalName: req.file.originalname,
         filePath: req.file.path,
         fileSize: req.file.size,
-        mimeType: req.file.mimetype
+        mimeType: req.file.mimetype,
+        name: name || req.file.originalname, // 如果没有提供名称，则使用原始文件名
+        description: description || null
       };
 
       const wallpaper = await this.service.uploadWallpaper(fileData, groupId);

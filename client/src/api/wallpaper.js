@@ -28,16 +28,28 @@ export const wallpaperApi = {
   },
 
   // 上传壁纸
-  uploadWallpaper(file, groupId = null) {
+  uploadWallpaper(file, groupId = null, name, description, onUploadProgress) {
     const formData = new FormData();
     formData.append('image', file);
     if (groupId) {
       formData.append('groupId', groupId);
     }
+    if (name) {
+      formData.append('name', name);
+    }
+    if (description) {
+      formData.append('description', description);
+    }
 
     return api.post('/wallpapers', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: progressEvent => {
+        if (onUploadProgress) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onUploadProgress(percentCompleted);
+        }
       }
     });
   },

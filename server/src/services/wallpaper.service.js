@@ -22,17 +22,11 @@ export class WallpaperService {
   }
 
   async uploadWallpaper(fileData, groupId = null) {
-    const { filename, originalName, filePath, fileSize, mimeType } = fileData;
+    const { filename, originalName, filePath, fileSize, mimeType, name, description } = fileData;
     
     // 验证文件类型
     if (!mimeType.startsWith('image/')) {
       throw new Error('只支持图片文件');
-    }
-
-    // 如果没有指定分组，使用默认分组
-    if (!groupId) {
-      const defaultGroup = this.groupModel.getDefault();
-      groupId = defaultGroup.id;
     }
 
     return this.wallpaperModel.create({
@@ -41,7 +35,9 @@ export class WallpaperService {
       filePath,
       fileSize,
       mimeType,
-      groupId
+      groupId,
+      name,
+      description
     });
   }
 

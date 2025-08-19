@@ -19,6 +19,18 @@
             </select>
           </div>
 
+          <!-- 名称输入 -->
+          <div class="form-group">
+            <label for="wallpaper-name">名称：</label>
+            <input type="text" id="wallpaper-name" v-model="wallpaperName" placeholder="请输入壁纸名称" />
+          </div>
+
+          <!-- 描述输入 -->
+          <div class="form-group">
+            <label for="wallpaper-description">描述：</label>
+            <textarea id="wallpaper-description" v-model="wallpaperDescription" placeholder="请输入壁纸描述（可选）"></textarea>
+          </div>
+
           <!-- 文件选择 -->
           <div class="form-group">
             <label>选择图片：</label>
@@ -122,6 +134,8 @@ const emit = defineEmits(['close', 'uploaded']);
 const { uploadWallpaper } = useWallpaper();
 
 const selectedGroupId = ref('');
+const wallpaperName = ref('');
+const wallpaperDescription = ref('');
 const selectedFiles = ref([]);
 const uploading = ref(false);
 const uploadProgress = ref(0);
@@ -170,101 +184,106 @@ const blobToFile = (blob, fileName) => {
 // 处理文件选择
 const handleFileSelect = async (event) => {
   const files = Array.from(event.target.files);
+  if (files.length === 0) return;
+
+  // 修改为单文件上传逻辑
+  const file = files[0];
   selectedFiles.value = [];
   error.value = '';
 
-  for (const file of files) {
-    try {
-      // 验证文件类型
-      if (!file.type.startsWith('image/')) {
-        error.value = '只支持图片文件';
-        continue;
-      }
+  // 自动填充名称
+  wallpaperName.value = file.name.split('.').slice(0, -1).join('.');
 
-      // 创建图片对象
-      const img = new Image();
-      const imageLoadPromise = new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-      });
-
-      // 读取文件
-      const reader = new FileReader();
-      const fileReadPromise = new Promise((resolve) => {
-        reader.onload = (e) => {
-          img.src = e.target.result;
-          resolve(e.target.result);
-        };
-      });
-      
-      reader.readAsDataURL(file);
-      const preview = await fileReadPromise;
-      await imageLoadPromise;
-
-      // 检查最小分辨率
-      const minWidth = 800;
-      const minHeight = 600;
-      
-      if (img.width < minWidth || img.height < minHeight) {
-        error.value = `图片分辨率过低，最小支持 ${minWidth}x${minHeight}`;
-        continue;
-      }
-
-      let processedFile = file;
-      let finalWidth = img.width;
-      let finalHeight = img.height;
-      let wasCompressed = false;
-
-      // 检查是否需要压缩
-      const maxWidth = 7680;
-      const maxHeight = 4320;
-      
-      if (img.width > maxWidth || img.height > maxHeight) {
-        // 需要压缩
-        const compressed = await compressImage(img, maxWidth, maxHeight);
-        processedFile = blobToFile(compressed.blob, file.name);
-        finalWidth = compressed.width;
-        finalHeight = compressed.height;
-        wasCompressed = true;
-      }
-
-      // 检查处理后的文件大小
-      if (processedFile.size > 10 * 1024 * 1024) {
-        // 如果还是太大，尝试降低质量
-        if (wasCompressed) {
-          const recompressed = await compressImage(img, maxWidth, maxHeight, 0.6);
-          processedFile = blobToFile(recompressed.blob, file.name);
-          
-          // 再次检查大小
-          if (processedFile.size > 10 * 1024 * 1024) {
-            error.value = '图片压缩后仍超过10MB，请选择更小的图片';
-            continue;
-          }
-        } else {
-          error.value = '文件大小超过10MB，请选择更小的图片';
-          continue;
-        }
-      }
-
-      // 添加到选择列表
-      selectedFiles.value.push({
-        file: processedFile,
-        originalFile: file,
-        name: file.name,
-        size: processedFile.size,
-        originalSize: file.size,
-        width: finalWidth,
-        height: finalHeight,
-        originalWidth: img.width,
-        originalHeight: img.height,
-        wasCompressed,
-        preview
-      });
-
-    } catch (err) {
-      console.error('处理图片时出错:', err);
-      error.value = '处理图片时出错，请重试';
+  try {
+    // 验证文件类型
+    if (!file.type.startsWith('image/')) {
+      error.value = '只支持图片文件';
+      return;
     }
+
+    // 创建图片对象
+    const img = new Image();
+    const imageLoadPromise = new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+
+    // 读取文件
+    const reader = new FileReader();
+    const fileReadPromise = new Promise((resolve) => {
+      reader.onload = (e) => {
+        img.src = e.target.result;
+        resolve(e.target.result);
+      };
+    });
+    
+    reader.readAsDataURL(file);
+    const preview = await fileReadPromise;
+    await imageLoadPromise;
+
+    // 检查最小分辨率
+    const minWidth = 800;
+    const minHeight = 600;
+    
+    if (img.width < minWidth || img.height < minHeight) {
+      error.value = `图片分辨率过低，最小支持 ${minWidth}x${minHeight}`;
+      return;
+    }
+
+    let processedFile = file;
+    let finalWidth = img.width;
+    let finalHeight = img.height;
+    let wasCompressed = false;
+
+    // 检查是否需要压缩
+    const maxWidth = 7680;
+    const maxHeight = 4320;
+    
+    if (img.width > maxWidth || img.height > maxHeight) {
+      // 需要压缩
+      const compressed = await compressImage(img, maxWidth, maxHeight);
+      processedFile = blobToFile(compressed.blob, file.name);
+      finalWidth = compressed.width;
+      finalHeight = compressed.height;
+      wasCompressed = true;
+    }
+
+    // 检查处理后的文件大小
+    if (processedFile.size > 10 * 1024 * 1024) {
+      // 如果还是太大，尝试降低质量
+      if (wasCompressed) {
+        const recompressed = await compressImage(img, maxWidth, maxHeight, 0.6);
+        processedFile = blobToFile(recompressed.blob, file.name);
+        
+        // 再次检查大小
+        if (processedFile.size > 10 * 1024 * 1024) {
+          error.value = '图片压缩后仍超过10MB，请选择更小的图片';
+          return;
+        }
+      } else {
+        error.value = '文件大小超过10MB，请选择更小的图片';
+        return;
+      }
+    }
+
+    // 添加到选择列表
+    selectedFiles.value.push({
+      file: processedFile,
+      originalFile: file,
+      name: file.name,
+      size: processedFile.size,
+      originalSize: file.size,
+      width: finalWidth,
+      height: finalHeight,
+      originalWidth: img.width,
+      originalHeight: img.height,
+      wasCompressed,
+      preview
+    });
+
+  } catch (err) {
+    console.error('处理图片时出错:', err);
+    error.value = '处理图片时出错，请重试';
   }
 };
 
@@ -291,15 +310,16 @@ const handleUpload = async () => {
   error.value = '';
 
   try {
-    const total = selectedFiles.value.length;
-    let completed = 0;
-
-    for (const fileItem of selectedFiles.value) {
-      await uploadWallpaper(fileItem.file, selectedGroupId.value || null);
-      completed++;
-      uploadProgress.value = Math.round((completed / total) * 100);
-    }
-
+    const fileItem = selectedFiles.value[0];
+    await uploadWallpaper(
+      fileItem.file,
+      selectedGroupId.value || null,
+      wallpaperName.value,
+      wallpaperDescription.value,
+      (progress) => {
+        uploadProgress.value = progress;
+      }
+    );
     emit('uploaded');
   } catch (err) {
     error.value = err.message || '上传失败';

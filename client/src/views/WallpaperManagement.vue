@@ -72,30 +72,33 @@
       <div v-if="error" class="error-message">{{ error }}</div>
       <div v-if="loading" class="loading">加载中...</div>
 
-      <!-- 内容区：壁纸网格 -->
-      <div v-if="!loading" class="wallpaper-grid">
-        <div
-          v-for="wallpaper in filteredWallpapers"
-          :key="wallpaper.id"
-          class="wallpaper-item"
-          :class="{ active: activeWallpaper?.id === wallpaper.id }"
-        >
-          <div class="wallpaper-preview">
-            <img
-              :src="getWallpaperUrl(wallpaper)"
-              :alt="wallpaper.original_name"
-              @click="setActiveWallpaper(wallpaper.id)"
-            />
-            <div class="wallpaper-overlay">
-              <button @click="setActiveWallpaper(wallpaper.id)" class="btn btn-sm btn-primary">设为背景</button>
-              <button @click="deleteWallpaper(wallpaper.id, selectedGroupId)" class="btn btn-sm btn-danger">删除</button>
-            </div>
-          </div>
-          <div class="wallpaper-info">
-            <p class="wallpaper-name">{{ wallpaper.original_name }}</p>
-            <p class="wallpaper-size">{{ formatFileSize(wallpaper.file_size) }}</p>
-          </div>
-        </div>
+      <!-- 内容区：壁纸列表 -->
+      <div v-if="!loading" class="wallpaper-list">
+        <table>
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>缩略图</th>
+              <th>文件大小</th>
+              <th>上传时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="wallpaper in filteredWallpapers" :key="wallpaper.id" :class="{ active: activeWallpaper?.id === wallpaper.id }">
+              <td>{{ wallpaper.name || wallpaper.original_name }}</td>
+              <td>
+                <img :src="getWallpaperUrl(wallpaper)" :alt="wallpaper.name" class="thumbnail" />
+              </td>
+              <td>{{ formatFileSize(wallpaper.file_size) }}</td>
+              <td>{{ new Date(wallpaper.created_at).toLocaleString() }}</td>
+              <td>
+                <button @click="setActiveWallpaper(wallpaper.id)" class="btn btn-sm btn-primary">设为背景</button>
+                <button @click="deleteWallpaper(wallpaper.id, selectedGroupId)" class="btn btn-sm btn-danger">删除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- 空状态 -->
@@ -476,6 +479,41 @@ onMounted(async () => {
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 .btn-info { background: #17a2b8; color: white; }
 .btn-info:hover { background: #138496; }
+
+/* 新增列表样式 */
+.wallpaper-list table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.wallpaper-list th, .wallpaper-list td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.wallpaper-list th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+.wallpaper-list tr.active {
+  background-color: #eff6ff;
+}
+
+.thumbnail {
+  width: 100px;
+  height: 56.25px; /* 16:9 */
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.wallpaper-list td .btn {
+  margin-right: 8px;
+}
 
 @media (max-width: 1024px) {
   .admin-layout {

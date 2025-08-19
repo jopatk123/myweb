@@ -29,13 +29,13 @@ export class WallpaperModel {
   }
 
   create(data) {
-    const { filename, originalName, filePath, fileSize, mimeType, groupId } = data;
+    const { filename, originalName, filePath, fileSize, mimeType, groupId, name, description } = data;
     const sql = `
-      INSERT INTO wallpapers (filename, original_name, file_path, file_size, mime_type, group_id)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO wallpapers (filename, original_name, file_path, file_size, mime_type, group_id, name, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
-    const result = this.db.prepare(sql).run(filename, originalName, filePath, fileSize, mimeType, groupId);
+    const result = this.db.prepare(sql).run(filename, originalName, filePath, fileSize, mimeType, groupId, name, description);
     return this.findById(result.lastInsertRowid);
   }
 
