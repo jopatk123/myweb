@@ -43,7 +43,14 @@
                 @change="handleFileSelect"
                 class="file-input"
               />
-              <div class="file-input-display" @click="$refs.fileInput.click()">
+              <div
+                class="file-input-display"
+                @click="$refs.fileInput.click()"
+                @dragover.prevent="onDragOver"
+                @dragleave.prevent="onDragLeave"
+                @drop.prevent="onDrop"
+                :class="{ 'drag-over': isDragOver }"
+              >
                 <span v-if="selectedFiles.length === 0">
                   点击选择图片文件<br>
                   <small>最小分辨率：800x600，超过7680x4320会自动压缩<br>处理后文件大小不超过10MB</small>
@@ -181,12 +188,13 @@ const blobToFile = (blob, fileName) => {
   });
 };
 
-// 处理文件选择
-const handleFileSelect = async (event) => {
-  const files = Array.from(event.target.files);
+const isDragOver = ref(false);
+
+// 统一处理文件数组（供选择与拖放共用）
+const handleFiles = async (filesArray) => {
+  const files = Array.from(filesArray || []);
   if (files.length === 0) return;
 
-  // 修改为单文件上传逻辑
   const file = files[0];
   selectedFiles.value = [];
   error.value = '';
@@ -195,20 +203,17 @@ const handleFileSelect = async (event) => {
   wallpaperName.value = file.name.split('.').slice(0, -1).join('.');
 
   try {
-    // 验证文件类型
     if (!file.type.startsWith('image/')) {
       error.value = '只支持图片文件';
       return;
     }
 
-    // 创建图片对象
     const img = new Image();
     const imageLoadPromise = new Promise((resolve, reject) => {
       img.onload = resolve;
       img.onerror = reject;
     });
 
-    // 读取文件
     const reader = new FileReader();
     const fileReadPromise = new Promise((resolve) => {
       reader.onload = (e) => {
@@ -216,15 +221,13 @@ const handleFileSelect = async (event) => {
         resolve(e.target.result);
       };
     });
-    
+
     reader.readAsDataURL(file);
     const preview = await fileReadPromise;
     await imageLoadPromise;
 
-    // 检查最小分辨率
     const minWidth = 800;
     const minHeight = 600;
-    
     if (img.width < minWidth || img.height < minHeight) {
       error.value = `图片分辨率过低，最小支持 ${minWidth}x${minHeight}`;
       return;
@@ -235,12 +238,9 @@ const handleFileSelect = async (event) => {
     let finalHeight = img.height;
     let wasCompressed = false;
 
-    // 检查是否需要压缩
     const maxWidth = 7680;
     const maxHeight = 4320;
-    
     if (img.width > maxWidth || img.height > maxHeight) {
-      // 需要压缩
       const compressed = await compressImage(img, maxWidth, maxHeight);
       processedFile = blobToFile(compressed.blob, file.name);
       finalWidth = compressed.width;
@@ -248,14 +248,10 @@ const handleFileSelect = async (event) => {
       wasCompressed = true;
     }
 
-    // 检查处理后的文件大小
     if (processedFile.size > 10 * 1024 * 1024) {
-      // 如果还是太大，尝试降低质量
       if (wasCompressed) {
         const recompressed = await compressImage(img, maxWidth, maxHeight, 0.6);
         processedFile = blobToFile(recompressed.blob, file.name);
-        
-        // 再次检查大小
         if (processedFile.size > 10 * 1024 * 1024) {
           error.value = '图片压缩后仍超过10MB，请选择更小的图片';
           return;
@@ -266,7 +262,6 @@ const handleFileSelect = async (event) => {
       }
     }
 
-    // 添加到选择列表
     selectedFiles.value.push({
       file: processedFile,
       originalFile: file,
@@ -285,6 +280,27 @@ const handleFileSelect = async (event) => {
     console.error('处理图片时出错:', err);
     error.value = '处理图片时出错，请重试';
   }
+};
+
+// 旧的文件选择包装器，保持input兼容
+const handleFileSelect = async (event) => {
+  await handleFiles(event.target.files);
+};
+
+// 拖放处理
+const onDragOver = (e) => {
+  isDragOver.value = true;
+};
+
+const onDragLeave = (e) => {
+  isDragOver.value = false;
+};
+
+const onDrop = async (e) => {
+  isDragOver.value = false;
+  const dtFiles = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : [];
+  if (dtFiles.length === 0) return;
+  await handleFiles(dtFiles);
 };
 
 // 移除文件
@@ -424,6 +440,11 @@ const handleUpload = async () => {
   text-align: center;
   cursor: pointer;
   transition: border-color 0.3s ease;
+}
+
+.file-input-display.drag-over {
+  border-color: #007bff;
+  background: rgba(0, 123, 255, 0.04);
 }
 
 .file-input-display:hover {

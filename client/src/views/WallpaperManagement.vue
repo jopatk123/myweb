@@ -52,9 +52,11 @@
         v-model="selectedIds"
         :wallpapers="filteredWallpapers"
         :active-wallpaper="activeWallpaper"
-        @set-active="setActiveWallpaper"
+        @set-active="handleSetActive"
         @delete="deleteWallpaper($event, selectedGroupId)"
       />
+
+      <Toast v-model:modelValue="showToast" :message="toastMessage" type="success" />
 
       <!-- 空状态 -->
       <div v-if="!loading && filteredWallpapers.length === 0" class="empty-state">
@@ -97,6 +99,7 @@ import WallpaperList from '@/components/wallpaper/WallpaperList.vue';
 import WallpaperUploadModal from '@/components/wallpaper/WallpaperUploadModal.vue';
 import GroupCreateModal from '@/components/wallpaper/GroupCreateModal.vue';
 import GroupMoveModal from '@/components/wallpaper/GroupMoveModal.vue';
+import Toast from '@/components/common/Toast.vue';
 
 const {
   wallpapers,
@@ -178,6 +181,28 @@ const handleDeleteGroup = async () => {
 // 打开主窗口
 const openMainWindow = () => {
   window.open('/', '_blank');
+};
+
+// 无需确认的成功提示（toast）状态
+const showToast = ref(false);
+const toastMessage = ref('');
+
+const displayToast = (msg, duration = 2000) => {
+  toastMessage.value = msg;
+  showToast.value = true;
+  setTimeout(() => {
+    showToast.value = false;
+  }, duration);
+};
+
+// 包装后的设置背景处理，显示成功提示
+const handleSetActive = async (id) => {
+  try {
+    await setActiveWallpaper(id);
+    displayToast('设置成功');
+  } catch (err) {
+    alert(err.message || '设置为背景失败');
+  }
 };
 
 // 计算后的展示数据
@@ -294,6 +319,8 @@ onMounted(async () => {
   color: #6b7280;
   text-align: center;
 }
+
+/* Toast 组件样式已被抽离到组件内，这里移除重复样式。 */
 
 @media (max-width: 1024px) {
   .admin-layout {
