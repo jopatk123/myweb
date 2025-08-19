@@ -52,7 +52,15 @@ export class WallpaperService {
 
     // 先删除物理文件
     try {
-      await fs.unlink(wallpaper.file_path);
+      // wallpaper.file_path 在数据库中可能是两种形式:
+      // 1) 旧记录存储的是磁盘绝对路径 (例如 /home/.../uploads/...)，
+      // 2) 新记录我们存储为 web 相对路径 (例如 uploads/wallpapers/xxx.jpg)
+      let diskPath = wallpaper.file_path;
+      if (!path.isAbsolute(diskPath)) {
+        // 从项目根解析到文件系统路径
+        diskPath = path.join(__dirname, '../../', diskPath);
+      }
+      await fs.unlink(diskPath);
     } catch (error) {
       // 如果文件不存在，可以忽略错误，否则向上抛出
       if (error.code !== 'ENOENT') {
@@ -72,7 +80,11 @@ export class WallpaperService {
     // 1. 批量删除物理文件
     for (const wallpaper of wallpapers) {
       try {
-        await fs.unlink(wallpaper.file_path);
+        let diskPath = wallpaper.file_path;
+        if (!path.isAbsolute(diskPath)) {
+          diskPath = path.join(__dirname, '../../', diskPath);
+        }
+        await fs.unlink(diskPath);
       } catch (error) {
         if (error.code !== 'ENOENT') {
           console.error(`删除文件 ${wallpaper.file_path} 失败:`, error);

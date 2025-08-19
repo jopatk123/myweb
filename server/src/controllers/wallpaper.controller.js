@@ -81,10 +81,14 @@ export class WallpaperController {
       }
 
       const { groupId, name, description } = req.body;
+      // 存储到数据库的 file_path 应为 web 可访问的相对路径（例如: uploads/wallpapers/<filename>）
+      // 这样前端可以直接用 `${API_BASE}/${file_path}` 访问；同时删除时再解析到磁盘路径
+      const webPath = path.posix.join('uploads', 'wallpapers', req.file.filename);
+
       const fileData = {
         filename: req.file.filename,
         originalName: req.file.originalname,
-        filePath: req.file.path,
+        filePath: webPath,
         fileSize: req.file.size,
         mimeType: req.file.mimetype,
         name: name || req.file.originalname, // 如果没有提供名称，则使用原始文件名
