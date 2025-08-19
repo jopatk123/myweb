@@ -2,7 +2,15 @@
   <aside class="module-sider">
     <div class="module-header-row">
       <div class="module-title">分组管理</div>
-      <button class="btn btn-secondary btn-sm" @click="$emit('create-group')">新建</button>
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-sm" @click="$emit('create-group')">新建</button>
+        <button
+          class="btn btn-danger btn-sm"
+          :disabled="!selectedGroupId"
+          @click="$emit('delete-group')"
+          title="删除当前选中分组"
+        >删除</button>
+      </div>
     </div>
     <div class="group-list">
       <div
@@ -37,7 +45,7 @@ defineProps({
   }
 });
 
-defineEmits(['select-group', 'create-group']);
+defineEmits(['select-group', 'create-group', 'delete-group']);
 </script>
 
 <style scoped>
@@ -85,4 +93,15 @@ defineEmits(['select-group', 'create-group']);
 .btn-secondary { background: #6c757d; color: white; }
 .btn-secondary:hover { background: #545b62; }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-danger:hover { background: #b02a37; }
+.btn:disabled, .btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 </style>

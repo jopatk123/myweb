@@ -16,6 +16,7 @@
       :selected-group-id="selectedGroupId"
       @select-group="selectGroup"
       @create-group="showGroupModal = true"
+      @delete-group="handleDeleteGroup"
     />
 
     <!-- 主内容区 -->
@@ -107,6 +108,7 @@ const {
   fetchActiveWallpaper,
   setActiveWallpaper,
   deleteWallpaper,
+  deleteGroup,
   randomWallpaper,
   deleteMultipleWallpapers,
   moveMultipleWallpapers,
@@ -153,6 +155,23 @@ const onWallpaperUploaded = () => {
 const onGroupCreated = () => {
   showGroupModal.value = false;
   fetchGroups();
+};
+
+// 删除分组（来自侧栏按钮）
+const handleDeleteGroup = async () => {
+  if (!selectedGroupId.value) return;
+  const g = groups.value.find(g => g.id === selectedGroupId.value);
+  const name = g ? g.name : '';
+  if (!confirm(`确定要删除分组 "${name}" 吗？此操作将不会删除分组下的壁纸。`)) return;
+
+  try {
+    await deleteGroup(selectedGroupId.value);
+    // 如果刚删除的是当前选中，则切回全部
+    selectedGroupId.value = '';
+    await Promise.all([fetchGroups(), fetchWallpapers()]);
+  } catch (err) {
+    alert(err.message || '删除分组失败');
+  }
 };
 
 // 打开主窗口
