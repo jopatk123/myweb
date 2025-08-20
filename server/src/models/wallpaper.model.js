@@ -83,7 +83,7 @@ export class WallpaperModel {
     params.push(id);
 
     const sql = `UPDATE wallpapers SET ${fields.join(', ')} WHERE id = ?`;
-    this.db.prepare(sql).run(params);
+    this.db.prepare(sql).run(...params);
     
     return this.findById(id);
   }
@@ -109,7 +109,7 @@ export class WallpaperModel {
 
   setActive(id) {
     // 先取消所有活跃状态
-    this.db.prepare('UPDATE wallpapers SET is_active = 0').run();
+    this.db.prepare('UPDATE wallpapers SET is_active = 0 WHERE deleted_at IS NULL').run();
     // 设置指定壁纸为活跃
     return this.db.prepare('UPDATE wallpapers SET is_active = 1 WHERE id = ?').run(id);
   }
