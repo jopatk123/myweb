@@ -58,4 +58,16 @@ export class WallpaperGroupModel {
   getDefault() {
     return this.db.prepare('SELECT * FROM wallpaper_groups WHERE is_default = 1 AND deleted_at IS NULL').get();
   }
+
+  getCurrent() {
+    return this.db.prepare('SELECT * FROM wallpaper_groups WHERE is_current = 1 AND deleted_at IS NULL').get();
+  }
+
+  setCurrent(id) {
+    // 先清空当前标记
+    this.db.prepare('UPDATE wallpaper_groups SET is_current = 0').run();
+    // 设置指定分组为当前
+    this.db.prepare('UPDATE wallpaper_groups SET is_current = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL').run(id);
+    return this.findById(id);
+  }
 }

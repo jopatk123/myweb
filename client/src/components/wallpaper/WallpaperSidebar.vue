@@ -6,7 +6,7 @@
         <button class="btn btn-secondary btn-sm" @click="$emit('create-group')">新建</button>
         <button
           class="btn btn-danger btn-sm"
-          :disabled="!selectedGroupId"
+          :disabled="!selectedGroupId || isSelectedDefault"
           @click="$emit('delete-group')"
           title="删除当前选中分组"
         >删除</button>
@@ -30,11 +30,22 @@
         {{ group.name }}
       </div>
     </div>
+    <div class="apply-current">
+      <button 
+        class="btn btn-primary btn-sm full-width"
+        :disabled="!selectedGroupId"
+        @click="$emit('apply-current', selectedGroupId)"
+        title="将当前选中分组设为应用分组"
+      >应用当前分组</button>
+      <div class="tip">默认分组不可删除</div>
+    </div>
   </aside>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
   groups: {
     type: Array,
     required: true
@@ -45,7 +56,12 @@ defineProps({
   }
 });
 
-defineEmits(['select-group', 'create-group', 'delete-group']);
+const emit = defineEmits(['select-group', 'create-group', 'delete-group', 'apply-current']);
+
+const isSelectedDefault = computed(() => {
+  const g = (props.groups || []).find(g => g.id === props.selectedGroupId);
+  return !!g?.is_default;
+});
 </script>
 
 <style scoped>
@@ -104,4 +120,7 @@ defineEmits(['select-group', 'create-group', 'delete-group']);
   gap: 8px;
   align-items: center;
 }
+.apply-current { margin-top: 12px; }
+.full-width { width: 100%; }
+.tip { margin-top: 8px; color: #6b7280; font-size: 12px; }
 </style>

@@ -22,6 +22,10 @@
 import { ref, onMounted, watch } from 'vue';
 import { useWallpaper } from '@/composables/useWallpaper.js';
 
+const props = defineProps({
+  wallpaper: { type: Object, default: null }
+});
+
 const {
   activeWallpaper,
   fetchActiveWallpaper,
@@ -30,8 +34,20 @@ const {
 
 const currentWallpaper = ref(null);
 
-// 监听活跃壁纸变化
-watch(activeWallpaper, (newWallpaper) => {
+// 监听传入的 wallpaper 或全局活跃壁纸变化
+const sourceWallpaper = ref(props.wallpaper || activeWallpaper.value);
+
+watch(() => props.wallpaper, (val) => {
+  sourceWallpaper.value = val;
+}, { immediate: true });
+
+watch(activeWallpaper, (val) => {
+  if (!props.wallpaper) {
+    sourceWallpaper.value = val;
+  }
+});
+
+watch(sourceWallpaper, (newWallpaper) => {
   if (newWallpaper) {
     // 预加载图片
     const img = new Image();
@@ -45,7 +61,9 @@ watch(activeWallpaper, (newWallpaper) => {
 }, { immediate: true });
 
 onMounted(() => {
-  fetchActiveWallpaper();
+  if (!props.wallpaper) {
+    fetchActiveWallpaper();
+  }
 });
 </script>
 

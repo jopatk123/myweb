@@ -1,12 +1,12 @@
 <template>
   <div class="home">
     <!-- 动态背景 -->
-    <WallpaperBackground />
+    <WallpaperBackground :wallpaper="current" />
 
     <!-- 浮动控制按钮 -->
     <div class="floating-controls">
       <button
-        @click="randomWallpaper()"
+        @click="onRandom()"
         class="control-btn"
         title="随机切换壁纸"
       >
@@ -24,12 +24,17 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { useWallpaper } from '@/composables/useWallpaper.js';
 import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
 
-const {
-  randomWallpaper
-} = useWallpaper();
+const { randomWallpaper } = useWallpaper();
+const current = ref(null);
+
+const onRandom = async () => {
+  const w = await randomWallpaper();
+  if (w) current.value = w;
+};
 </script>
 
 <style scoped>

@@ -42,6 +42,7 @@ function initTables(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name VARCHAR(100) NOT NULL UNIQUE,
       is_default BOOLEAN DEFAULT 0,
+      is_current BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       deleted_at DATETIME DEFAULT NULL
@@ -150,6 +151,21 @@ function ensureWallpaperColumns(db) {
   // 如果旧库中 wallpaper_groups 表包含 description 列，则迁移并删除该列
   const groupColumns = db.prepare('PRAGMA table_info(wallpaper_groups)').all();
   const groupColumnNames = new Set(groupColumns.map(col => col.name));
+  // 如果缺少 is_current 列，直接添加
+  if (!groupColumnNames.has('is_current')) {
+    db.prepare('ALTER TABLE wallpaper_groups ADD COLUMN is_current BOOLEAN DEFAULT 0').run();
+    console.log('🛠️ Added column to wallpaper_groups: is_current BOOLEAN DEFAULT 0');
+    // 若新增了该列，且当前没有任何分组标记为当前，则把默认分组设为当前
+    try {
+      const cnt = db.prepare('SELECT COUNT(1) AS c FROM wallpaper_groups WHERE is_current = 1 AND deleted_at IS NULL').get().c;
+      if (cnt === 0) {
+        db.prepare('UPDATE wallpaper_groups SET is_current = 1 WHERE is_default = 1 AND deleted_at IS NULL').run();
+        console.log('✅ Set default group as current after adding is_current column');
+      }
+    } catch (e) {
+      console.warn('Could not set default group as current:', e);
+    }
+  }
   if (groupColumnNames.has('description')) {
     try {
       console.log('🛠️ Detected deprecated `description` column on wallpaper_groups, starting migration to remove it');
@@ -158,6 +174,7 @@ function ensureWallpaperColumns(db) {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name VARCHAR(100) NOT NULL UNIQUE,
           is_default BOOLEAN DEFAULT 0,
+          is_current BOOLEAN DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           deleted_at DATETIME DEFAULT NULL
@@ -165,8 +182,8 @@ function ensureWallpaperColumns(db) {
       `);
 
       db.exec(`
-        INSERT INTO wallpaper_groups_new (id, name, is_default, created_at, updated_at, deleted_at)
-        SELECT id, name, is_default, created_at, updated_at, deleted_at FROM wallpaper_groups;
+        INSERT INTO wallpaper_groups_new (id, name, is_default, is_current, created_at, updated_at, deleted_at)
+        SELECT id, name, is_default, 0 as is_current, created_at, updated_at, deleted_at FROM wallpaper_groups;
       `);
 
       db.exec('DROP TABLE wallpaper_groups;');

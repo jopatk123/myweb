@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3002';
+// 优先使用环境变量提供的绝对地址；否则使用相对路径通过 Vite 代理，避免跨域
+const apiBase = import.meta.env.VITE_API_BASE ? `${import.meta.env.VITE_API_BASE}/api` : '/api';
 
 const api = axios.create({
-  baseURL: `${API_BASE}/api`,
+  baseURL: apiBase,
   timeout: 30000
 });
 
@@ -89,6 +90,14 @@ export const wallpaperApi = {
   // 分组相关
   getGroups() {
     return api.get('/wallpapers/groups/all');
+  },
+
+  getCurrentGroup() {
+    return api.get('/wallpapers/groups/current');
+  },
+
+  setCurrentGroup(id) {
+    return api.put(`/wallpapers/groups/${id}/current`);
   },
 
   createGroup(data) {

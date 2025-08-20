@@ -4,6 +4,7 @@ import { wallpaperApi } from '@/api/wallpaper.js';
 export function useWallpaper() {
   const wallpapers = ref([]);
   const groups = ref([]);
+  const currentGroup = ref(null);
   const activeWallpaper = ref(null);
   const loading = ref(false);
   const error = ref(null);
@@ -32,6 +33,18 @@ export function useWallpaper() {
     } catch (err) {
       error.value = err.message || '获取分组失败';
       console.error('获取分组失败:', err);
+    }
+  };
+
+  // 获取当前分组
+  const fetchCurrentGroup = async () => {
+    try {
+      const response = await wallpaperApi.getCurrentGroup();
+      currentGroup.value = response.data || null;
+      return currentGroup.value;
+    } catch (err) {
+      console.warn('获取当前分组失败:', err);
+      currentGroup.value = null;
     }
   };
 
@@ -116,6 +129,18 @@ export function useWallpaper() {
     }
   };
 
+  // 设置当前分组
+  const applyCurrentGroup = async (id) => {
+    try {
+      const response = await wallpaperApi.setCurrentGroup(id);
+      currentGroup.value = response.data || null;
+      return currentGroup.value;
+    } catch (err) {
+      error.value = err.message || '设置当前分组失败';
+      throw err;
+    }
+  };
+
   // 创建分组
   const createGroup = async (data) => {
     try {
@@ -168,13 +193,16 @@ export function useWallpaper() {
   // 获取壁纸URL
   const getWallpaperUrl = (wallpaper) => {
     if (!wallpaper) return null;
-    return `${import.meta.env.VITE_API_BASE || 'http://localhost:3002'}/${wallpaper.file_path}`;
+    // 有绝对地址配置则拼绝对地址，否则使用相对路径走 Vite 代理
+    const base = import.meta.env.VITE_API_BASE || '';
+    return `${base ? `${base}/` : '/'}${wallpaper.file_path}`.replace(/\/+/, '/');
   };
 
   return {
     // 状态
     wallpapers,
     groups,
+    currentGroup,
     activeWallpaper,
     loading,
     error,
@@ -186,6 +214,7 @@ export function useWallpaper() {
     // 方法
     fetchWallpapers,
     fetchGroups,
+    fetchCurrentGroup,
     fetchActiveWallpaper,
     uploadWallpaper,
     setActiveWallpaper,
@@ -196,6 +225,7 @@ export function useWallpaper() {
     deleteGroup,
     getWallpaperUrl,
     deleteMultipleWallpapers,
-    moveMultipleWallpapers
+    moveMultipleWallpapers,
+    applyCurrentGroup
   };
 }

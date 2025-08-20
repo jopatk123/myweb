@@ -17,6 +17,7 @@
       @select-group="selectGroup"
       @create-group="showGroupModal = true"
       @delete-group="handleDeleteGroup"
+      @apply-current="handleApplyCurrent"
     />
 
     <!-- 主内容区 -->
@@ -109,6 +110,7 @@ const {
   error,
   fetchWallpapers,
   fetchGroups,
+  fetchCurrentGroup,
   fetchActiveWallpaper,
   setActiveWallpaper,
   deleteWallpaper,
@@ -116,6 +118,7 @@ const {
   randomWallpaper,
   deleteMultipleWallpapers,
   moveMultipleWallpapers,
+  applyCurrentGroup,
 } = useWallpaper();
 
 const selectedGroupId = ref('');
@@ -149,6 +152,18 @@ const selectGroup = (id) => {
   selectedGroupId.value = id || '';
   fetchWallpapers(selectedGroupId.value || null);
   selectedIds.value = []; // 切换分组时清空选择
+};
+
+// 应用当前分组
+const handleApplyCurrent = async () => {
+  if (!selectedGroupId.value) return;
+  try {
+    await applyCurrentGroup(selectedGroupId.value);
+    await fetchCurrentGroup();
+    alert('已将该分组设为当前应用分组');
+  } catch (err) {
+    alert(err.message || '设置当前分组失败');
+  }
 };
 
 // 壁纸上传成功处理
@@ -240,6 +255,7 @@ onMounted(async () => {
   await Promise.all([
     fetchWallpapers(),
     fetchGroups(),
+    fetchCurrentGroup(),
     fetchActiveWallpaper()
   ]);
 });

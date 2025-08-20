@@ -26,6 +26,8 @@ export function createWallpaperRoutes(db) {
   router.post('/groups', (req, res, next) => controller.createGroup(req, res, next));
   router.put('/groups/:id', (req, res, next) => controller.updateGroup(req, res, next));
   router.delete('/groups/:id', (req, res, next) => controller.deleteGroup(req, res, next));
+  router.get('/groups/current', (req, res, next) => controller.getCurrentGroup(req, res, next));
+  router.put('/groups/:id/current', (req, res, next) => controller.setCurrentGroup(req, res, next));
 
   return router;
 }

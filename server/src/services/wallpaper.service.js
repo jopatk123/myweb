@@ -36,6 +36,12 @@ export class WallpaperService {
       throw new Error('只支持图片文件');
     }
 
+    // 如果未指定分组，使用默认分组
+    if (!groupId) {
+      const def = this.groupModel.getDefault();
+      groupId = def?.id || null;
+    }
+
     return this.wallpaperModel.create({
       filename,
       originalName,
@@ -122,8 +128,10 @@ export class WallpaperService {
 
   getRandomWallpaper(groupId) {
     if (!groupId) {
-      const defaultGroup = this.groupModel.getDefault();
-      groupId = defaultGroup.id;
+      // 优先使用当前分组；若未设置，则退回默认分组
+      const current = this.groupModel.getCurrent();
+      const fallback = this.groupModel.getDefault();
+      groupId = current?.id || fallback?.id || null;
     }
 
     const wallpaper = this.wallpaperModel.getRandomByGroup(groupId);
@@ -167,5 +175,16 @@ export class WallpaperService {
     }
 
     return this.groupModel.delete(id);
+  }
+
+  // 当前分组相关
+  getCurrentGroup() {
+    return this.groupModel.getCurrent() || this.groupModel.getDefault();
+  }
+
+  setCurrentGroup(id) {
+    // 不允许将已删除或不存在的分组设为当前
+    this.getGroupById(id);
+    return this.groupModel.setCurrent(id);
   }
 }

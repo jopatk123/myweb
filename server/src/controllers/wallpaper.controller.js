@@ -270,4 +270,25 @@ export class WallpaperController {
       next(error);
     }
   }
+
+  // 获取当前分组
+  async getCurrentGroup(req, res, next) {
+    try {
+      const group = await this.service.getCurrentGroup();
+      res.json({ code: 200, data: group, message: '获取成功' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // 设置当前分组
+  async setCurrentGroup(req, res, next) {
+    try {
+      const { id } = req.params;
+      const group = await this.service.setCurrentGroup(id);
+      res.json({ code: 200, data: group, message: '设置成功' });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
