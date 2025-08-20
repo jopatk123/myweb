@@ -3,6 +3,9 @@
     <!-- 动态背景 -->
     <WallpaperBackground :wallpaper="current" />
 
+    <!-- 桌面图标（内部应用） -->
+    <AppIcons />
+
     <!-- 浮动控制按钮 -->
     <div class="floating-controls">
       <button
@@ -12,13 +15,15 @@
       >
         🎲
       </button>
-      <router-link
-        to="/wallpapers"
+      <a
+        href="/wallpapers"
+        target="_blank"
+        rel="noopener"
         class="control-btn"
-        title="壁纸管理"
+        title="管理后台"
       >
-        🖼️
-      </router-link>
+        🛠️
+      </a>
     </div>
   </div>
 </template>
@@ -27,6 +32,7 @@
 import { ref } from 'vue';
 import { useWallpaper } from '@/composables/useWallpaper.js';
 import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
+import AppIcons from '@/components/desktop/AppIcons.vue';
 
 const { randomWallpaper } = useWallpaper();
 const current = ref(null);

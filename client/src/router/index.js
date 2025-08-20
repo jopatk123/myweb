@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Home from '@/views/Home.vue';
 import WallpaperManagement from '@/views/WallpaperManagement.vue';
+import AppManagement from '@/views/AppManagement.vue';
 
 const routes = [
   {
@@ -12,6 +13,12 @@ const routes = [
     path: '/wallpapers',
     name: 'WallpaperManagement',
     component: WallpaperManagement
+  }
+  ,
+  {
+    path: '/apps',
+    name: 'AppManagement',
+    component: AppManagement
   }
 ];
 

@@ -29,6 +29,10 @@ export async function initDatabase() {
   initTables(db);
   // 迁移: 确保缺失列存在
   ensureWallpaperColumns(db);
+  // 迁移: 初始化应用管理相关表与缺失列
+  ensureAppTablesAndColumns(db);
+  // 数据种子：仅当 apps 表为空时插入一个示例应用（贪吃蛇）
+  seedAppsIfEmpty(db);
   
   console.log(`📊 Database initialized: ${dbPath}`);
   
@@ -197,5 +201,91 @@ function ensureWallpaperColumns(db) {
       console.error('❌ Failed to migrate wallpaper_groups table to remove description column:', err);
       throw err;
     }
+  }
+}
+
+// 应用管理：初始化表并确保列存在
+function ensureAppTablesAndColumns(db) {
+  // 创建应用分组与应用表（若不存在）
+  const appGroupTableSql = `
+    CREATE TABLE IF NOT EXISTS app_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name VARCHAR(100) NOT NULL UNIQUE,
+      slug VARCHAR(100) UNIQUE,
+      is_default BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      deleted_at DATETIME DEFAULT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_app_groups_name ON app_groups(name);
+    CREATE INDEX IF NOT EXISTS idx_app_groups_deleted_at ON app_groups(deleted_at);
+  `;
+
+  const appsTableSql = `
+    CREATE TABLE IF NOT EXISTS apps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      description TEXT,
+      icon_filename TEXT,
+      group_id INTEGER REFERENCES app_groups(id) ON DELETE SET NULL,
+      is_visible INTEGER DEFAULT 1,
+      is_deleted INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_apps_group_id ON apps(group_id);
+    CREATE INDEX IF NOT EXISTS idx_apps_is_visible ON apps(is_visible);
+    CREATE INDEX IF NOT EXISTS idx_apps_is_deleted ON apps(is_deleted);
+    CREATE INDEX IF NOT EXISTS idx_apps_slug ON apps(slug);
+  `;
+
+  db.exec(appGroupTableSql);
+  db.exec(appsTableSql);
+
+  // 插入默认应用分组
+  const insertDefaultAppGroup = db.prepare(`
+    INSERT OR IGNORE INTO app_groups (name, slug, is_default)
+    VALUES (?, ?, ?)
+  `);
+  insertDefaultAppGroup.run('默认', 'default', 1);
+
+  // 确保必要列存在（为老库升级）
+  const ensureColumn = (table, name, type) => {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+    const names = new Set(cols.map(c => c.name));
+    if (!names.has(name)) {
+      db.prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${type}`).run();
+      console.log(`🛠️ Added column to ${table}: ${name} ${type}`);
+    }
+  };
+
+  // apps 兼容性检查
+  try {
+    ensureColumn('apps', 'description', 'TEXT');
+    ensureColumn('apps', 'icon_filename', 'TEXT');
+    ensureColumn('apps', 'group_id', 'INTEGER REFERENCES app_groups(id) ON DELETE SET NULL');
+    ensureColumn('apps', 'is_visible', 'INTEGER DEFAULT 1');
+    ensureColumn('apps', 'is_deleted', 'INTEGER DEFAULT 0');
+  } catch (e) {
+    console.warn('ensureAppTablesAndColumns warning:', e?.message || e);
+  }
+}
+
+function seedAppsIfEmpty(db) {
+  try {
+    const row = db.prepare('SELECT COUNT(1) AS c FROM apps WHERE is_deleted = 0').get();
+    if (row && row.c === 0) {
+      // 确保默认分组存在
+      const g = db.prepare("SELECT id FROM app_groups WHERE slug = 'default' AND deleted_at IS NULL").get();
+      const gid = g ? g.id : null;
+      db.prepare(`INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible) VALUES (?,?,?,?,?,?)`)
+        .run('贪吃蛇', 'snake', '经典小游戏（本地实现示例）', 'snake-128.png', gid, 1);
+      console.log('🌱 Seeded example app: snake');
+    }
+  } catch (e) {
+    console.warn('seedAppsIfEmpty warning:', e?.message || e);
   }
 }

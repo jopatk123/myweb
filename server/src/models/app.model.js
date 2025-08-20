@@ -1,0 +1,77 @@
+/**
+ * 应用模型
+ */
+export class AppModel {
+  constructor(db) {
+    this.db = db;
+  }
+
+  /**
+   * 支持分页：返回 { items, total }
+   * 若未传 page/limit，则返回数组
+   */
+  findAll({ groupId = null, visible = null, page = null, limit = null } = {}) {
+    const whereClauses = ['is_deleted = 0'];
+    const params = [];
+    if (groupId) { whereClauses.push('group_id = ?'); params.push(groupId); }
+    if (visible !== null && visible !== undefined) { whereClauses.push('is_visible = ?'); params.push(visible ? 1 : 0); }
+    const where = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    if (page && limit) {
+      const totalRow = this.db.prepare(`SELECT COUNT(1) AS total FROM apps ${where}`).get(...params);
+      const total = totalRow ? totalRow.total : 0;
+      const offset = (Number(page) - 1) * Number(limit);
+      const items = this.db.prepare(`SELECT * FROM apps ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(...params, Number(limit), offset);
+      return { items, total };
+    }
+
+    return this.db.prepare(`SELECT * FROM apps ${where} ORDER BY created_at DESC`).all(...params);
+  }
+
+  findById(id) {
+    const sql = `SELECT * FROM apps WHERE id = ? AND is_deleted = 0`;
+    return this.db.prepare(sql).get(id);
+  }
+
+  create({ name, slug, description = null, icon_filename = null, group_id = null, is_visible = 1 }) {
+    const sql = `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible) VALUES (?, ?, ?, ?, ?, ?)`;
+    const info = this.db.prepare(sql).run(name, slug, description, icon_filename, group_id, is_visible ? 1 : 0);
+    return this.findById(info.lastInsertRowid);
+  }
+
+  update(id, payload) {
+    const fields = [];
+    const params = [];
+    for (const [key, value] of Object.entries(payload)) {
+      if (['name','slug','description','icon_filename','group_id','is_visible'].includes(key)) {
+        fields.push(`${key} = ?`);
+        params.push(key === 'is_visible' ? (value ? 1 : 0) : value);
+      }
+    }
+    if (fields.length === 0) return this.findById(id);
+    const sql = `UPDATE apps SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    this.db.prepare(sql).run(...params, id);
+    return this.findById(id);
+  }
+
+  setVisible(id, visible) {
+    const sql = `UPDATE apps SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    this.db.prepare(sql).run(visible ? 1 : 0, id);
+    return this.findById(id);
+  }
+
+  softDelete(id) {
+    const sql = `UPDATE apps SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    this.db.prepare(sql).run(id);
+    return true;
+  }
+
+  moveToGroup(ids, targetGroupId) {
+    const placeholders = ids.map(() => '?').join(',');
+    const sql = `UPDATE apps SET group_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`;
+    this.db.prepare(sql).run(targetGroupId, ...ids);
+    return true;
+  }
+}
+
+

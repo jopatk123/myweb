@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createWallpaperRoutes } from './routes/wallpapers.routes.js';
+import { createAppRoutes } from './routes/apps.routes.js';
 import { initDatabase } from './config/database.js';
 import errorHandler from './middleware/error.middleware.js';
 
@@ -46,6 +47,7 @@ const db = await initDatabase();
 
 // 路由
 app.use('/api/wallpapers', createWallpaperRoutes(db));
+app.use('/api/apps', createAppRoutes(db));
 
 // 健康检查
 app.get('/health', (req, res) => {
