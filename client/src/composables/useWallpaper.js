@@ -157,8 +157,8 @@ export function useWallpaper() {
     loading.value = true;
     error.value = null;
     try {
-      const data = await wallpaperApi.getRandomWallpaper(groupId);
-      const image = data || null;
+      const raw = await wallpaperApi.getRandomWallpaper(groupId);
+      const image = unwrap(raw) || null;
       if (image) {
         // 尝试预加载图片（使用 getWallpaperUrl 拼接最终 URL）
         await new Promise((resolve) => {
