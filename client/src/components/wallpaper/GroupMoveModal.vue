@@ -19,7 +19,9 @@
       </div>
       <div class="modal-actions">
         <button @click="$emit('close')" class="btn btn-secondary">取消</button>
-        <button @click="confirmMove" class="btn btn-primary">确认移动</button>
+        <button @click="confirmMove" class="btn btn-primary" :disabled="loading">
+          {{ loading ? '移动中...' : '确认移动' }}
+        </button>
       </div>
     </div>
   </div>
@@ -42,8 +44,10 @@ defineProps({
 const emit = defineEmits(['close', 'confirm']);
 
 const targetGroupId = ref(null);
+const loading = ref(false);
 
 const confirmMove = () => {
+  loading.value = true;
   emit('confirm', targetGroupId.value);
 };
 </script>

@@ -13,21 +13,32 @@ export function useWallpaper() {
     const limit = ref(20);
     const total = ref(0);
 
+    // 通用响应解包：后端可能返回 { code, data, message } 格式
+    const unwrap = (res) => {
+      let r = res;
+      // 一直剥离包装直到获得实际数据或 null
+      while (r && typeof r === 'object' && Object.prototype.hasOwnProperty.call(r, 'data')) {
+        r = r.data;
+      }
+      return r;
+    };
+
   // 获取所有壁纸，默认使用分页（向后兼容也可传 false）
   const fetchWallpapers = async (groupId = null, usePaging = true) => {
       loading.value = true;
       error.value = null;
 
       try {
-  if (usePaging) {
-          const resp = await wallpaperApi.getWallpapers(groupId, page.value, limit.value);
-          // API 返回 { items, total }
-          wallpapers.value = resp.data?.items || [];
-          total.value = resp.data?.total || 0;
+  const raw = await wallpaperApi.getWallpapers(groupId, usePaging ? page.value : null, usePaging ? limit.value : null);
+        const data = unwrap(raw);
+        // 支持两种返回格式：分页 { items, total } 或者直接数组
+        if (usePaging && data) {
+          wallpapers.value = data.items || [];
+          total.value = data.total || 0;
         } else {
-          const response = await wallpaperApi.getWallpapers(groupId);
-          wallpapers.value = response.data || [];
-          total.value = wallpapers.value.length;
+          const list = Array.isArray(data) ? data : (data && data.items) || [];
+          wallpapers.value = list;
+          total.value = list.length;
         }
       } catch (err) {
         error.value = err.message || '获取壁纸失败';
@@ -40,8 +51,16 @@ export function useWallpaper() {
   // 获取分组
   const fetchGroups = async () => {
     try {
-      const response = await wallpaperApi.getGroups();
-      groups.value = response.data || [];
+      const raw = await wallpaperApi.getGroups();
+      const data = unwrap(raw);
+      // data 可能直接是数组，或是包装 { items: [] }
+      if (Array.isArray(data)) {
+        groups.value = data;
+      } else if (data && Array.isArray(data.items)) {
+        groups.value = data.items;
+      } else {
+        groups.value = [];
+      }
     } catch (err) {
       error.value = err.message || '获取分组失败';
       console.error('获取分组失败:', err);
@@ -51,8 +70,9 @@ export function useWallpaper() {
   // 获取当前分组
   const fetchCurrentGroup = async () => {
     try {
-      const response = await wallpaperApi.getCurrentGroup();
-      currentGroup.value = response.data || null;
+      const raw = await wallpaperApi.getCurrentGroup();
+      const data = unwrap(raw);
+      currentGroup.value = data || null;
       return currentGroup.value;
     } catch (err) {
       console.warn('获取当前分组失败:', err);
@@ -63,8 +83,9 @@ export function useWallpaper() {
   // 获取当前活跃壁纸
   const fetchActiveWallpaper = async () => {
     try {
-      const response = await wallpaperApi.getActiveWallpaper();
-      activeWallpaper.value = response.data;
+      const raw = await wallpaperApi.getActiveWallpaper();
+      const data = unwrap(raw);
+      activeWallpaper.value = data || null;
     } catch (err) {
       console.warn('获取活跃壁纸失败:', err);
       activeWallpaper.value = null;
@@ -77,9 +98,10 @@ export function useWallpaper() {
     error.value = null;
 
     try {
-      const response = await wallpaperApi.uploadWallpaper(file, groupId, name, onUploadProgress);
+      const raw = await wallpaperApi.uploadWallpaper(file, groupId, name, onUploadProgress);
+      const data = unwrap(raw);
       await fetchWallpapers(groupId); // 刷新列表
-      return response.data;
+      return data;
     } catch (err) {
       error.value = err.message || '上传失败';
       throw err;
@@ -118,9 +140,10 @@ export function useWallpaper() {
   // 更新壁纸（例如修改名称）
   const updateWallpaper = async (id, data) => {
     try {
-      const response = await wallpaperApi.updateWallpaper(id, data);
-      await fetchWallpapers();
-      return response.data;
+  const raw = await wallpaperApi.updateWallpaper(id, data);
+  const res = unwrap(raw);
+  await fetchWallpapers();
+  return res;
     } catch (err) {
       error.value = err.message || '更新失败';
       throw err;
@@ -128,24 +151,49 @@ export function useWallpaper() {
   };
 
   // 随机切换壁纸
+  // 随机获取一张壁纸并返回（返回值用于 Home.vue）
   const randomWallpaper = async (groupId = null) => {
+    if (loading.value) return null;
+    loading.value = true;
+    error.value = null;
     try {
-      const response = await wallpaperApi.getRandomWallpaper(groupId);
-      if (response.data) {
-        activeWallpaper.value = response.data;
+      const data = await wallpaperApi.getRandomWallpaper(groupId);
+      const image = data || null;
+      if (image) {
+        // 尝试预加载图片（使用 getWallpaperUrl 拼接最终 URL）
+        await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = getWallpaperUrl(image) || image.url || '';
+        });
       }
-      return response.data;
+      return image;
     } catch (err) {
       error.value = err.message || '随机切换失败';
-      throw err;
+      return null;
+    } finally {
+      loading.value = false;
     }
   };
 
-  // 设置当前分组
-  const applyCurrentGroup = async (id) => {
+  // 随机切换壁纸
+  let lastRandomTime = 0;
+  const randomWallpaperThrottled = () => {
+    const now = Date.now();
+    if (now - lastRandomTime < 1000) {
+      return;
+    }
+    lastRandomTime = now;
+  return randomWallpaper();
+  };
+
+  // 加载壁纸列表
+  const loadWallpapers = async (groupId) => {
+    // 此函数用于将分组设为当前分组并返回 id（保留兼容）
     try {
-      const response = await wallpaperApi.setCurrentGroup(id);
-      currentGroup.value = response.data || null;
+      await wallpaperApi.setCurrentGroup(groupId);
+      currentGroup.value = groupId;
       return currentGroup.value;
     } catch (err) {
       error.value = err.message || '设置当前分组失败';
@@ -198,6 +246,19 @@ export function useWallpaper() {
     }
   };
 
+    // 将指定分组设为当前应用分组
+    const applyCurrentGroup = async (id) => {
+      try {
+        await wallpaperApi.setCurrentGroup(id);
+        // 本地仅保存 id，组件通常会调用 fetchCurrentGroup() 刷新完整信息
+        currentGroup.value = id;
+        return currentGroup.value;
+      } catch (err) {
+        error.value = err.message || '设置当前分组失败';
+        throw err;
+      }
+    };
+
   // 计算属性
   const hasWallpapers = computed(() => wallpapers.value.length > 0);
   const hasGroups = computed(() => groups.value.length > 0);
@@ -239,7 +300,7 @@ export function useWallpaper() {
     setActiveWallpaper,
     deleteWallpaper,
     updateWallpaper,
-    randomWallpaper,
+    randomWallpaper: randomWallpaperThrottled,
     createGroup,
     deleteGroup,
     getWallpaperUrl,
