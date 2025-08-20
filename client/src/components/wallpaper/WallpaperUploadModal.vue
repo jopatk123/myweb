@@ -30,12 +30,12 @@
 					<!-- 文件选择 -->
 					<div class="form-group">
 						<label>选择图片：</label>
-						<FileDropzone accept="image/*" :multiple="false" @files-selected="handleFiles">
+						<FileDropzone class="dropzone" accept="image/*" :multiple="false" @files-selected="handleFiles">
 							<span v-if="selectedFiles.length === 0">
 								点击选择图片文件<br>
-								<small>最小分辨率：800x600，超过7680x4320会自动压缩<br>处理后文件大小不超过10MB</small>
+								<small>最小分辨率：800x600，超过7680x4320会自动压缩；请保护文件大小 &lt;= 10MB</small>
 							</span>
-							<span v-else>已选择 {{ selectedFiles.length }} 个文件</span>
+							<span v-else>已选择 <strong>{{ selectedFiles.length }}</strong> 个文件</span>
 						</FileDropzone>
 					</div>
 
@@ -205,13 +205,35 @@ const handleUpload = async () => {
   color: #333;
 }
 
-.form-group select {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
+.form-group select,
+.form-group input[type="text"] {
+	width: 100%;
+	padding: 10px 12px;
+	border: 1px solid #e3e7ea;
+	border-radius: 6px;
+	background: #fff;
+	box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+	font-size: 14px;
 }
+
+.dropzone {
+	display: block;
+	border: 2px dashed #d0d7de;
+	background: linear-gradient(180deg, #fbfcfd, #ffffff);
+	padding: 18px;
+	border-radius: 8px;
+	text-align: center;
+	color: #55606a;
+	cursor: pointer;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.dropzone:hover { border-color: #9fb0c7; box-shadow: 0 6px 18px rgba(16,24,40,0.06); }
+.dropzone small { display: block; color: #6c7a89; margin-top: 6px; }
+
+.preview-wrap { margin-top: 12px; }
+.preview-wrap img { max-width: 140px; border-radius: 6px; box-shadow: 0 6px 18px rgba(16,24,40,0.06); }
+
+
 
 .error-message {
   background: #fee;
@@ -269,6 +291,8 @@ const handleUpload = async () => {
 .btn-primary:hover:not(:disabled) {
   background: #0056b3;
 }
+
+.btn { box-shadow: 0 2px 6px rgba(16,24,40,0.06); }
 
 .btn-secondary {
   background: #6c757d;

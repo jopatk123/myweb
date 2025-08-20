@@ -81,6 +81,20 @@ const save = async () => {
 .btn-primary { background:#007bff; color:white }
 .btn-secondary { background:#6c757d; color:white }
 .close-btn { background:none; border:none; font-size:20px; cursor:pointer }
+
+.form-group input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e3e7ea;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+  font-size: 14px;
+}
+
+.btn { box-shadow: 0 2px 6px rgba(16,24,40,0.06); }
+.btn-primary:hover:not(:disabled) { background: #0056b3 }
 </style>
+
 
 
