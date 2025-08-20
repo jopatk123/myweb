@@ -29,6 +29,7 @@ npm-debug.log*
 Thumbs.db
 
 # IDE
+.VSCodeCounter/
 .vscode/
 .idea/
 *.swp

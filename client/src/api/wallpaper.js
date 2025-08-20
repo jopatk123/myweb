@@ -18,9 +18,13 @@ api.interceptors.response.use(
 );
 
 export const wallpaperApi = {
-  // 获取所有壁纸
-  getWallpapers(groupId = null) {
-    return api.get('/wallpapers', { params: { groupId } });
+  // 获取所有壁纸，支持分页：传入 page, limit 时返回 { items, total }
+  getWallpapers(groupId = null, page = null, limit = null) {
+    const params = {};
+    if (groupId) params.groupId = groupId;
+    if (page) params.page = page;
+    if (limit) params.limit = limit;
+    return api.get('/wallpapers', { params });
   },
 
   // 获取单个壁纸

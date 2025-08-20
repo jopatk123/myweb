@@ -8,21 +8,33 @@ export function useWallpaper() {
   const activeWallpaper = ref(null);
   const loading = ref(false);
   const error = ref(null);
+    // 分页相关
+    const page = ref(1);
+    const limit = ref(20);
+    const total = ref(0);
 
-  // 获取所有壁纸
-  const fetchWallpapers = async (groupId = null) => {
-    loading.value = true;
-    error.value = null;
-    
-    try {
-      const response = await wallpaperApi.getWallpapers(groupId);
-      wallpapers.value = response.data || [];
-    } catch (err) {
-      error.value = err.message || '获取壁纸失败';
-      console.error('获取壁纸失败:', err);
-    } finally {
-      loading.value = false;
-    }
+  // 获取所有壁纸，默认使用分页（向后兼容也可传 false）
+  const fetchWallpapers = async (groupId = null, usePaging = true) => {
+      loading.value = true;
+      error.value = null;
+
+      try {
+  if (usePaging) {
+          const resp = await wallpaperApi.getWallpapers(groupId, page.value, limit.value);
+          // API 返回 { items, total }
+          wallpapers.value = resp.data?.items || [];
+          total.value = resp.data?.total || 0;
+        } else {
+          const response = await wallpaperApi.getWallpapers(groupId);
+          wallpapers.value = response.data || [];
+          total.value = wallpapers.value.length;
+        }
+      } catch (err) {
+        error.value = err.message || '获取壁纸失败';
+        console.error('获取壁纸失败:', err);
+      } finally {
+        loading.value = false;
+  }
   };
 
   // 获取分组
@@ -206,6 +218,10 @@ export function useWallpaper() {
     activeWallpaper,
     loading,
     error,
+  // 分页
+  page,
+  limit,
+  total,
     
     // 计算属性
     hasWallpapers,
@@ -213,6 +229,9 @@ export function useWallpaper() {
     
     // 方法
     fetchWallpapers,
+  // 导出可直接修改的分页控制
+  setPage: (p) => { page.value = Number(p) || 1; },
+  setLimit: (l) => { limit.value = Number(l) || 20; },
     fetchGroups,
     fetchCurrentGroup,
     fetchActiveWallpaper,

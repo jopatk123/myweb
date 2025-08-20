@@ -62,8 +62,20 @@
         <p>暂无壁纸，点击右上方“上传壁纸”添加</p>
       </div>
 
-      <!-- 分页占位 -->
-      <div class="pagination-placeholder">分页区</div>
+      <!-- 分页控件 -->
+      <div class="pagination-placeholder">
+        <div class="pagination-controls">
+          <button class="btn" :disabled="page === 1" @click="prevPage">上一页</button>
+          <span>第 {{ page }} 页 / 共 {{ totalPages }} 页</span>
+          <button class="btn" :disabled="page === totalPages || totalPages === 0" @click="nextPage">下一页</button>
+          <select v-model.number="limit" @change="onLimitChange">
+            <option :value="10">10 / 页</option>
+            <option :value="20">20 / 页</option>
+            <option :value="50">50 / 页</option>
+          </select>
+          <span v-if="total">共 {{ total }} 条</span>
+        </div>
+      </div>
 
       <!-- 模态框 -->
       <WallpaperUploadModal
@@ -119,6 +131,12 @@ const {
   deleteMultipleWallpapers,
   moveMultipleWallpapers,
   applyCurrentGroup,
+  // pagination
+  page,
+  limit,
+  total,
+  setPage,
+  setLimit
 } = useWallpaper();
 
 const selectedGroupId = ref('');
@@ -150,7 +168,8 @@ const handleBulkMove = async (targetGroupId) => {
 // 侧栏分组选择
 const selectGroup = (id) => {
   selectedGroupId.value = id || '';
-  fetchWallpapers(selectedGroupId.value || null);
+  setPage(1);
+  fetchWallpapers(selectedGroupId.value || null, true);
   selectedIds.value = []; // 切换分组时清空选择
 };
 
@@ -169,7 +188,8 @@ const handleApplyCurrent = async () => {
 // 壁纸上传成功处理
 const onWallpaperUploaded = () => {
   showUploadModal.value = false;
-  fetchWallpapers(selectedGroupId.value || null);
+  setPage(1);
+  fetchWallpapers(selectedGroupId.value || null, true);
 };
 
 // 分组创建成功处理
@@ -187,7 +207,7 @@ const openEditModal = (wallpaper) => {
 const onEditSaved = async () => {
   showEditModal.value = false;
   editingWallpaper.value = null;
-  await fetchWallpapers(selectedGroupId.value || null);
+  await fetchWallpapers(selectedGroupId.value || null, true);
   displayToast('编辑保存成功');
 };
 
@@ -202,7 +222,7 @@ const handleDeleteGroup = async () => {
     await deleteGroup(selectedGroupId.value);
     // 如果刚删除的是当前选中，则切回全部
     selectedGroupId.value = '';
-    await Promise.all([fetchGroups(), fetchWallpapers()]);
+  await Promise.all([fetchGroups(), fetchWallpapers(null, true)]);
   } catch (err) {
     alert(err.message || '删除分组失败');
   }
@@ -253,12 +273,34 @@ const displayCurrentGroup = computed(() => {
 // 初始化
 onMounted(async () => {
   await Promise.all([
-    fetchWallpapers(),
+    fetchWallpapers(null, true),
     fetchGroups(),
     fetchCurrentGroup(),
     fetchActiveWallpaper()
   ]);
 });
+
+const totalPages = computed(() => {
+  return limit && total ? Math.max(1, Math.ceil(total.value / limit.value)) : 1;
+});
+
+const prevPage = async () => {
+  if (page.value <= 1) return;
+  setPage(page.value - 1);
+  await fetchWallpapers(selectedGroupId.value || null, true);
+};
+
+const nextPage = async () => {
+  if (page.value >= totalPages.value) return;
+  setPage(page.value + 1);
+  await fetchWallpapers(selectedGroupId.value || null, true);
+};
+
+const onLimitChange = async () => {
+  setPage(1);
+  setLimit(limit.value);
+  await fetchWallpapers(selectedGroupId.value || null, true);
+};
 </script>
 
 <style scoped>

@@ -43,13 +43,17 @@ export class WallpaperController {
   // 获取所有壁纸
   async getWallpapers(req, res, next) {
     try {
-      const { groupId } = req.query;
-      const wallpapers = await this.service.getAllWallpapers(groupId);
-      res.json({
-        code: 200,
-        data: wallpapers,
-        message: '获取成功'
-      });
+      const { groupId, page, limit } = req.query;
+      // 如果提供 page 和 limit，返回分页结构
+      if (page && limit) {
+        const pageNum = Number(page) || 1;
+        const lim = Number(limit) || 20;
+        const result = await this.service.getAllWallpapers(groupId, pageNum, lim);
+        res.json({ code: 200, data: result, message: '获取成功' });
+      } else {
+        const wallpapers = await this.service.getAllWallpapers(groupId);
+        res.json({ code: 200, data: wallpapers, message: '获取成功' });
+      }
     } catch (error) {
       next(error);
     }

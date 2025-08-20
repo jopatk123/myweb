@@ -14,8 +14,12 @@ export class WallpaperService {
     this.groupModel = new WallpaperGroupModel(db);
   }
 
-  getAllWallpapers(groupId = null) {
-    return this.wallpaperModel.findAll(groupId);
+  /**
+   * 支持分页：如果传入 page 和 limit，则返回 { items, total }
+   * 否则返回数组（向后兼容）
+   */
+  getAllWallpapers(groupId = null, page = null, limit = null) {
+    return this.wallpaperModel.findAll(groupId, false, page, limit);
   }
 
   getWallpaperById(id) {
