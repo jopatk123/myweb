@@ -18,10 +18,14 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// 速率限制
+// 速率限制（默认放宽以避免本地调试时频繁触发 429）
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: process.env.RATE_LIMIT || 100
+  // 使用环境变量 RATE_LIMIT 覆盖；默认 1000 次/15 分钟
+  max: Number(process.env.RATE_LIMIT || 1000),
+  // 返回更标准的速率限制头部，并禁用旧的遗留头部
+  standardHeaders: true,
+  legacyHeaders: false
 }));
 
 // CORS配置
