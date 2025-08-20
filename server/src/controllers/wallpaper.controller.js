@@ -144,11 +144,16 @@ export class WallpaperController {
   // 批量删除壁纸
   async deleteWallpapers(req, res, next) {
     try {
-      const { ids } = req.body;
+      let { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
       }
-      await this.service.deleteMultipleWallpapers(ids);
+      // 规范化 ids：转换为整数并过滤非法值
+      const sanitizedIds = ids.map(i => Number(i)).filter(n => Number.isInteger(n) && n > 0);
+      if (sanitizedIds.length === 0) {
+        return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
+      }
+      await this.service.deleteMultipleWallpapers(sanitizedIds);
       res.json({
         code: 200,
         message: '批量删除成功'
@@ -161,14 +166,23 @@ export class WallpaperController {
   // 批量移动壁纸
   async moveWallpapers(req, res, next) {
     try {
-      const { ids, groupId } = req.body;
+      let { ids, groupId } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
       }
       if (groupId === undefined) {
         return res.status(400).json({ code: 400, message: '请提供目标分组ID' });
       }
-      await this.service.moveMultipleWallpapers(ids, groupId);
+      // 规范化 ids
+      const sanitizedIds = ids.map(i => Number(i)).filter(n => Number.isInteger(n) && n > 0);
+      if (sanitizedIds.length === 0) {
+        return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
+      }
+      // 将 groupId 转为数字（若为 null/空，则保留原值）
+      if (groupId !== null && groupId !== undefined && groupId !== '') {
+        groupId = Number(groupId);
+      }
+      await this.service.moveMultipleWallpapers(sanitizedIds, groupId);
       res.json({
         code: 200,
         message: '批量移动成功'

@@ -268,7 +268,8 @@ export function useWallpaper() {
     if (!wallpaper) return null;
     // 有绝对地址配置则拼绝对地址，否则使用相对路径走 Vite 代理
     const base = import.meta.env.VITE_API_BASE || '';
-    return `${base ? `${base}/` : '/'}${wallpaper.file_path}`.replace(/\/+/, '/');
+    // 合并重复斜杠（使用全局替换），避免出现多余的 // 或 /// 导致的 URL 错误
+    return `${base ? `${base}/` : '/'}${wallpaper.file_path}`.replace(/\/+/g, '/');
   };
 
   return {

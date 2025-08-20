@@ -76,7 +76,7 @@ const props = defineProps({
 	groups: { type: Array, default: () => [] }
 });
 
-const emit = defineEmits(['close', 'uploaded']);
+const emit = defineEmits(['close', 'uploaded', 'open-bulk']);
 
 const { uploadWallpaper } = useWallpaper();
 
@@ -112,6 +112,12 @@ const handleFiles = async (filesArray) => {
 };
 
 const removeFile = (index) => { selectedFiles.value.splice(index, 1); };
+
+const openBulk = () => {
+  // 先关闭当前上传对话框，再通知父组件打开批量上传
+  emit('close');
+  emit('open-bulk');
+};
 
 const handleUpload = async () => {
 	if (selectedFiles.value.length === 0) return;

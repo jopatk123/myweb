@@ -16,7 +16,10 @@
       >
         移动 ({{ selectedCount }})
       </button>
-      <button @click="$emit('upload-wallpaper')" class="btn btn-primary">上传壁纸</button>
+      <div class="upload-group">
+        <button @click="$emit('upload-wallpaper')" class="btn btn-primary">上传壁纸</button>
+        <button @click="$emit('open-bulk-upload')" class="btn btn-primary small">批量上传</button>
+      </div>
       <button @click="$emit('random-wallpaper')" class="btn btn-accent">随机切换</button>
       <button @click="$emit('open-main-window')" class="btn btn-info">打开桌面</button>
     </div>
@@ -31,7 +34,7 @@ defineProps({
   }
 });
 
-defineEmits(['open-main-window', 'upload-wallpaper', 'random-wallpaper', 'bulk-delete', 'bulk-move']);
+defineEmits(['open-main-window', 'upload-wallpaper', 'open-bulk-upload', 'random-wallpaper', 'bulk-delete', 'bulk-move']);
 </script>
 
 <style scoped>
@@ -49,7 +52,10 @@ defineEmits(['open-main-window', 'upload-wallpaper', 'random-wallpaper', 'bulk-d
 .action-buttons {
   display: flex;
   gap: 10px;
+  align-items: center;
 }
+.upload-group { display:flex; gap:6px; }
+.upload-group .small { padding:6px 10px; font-size:13px; }
 .btn {
   padding: 8px 16px;
   border: none;

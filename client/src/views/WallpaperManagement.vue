@@ -5,8 +5,6 @@
       <div class="brand">管理后台</div>
       <nav class="global-menu">
         <a class="menu-item active">壁纸管理</a>
-        <a class="menu-item disabled">任务中心</a>
-        <a class="menu-item disabled">系统设置</a>
       </nav>
     </aside>
 
@@ -26,6 +24,7 @@
       <WallpaperHeader
         :selected-count="selectedIds.length"
         @upload-wallpaper="showUploadModal = true"
+        @open-bulk-upload="showBulkUploadModal = true"
         @random-wallpaper="handleRandomWallpaper"
         @bulk-delete="handleBulkDelete"
         @bulk-move="showMoveModal = true"
@@ -83,6 +82,13 @@
         :groups="groups"
         @close="showUploadModal = false"
         @uploaded="onWallpaperUploaded"
+        @open-bulk="openBulkUpload"
+      />
+      <WallpaperBulkUploadModal
+        v-if="showBulkUploadModal"
+        :groups="groups"
+        @close="showBulkUploadModal = false"
+        @uploaded="onBulkUploaded"
       />
       <GroupCreateModal
         v-if="showGroupModal"
@@ -109,6 +115,7 @@ import WallpaperHeader from '@/components/wallpaper/WallpaperHeader.vue';
 import WallpaperToolbar from '@/components/wallpaper/WallpaperToolbar.vue';
 import WallpaperList from '@/components/wallpaper/WallpaperList.vue';
 import WallpaperUploadModal from '@/components/wallpaper/WallpaperUploadModal.vue';
+import WallpaperBulkUploadModal from '@/components/wallpaper/WallpaperBulkUploadModal.vue';
 import WallpaperEditModal from '@/components/wallpaper/WallpaperEditModal.vue';
 import GroupCreateModal from '@/components/wallpaper/GroupCreateModal.vue';
 import GroupMoveModal from '@/components/wallpaper/GroupMoveModal.vue';
@@ -141,6 +148,7 @@ const {
 
 const selectedGroupId = ref('');
 const showUploadModal = ref(false);
+const showBulkUploadModal = ref(false);
 const showGroupModal = ref(false);
 const showMoveModal = ref(false);
 const showEditModal = ref(false);
@@ -188,6 +196,19 @@ const handleApplyCurrent = async () => {
 // 壁纸上传成功处理
 const onWallpaperUploaded = () => {
   showUploadModal.value = false;
+  setPage(1);
+  fetchWallpapers(selectedGroupId.value || null, true);
+};
+
+// 打开批量上传（由单文件上传对话框触发）
+const openBulkUpload = () => {
+  showUploadModal.value = false;
+  showBulkUploadModal.value = true;
+};
+
+// 批量上传完成回调
+const onBulkUploaded = () => {
+  showBulkUploadModal.value = false;
   setPage(1);
   fetchWallpapers(selectedGroupId.value || null, true);
 };
