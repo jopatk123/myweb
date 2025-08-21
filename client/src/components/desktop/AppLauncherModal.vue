@@ -19,7 +19,8 @@ import { ref, onMounted, watch, nextTick, computed } from 'vue';
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   component: { type: [Object, Function], default: null },
-  title: { type: String, default: '' }
+  title: { type: String, default: '' },
+  storageKey: { type: String, default: '' }
 });
 defineEmits(['update:modelValue']);
 
@@ -42,6 +43,28 @@ function centerModal() {
   pos.value = { x: Math.max(10, (window.innerWidth - w) / 2), y: Math.max(10, (window.innerHeight - h) / 2) };
 }
 
+function storageKey() {
+  return props.storageKey ? `launcherPos:${props.storageKey}` : 'launcherPos:default';
+}
+
+function loadPosition() {
+  try {
+    const raw = localStorage.getItem(storageKey());
+    if (raw) {
+      const v = JSON.parse(raw);
+      if (typeof v?.x === 'number' && typeof v?.y === 'number') {
+        pos.value = v;
+      }
+    }
+  } catch {}
+}
+
+function savePosition() {
+  try {
+    localStorage.setItem(storageKey(), JSON.stringify(pos.value));
+  } catch {}
+}
+
 function onHeaderPointerDown(e) {
   if (e.button !== 0) return;
   dragging = true;
@@ -61,15 +84,23 @@ function onPointerUp() {
   dragging = false;
   dragStart = null;
   window.removeEventListener('pointermove', onPointerMove);
+  savePosition();
 }
 
 onMounted(async () => {
   await nextTick();
-  centerModal();
+  loadPosition();
+  if (pos.value.x === null || pos.value.y === null) {
+    centerModal();
+  }
 });
 
 watch(() => props.modelValue, (val) => {
-  if (val) nextTick().then(centerModal);
+  if (val) {
+    nextTick().then(() => {
+      if (pos.value.x === null || pos.value.y === null) centerModal();
+    });
+  }
 });
 </script>
 

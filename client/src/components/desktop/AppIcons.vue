@@ -14,7 +14,7 @@
       <div class="label">{{ app.name }}</div>
     </div>
 
-    <AppLauncherModal v-model="show" :component="currentComponent" :title="currentTitle" />
+    <AppLauncherModal v-model="show" :component="currentComponent" :title="currentTitle" :storageKey="currentStorageKey" />
   </div>
 </template>
 
@@ -29,6 +29,7 @@ const { apps, fetchApps, getAppIconUrl } = useApps();
 const show = ref(false);
 const currentComponent = shallowRef(null);
 const currentTitle = ref('');
+const currentStorageKey = ref('');
 const selectedId = ref(null);
 const positions = ref({}); // { [appId]: { x, y } }
 const STORAGE_KEY = 'desktopIconPositions';
@@ -41,6 +42,7 @@ function open(app) {
   const meta = getAppMetaBySlug(app.slug);
   currentComponent.value = comp;
   currentTitle.value = meta?.name || app.name || '';
+  currentStorageKey.value = app.slug || String(app.id || '');
   show.value = true;
 }
 
