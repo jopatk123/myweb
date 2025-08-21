@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, shallowRef, computed, onMounted, watch } from 'vue';
 import { useApps } from '@/composables/useApps.js';
 import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
 import AppLauncherModal from './AppLauncherModal.vue';
@@ -27,7 +27,7 @@ import AppLauncherModal from './AppLauncherModal.vue';
 const { apps, fetchApps, getAppIconUrl } = useApps();
 
 const show = ref(false);
-const currentComponent = ref(null);
+const currentComponent = shallowRef(null);
 const currentTitle = ref('');
 const selectedId = ref(null);
 const positions = ref({}); // { [appId]: { x, y } }

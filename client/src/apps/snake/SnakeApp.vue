@@ -48,8 +48,7 @@ import SnakeCanvas from './SnakeCanvas.vue';
 import SnakeOverlays from './SnakeOverlays.vue';
 import useSnakeGame from '../../composables/useSnakeGame';
 
-const canvas = ref(null);
-const ctx = ref(null);
+const snakeCanvas = ref(null);
 const boardSize = 400;
 const cell = 20;
 let timer = null;
@@ -91,7 +90,7 @@ function start() {
   timer = setInterval(() => {
     gameStep();
     updateParticles();
-    draw();
+    snakeCanvas.value?.draw();
   }, speed.value);
 }
 
@@ -109,7 +108,7 @@ function pause() {
     timer = setInterval(() => {
       gameStep();
       updateParticles();
-      draw();
+      snakeCanvas.value?.draw();
     }, speed.value);
   }
 }
@@ -121,7 +120,7 @@ function restart() {
   }
   restartGame();
   // 立即绘制一次重置画面
-  draw();
+  snakeCanvas.value?.draw();
 }
 
 function updateSpeed() {
@@ -130,7 +129,7 @@ function updateSpeed() {
     timer = setInterval(() => {
       gameStep();
       updateParticles();
-      draw();
+      snakeCanvas.value?.draw();
     }, speed.value);
   }
 }
@@ -173,135 +172,20 @@ function handleCanvasClick() {
     timer = setInterval(() => {
       gameStep();
       updateParticles();
-      draw();
+      snakeCanvas.value?.draw();
     }, speed.value);
   }
-}
-
-// 绘制相关函数（保留在视图层）
-function drawParticles() {
-  particles.value.forEach(particle => {
-    ctx.value.save();
-    ctx.value.globalAlpha = particle.life;
-    ctx.value.fillStyle = particle.color;
-    ctx.value.beginPath();
-    ctx.value.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
-    ctx.value.fill();
-    ctx.value.restore();
-  });
-}
-
-function drawGrid() {
-  ctx.value.strokeStyle = '#2a2a2a';
-  ctx.value.lineWidth = 0.5;
-
-  for (let i = 0; i <= gridSize.value; i++) {
-    ctx.value.beginPath();
-    ctx.value.moveTo(i * cell, 0);
-    ctx.value.lineTo(i * cell, boardSize);
-    ctx.value.stroke();
-
-    ctx.value.beginPath();
-    ctx.value.moveTo(0, i * cell);
-    ctx.value.lineTo(boardSize, i * cell);
-    ctx.value.stroke();
-  }
-}
-
-function drawSnake() {
-  snake.value.forEach((segment, index) => {
-    const x = segment.x * cell;
-    const y = segment.y * cell;
-
-    if (index === 0) {
-      // 蛇头
-      ctx.value.fillStyle = '#4ade80';
-      ctx.value.fillRect(x + 2, y + 2, cell - 4, cell - 4);
-
-      // 眼睛
-      ctx.value.fillStyle = '#000';
-      ctx.value.fillRect(x + 5, y + 5, 3, 3);
-      ctx.value.fillRect(x + 12, y + 5, 3, 3);
-    } else {
-      // 蛇身
-      const greenValue = Math.max(50, 255 - index * 10);
-      ctx.value.fillStyle = `rgb(74, ${greenValue}, 128)`;
-      ctx.value.fillRect(x + 1, y + 1, cell - 2, cell - 2);
-    }
-  });
-}
-
-function drawFood() {
-  const x = food.value.x * cell;
-  const y = food.value.y * cell;
-
-  // 食物发光效果
-  ctx.value.shadowColor = '#ff6b6b';
-  ctx.value.shadowBlur = 10;
-  ctx.value.fillStyle = '#ff6b6b';
-  ctx.value.fillRect(x + 2, y + 2, cell - 4, cell - 4);
-  ctx.value.shadowBlur = 0;
-
-  // 食物内部
-  ctx.value.fillStyle = '#ff4757';
-  ctx.value.fillRect(x + 4, y + 4, cell - 8, cell - 8);
-}
-
-function drawSpecialFood() {
-  if (!specialFood.value) return;
-
-  const x = specialFood.value.x * cell;
-  const y = specialFood.value.y * cell;
-
-  // 特殊食物闪烁效果
-  const time = Date.now() * 0.01;
-  const alpha = 0.5 + 0.5 * Math.sin(time);
-
-  ctx.value.save();
-  ctx.value.globalAlpha = alpha;
-  ctx.value.shadowColor = '#ffd700';
-  ctx.value.shadowBlur = 15;
-  ctx.value.fillStyle = '#ffd700';
-  ctx.value.fillRect(x + 1, y + 1, cell - 2, cell - 2);
-  ctx.value.shadowBlur = 0;
-  ctx.value.restore();
-
-  // 特殊食物标记
-  ctx.value.fillStyle = '#000';
-  ctx.value.font = '12px Arial';
-  ctx.value.textAlign = 'center';
-  ctx.value.fillText('★', x + cell / 2, y + cell / 2 + 4);
-}
-
-function draw() {
-  if (!ctx.value) return;
-
-  // 清空画布
-  ctx.value.fillStyle = '#1a1a1a';
-  ctx.value.fillRect(0, 0, boardSize, boardSize);
-
-  // 绘制网格
-  drawGrid();
-
-  // 绘制食物
-  drawFood();
-
-  // 绘制特殊食物
-  drawSpecialFood();
-
-  // 绘制蛇
-  drawSnake();
-
-  // 绘制粒子效果
-  drawParticles();
 }
 
 // 监听难度变化
 watch(difficulty, updateSpeed);
 
 onMounted(() => {
-  ctx.value = canvas.value.getContext('2d');
-  draw();
+  // canvas 由子组件管理，调用子组件 draw
+  // 确保子组件已挂载后触发首次绘制
+  setTimeout(() => {
+    snakeCanvas.value?.draw();
+  }, 0);
   window.addEventListener('keydown', handleKey);
 });
 
