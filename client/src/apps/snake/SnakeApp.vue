@@ -1,5 +1,5 @@
 <template>
-  <div class="snake-app">
+  <div class="snake-app" :style="appStyle" @pointerdown="onPointerDown">
     <SnakeHeader :score="score" :snake-length="snake.length" :level="level" :high-score="highScore" />
 
     <div class="game-container">
@@ -49,6 +49,33 @@ import SnakeOverlays from './SnakeOverlays.vue';
 import useSnakeGame from '../../composables/useSnakeGame';
 
 const snakeCanvas = ref(null);
+// 窗口拖动位置
+const pos = ref({ x: 100, y: 80 });
+const dragging = ref(false);
+let dragStart = null; // { x, y, originX, originY }
+
+const STORAGE_POS_KEY = 'snakeAppPosition';
+
+const appStyle = computed(() => ({
+  position: 'fixed',
+  left: `${pos.value.x}px`,
+  top: `${pos.value.y}px`,
+  zIndex: 30
+}));
+
+function savePosition() {
+  try { localStorage.setItem(STORAGE_POS_KEY, JSON.stringify(pos.value)); } catch {}
+}
+
+function loadPosition() {
+  try {
+    const raw = localStorage.getItem(STORAGE_POS_KEY);
+    if (raw) {
+      const v = JSON.parse(raw);
+      if (typeof v.x === 'number' && typeof v.y === 'number') pos.value = v;
+    }
+  } catch {}
+}
 const boardSize = 400;
 const cell = 20;
 let timer = null;
@@ -177,6 +204,29 @@ function handleCanvasClick() {
   }
 }
 
+function onPointerDown(e) {
+  // 只允许左键拖动
+  if (e.button !== 0) return;
+  dragging.value = true;
+  dragStart = { x: e.clientX, y: e.clientY, originX: pos.value.x, originY: pos.value.y };
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp, { once: true });
+}
+
+function onPointerMove(e) {
+  if (!dragging.value || !dragStart) return;
+  const dx = e.clientX - dragStart.x;
+  const dy = e.clientY - dragStart.y;
+  pos.value = { x: dragStart.originX + dx, y: dragStart.originY + dy };
+}
+
+function onPointerUp() {
+  dragging.value = false;
+  dragStart = null;
+  window.removeEventListener('pointermove', onPointerMove);
+  savePosition();
+}
+
 // 监听难度变化
 watch(difficulty, updateSpeed);
 
@@ -187,6 +237,7 @@ onMounted(() => {
     snakeCanvas.value?.draw();
   }, 0);
   window.addEventListener('keydown', handleKey);
+  loadPosition();
 });
 
 onBeforeUnmount(() => {
