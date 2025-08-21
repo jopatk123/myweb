@@ -9,6 +9,12 @@ export const internalApps = [
     name: '贪吃蛇',
     // 异步加载，避免初次加载体积增长
     component: defineAsyncComponent(() => import('./snake/SnakeApp.vue'))
+  },
+  {
+    slug: 'calculator',
+    name: '计算器',
+    // 异步加载，避免初次加载体积增长
+    component: defineAsyncComponent(() => import('./calculator/CalculatorApp.vue'))
   }
 ];
 

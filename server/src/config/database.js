@@ -281,9 +281,22 @@ function seedAppsIfEmpty(db) {
       // 确保默认分组存在
       const g = db.prepare("SELECT id FROM app_groups WHERE slug = 'default' AND deleted_at IS NULL").get();
       const gid = g ? g.id : null;
-      db.prepare(`INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible) VALUES (?,?,?,?,?,?)`)
-        .run('贪吃蛇', 'snake', '经典小游戏（本地实现示例）', 'snake-128.png', gid, 1);
+      const insert = db.prepare(`INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible) VALUES (?,?,?,?,?,?)`);
+      insert.run('贪吃蛇', 'snake', '经典小游戏（本地实现示例）', 'snake-128.png', gid, 1);
       console.log('🌱 Seeded example app: snake');
+
+      // 也种子计算器应用，避免额外脚本依赖（如果尚未存在）
+      const hasCalculator = db.prepare("SELECT id FROM apps WHERE slug = ? AND is_deleted = 0").get('calculator');
+      if (!hasCalculator) {
+        try {
+          insert.run('计算器', 'calculator', '科学计算器，支持基本运算和内存功能', 'calculator-128.png', gid, 1);
+          console.log('🌱 Seeded example app: calculator');
+        } catch (e) {
+          console.warn('seedAppsIfEmpty: failed to seed calculator app:', e?.message || e);
+        }
+      } else {
+        console.log('🟢 Calculator app already exists, skipping seed for calculator');
+      }
     }
   } catch (e) {
     console.warn('seedAppsIfEmpty warning:', e?.message || e);
