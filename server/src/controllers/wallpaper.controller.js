@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
+import { normalizeKeys } from '../utils/case-helper.js';
 
 // 解析当前模块目录（ESM 无 __dirname）
 const __filename = fileURLToPath(import.meta.url);
@@ -43,15 +44,15 @@ export class WallpaperController {
   // 获取所有壁纸
   async getWallpapers(req, res, next) {
     try {
-      const { groupId, page, limit } = req.query;
+      const { group_id, page, limit } = req.query;
       // 如果提供 page 和 limit，返回分页结构
       if (page && limit) {
         const pageNum = Number(page) || 1;
         const lim = Number(limit) || 20;
-        const result = await this.service.getAllWallpapers(groupId, pageNum, lim);
+        const result = await this.service.getAllWallpapers(group_id, pageNum, lim);
         res.json({ code: 200, data: result, message: '获取成功' });
       } else {
-        const wallpapers = await this.service.getAllWallpapers(groupId);
+        const wallpapers = await this.service.getAllWallpapers(group_id);
         res.json({ code: 200, data: wallpapers, message: '获取成功' });
       }
     } catch (error) {
@@ -84,21 +85,23 @@ export class WallpaperController {
         });
       }
 
-      const { groupId, name } = req.body;
+      // multer 会在此处填充 req.body（multipart），需要手动归一化键名
+      const normalizedBody = normalizeKeys(req.body || {});
+      const { group_id, name } = normalizedBody;
       // 存储到数据库的 file_path 应为 web 可访问的相对路径（例如: uploads/wallpapers/<filename>）
       // 这样前端可以直接用 `${API_BASE}/${file_path}` 访问；同时删除时再解析到磁盘路径
       const webPath = path.posix.join('uploads', 'wallpapers', req.file.filename);
 
       const fileData = {
         filename: req.file.filename,
-        originalName: req.file.originalname,
-        filePath: webPath,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
+        original_name: req.file.originalname,
+        file_path: webPath,
+        file_size: req.file.size,
+        mime_type: req.file.mimetype,
         name: name || req.file.originalname // 如果没有提供名称，则使用原始文件名
       };
 
-      const wallpaper = await this.service.uploadWallpaper(fileData, groupId);
+      const wallpaper = await this.service.uploadWallpaper(fileData, group_id);
       res.status(201).json({
         code: 201,
         data: wallpaper,
@@ -114,7 +117,9 @@ export class WallpaperController {
     try {
       const { id } = req.params;
       // 移除不再支持的字段
+      // 请求已被全局中间件归一化为 snake_case，但确保 multipart 路径也归一
       const data = { ...req.body };
+      if (!data.original_name && req.body && req.body.originalName) data.original_name = req.body.originalName;
       if (data.description !== undefined) delete data.description;
       const wallpaper = await this.service.updateWallpaper(id, data);
       res.json({

@@ -11,6 +11,7 @@ export function createWallpaperRoutes(db) {
   router.get('/random', (req, res, next) => controller.getRandomWallpaper(req, res, next));
   router.get('/:id(\\d+)', (req, res, next) => controller.getWallpaper(req, res, next));
   
+  // 对于 multipart 表单，multer 处理后需归一化键名
   router.post('/', controller.upload.single('image'), (req, res, next) => controller.uploadWallpaper(req, res, next));
   
   // 批量操作

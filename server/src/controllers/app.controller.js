@@ -17,9 +17,9 @@ export class AppController {
 
   async list(req, res, next) {
     try {
-      const { groupId, visible, page, limit } = req.query;
+      const { group_id, visible, page, limit } = req.query;
       const query = {
-        groupId: groupId || null,
+        groupId: group_id || null,
         visible: visible !== undefined ? (visible === '1' || visible === 'true') : null,
         page: page ? Number(page) : null,
         limit: limit ? Number(limit) : null

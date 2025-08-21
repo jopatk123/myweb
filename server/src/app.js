@@ -8,6 +8,7 @@ import { createWallpaperRoutes } from './routes/wallpapers.routes.js';
 import { createAppRoutes } from './routes/apps.routes.js';
 import { initDatabase } from './config/database.js';
 import errorHandler from './middleware/error.middleware.js';
+import { normalizeRequestKeys } from './utils/case-helper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +39,9 @@ app.use(cors({
 // 请求体解析
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// 统一请求键名（camelCase -> snake_case），便于后端模型一律使用 snake_case 列名
+app.use(normalizeRequestKeys);
 
 // 静态文件服务
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

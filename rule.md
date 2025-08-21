@@ -1,4 +1,3 @@
-
 # 通用项目结构规范（AI-Ready）
 Specific project implementation needs to be adjusted according to actual needs;
 ---
@@ -43,7 +42,7 @@ client/
 │   ├── api/
 │   ├── components/
 │   │   ├── common/
-│   │   ├── {{module}}/
+│   │   ├── {{module}}/    # {{module}}为kebab-case
 │   ├── composables/
 │   ├── constants/
 │   ├── router/
@@ -67,18 +66,19 @@ client/
 | ------------------ | -------------------- | ---------------------------------- |
 | 页面组件           | PascalCase           | `UserList.vue`                     |
 | 通用组件           | PascalCase + 前缀    | `BaseButton.vue`                   |
-| 业务组件           | 模块前缀 + Pascal    | `OrderDetailCard.vue`              |
+| 业务组件           | 模块前缀 + Pascal    | `OrderDetailCard.vue`（模块前缀为组件目录{{module}}的PascalCase形式） |
 | 组合式函数         | camelCase + 前缀 use | `useAuth.js`                       |
-| 工具函数           | camelCase              | `dateHelper.js`                    |
-| 常量               | SCREAMING_SNAKE        | `API_TIMEOUT` in `constants/app.js`|
-| 样式文件             | kebab-case             | `user-profile.scss`                |
-| 单元测试             | 同名 + `.test.js`      | `UserList.test.js`                 |
+| 工具函数           | camelCase            | `dateHelper.js`                    |
+| 常量               | SCREAMING_SNAKE      | `API_TIMEOUT` in `constants/app.js`|
+| 常量文件           | camelCase            | `user.js`、`apiConstants.js`（按模块拆分） |
+| 样式文件           | kebab-case           | `user-profile.scss`                |
+| 单元测试           | 同名 + `.test.js`    | `UserList.test.js`                 |
 
 ### 3.3 自动生成示例
 
 > 当用户说「新建一个订单管理页面」 →  执行：  
 > 1. 在 `views/` 创建 `OrderManagement.vue`  
-> 2. 在 `components/order/` 创建 `OrderTable.vue / OrderFilters.vue`  
+> 2. 在 `components/order/`（`order`为kebab-case模块名）创建 `OrderTable.vue / OrderFilters.vue`（模块前缀`Order`为`order`的PascalCase形式）  
 > 3. 在 `composables/` 创建 `useOrders.js`  
 > 4. 在 `api/` 创建 `order.js` (axios 实例封装)  
 > 5. 在 `router/` 向 `index.js` 追加 `{ path: '/orders', component: () => import('@/views/OrderManagement.vue') }`
@@ -115,18 +115,18 @@ server/
 
 | 类型       | 命名风格                 | 模板/示例                       |
 | ---------- | ------------------------ | ------------------------------- |
-| 路由文件   | 复数 + `.routes.js`      | `users.routes.js`               |
+| 路由文件   | 复数 + `.routes.js`      | `users.routes.js`（复数为kebab-case资源名加s） |
 | 控制器     | 资源 + `.controller.js`  | `user.controller.js`            |
 | 服务层     | 资源 + `.service.js`     | `user.service.js`               |
 | 模型       | 表名单数 + `.model.js`   | `user.model.js`                 |
-| 中间件     | 功能 + `.middleware.js`  | `auth.middleware.js`            |
+| 中间件     | 功能 + `.middleware.js`  | `rateLimit.middleware.js`（功能名用camelCase） |
 | DTO        | 资源 + `.dto.js`         | `user.dto.js`                   | 
-| 工具       | kebab-case               | `crypto-helper.js`              |
+| 工具       | camelCase                | `cryptoHelper.js`               |
 | 测试       | 同名 + `.test.js`        | `user.service.test.js`          |
 
 ### 4.3 数据库模板（SQLite）
 
-- 表名：复数形式，如 `users`, `orders`, `order_items`  
+- 表名：复数形式，如 `users`, `orders`, `order_items`（采用下划线分隔，符合数据库行业惯例，避免短横线等特殊字符导致的兼容性问题）  
 - 字段：  
   - 主键 `id INTEGER PRIMARY KEY AUTOINCREMENT`  
   - 外键 `user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`  
@@ -177,7 +177,7 @@ services:
 1. 将<资源名>转换为kebab-case<res>和PascalCase<Res>。
 2. 前端：
    a. client/src/views/<Res>List.vue
-   b. client/src/components/<res>/<Res>Table.vue
+   b. client/src/components/<res>/<Res>Table.vue（<Res>为<res>的PascalCase形式）
    c. client/src/composables/use<Res>.js
    d. client/src/api/<res>.js
    e. 在client/src/router/index.js追加路由 { path: '/<res-plural-kebab>', component: () => import('@/views/<Res>List.vue') }
@@ -185,9 +185,9 @@ services:
    a. server/src/models/<res>.model.js
    b. server/src/controllers/<res>.controller.js
    c. server/src/services/<res>.service.js
-   d. server/src/routes/<res>s.routes.js
+   d. server/src/routes/<res>s.routes.js（<res>s为<res>的复数形式）
    e. 在server/src/routes/index.js中app.use('/api/<res>s', <res>Routes)
-4. 数据库：根据模型字段自动生成CREATE TABLE IF NOT EXISTS <res>s ...
+4. 数据库：根据模型字段自动生成CREATE TABLE IF NOT EXISTS <res>s ...（表名用下划线分隔复数形式）
 ```
 
 ### snippet 2：新建通用组件

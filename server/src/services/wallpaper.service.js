@@ -33,10 +33,16 @@ export class WallpaperService {
   }
 
   async uploadWallpaper(fileData, groupId = null) {
-    const { filename, originalName, filePath, fileSize, mimeType, name } = fileData;
-    
+    // 兼容 camelCase 与 snake_case 的字段名
+    const filename = fileData.filename || fileData.file_name;
+    const originalName = fileData.originalName || fileData.original_name || fileData.originalname;
+    const filePath = fileData.filePath || fileData.file_path;
+    const fileSize = fileData.fileSize || fileData.file_size || fileData.size;
+    const mimeType = fileData.mimeType || fileData.mime_type || fileData.mimetype;
+    const name = fileData.name || fileData.title || originalName;
+
     // 验证文件类型
-    if (!mimeType.startsWith('image/')) {
+    if (!mimeType || !mimeType.startsWith('image/')) {
       throw new Error('只支持图片文件');
     }
 
