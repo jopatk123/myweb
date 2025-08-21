@@ -67,24 +67,48 @@ export class WallpaperModel {
   }
 
   update(id, data) {
+    // 支持前端以 camelCase 或 snake_case 传入字段，映射到数据库列名（snake_case）
+    const fieldMap = {
+      filename: 'filename',
+      originalName: 'original_name',
+      original_name: 'original_name',
+      filePath: 'file_path',
+      file_path: 'file_path',
+      fileSize: 'file_size',
+      file_size: 'file_size',
+      mimeType: 'mime_type',
+      mime_type: 'mime_type',
+      groupId: 'group_id',
+      group_id: 'group_id',
+      name: 'name',
+      isActive: 'is_active',
+      is_active: 'is_active'
+    };
+
     const fields = [];
     const params = [];
 
-    Object.keys(data).forEach(key => {
-      if (data[key] !== undefined) {
-        fields.push(`${key} = ?`);
-        params.push(data[key]);
+    for (const [key, value] of Object.entries(data)) {
+      const col = fieldMap[key];
+      if (!col) continue; // 忽略未知字段
+
+      // 布尔值字段需转换为 0/1
+      if (col === 'is_active') {
+        params.push(value ? 1 : 0);
+      } else {
+        params.push(value);
       }
-    });
+      fields.push(`${col} = ?`);
+    }
 
-    if (fields.length === 0) return null;
+    if (fields.length === 0) return this.findById(id);
 
+    // 添加更新时间
     fields.push('updated_at = CURRENT_TIMESTAMP');
-    params.push(id);
 
     const sql = `UPDATE wallpapers SET ${fields.join(', ')} WHERE id = ?`;
-    this.db.prepare(sql).run(...params);
-    
+    this.db.prepare(sql).run(...params, id);
+
     return this.findById(id);
   }
 

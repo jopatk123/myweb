@@ -40,15 +40,35 @@ export class AppModel {
   }
 
   update(id, payload) {
+    // 允许前端使用 camelCase 或 snake_case，映射到数据库列名
+    const fieldMap = {
+      name: 'name',
+      slug: 'slug',
+      description: 'description',
+      iconFilename: 'icon_filename',
+      icon_filename: 'icon_filename',
+      groupId: 'group_id',
+      group_id: 'group_id',
+      isVisible: 'is_visible',
+      is_visible: 'is_visible'
+    };
+
     const fields = [];
     const params = [];
+
     for (const [key, value] of Object.entries(payload)) {
-      if (['name','slug','description','icon_filename','group_id','is_visible'].includes(key)) {
-        fields.push(`${key} = ?`);
-        params.push(key === 'is_visible' ? (value ? 1 : 0) : value);
+      const col = fieldMap[key];
+      if (!col) continue;
+      if (col === 'is_visible') {
+        params.push(value ? 1 : 0);
+      } else {
+        params.push(value);
       }
+      fields.push(`${col} = ?`);
     }
+
     if (fields.length === 0) return this.findById(id);
+
     const sql = `UPDATE apps SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
     this.db.prepare(sql).run(...params, id);
     return this.findById(id);

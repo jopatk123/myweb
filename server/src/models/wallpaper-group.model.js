@@ -23,24 +23,35 @@ export class WallpaperGroupModel {
   }
 
   update(id, data) {
+    // 支持 camelCase 或 snake_case 字段名映射
+    const fieldMap = {
+      name: 'name',
+      isDefault: 'is_default',
+      is_default: 'is_default',
+      isCurrent: 'is_current',
+      is_current: 'is_current'
+    };
+
     const fields = [];
     const params = [];
 
-    Object.keys(data).forEach(key => {
-      if (data[key] !== undefined) {
-        fields.push(`${key} = ?`);
-        params.push(data[key]);
+    for (const [key, value] of Object.entries(data)) {
+      const col = fieldMap[key];
+      if (!col) continue;
+      if (col === 'is_default' || col === 'is_current') {
+        params.push(value ? 1 : 0);
+      } else {
+        params.push(value);
       }
-    });
+      fields.push(`${col} = ?`);
+    }
 
-    if (fields.length === 0) return null;
+    if (fields.length === 0) return this.findById(id);
 
     fields.push('updated_at = CURRENT_TIMESTAMP');
-    params.push(id);
-
     const sql = `UPDATE wallpaper_groups SET ${fields.join(', ')} WHERE id = ?`;
-  this.db.prepare(sql).run(...params);
-    
+    this.db.prepare(sql).run(...params, id);
+
     return this.findById(id);
   }
 
