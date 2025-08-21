@@ -250,17 +250,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .snake-app {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  padding: 20px;
+  display: inline-block; /* 紧凑包裹内容 */
+  vertical-align: top;
+  padding: 12px; /* 略小内边距以保持紧凑 */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  /* 移除占满视口高度，允许父容器控制高度 */
-  min-height: auto;
-  max-width: 860px;
-  width: 100%;
-  box-sizing: border-box;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.15);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
