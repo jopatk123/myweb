@@ -33,7 +33,49 @@ const props = defineProps({
 </script>
 
 <style scoped>
-/* 使用父组件已有的样式规则 */
+</style>
+
+<style scoped>
+.game-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+}
+
+.game-over-modal,
+.start-modal {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.game-over-modal h3,
+.start-modal h3 {
+  color: #ff4757;
+  margin: 0 0 15px 0;
+  font-size: 1.8rem;
+}
+
+.start-modal h3 {
+  color: #4ade80;
+}
+
+.game-over-modal p,
+.start-modal p {
+  margin: 10px 0;
+  color: #333;
+  font-size: 1.1rem;
+}
 </style>
 
 

@@ -1,7 +1,7 @@
 <template>
   <div class="modal-backdrop" v-if="modelValue">
-    <div class="modal">
-      <div class="modal-header">
+    <div class="modal" ref="modalRef" :style="modalStyle">
+      <div class="modal-header" @pointerdown.stop.prevent="onHeaderPointerDown">
         <div class="title">{{ title }}</div>
         <button class="close" @click="$emit('update:modelValue', false)">✖</button>
       </div>
@@ -11,16 +11,66 @@
       </div>
     </div>
   </div>
-  
 </template>
 
 <script setup>
+import { ref, onMounted, watch, nextTick, computed } from 'vue';
+
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   component: { type: [Object, Function], default: null },
   title: { type: String, default: '' }
 });
 defineEmits(['update:modelValue']);
+
+const modalRef = ref(null);
+const pos = ref({ x: null, y: null });
+let dragging = false;
+let dragStart = null;
+
+const modalStyle = computed(() => ({
+  position: 'absolute',
+  left: pos.value.x !== null ? `${pos.value.x}px` : undefined,
+  top: pos.value.y !== null ? `${pos.value.y}px` : undefined
+}));
+
+function centerModal() {
+  if (!modalRef.value) return;
+  const el = modalRef.value;
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  pos.value = { x: Math.max(10, (window.innerWidth - w) / 2), y: Math.max(10, (window.innerHeight - h) / 2) };
+}
+
+function onHeaderPointerDown(e) {
+  if (e.button !== 0) return;
+  dragging = true;
+  dragStart = { x: e.clientX, y: e.clientY, originX: pos.value.x, originY: pos.value.y };
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp, { once: true });
+}
+
+function onPointerMove(e) {
+  if (!dragging || !dragStart) return;
+  const dx = e.clientX - dragStart.x;
+  const dy = e.clientY - dragStart.y;
+  pos.value = { x: dragStart.originX + dx, y: dragStart.originY + dy };
+}
+
+function onPointerUp() {
+  dragging = false;
+  dragStart = null;
+  window.removeEventListener('pointermove', onPointerMove);
+}
+
+onMounted(async () => {
+  await nextTick();
+  centerModal();
+});
+
+watch(() => props.modelValue, (val) => {
+  if (val) nextTick().then(centerModal);
+});
 </script>
 
 <style scoped>
