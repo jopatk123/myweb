@@ -8,6 +8,9 @@ export function useWallpaper() {
   const activeWallpaper = ref(null);
   const loading = ref(false);
   const error = ref(null);
+  // 预加载队列：存放已预加载的壁纸对象，含 groupKey 以支持分组
+  const preloadedWallpapers = ref([]);
+  const isPreloading = ref(false);
     // 分页相关
     const page = ref(1);
     const limit = ref(20);
@@ -152,7 +155,61 @@ export function useWallpaper() {
 
   // 随机切换壁纸
   // 随机获取一张壁纸并返回（返回值用于 Home.vue）
+  // 规范化分组键（可能为 id，或 null）
+  const normalizeGroupKey = (groupId) => {
+    if (groupId) return groupId;
+    // currentGroup 可能是 id 或对象
+    if (currentGroup.value && typeof currentGroup.value === 'object') return currentGroup.value.id || null;
+    return currentGroup.value || null;
+  };
+
+  // 确保预加载队列中至少有 count 张指定分组的壁纸
+  const ensurePreloaded = async (count = 2, groupId = null) => {
+    const key = normalizeGroupKey(groupId);
+    if (isPreloading.value) return;
+    // 只针对当前分组进行补充
+    const existing = preloadedWallpapers.value.filter(p => p.groupKey === key).length;
+    const need = Math.max(0, count - existing);
+    if (need === 0) return;
+
+    isPreloading.value = true;
+    try {
+      for (let i = 0; i < need; i++) {
+        try {
+          const raw = await wallpaperApi.getRandomWallpaper(key);
+          const w = unwrap(raw) || null;
+          if (!w) continue;
+          // 预加载图片资源
+          await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            img.src = getWallpaperUrl(w) || w.url || '';
+          });
+          preloadedWallpapers.value.push({ groupKey: key, wallpaper: w });
+        } catch (e) {
+          // 单张失败则继续尝试下一张
+          console.warn('预加载单张壁纸失败:', e);
+        }
+      }
+    } finally {
+      isPreloading.value = false;
+    }
+  };
+
+  // 随机切换壁纸（优先使用预加载队列）
   const randomWallpaper = async (groupId = null) => {
+    const key = normalizeGroupKey(groupId);
+    // 优先从预加载队列取出匹配分组的壁纸
+    const idx = preloadedWallpapers.value.findIndex(p => p.groupKey === key);
+    if (idx !== -1) {
+      const item = preloadedWallpapers.value.splice(idx, 1)[0];
+      // 异步补充一张到队列，不阻塞返回
+      ensurePreloaded(2, groupId).catch(() => {});
+      return item.wallpaper;
+    }
+
+    // 回退到原有逻辑
     if (loading.value) return null;
     loading.value = true;
     error.value = null;
@@ -168,6 +225,8 @@ export function useWallpaper() {
           img.src = getWallpaperUrl(image) || image.url || '';
         });
       }
+      // 异步补充队列
+      ensurePreloaded(2, groupId).catch(() => {});
       return image;
     } catch (err) {
       error.value = err.message || '随机切换失败';
@@ -302,6 +361,8 @@ export function useWallpaper() {
     deleteWallpaper,
     updateWallpaper,
     randomWallpaper: randomWallpaperThrottled,
+    // 允许外部触发预加载（例如在桌面加载时自动补充）
+    ensurePreloaded,
     createGroup,
     deleteGroup,
     getWallpaperUrl,

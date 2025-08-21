@@ -34,12 +34,20 @@ import { useWallpaper } from '@/composables/useWallpaper.js';
 import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
 import AppIcons from '@/components/desktop/AppIcons.vue';
 
-const { randomWallpaper } = useWallpaper();
+const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } = useWallpaper();
 const current = ref(null);
+
+// 页面挂载时触发预加载（保持 2 张缓存）
+fetchCurrentGroup().then(() => {
+  // 不阻塞渲染，异步补充缓存
+  ensurePreloaded(2).catch(() => {});
+});
 
 const onRandom = async () => {
   const w = await randomWallpaper();
   if (w) current.value = w;
+  // 点击切换后确保缓存维持在 2 张
+  ensurePreloaded(2).catch(() => {});
 };
 </script>
 
