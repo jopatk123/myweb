@@ -26,7 +26,7 @@ export class AppController {
       };
       const result = await this.service.getApps(query);
       res.json({ code: 200, data: result, message: '获取成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   async get(req, res, next) {
@@ -34,7 +34,7 @@ export class AppController {
       const app = await this.service.getAppById(Number(req.params.id));
       if (!app) return res.status(404).json({ code: 404, message: '应用不存在' });
       res.json({ code: 200, data: app, message: '获取成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   async create(req, res, next) {
@@ -42,7 +42,7 @@ export class AppController {
       const payload = await appSchema.validateAsync(req.body);
       const app = await this.service.createApp(payload);
       res.status(201).json({ code: 201, data: app, message: '创建成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   async update(req, res, next) {
@@ -51,7 +51,7 @@ export class AppController {
       const payload = await appSchema.fork(['name','slug'], (s) => s.optional()).validateAsync(req.body);
       const app = await this.service.updateApp(id, payload);
       res.json({ code: 200, data: app, message: '更新成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   async remove(req, res, next) {
@@ -59,7 +59,7 @@ export class AppController {
       const id = Number(req.params.id);
       await this.service.deleteApp(id);
       res.json({ code: 200, message: '删除成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   async setVisible(req, res, next) {
@@ -68,7 +68,7 @@ export class AppController {
       const { visible } = req.body;
       const app = await this.service.setAppVisible(id, !!visible);
       res.json({ code: 200, data: app, message: '设置成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   async bulkVisible(req, res, next) {
@@ -79,7 +79,7 @@ export class AppController {
       }
       await Promise.all(ids.map(id => this.service.setAppVisible(Number(id), !!visible)));
       res.json({ code: 200, message: '批量设置成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   async move(req, res, next) {
@@ -90,7 +90,7 @@ export class AppController {
       }
       await this.service.moveApps(ids.map(Number), Number(targetGroupId));
       res.json({ code: 200, message: '移动成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   // 分组
@@ -98,7 +98,7 @@ export class AppController {
     try {
       const groups = await this.service.getGroups();
       res.json({ code: 200, data: groups, message: '获取成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   async createGroup(req, res, next) {
@@ -111,7 +111,7 @@ export class AppController {
       const payload = await schema.validateAsync(req.body);
       const group = await this.service.createGroup(payload);
       res.status(201).json({ code: 201, data: group, message: '创建成功' });
-    } catch (err) { next(err); }
+    } catch (error) { next(error); }
   }
 
   async updateGroup(req, res, next) {

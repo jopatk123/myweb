@@ -61,9 +61,9 @@ export class FileService {
     }
     try {
       await fs.unlink(diskPath);
-    } catch (e) {
-      if (e.code !== 'ENOENT') {
-        console.warn('删除文件失败:', e.message);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        console.warn('删除文件失败:', error.message);
       }
     }
     this.model.delete(id);

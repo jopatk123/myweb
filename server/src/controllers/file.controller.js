@@ -49,8 +49,8 @@ export function createFileRoutes(db) {
 
       const data = Array.isArray(results) && results.length === 1 ? results[0] : results;
       res.status(201).json({ success: true, data });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   });
 
@@ -60,7 +60,7 @@ export function createFileRoutes(db) {
       const { page = 1, limit = 20, type = '', search = '' } = req.query;
       const result = service.list({ page: Number(page), limit: Number(limit), type: type || null, search: search || null });
       res.json({ success: true, data: { files: result.items, pagination: { page: Number(page), limit: Number(limit), total: result.total, totalPages: Math.ceil(result.total / Number(limit || 1)) } } });
-    } catch (e) { next(e); }
+    } catch (error) { next(error); }
   });
 
   // 详情
@@ -68,7 +68,7 @@ export function createFileRoutes(db) {
     try {
       const row = service.get(req.params.id);
       res.json({ success: true, data: row });
-    } catch (e) { next(e); }
+    } catch (error) { next(error); }
   });
 
   // 下载
@@ -83,7 +83,7 @@ export function createFileRoutes(db) {
       res.setHeader('Content-Type', row.mime_type);
       res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(row.original_name)}`);
       res.download(diskPath);
-    } catch (e) { next(e); }
+    } catch (error) { next(error); }
   });
 
   // 删除
@@ -91,7 +91,7 @@ export function createFileRoutes(db) {
     try {
       await service.remove(req.params.id);
       res.json({ success: true, message: '文件删除成功' });
-    } catch (e) { next(e); }
+    } catch (error) { next(error); }
   });
 
   return router;
