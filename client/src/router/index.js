@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Home from '@/views/Home.vue';
 import WallpaperManagement from '@/views/WallpaperManagement.vue';
 import AppManagement from '@/views/AppManagement.vue';
+import FileManagement from '@/views/FileManagement.vue';
 
 const routes = [
   {
@@ -19,6 +20,12 @@ const routes = [
     path: '/apps',
     name: 'AppManagement',
     component: AppManagement
+  }
+  ,
+  {
+    path: '/files',
+    name: 'FileManagement',
+    component: FileManagement
   }
 ];
 

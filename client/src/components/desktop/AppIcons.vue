@@ -1,5 +1,5 @@
 <template>
-  <div class="desktop-icons" @mousedown.stop>
+  <div class="desktop-icons" @mousedown.stop @dragstart.prevent @dragover.prevent.stop @drop.prevent.stop>
     <div
       v-for="app in visibleApps"
       :key="app.id"
@@ -8,9 +8,13 @@
       @click="onClick(app, $event)"
       @dblclick="onDblClick(app)"
       @mousedown="onMouseDown(app, $event)"
+      @dragstart.prevent
+      @dragover.prevent.stop
+      @drop.stop.prevent
+      draggable="false"
       :style="getIconStyle(app)"
     >
-      <img v-if="app.icon_filename" :src="getAppIconUrl(app)" class="icon" />
+      <img v-if="app.icon_filename" :src="getAppIconUrl(app)" class="icon" draggable="false" />
       <div class="label">{{ app.name }}</div>
     </div>
 
@@ -163,7 +167,7 @@ watch(apps, () => {
 .desktop-icons { position: absolute; top: 20px; left: 20px; display: grid; grid-template-columns: repeat(auto-fill, 72px); gap: 16px; z-index: 2; }
 .icon-item { width: 72px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: default; user-select: none; }
 .icon-item.selected .label { background: rgba(255,255,255,0.2); border-radius: 6px; padding: 2px 4px; }
-.icon { width: 48px; height: 48px; object-fit: contain; }
+.icon { width: 48px; height: 48px; object-fit: contain; -webkit-user-drag: none; }
 .label { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); font-size: 12px; text-align: center; }
 </style>
 

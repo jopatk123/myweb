@@ -6,6 +6,7 @@
       <nav class="global-menu">
         <router-link to="/wallpapers" class="menu-item">壁纸管理</router-link>
         <a class="menu-item active">应用管理</a>
+        <router-link to="/files" class="menu-item">文件管理</router-link>
       </nav>
     </aside>
 

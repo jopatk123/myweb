@@ -1,10 +1,16 @@
 <template>
-  <div class="home">
+  <div class="home" :class="{ dragover: dragOver }" @dragover.prevent="onDragOver" @dragleave="onDragLeave" @drop.prevent="onDrop">
     <!-- 动态背景 -->
     <WallpaperBackground :wallpaper="current" />
 
     <!-- 桌面图标（内部应用） -->
     <AppIcons />
+
+    <!-- 桌面文件图标（可拖动） -->
+    <FileIcons :files="files" :icons="fileTypeIcons" @open="onOpenFile" />
+
+    <!-- 文件上传进度条 -->
+    <FileUploadProgress :uploading="uploading" :progress="uploadProgress" />
 
     <!-- 浮动控制按钮 -->
     <div class="floating-controls">
@@ -24,24 +30,54 @@
       >
         🛠️
       </a>
+      <a
+        href="/files"
+        target="_blank"
+        rel="noopener"
+        class="control-btn"
+        title="文件管理"
+      >
+        📁
+      </a>
     </div>
+    <ConfirmDownloadModal v-model="showConfirm" :filename="selectedFileName" :downloadUrl="selectedDownloadUrl" />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useWallpaper } from '@/composables/useWallpaper.js';
+import { useFiles } from '@/composables/useFiles.js';
 import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
 import AppIcons from '@/components/desktop/AppIcons.vue';
+import FileIcons from '@/components/desktop/FileIcons.vue';
+import FileUploadProgress from '@/components/file/FileUploadProgress.vue';
+import ConfirmDownloadModal from '@/components/file/ConfirmDownloadModal.vue';
 
 const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } = useWallpaper();
 const current = ref(null);
+// 文件上传 & 列表
+const { items: files, fetchList: fetchFiles, upload, uploading, uploadProgress, getDownloadUrl } = useFiles();
+const dragOver = ref(false);
+const showConfirm = ref(false);
+const selectedFileName = ref('');
+const selectedDownloadUrl = ref('');
+const fileTypeIcons = computed(() => ({
+  image: '/apps/icons/image-128.svg',
+  video: '/apps/icons/video-128.svg',
+  word: '/apps/icons/word-128.svg',
+  excel: '/apps/icons/excel-128.svg',
+  archive: '/apps/icons/archive-128.svg',
+  other: '/apps/icons/file-128.svg'
+}));
 
 // 页面挂载时触发预加载（保持 2 张缓存）
 fetchCurrentGroup().then(() => {
   // 不阻塞渲染，异步补充缓存
   ensurePreloaded(2).catch(() => {});
 });
+// 初始加载文件列表（用于在桌面显示图标）
+fetchFiles().catch(() => {});
 
 const onRandom = async () => {
   const w = await randomWallpaper();
@@ -49,6 +85,22 @@ const onRandom = async () => {
   // 点击切换后确保缓存维持在 2 张
   ensurePreloaded(2).catch(() => {});
 };
+
+function onDragOver() { dragOver.value = true; }
+function onDragLeave() { dragOver.value = false; }
+function onDrop(e) {
+  dragOver.value = false;
+  const files = Array.from(e.dataTransfer?.files || []);
+  if (!files.length) return;
+  upload(files).catch(() => {});
+}
+
+// 供未来在桌面展示文件图标时使用的打开回调
+function onOpenFile(f) {
+  selectedFileName.value = f.original_name;
+  selectedDownloadUrl.value = getDownloadUrl(f.id);
+  showConfirm.value = true;
+}
 </script>
 
 <style scoped>
@@ -57,6 +109,10 @@ const onRandom = async () => {
   min-height: 100vh;
   width: 100%;
 }
+
+.home.dragover { outline: 2px dashed rgba(255,255,255,0.7); }
+
+.desktop-files { position: absolute; top: 20px; left: 120px; display: grid; grid-template-columns: repeat(auto-fill, 72px); gap: 16px; z-index: 2; }
 
 .floating-controls {
   position: fixed;
