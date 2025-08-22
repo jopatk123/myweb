@@ -127,6 +127,11 @@ onMounted(async () => {
   loadPositionsFromStorage();
 });
 
+// 当 apps 列表更新后，重新加载已保存的位置（例如从后端异步拉取完成）
+watch(apps, () => {
+  loadPositionsFromStorage();
+});
+
 // 将位置持久化到 localStorage
 function savePositionsToStorage() {
   try {

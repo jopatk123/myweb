@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 
 const props = defineProps({
   files: { type: Array, default: () => [] },
@@ -97,8 +97,15 @@ function loadPositionsFromStorage() {
   } catch {}
 }
 
-// 初次载入时尝试恢复位置
-loadPositionsFromStorage();
+// 初次载入时尝试恢复位置（在组件挂载后，确保 props.files 已可用）
+onMounted(() => {
+  loadPositionsFromStorage();
+});
+
+// 当父组件传入的 files 变化时，重新加载位置（例如异步 fetch 完成后）
+watch(() => props.files, () => {
+  loadPositionsFromStorage();
+});
 </script>
 
 <style scoped>
