@@ -31,6 +31,8 @@ export async function initDatabase() {
   ensureWallpaperColumns(db);
   // 迁移: 初始化应用管理相关表与缺失列
   ensureAppTablesAndColumns(db);
+  // 迁移: 初始化文件管理相关表
+  ensureFileTables(db);
   // 数据种子：仅当 apps 表为空时插入一个示例应用（贪吃蛇）
   seedAppsIfEmpty(db);
   
@@ -301,4 +303,30 @@ function seedAppsIfEmpty(db) {
   } catch (e) {
     console.warn('seedAppsIfEmpty warning:', e?.message || e);
   }
+}
+
+// 文件管理：初始化文件表
+function ensureFileTables(db) {
+  const filesTableSql = `
+    CREATE TABLE IF NOT EXISTS files (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      original_name TEXT NOT NULL,
+      stored_name TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      type_category TEXT NOT NULL CHECK(type_category IN ('image', 'video', 'word', 'excel', 'archive', 'other')),
+      file_url TEXT,
+      uploader_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_files_uploader_id ON files(uploader_id);
+    CREATE INDEX IF NOT EXISTS idx_files_type_category ON files(type_category);
+    CREATE INDEX IF NOT EXISTS idx_files_created_at ON files(created_at);
+  `;
+
+  db.exec(filesTableSql);
+  console.log('📁 File management tables initialized');
 }
