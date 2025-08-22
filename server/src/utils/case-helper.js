@@ -1,6 +1,8 @@
 // 将 camelCase 键转换为 snake_case 的工具
 export function camelToSnake(str) {
-  return String(str).replace(/([A-Z])/g, '_$1').toLowerCase();
+  return String(str)
+    .replace(/([A-Z])/g, '_$1')
+    .toLowerCase();
 }
 
 function isPlainObject(v) {
@@ -56,9 +58,9 @@ export function normalizeResponseKeys(obj) {
 // 中间件：包装 res.json，将响应体中的 data 字段（若为对象或数组）转换为 camelCase 键
 export function normalizeResponseMiddleware(req, res, next) {
   const originalJson = res.json.bind(res);
-  res.json = (body) => {
+  res.json = body => {
     try {
-      if (body && typeof body === 'object' && (body.data !== undefined)) {
+      if (body && typeof body === 'object' && body.data !== undefined) {
         const d = body.data;
         if (Array.isArray(d) || (d && typeof d === 'object')) {
           body.data = normalizeResponseKeys(d);
@@ -71,5 +73,3 @@ export function normalizeResponseMiddleware(req, res, next) {
   };
   next();
 }
-
-

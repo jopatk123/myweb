@@ -1,12 +1,14 @@
 import axios from 'axios';
 
-const apiBase = import.meta.env.VITE_API_BASE ? `${import.meta.env.VITE_API_BASE}/api` : '/api';
+const apiBase = import.meta.env.VITE_API_BASE
+  ? `${import.meta.env.VITE_API_BASE}/api`
+  : '/api';
 
 const api = axios.create({ baseURL: apiBase, timeout: 300000 });
 
 api.interceptors.response.use(
-  (resp) => resp.data,
-  (error) => Promise.reject(error.response?.data || error)
+  resp => resp.data,
+  error => Promise.reject(error.response?.data || error)
 );
 
 export const filesApi = {
@@ -16,12 +18,12 @@ export const filesApi = {
     for (const f of arr) form.append('file', f);
     return api.post('/files/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (e) => {
+      onUploadProgress: e => {
         if (!onUploadProgress) return;
         if (!e.total) return;
         const pct = Math.round((e.loaded * 100) / e.total);
         onUploadProgress(pct);
-      }
+      },
     });
   },
 
@@ -38,9 +40,9 @@ export const filesApi = {
   },
 
   downloadUrl(id) {
-    const base = import.meta.env.VITE_API_BASE ? `${import.meta.env.VITE_API_BASE}/api` : '/api';
+    const base = import.meta.env.VITE_API_BASE
+      ? `${import.meta.env.VITE_API_BASE}/api`
+      : '/api';
     return `${base}/files/${id}/download`;
-  }
+  },
 };
-
-

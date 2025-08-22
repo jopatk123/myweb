@@ -8,14 +8,16 @@ export const internalApps = [
     slug: 'snake',
     name: '贪吃蛇',
     // 异步加载，避免初次加载体积增长
-    component: defineAsyncComponent(() => import('./snake/SnakeApp.vue'))
+    component: defineAsyncComponent(() => import('./snake/SnakeApp.vue')),
   },
   {
     slug: 'calculator',
     name: '计算器',
     // 异步加载，避免初次加载体积增长
-    component: defineAsyncComponent(() => import('./calculator/CalculatorApp.vue'))
-  }
+    component: defineAsyncComponent(
+      () => import('./calculator/CalculatorApp.vue')
+    ),
+  },
 ];
 
 export function getAppComponentBySlug(slug) {
@@ -26,5 +28,3 @@ export function getAppComponentBySlug(slug) {
 export function getAppMetaBySlug(slug) {
   return internalApps.find(a => a.slug === slug) || null;
 }
-
-

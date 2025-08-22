@@ -53,5 +53,3 @@ export class AppService {
     return this.groupModel.softDelete(id);
   }
 }
-
-

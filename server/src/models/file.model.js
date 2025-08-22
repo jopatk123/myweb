@@ -16,13 +16,19 @@ export class FileModel {
       params.push(`%${search}%`, `%${search}%`);
     }
 
-    const where = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    const where = whereClauses.length
+      ? `WHERE ${whereClauses.join(' AND ')}`
+      : '';
 
-    const totalRow = this.db.prepare(`SELECT COUNT(*) AS total FROM files ${where}`).get(...params);
+    const totalRow = this.db
+      .prepare(`SELECT COUNT(*) AS total FROM files ${where}`)
+      .get(...params);
     const total = totalRow?.total || 0;
     const offset = (Number(page) - 1) * Number(limit);
     const rows = this.db
-      .prepare(`SELECT * FROM files ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .prepare(
+        `SELECT * FROM files ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      )
       .all(...params, Number(limit), offset);
 
     return { items: rows, total };
@@ -41,7 +47,7 @@ export class FileModel {
       fileSize,
       typeCategory,
       fileUrl,
-      uploaderId
+      uploaderId,
     } = data;
 
     const stmt = this.db.prepare(`
@@ -65,5 +71,3 @@ export class FileModel {
     return this.db.prepare('DELETE FROM files WHERE id = ?').run(id);
   }
 }
-
-

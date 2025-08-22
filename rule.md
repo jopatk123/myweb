@@ -1,18 +1,18 @@
 # 通用项目结构规范（AI-Ready）
-Specific project implementation needs to be adjusted according to actual needs;
----
+
+## Specific project implementation needs to be adjusted according to actual needs;
 
 ## 1. 元信息约定（Meta）
 
-| 占位符            | 说明                                               | 举例值          |
-| ----------------- | -------------------------------------------------- | --------------- |
-| `{{project}}`     | 项目短名(kebab-case)                               | `awesome-app`   |
-| `{{Project}}`     | 项目 Pascal 名                                     | `AwesomeApp`    |
-| `{{PORT_FE}}`     | 前端开发服务器端口                                 | `3000`          |
-| `{{PORT_BE}}`     | 后端 API 端口                                      | `3002`          |
-| `{{PORT_NGINX}}`  | 生产 Nginx 端口                                    | `50001`         |
-| `{{DB_NAME}}`     | SQLite 文件名                                      | `awesome.db`    |
-| `{{JWT_SECRET}}`  | 随机 32 位字符串                                   | `xxx…`          |
+| 占位符           | 说明                 | 举例值        |
+| ---------------- | -------------------- | ------------- |
+| `{{project}}`    | 项目短名(kebab-case) | `awesome-app` |
+| `{{Project}}`    | 项目 Pascal 名       | `AwesomeApp`  |
+| `{{PORT_FE}}`    | 前端开发服务器端口   | `3000`        |
+| `{{PORT_BE}}`    | 后端 API 端口        | `3002`        |
+| `{{PORT_NGINX}}` | 生产 Nginx 端口      | `50001`       |
+| `{{DB_NAME}}`    | SQLite 文件名        | `awesome.db`  |
+| `{{JWT_SECRET}}` | 随机 32 位字符串     | `xxx…`        |
 
 ---
 
@@ -62,25 +62,26 @@ client/
 
 ### 3.2 命名规则表
 
-| 类型               | 命名风格             | 模板/示例                          |
-| ------------------ | -------------------- | ---------------------------------- |
-| 页面组件           | PascalCase           | `UserList.vue`                     |
-| 通用组件           | PascalCase + 前缀    | `BaseButton.vue`                   |
-| 业务组件           | 模块前缀 + Pascal    | `OrderDetailCard.vue`（模块前缀为组件目录{{module}}的PascalCase形式） |
-| 组合式函数         | camelCase + 前缀 use | `useAuth.js`                       |
-| 工具函数           | camelCase            | `dateHelper.js`                    |
-| 常量               | SCREAMING_SNAKE      | `API_TIMEOUT` in `constants/app.js`|
-| 常量文件           | camelCase            | `user.js`、`apiConstants.js`（按模块拆分） |
-| 样式文件           | kebab-case           | `user-profile.scss`                |
-| 单元测试           | 同名 + `.test.js`    | `UserList.test.js`                 |
+| 类型       | 命名风格             | 模板/示例                                                             |
+| ---------- | -------------------- | --------------------------------------------------------------------- |
+| 页面组件   | PascalCase           | `UserList.vue`                                                        |
+| 通用组件   | PascalCase + 前缀    | `BaseButton.vue`                                                      |
+| 业务组件   | 模块前缀 + Pascal    | `OrderDetailCard.vue`（模块前缀为组件目录{{module}}的PascalCase形式） |
+| 组合式函数 | camelCase + 前缀 use | `useAuth.js`                                                          |
+| 工具函数   | camelCase            | `dateHelper.js`                                                       |
+| 常量       | SCREAMING_SNAKE      | `API_TIMEOUT` in `constants/app.js`                                   |
+| 常量文件   | camelCase            | `user.js`、`apiConstants.js`（按模块拆分）                            |
+| 样式文件   | kebab-case           | `user-profile.scss`                                                   |
+| 单元测试   | 同名 + `.test.js`    | `UserList.test.js`                                                    |
 
 ### 3.3 自动生成示例
 
-> 当用户说「新建一个订单管理页面」 →  执行：  
-> 1. 在 `views/` 创建 `OrderManagement.vue`  
-> 2. 在 `components/order/`（`order`为kebab-case模块名）创建 `OrderTable.vue / OrderFilters.vue`（模块前缀`Order`为`order`的PascalCase形式）  
-> 3. 在 `composables/` 创建 `useOrders.js`  
-> 4. 在 `api/` 创建 `order.js` (axios 实例封装)  
+> 当用户说「新建一个订单管理页面」 → 执行：
+>
+> 1. 在 `views/` 创建 `OrderManagement.vue`
+> 2. 在 `components/order/`（`order`为kebab-case模块名）创建 `OrderTable.vue / OrderFilters.vue`（模块前缀`Order`为`order`的PascalCase形式）
+> 3. 在 `composables/` 创建 `useOrders.js`
+> 4. 在 `api/` 创建 `order.js` (axios 实例封装)
 > 5. 在 `router/` 向 `index.js` 追加 `{ path: '/orders', component: () => import('@/views/OrderManagement.vue') }`
 
 ---
@@ -113,25 +114,25 @@ server/
 
 ### 4.2 命名规则表
 
-| 类型       | 命名风格                 | 模板/示例                       |
-| ---------- | ------------------------ | ------------------------------- |
-| 路由文件   | 复数 + `.routes.js`      | `users.routes.js`（复数为kebab-case资源名加s） |
-| 控制器     | 资源 + `.controller.js`  | `user.controller.js`            |
-| 服务层     | 资源 + `.service.js`     | `user.service.js`               |
-| 模型       | 表名单数 + `.model.js`   | `user.model.js`                 |
-| 中间件     | 功能 + `.middleware.js`  | `rateLimit.middleware.js`（功能名用camelCase） |
-| DTO        | 资源 + `.dto.js`         | `user.dto.js`                   | 
-| 工具       | camelCase                | `cryptoHelper.js`               |
-| 测试       | 同名 + `.test.js`        | `user.service.test.js`          |
+| 类型     | 命名风格                | 模板/示例                                      |
+| -------- | ----------------------- | ---------------------------------------------- |
+| 路由文件 | 复数 + `.routes.js`     | `users.routes.js`（复数为kebab-case资源名加s） |
+| 控制器   | 资源 + `.controller.js` | `user.controller.js`                           |
+| 服务层   | 资源 + `.service.js`    | `user.service.js`                              |
+| 模型     | 表名单数 + `.model.js`  | `user.model.js`                                |
+| 中间件   | 功能 + `.middleware.js` | `rateLimit.middleware.js`（功能名用camelCase） |
+| DTO      | 资源 + `.dto.js`        | `user.dto.js`                                  |
+| 工具     | camelCase               | `cryptoHelper.js`                              |
+| 测试     | 同名 + `.test.js`       | `user.service.test.js`                         |
 
 ### 4.3 数据库模板（SQLite）
 
-- 表名：复数形式，如 `users`, `orders`, `order_items`（采用下划线分隔，符合数据库行业惯例，避免短横线等特殊字符导致的兼容性问题）  
-- 字段：  
-  - 主键 `id INTEGER PRIMARY KEY AUTOINCREMENT`  
-  - 外键 `user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`  
-  - 时间 `created_at DATETIME`, `updated_at DATETIME`  
-  - 软删除 `deleted_at DATETIME DEFAULT NULL`  
+- 表名：复数形式，如 `users`, `orders`, `order_items`（采用下划线分隔，符合数据库行业惯例，避免短横线等特殊字符导致的兼容性问题）
+- 字段：
+  - 主键 `id INTEGER PRIMARY KEY AUTOINCREMENT`
+  - 外键 `user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`
+  - 时间 `created_at DATETIME`, `updated_at DATETIME`
+  - 软删除 `deleted_at DATETIME DEFAULT NULL`
 - 索引规范：
   - 高频查询字段必须加索引
   - 外键字段自动创建索引
@@ -154,12 +155,14 @@ docker/
 ```
 
 ### 5.1 Dockerfile 安全规范
+
 ```dockerfile
 # 在Dockerfile.server末尾添加
 USER node # 避免root运行
 ```
 
 ### 5.2 docker-compose.yml 示例
+
 ```yaml
 services:
   backend:
@@ -200,6 +203,7 @@ services:
 ```
 
 ### snippet 3：创建DTO和验证
+
 ```
 当用户要求“添加<资源>数据验证”时：
 1. 创建 `server/src/dto/<res>.dto.js`
@@ -252,6 +256,7 @@ cd {{project}}
 ## 9. 工程化配置
 
 ### 9.1 Monorepo 配置 (package.json)
+
 ```json
 {
   "workspaces": ["client", "server"],
@@ -265,6 +270,7 @@ cd {{project}}
 ```
 
 ### 9.2 Git规范
+
 - 分支：`feat/*`, `fix/*`, `chore/*`
 - 提交信息格式：`<type>(<scope>): <description>`
 
@@ -275,12 +281,12 @@ cd {{project}}
 export default (err, req, res, next) => {
   // 日志记录
   console.error(`[${new Date().toISOString()}] ${err.stack}`);
-  
+
   // 分类错误处理
   const status = err.status || 500;
   const response = {
     code: status,
-    message: status < 500 ? err.message : 'Internal Server Error'
+    message: status < 500 ? err.message : 'Internal Server Error',
   };
 
   // 开发环境返回堆栈信息
@@ -289,7 +295,7 @@ export default (err, req, res, next) => {
   }
 
   res.status(status).json(response);
-}
+};
 ```
 
 ```js
@@ -309,6 +315,7 @@ app.use(errorHandler);
 ## 10. 安全规范
 
 ### 10.1 必须启用的中间件
+
 ```js
 // server/src/app.js
 import helmet from 'helmet';
@@ -318,15 +325,19 @@ app.use(helmet());
 app.use(express.json({ limit: '10kb' })); // 请求体大小限制
 
 // 速率限制
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: process.env.RATE_LIMIT || 100 // 环境变量控制
-}));
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15分钟
+    max: process.env.RATE_LIMIT || 100, // 环境变量控制
+  })
+);
 ```
 
 ### 10.2 SQL注入防护
+
 - 所有数据库查询必须使用参数化查询
 - 禁止直接拼接SQL语句
+
 ```js
 // 正确示例
 db.get('SELECT * FROM users WHERE email = ?', [email]);

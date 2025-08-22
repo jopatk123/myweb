@@ -23,63 +23,66 @@
 </template>
 
 <script setup>
-import { defineProps } from 'vue';
+  import { defineProps } from 'vue';
 
-const props = defineProps({
-  score: { type: Number, required: true },
-  snakeLength: { type: Number, required: true },
-  level: { type: Number, required: true },
-  highScore: { type: Number, required: true }
-});
+  const props = defineProps({
+    score: { type: Number, required: true },
+    snakeLength: { type: Number, required: true },
+    level: { type: Number, required: true },
+    highScore: { type: Number, required: true },
+  });
 </script>
 
 <style scoped>
-.game-header {
-  text-align: center;
-  color: white;
-}
+  .game-header {
+    text-align: center;
+    color: white;
+  }
 
-.game-title {
-  font-size: 2.5rem;
-  margin: 0 0 20px 0;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  animation: pulse 2s infinite;
-}
+  .game-title {
+    font-size: 2.5rem;
+    margin: 0 0 20px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    animation: pulse 2s infinite;
+  }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-}
+  @keyframes pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
 
-.game-stats {
-  display: flex;
-  gap: 30px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
+  .game-stats {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 10px 15px;
-  border-radius: 10px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 15px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
 
-.stat-label {
-  font-size: 0.9rem;
-  opacity: 0.8;
-  margin-bottom: 5px;
-}
+  .stat-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 5px;
+  }
 
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #4ade80;
-}
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #4ade80;
+  }
 </style>
-
-

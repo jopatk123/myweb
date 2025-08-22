@@ -24,11 +24,15 @@ export class WallpaperModel {
       whereClauses.push('is_active = 1');
     }
 
-    const where = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    const where = whereClauses.length
+      ? `WHERE ${whereClauses.join(' AND ')}`
+      : '';
 
     // 分页模式
     if (page && limit) {
-      const totalStmt = this.db.prepare(`SELECT COUNT(*) as total FROM wallpapers ${where}`);
+      const totalStmt = this.db.prepare(
+        `SELECT COUNT(*) as total FROM wallpapers ${where}`
+      );
       const totalRow = totalStmt.get(...params);
       const total = totalRow ? totalRow.total : 0;
 
@@ -45,7 +49,9 @@ export class WallpaperModel {
   }
 
   findById(id) {
-    return this.db.prepare('SELECT * FROM wallpapers WHERE id = ? AND deleted_at IS NULL').get(id);
+    return this.db
+      .prepare('SELECT * FROM wallpapers WHERE id = ? AND deleted_at IS NULL')
+      .get(id);
   }
 
   findManyByIds(ids) {
@@ -56,13 +62,23 @@ export class WallpaperModel {
   }
 
   create(data) {
-    const { filename, originalName, filePath, fileSize, mimeType, groupId, name } = data;
+    const {
+      filename,
+      originalName,
+      filePath,
+      fileSize,
+      mimeType,
+      groupId,
+      name,
+    } = data;
     const sql = `
       INSERT INTO wallpapers (filename, original_name, file_path, file_size, mime_type, group_id, name)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-    
-    const result = this.db.prepare(sql).run(filename, originalName, filePath, fileSize, mimeType, groupId, name);
+
+    const result = this.db
+      .prepare(sql)
+      .run(filename, originalName, filePath, fileSize, mimeType, groupId, name);
     return this.findById(result.lastInsertRowid);
   }
 
@@ -82,7 +98,7 @@ export class WallpaperModel {
       group_id: 'group_id',
       name: 'name',
       isActive: 'is_active',
-      is_active: 'is_active'
+      is_active: 'is_active',
     };
 
     const fields = [];
@@ -113,7 +129,8 @@ export class WallpaperModel {
   }
 
   delete(id) {
-    const sql = 'UPDATE wallpapers SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?';
+    const sql =
+      'UPDATE wallpapers SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?';
     return this.db.prepare(sql).run(id);
   }
 
@@ -133,20 +150,28 @@ export class WallpaperModel {
 
   setActive(id) {
     // 先取消所有活跃状态
-    this.db.prepare('UPDATE wallpapers SET is_active = 0 WHERE deleted_at IS NULL').run();
+    this.db
+      .prepare('UPDATE wallpapers SET is_active = 0 WHERE deleted_at IS NULL')
+      .run();
     // 设置指定壁纸为活跃
-    return this.db.prepare('UPDATE wallpapers SET is_active = 1 WHERE id = ?').run(id);
+    return this.db
+      .prepare('UPDATE wallpapers SET is_active = 1 WHERE id = ?')
+      .run(id);
   }
 
   getActive() {
-    return this.db.prepare('SELECT * FROM wallpapers WHERE is_active = 1 AND deleted_at IS NULL').get();
+    return this.db
+      .prepare(
+        'SELECT * FROM wallpapers WHERE is_active = 1 AND deleted_at IS NULL'
+      )
+      .get();
   }
 
   getRandomByGroup(groupId) {
     const sql = `
-      SELECT * FROM wallpapers 
-      WHERE group_id = ? AND deleted_at IS NULL 
-      ORDER BY RANDOM() 
+      SELECT * FROM wallpapers
+      WHERE group_id = ? AND deleted_at IS NULL
+      ORDER BY RANDOM()
       LIMIT 1
     `;
     return this.db.prepare(sql).get(groupId);

@@ -15,12 +15,12 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname) || '';
     cb(null, `${uuidv4()}${ext}`);
-  }
+  },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 200 * 1024 * 1024 }
+  limits: { fileSize: 200 * 1024 * 1024 },
 });
 
 export function createFileRoutes(db) {
@@ -32,9 +32,12 @@ export function createFileRoutes(db) {
     try {
       const baseUrl = (req.get('x-api-base') || '').trim();
       const files = req.files || [];
-      if (!files.length) return res.status(400).json({ code: 400, success: false, message: '请选择文件' });
+      if (!files.length)
+        return res
+          .status(400)
+          .json({ code: 400, success: false, message: '请选择文件' });
 
-      const results = files.map((f) => {
+      const results = files.map(f => {
         const webPath = path.posix.join('uploads', 'files', f.filename);
         return service.create({
           originalName: f.originalname,
@@ -43,12 +46,15 @@ export function createFileRoutes(db) {
           mimeType: f.mimetype,
           fileSize: f.size,
           uploaderId: null,
-          baseUrl
+          baseUrl,
         });
       });
 
-      const data = Array.isArray(results) && results.length === 1 ? results[0] : results;
-      res.status(201).json({ code: 201, success: true, data, message: '上传成功' });
+      const data =
+        Array.isArray(results) && results.length === 1 ? results[0] : results;
+      res
+        .status(201)
+        .json({ code: 201, success: true, data, message: '上传成功' });
     } catch (error) {
       next(error);
     }
@@ -58,9 +64,29 @@ export function createFileRoutes(db) {
   router.get('/', async (req, res, next) => {
     try {
       const { page = 1, limit = 20, type = '', search = '' } = req.query;
-      const result = service.list({ page: Number(page), limit: Number(limit), type: type || null, search: search || null });
-      res.json({ code: 200, success: true, data: { files: result.items, pagination: { page: Number(page), limit: Number(limit), total: result.total, totalPages: Math.ceil(result.total / Number(limit || 1)) } }, message: '获取成功' });
-    } catch (error) { next(error); }
+      const result = service.list({
+        page: Number(page),
+        limit: Number(limit),
+        type: type || null,
+        search: search || null,
+      });
+      res.json({
+        code: 200,
+        success: true,
+        data: {
+          files: result.items,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total: result.total,
+            totalPages: Math.ceil(result.total / Number(limit || 1)),
+          },
+        },
+        message: '获取成功',
+      });
+    } catch (error) {
+      next(error);
+    }
   });
 
   // 详情
@@ -68,7 +94,9 @@ export function createFileRoutes(db) {
     try {
       const row = service.get(req.params.id);
       res.json({ code: 200, success: true, data: row, message: '获取成功' });
-    } catch (error) { next(error); }
+    } catch (error) {
+      next(error);
+    }
   });
 
   // 下载
@@ -81,9 +109,14 @@ export function createFileRoutes(db) {
         diskPath = path.join(__dirname, '../../', row.file_path);
       }
       res.setHeader('Content-Type', row.mime_type);
-      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(row.original_name)}`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename*=UTF-8''${encodeURIComponent(row.original_name)}`
+      );
       res.download(diskPath);
-    } catch (error) { next(error); }
+    } catch (error) {
+      next(error);
+    }
   });
 
   // 删除
@@ -91,10 +124,10 @@ export function createFileRoutes(db) {
     try {
       await service.remove(req.params.id);
       res.json({ code: 200, success: true, message: '文件删除成功' });
-    } catch (error) { next(error); }
+    } catch (error) {
+      next(error);
+    }
   });
 
   return router;
 }
-
-

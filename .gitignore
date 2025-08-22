@@ -6,6 +6,8 @@ node_modules/
 .env
 .env.local
 .env.production
+.env.development
+.env.test
 
 # Build outputs
 dist/
@@ -17,6 +19,40 @@ build/
 logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
 
 # Database
 *.db
@@ -26,6 +62,11 @@ npm-debug.log*
 
 # OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
 # IDE
@@ -34,9 +75,15 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+*~
 
 # Docker
 .dockerignore
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
 
 # Uploads
 server/uploads/**/*.png
@@ -55,3 +102,6 @@ server/uploads/**/*.avi
 server/uploads/**/*.mkv
 server/uploads/**/*.flv
 server/uploads/**/*.wmv
+
+# Keep .gitkeep files
+!.gitkeep

@@ -10,9 +10,27 @@ function detectTypeCategory(mimeType, originalName = '') {
   const mt = String(mimeType || '').toLowerCase();
   if (mt.startsWith('image/')) return 'image';
   if (mt.startsWith('video/')) return 'video';
-  if (mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mt === 'application/msword' || /\.(docx?|dotx?)$/i.test(originalName)) return 'word';
-  if (mt === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || mt === 'application/vnd.ms-excel' || /\.(xlsx?|xlsm|xlsb)$/i.test(originalName)) return 'excel';
-  if (mt === 'application/zip' || mt === 'application/x-7z-compressed' || mt === 'application/x-rar-compressed' || /\.(zip|7z|rar)$/i.test(originalName)) return 'archive';
+  if (
+    mt ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mt === 'application/msword' ||
+    /\.(docx?|dotx?)$/i.test(originalName)
+  )
+    return 'word';
+  if (
+    mt ===
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    mt === 'application/vnd.ms-excel' ||
+    /\.(xlsx?|xlsm|xlsb)$/i.test(originalName)
+  )
+    return 'excel';
+  if (
+    mt === 'application/zip' ||
+    mt === 'application/x-7z-compressed' ||
+    mt === 'application/x-rar-compressed' ||
+    /\.(zip|7z|rar)$/i.test(originalName)
+  )
+    return 'archive';
   return 'other';
 }
 
@@ -35,10 +53,21 @@ export class FileService {
     return row;
   }
 
-  create({ originalName, storedName, filePath, mimeType, fileSize, uploaderId, baseUrl = '' }) {
+  create({
+    originalName,
+    storedName,
+    filePath,
+    mimeType,
+    fileSize,
+    uploaderId,
+    baseUrl = '',
+  }) {
     const typeCategory = detectTypeCategory(mimeType, originalName);
     const normalizedPath = filePath.replace(/\\/g, '/');
-    const fileUrl = `${baseUrl ? `${baseUrl}/` : ''}${normalizedPath}`.replace(/\/+/g, '/');
+    const fileUrl = `${baseUrl ? `${baseUrl}/` : ''}${normalizedPath}`.replace(
+      /\/+/g,
+      '/'
+    );
 
     return this.model.create({
       originalName,
@@ -48,7 +77,7 @@ export class FileService {
       fileSize,
       typeCategory,
       fileUrl,
-      uploaderId
+      uploaderId,
     });
   }
 
@@ -70,5 +99,3 @@ export class FileService {
     return true;
   }
 }
-
-

@@ -14,7 +14,7 @@ export default function useSnakeGame() {
   const snake = ref([
     { x: 10, y: 10 },
     { x: 9, y: 10 },
-    { x: 8, y: 10 }
+    { x: 8, y: 10 },
   ]);
   const dir = ref({ x: 1, y: 0 });
   const food = ref({ x: 15, y: 15 });
@@ -33,7 +33,7 @@ export default function useSnakeGame() {
       easy: 150,
       medium: 120,
       hard: 90,
-      extreme: 60
+      extreme: 60,
     };
     return Math.max(speeds[difficulty.value] - (level.value - 1) * 5, 30);
   });
@@ -50,12 +50,14 @@ export default function useSnakeGame() {
   function randomPosition() {
     return {
       x: Math.floor(Math.random() * gridSize.value),
-      y: Math.floor(Math.random() * gridSize.value)
+      y: Math.floor(Math.random() * gridSize.value),
     };
   }
 
   function isPositionOccupied(pos) {
-    return snake.value.some(segment => segment.x === pos.x && segment.y === pos.y);
+    return snake.value.some(
+      segment => segment.x === pos.x && segment.y === pos.y
+    );
   }
 
   function randomFood() {
@@ -67,12 +69,15 @@ export default function useSnakeGame() {
   }
 
   function createSpecialFood() {
-    if (Math.random() < 0.1 && !specialFood.value) { // 10% 概率生成特殊食物
+    if (Math.random() < 0.1 && !specialFood.value) {
+      // 10% 概率生成特殊食物
       let newSpecialFood;
       do {
         newSpecialFood = randomPosition();
-      } while (isPositionOccupied(newSpecialFood) ||
-               (newSpecialFood.x === food.value.x && newSpecialFood.y === food.value.y));
+      } while (
+        isPositionOccupied(newSpecialFood) ||
+        (newSpecialFood.x === food.value.x && newSpecialFood.y === food.value.y)
+      );
 
       specialFood.value = newSpecialFood;
 
@@ -92,7 +97,7 @@ export default function useSnakeGame() {
         vx: (Math.random() - 0.5) * 4,
         vy: (Math.random() - 0.5) * 4,
         life: 1,
-        color: color
+        color: color,
       });
     }
   }
@@ -107,7 +112,9 @@ export default function useSnakeGame() {
   }
 
   function checkCollision(head) {
-    return snake.value.some(segment => segment.x === head.x && segment.y === head.y);
+    return snake.value.some(
+      segment => segment.x === head.x && segment.y === head.y
+    );
   }
 
   function step() {
@@ -115,7 +122,7 @@ export default function useSnakeGame() {
 
     const head = {
       x: snake.value[0].x + dir.value.x,
-      y: snake.value[0].y + dir.value.y
+      y: snake.value[0].y + dir.value.y,
     };
 
     // 边界处理 - 穿墙
@@ -140,7 +147,11 @@ export default function useSnakeGame() {
       addParticles(food.value.x, food.value.y, '#ff6b6b', 8);
       randomFood();
       createSpecialFood();
-    } else if (specialFood.value && head.x === specialFood.value.x && head.y === specialFood.value.y) {
+    } else if (
+      specialFood.value &&
+      head.x === specialFood.value.x &&
+      head.y === specialFood.value.y
+    ) {
       ateSpecialFood = true;
       score.value += 50;
       addParticles(specialFood.value.x, specialFood.value.y, '#ffd700', 12);
@@ -202,7 +213,7 @@ export default function useSnakeGame() {
     snake.value = [
       { x: 10, y: 10 },
       { x: 9, y: 10 },
-      { x: 8, y: 10 }
+      { x: 8, y: 10 },
     ];
     dir.value = { x: 1, y: 0 };
 
@@ -256,8 +267,6 @@ export default function useSnakeGame() {
     pauseGame,
     restartGame,
     setDirection,
-    handleCanvasClick
+    handleCanvasClick,
   };
 }
-
-

@@ -1,11 +1,12 @@
 export default function errorHandler(err, req, res, next) {
+  // eslint-disable-line no-unused-vars
   // 日志记录
   console.error(`[${new Date().toISOString()}] ${err.stack}`);
-  
+
   // 分类错误处理
   let status = err.status || 500;
   let message = err.message || 'Internal Server Error';
-  
+
   // 数据库错误
   if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
     status = 400;
@@ -14,7 +15,7 @@ export default function errorHandler(err, req, res, next) {
     status = 400;
     message = '关联数据不存在';
   }
-  
+
   // Multer错误
   if (err.code === 'LIMIT_FILE_SIZE') {
     status = 400;
@@ -27,7 +28,7 @@ export default function errorHandler(err, req, res, next) {
   const response = {
     code: status,
     message: status < 500 ? message : 'Internal Server Error',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   // 开发环境返回堆栈信息

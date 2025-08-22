@@ -53,11 +53,13 @@
           <tbody>
             <tr v-for="f in items" :key="f.id">
               <td class="name">{{ f.original_name }}</td>
-              <td>{{ (f.file_size/1024).toFixed(1) }} KB</td>
+              <td>{{ (f.file_size / 1024).toFixed(1) }} KB</td>
               <td>{{ f.type_category }}</td>
               <td class="actions">
                 <a :href="getDownloadUrl(f.id)">下载</a>
-                <button class="btn btn-sm btn-danger" @click="remove(f.id)">删除</button>
+                <button class="btn btn-sm btn-danger" @click="remove(f.id)">
+                  删除
+                </button>
               </td>
             </tr>
           </tbody>
@@ -65,9 +67,27 @@
       </div>
 
       <div class="pagination-controls">
-        <button class="btn" :disabled="page<=1" @click="setPage(page-1); fetchList();">上一页</button>
+        <button
+          class="btn"
+          :disabled="page <= 1"
+          @click="
+            setPage(page - 1);
+            fetchList();
+          "
+        >
+          上一页
+        </button>
         <span>第 {{ page }} 页 / 共 {{ totalPages }} 页</span>
-        <button class="btn" :disabled="page>=totalPages" @click="setPage(page+1); fetchList();">下一页</button>
+        <button
+          class="btn"
+          :disabled="page >= totalPages"
+          @click="
+            setPage(page + 1);
+            fetchList();
+          "
+        >
+          下一页
+        </button>
       </div>
 
       <FileUploadProgress :uploading="uploading" :progress="uploadProgress" />
@@ -76,41 +96,125 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
-import { useFiles } from '@/composables/useFiles.js';
-import FileUploadProgress from '@/components/file/FileUploadProgress.vue';
+  import { onMounted } from 'vue';
+  import { useFiles } from '@/composables/useFiles.js';
+  import FileUploadProgress from '@/components/file/FileUploadProgress.vue';
 
-const { items, page, totalPages, type, search, uploading, uploadProgress, fetchList, upload, remove, getDownloadUrl, setPage } = useFiles();
+  const {
+    items,
+    page,
+    totalPages,
+    type,
+    search,
+    uploading,
+    uploadProgress,
+    fetchList,
+    upload,
+    remove,
+    getDownloadUrl,
+    setPage,
+  } = useFiles();
 
-onMounted(fetchList);
+  onMounted(fetchList);
 
-function onSelect(e) {
-  const files = Array.from(e.target.files || []);
-  if (!files.length) return;
-  upload(files).catch(() => {});
-  e.target.value = '';
-}
+  function onSelect(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    upload(files).catch(() => {});
+    e.target.value = '';
+  }
 </script>
 
 <style scoped>
-.admin-layout { display: grid; grid-template-columns: 200px 260px 1fr; min-height: 100vh; }
-.global-sider { background: #0f172a; color: #e2e8f0; padding: 16px 12px; }
-.brand { font-weight: 700; font-size: 18px; margin-bottom: 20px; }
-.global-menu { display: flex; flex-direction: column; gap: 6px; }
-.menu-item { display: block; padding: 10px 12px; color: #cbd5e1; text-decoration: none; border-radius: 6px; }
-.menu-item.active { background: #1e293b; color: #fff; }
-.module-sider { background: #fff; border-right: 1px solid #e5e7eb; padding: 16px; }
-.module-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.module-title { font-weight: 600; }
-.group-list { display: flex; flex-direction: column; gap: 6px; }
-.content-area { padding: 20px; }
-.toolbar-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.search { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; }
-.app-list table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
-.app-list th, .app-list td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
-.name { word-break: break-all; }
-.actions { display: flex; gap: 10px; align-items: center; }
-.pagination-controls { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+  .admin-layout {
+    display: grid;
+    grid-template-columns: 200px 260px 1fr;
+    min-height: 100vh;
+  }
+  .global-sider {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 16px 12px;
+  }
+  .brand {
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
+  .global-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .menu-item {
+    display: block;
+    padding: 10px 12px;
+    color: #cbd5e1;
+    text-decoration: none;
+    border-radius: 6px;
+  }
+  .menu-item.active {
+    background: #1e293b;
+    color: #fff;
+  }
+  .module-sider {
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    padding: 16px;
+  }
+  .module-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .module-title {
+    font-weight: 600;
+  }
+  .group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .content-area {
+    padding: 20px;
+  }
+  .toolbar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .search {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+  }
+  .app-list table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .app-list th,
+  .app-list td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+  }
+  .name {
+    word-break: break-all;
+  }
+  .actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
+  }
 </style>
-
-

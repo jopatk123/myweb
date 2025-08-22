@@ -7,8 +7,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function initDatabase() {
-  const dbPath = process.env.DB_PATH || path.join(__dirname, '../../data/myweb.db');
-  
+  const dbPath =
+    process.env.DB_PATH || path.join(__dirname, '../../data/myweb.db');
+
   // 确保数据目录存在
   const dataDir = path.dirname(dbPath);
   try {
@@ -18,13 +19,13 @@ export async function initDatabase() {
   }
 
   const db = new Database(dbPath);
-  
+
   // 启用外键约束
   db.pragma('foreign_keys = ON');
-  
+
   // 设置WAL模式以提高并发性能
   db.pragma('journal_mode = WAL');
-  
+
   // 创建表
   initTables(db);
   // 迁移: 确保缺失列存在
@@ -35,9 +36,9 @@ export async function initDatabase() {
   ensureFileTables(db);
   // 数据种子：仅当 apps 表为空时插入一个示例应用（贪吃蛇）
   seedAppsIfEmpty(db);
-  
+
   console.log(`📊 Database initialized: ${dbPath}`);
-  
+
   return db;
 }
 
@@ -57,7 +58,7 @@ function initTables(db) {
     CREATE INDEX IF NOT EXISTS idx_wallpaper_groups_name ON wallpaper_groups(name);
     CREATE INDEX IF NOT EXISTS idx_wallpaper_groups_deleted_at ON wallpaper_groups(deleted_at);
   `;
-  
+
   // 创建壁纸表
   const wallpaperTableSql = `
     CREATE TABLE IF NOT EXISTS wallpapers (
@@ -79,14 +80,14 @@ function initTables(db) {
   // 执行表创建
   db.exec(groupTableSql);
   db.exec(wallpaperTableSql);
-  
+
   // 插入默认分组
   const insertDefaultGroup = db.prepare(`
-    INSERT OR IGNORE INTO wallpaper_groups (name, is_default) 
+    INSERT OR IGNORE INTO wallpaper_groups (name, is_default)
     VALUES (?, ?)
   `);
   insertDefaultGroup.run('默认', 1);
-  
+
   console.log('📊 Database tables initialized');
 }
 
@@ -112,7 +113,9 @@ function ensureWallpaperColumns(db) {
   // 如果旧库还存在 wallpapers.description 列，则迁移并删除该列（已在之前添加）
   if (existingColumnNames.has('description')) {
     try {
-      console.log('🛠️ Detected deprecated `description` column on wallpapers, starting migration to remove it');
+      console.log(
+        '🛠️ Detected deprecated `description` column on wallpapers, starting migration to remove it'
+      );
 
       // 创建新表（不包含 description）
       db.exec(`
@@ -143,13 +146,24 @@ function ensureWallpaperColumns(db) {
       db.exec('ALTER TABLE wallpapers_new RENAME TO wallpapers;');
 
       // 重新创建索引
-      db.exec('CREATE INDEX IF NOT EXISTS idx_wallpapers_group_id ON wallpapers(group_id);');
-      db.exec('CREATE INDEX IF NOT EXISTS idx_wallpapers_is_active ON wallpapers(is_active);');
-      db.exec('CREATE INDEX IF NOT EXISTS idx_wallpapers_deleted_at ON wallpapers(deleted_at);');
+      db.exec(
+        'CREATE INDEX IF NOT EXISTS idx_wallpapers_group_id ON wallpapers(group_id);'
+      );
+      db.exec(
+        'CREATE INDEX IF NOT EXISTS idx_wallpapers_is_active ON wallpapers(is_active);'
+      );
+      db.exec(
+        'CREATE INDEX IF NOT EXISTS idx_wallpapers_deleted_at ON wallpapers(deleted_at);'
+      );
 
-      console.log('✅ Migration complete: `description` column removed from wallpapers');
+      console.log(
+        '✅ Migration complete: `description` column removed from wallpapers'
+      );
     } catch (err) {
-      console.error('❌ Failed to migrate wallpapers table to remove description column:', err);
+      console.error(
+        '❌ Failed to migrate wallpapers table to remove description column:',
+        err
+      );
       throw err;
     }
   }
@@ -159,14 +173,26 @@ function ensureWallpaperColumns(db) {
   const groupColumnNames = new Set(groupColumns.map(col => col.name));
   // 如果缺少 is_current 列，直接添加
   if (!groupColumnNames.has('is_current')) {
-    db.prepare('ALTER TABLE wallpaper_groups ADD COLUMN is_current BOOLEAN DEFAULT 0').run();
-    console.log('🛠️ Added column to wallpaper_groups: is_current BOOLEAN DEFAULT 0');
+    db.prepare(
+      'ALTER TABLE wallpaper_groups ADD COLUMN is_current BOOLEAN DEFAULT 0'
+    ).run();
+    console.log(
+      '🛠️ Added column to wallpaper_groups: is_current BOOLEAN DEFAULT 0'
+    );
     // 若新增了该列，且当前没有任何分组标记为当前，则把默认分组设为当前
     try {
-      const cnt = db.prepare('SELECT COUNT(1) AS c FROM wallpaper_groups WHERE is_current = 1 AND deleted_at IS NULL').get().c;
+      const cnt = db
+        .prepare(
+          'SELECT COUNT(1) AS c FROM wallpaper_groups WHERE is_current = 1 AND deleted_at IS NULL'
+        )
+        .get().c;
       if (cnt === 0) {
-        db.prepare('UPDATE wallpaper_groups SET is_current = 1 WHERE is_default = 1 AND deleted_at IS NULL').run();
-        console.log('✅ Set default group as current after adding is_current column');
+        db.prepare(
+          'UPDATE wallpaper_groups SET is_current = 1 WHERE is_default = 1 AND deleted_at IS NULL'
+        ).run();
+        console.log(
+          '✅ Set default group as current after adding is_current column'
+        );
       }
     } catch (e) {
       console.warn('Could not set default group as current:', e);
@@ -174,7 +200,9 @@ function ensureWallpaperColumns(db) {
   }
   if (groupColumnNames.has('description')) {
     try {
-      console.log('🛠️ Detected deprecated `description` column on wallpaper_groups, starting migration to remove it');
+      console.log(
+        '🛠️ Detected deprecated `description` column on wallpaper_groups, starting migration to remove it'
+      );
       db.exec(`
         CREATE TABLE IF NOT EXISTS wallpaper_groups_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -195,12 +223,21 @@ function ensureWallpaperColumns(db) {
       db.exec('DROP TABLE wallpaper_groups;');
       db.exec('ALTER TABLE wallpaper_groups_new RENAME TO wallpaper_groups;');
 
-      db.exec('CREATE INDEX IF NOT EXISTS idx_wallpaper_groups_name ON wallpaper_groups(name);');
-      db.exec('CREATE INDEX IF NOT EXISTS idx_wallpaper_groups_deleted_at ON wallpaper_groups(deleted_at);');
+      db.exec(
+        'CREATE INDEX IF NOT EXISTS idx_wallpaper_groups_name ON wallpaper_groups(name);'
+      );
+      db.exec(
+        'CREATE INDEX IF NOT EXISTS idx_wallpaper_groups_deleted_at ON wallpaper_groups(deleted_at);'
+      );
 
-      console.log('✅ Migration complete: `description` column removed from wallpaper_groups');
+      console.log(
+        '✅ Migration complete: `description` column removed from wallpaper_groups'
+      );
     } catch (err) {
-      console.error('❌ Failed to migrate wallpaper_groups table to remove description column:', err);
+      console.error(
+        '❌ Failed to migrate wallpaper_groups table to remove description column:',
+        err
+      );
       throw err;
     }
   }
@@ -268,7 +305,11 @@ function ensureAppTablesAndColumns(db) {
   try {
     ensureColumn('apps', 'description', 'TEXT');
     ensureColumn('apps', 'icon_filename', 'TEXT');
-    ensureColumn('apps', 'group_id', 'INTEGER REFERENCES app_groups(id) ON DELETE SET NULL');
+    ensureColumn(
+      'apps',
+      'group_id',
+      'INTEGER REFERENCES app_groups(id) ON DELETE SET NULL'
+    );
     ensureColumn('apps', 'is_visible', 'INTEGER DEFAULT 1');
     ensureColumn('apps', 'is_deleted', 'INTEGER DEFAULT 0');
   } catch (e) {
@@ -278,26 +319,55 @@ function ensureAppTablesAndColumns(db) {
 
 function seedAppsIfEmpty(db) {
   try {
-    const row = db.prepare('SELECT COUNT(1) AS c FROM apps WHERE is_deleted = 0').get();
+    const row = db
+      .prepare('SELECT COUNT(1) AS c FROM apps WHERE is_deleted = 0')
+      .get();
     if (row && row.c === 0) {
       // 确保默认分组存在
-      const g = db.prepare("SELECT id FROM app_groups WHERE slug = 'default' AND deleted_at IS NULL").get();
+      const g = db
+        .prepare(
+          "SELECT id FROM app_groups WHERE slug = 'default' AND deleted_at IS NULL"
+        )
+        .get();
       const gid = g ? g.id : null;
-      const insert = db.prepare(`INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible) VALUES (?,?,?,?,?,?)`);
-      insert.run('贪吃蛇', 'snake', '经典小游戏（本地实现示例）', 'snake-128.png', gid, 1);
+      const insert = db.prepare(
+        `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible) VALUES (?,?,?,?,?,?)`
+      );
+      insert.run(
+        '贪吃蛇',
+        'snake',
+        '经典小游戏（本地实现示例）',
+        'snake-128.png',
+        gid,
+        1
+      );
       console.log('🌱 Seeded example app: snake');
 
       // 也种子计算器应用，避免额外脚本依赖（如果尚未存在）
-      const hasCalculator = db.prepare("SELECT id FROM apps WHERE slug = ? AND is_deleted = 0").get('calculator');
+      const hasCalculator = db
+        .prepare('SELECT id FROM apps WHERE slug = ? AND is_deleted = 0')
+        .get('calculator');
       if (!hasCalculator) {
         try {
-          insert.run('计算器', 'calculator', '科学计算器，支持基本运算和内存功能', 'calculator-128.png', gid, 1);
+          insert.run(
+            '计算器',
+            'calculator',
+            '科学计算器，支持基本运算和内存功能',
+            'calculator-128.png',
+            gid,
+            1
+          );
           console.log('🌱 Seeded example app: calculator');
         } catch (e) {
-          console.warn('seedAppsIfEmpty: failed to seed calculator app:', e?.message || e);
+          console.warn(
+            'seedAppsIfEmpty: failed to seed calculator app:',
+            e?.message || e
+          );
         }
       } else {
-        console.log('🟢 Calculator app already exists, skipping seed for calculator');
+        console.log(
+          '🟢 Calculator app already exists, skipping seed for calculator'
+        );
       }
     }
   } catch (e) {

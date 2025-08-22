@@ -1,11 +1,13 @@
 import axios from 'axios';
 
 // 优先使用环境变量提供的绝对地址；否则使用相对路径通过 Vite 代理，避免跨域
-const apiBase = import.meta.env.VITE_API_BASE ? `${import.meta.env.VITE_API_BASE}/api` : '/api';
+const apiBase = import.meta.env.VITE_API_BASE
+  ? `${import.meta.env.VITE_API_BASE}/api`
+  : '/api';
 
 const api = axios.create({
   baseURL: apiBase,
-  timeout: 30000
+  timeout: 30000,
 });
 
 // 响应拦截器
@@ -45,14 +47,16 @@ export const wallpaperApi = {
 
     return api.post('/wallpapers', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'multipart/form-data',
       },
       onUploadProgress: progressEvent => {
         if (onUploadProgress) {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
           onUploadProgress(percentCompleted);
         }
-      }
+      },
     });
   },
 
@@ -114,5 +118,5 @@ export const wallpaperApi = {
 
   deleteGroup(id) {
     return api.delete(`/wallpapers/groups/${id}`);
-  }
+  },
 };

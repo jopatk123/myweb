@@ -8,30 +8,28 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: Home
+    component: Home,
   },
   {
     path: '/wallpapers',
     name: 'WallpaperManagement',
-    component: WallpaperManagement
-  }
-  ,
+    component: WallpaperManagement,
+  },
   {
     path: '/apps',
     name: 'AppManagement',
-    component: AppManagement
-  }
-  ,
+    component: AppManagement,
+  },
   {
     path: '/files',
     name: 'FileManagement',
-    component: FileManagement
-  }
+    component: FileManagement,
+  },
 ];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 });
 
 export default router;

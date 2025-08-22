@@ -17,25 +17,31 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // 安全中间件
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // 速率限制（默认放宽以避免本地调试时频繁触发 429）
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  // 使用环境变量 RATE_LIMIT 覆盖；默认 1000 次/15 分钟
-  max: Number(process.env.RATE_LIMIT || 1000),
-  // 返回更标准的速率限制头部，并禁用旧的遗留头部
-  standardHeaders: true,
-  legacyHeaders: false
-}));
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15分钟
+    // 使用环境变量 RATE_LIMIT 覆盖；默认 1000 次/15 分钟
+    max: Number(process.env.RATE_LIMIT || 1000),
+    // 返回更标准的速率限制头部，并禁用旧的遗留头部
+    standardHeaders: true,
+    legacyHeaders: false,
+  })
+);
 
 // CORS配置
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    credentials: true,
+  })
+);
 
 // 请求体解析
 app.use(express.json({ limit: '10kb' }));
@@ -61,11 +67,11 @@ app.get('/health', (req, res) => {
 });
 
 // 404处理
-app.use((req, res, next) => {
-  res.status(404).json({ 
-    code: 404, 
+app.use((req, res) => {
+  res.status(404).json({
+    code: 404,
     message: 'Not Found',
-    path: req.path
+    path: req.path,
   });
 });
 

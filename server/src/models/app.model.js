@@ -13,19 +13,35 @@ export class AppModel {
   findAll({ groupId = null, visible = null, page = null, limit = null } = {}) {
     const whereClauses = ['is_deleted = 0'];
     const params = [];
-    if (groupId) { whereClauses.push('group_id = ?'); params.push(groupId); }
-    if (visible !== null && visible !== undefined) { whereClauses.push('is_visible = ?'); params.push(visible ? 1 : 0); }
-    const where = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    if (groupId) {
+      whereClauses.push('group_id = ?');
+      params.push(groupId);
+    }
+    if (visible !== null && visible !== undefined) {
+      whereClauses.push('is_visible = ?');
+      params.push(visible ? 1 : 0);
+    }
+    const where = whereClauses.length
+      ? `WHERE ${whereClauses.join(' AND ')}`
+      : '';
 
     if (page && limit) {
-      const totalRow = this.db.prepare(`SELECT COUNT(1) AS total FROM apps ${where}`).get(...params);
+      const totalRow = this.db
+        .prepare(`SELECT COUNT(1) AS total FROM apps ${where}`)
+        .get(...params);
       const total = totalRow ? totalRow.total : 0;
       const offset = (Number(page) - 1) * Number(limit);
-      const items = this.db.prepare(`SELECT * FROM apps ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(...params, Number(limit), offset);
+      const items = this.db
+        .prepare(
+          `SELECT * FROM apps ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+        )
+        .all(...params, Number(limit), offset);
       return { items, total };
     }
 
-    return this.db.prepare(`SELECT * FROM apps ${where} ORDER BY created_at DESC`).all(...params);
+    return this.db
+      .prepare(`SELECT * FROM apps ${where} ORDER BY created_at DESC`)
+      .all(...params);
   }
 
   findById(id) {
@@ -33,9 +49,25 @@ export class AppModel {
     return this.db.prepare(sql).get(id);
   }
 
-  create({ name, slug, description = null, icon_filename = null, group_id = null, is_visible = 1 }) {
+  create({
+    name,
+    slug,
+    description = null,
+    icon_filename = null,
+    group_id = null,
+    is_visible = 1,
+  }) {
     const sql = `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible) VALUES (?, ?, ?, ?, ?, ?)`;
-    const info = this.db.prepare(sql).run(name, slug, description, icon_filename, group_id, is_visible ? 1 : 0);
+    const info = this.db
+      .prepare(sql)
+      .run(
+        name,
+        slug,
+        description,
+        icon_filename,
+        group_id,
+        is_visible ? 1 : 0
+      );
     return this.findById(info.lastInsertRowid);
   }
 
@@ -50,7 +82,7 @@ export class AppModel {
       groupId: 'group_id',
       group_id: 'group_id',
       isVisible: 'is_visible',
-      is_visible: 'is_visible'
+      is_visible: 'is_visible',
     };
 
     const fields = [];
@@ -93,5 +125,3 @@ export class AppModel {
     return true;
   }
 }
-
-

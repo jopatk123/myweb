@@ -7,7 +7,7 @@ services:
       dockerfile: docker/Dockerfile.server
     container_name: myweb-backend
     ports:
-      - "3002:3002"
+      - '3002:3002'
     environment:
       - NODE_ENV=production
       - PORT=3002
@@ -19,7 +19,7 @@ services:
       - ../server/logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3002/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -37,7 +37,7 @@ services:
     image: nginx:alpine
     container_name: myweb-nginx
     ports:
-      - "50001:80"
+      - '50001:80'
     volumes:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template
       - ../server/uploads:/usr/share/nginx/html/uploads:ro

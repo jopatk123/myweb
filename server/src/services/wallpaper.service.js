@@ -25,9 +25,9 @@ export class WallpaperService {
   getWallpaperById(id) {
     const wallpaper = this.wallpaperModel.findById(id);
     if (!wallpaper) {
-  const err = new Error('壁纸不存在');
-  err.status = 404;
-  throw err;
+      const err = new Error('壁纸不存在');
+      err.status = 404;
+      throw err;
     }
     return wallpaper;
   }
@@ -35,10 +35,12 @@ export class WallpaperService {
   async uploadWallpaper(fileData, groupId = null) {
     // 兼容 camelCase 与 snake_case 的字段名
     const filename = fileData.filename || fileData.file_name;
-    const originalName = fileData.originalName || fileData.original_name || fileData.originalname;
+    const originalName =
+      fileData.originalName || fileData.original_name || fileData.originalname;
     const filePath = fileData.filePath || fileData.file_path;
     const fileSize = fileData.fileSize || fileData.file_size || fileData.size;
-    const mimeType = fileData.mimeType || fileData.mime_type || fileData.mimetype;
+    const mimeType =
+      fileData.mimeType || fileData.mime_type || fileData.mimetype;
     const name = fileData.name || fileData.title || originalName;
 
     // 验证文件类型
@@ -59,12 +61,12 @@ export class WallpaperService {
       fileSize,
       mimeType,
       groupId,
-      name
+      name,
     });
   }
 
   updateWallpaper(id, data) {
-    const wallpaper = this.getWallpaperById(id);
+    this.getWallpaperById(id); // 验证壁纸存在
     return this.wallpaperModel.update(id, data);
   }
 
@@ -159,9 +161,9 @@ export class WallpaperService {
   getGroupById(id) {
     const group = this.groupModel.findById(id);
     if (!group) {
-  const err = new Error('分组不存在');
-  err.status = 404;
-  throw err;
+      const err = new Error('分组不存在');
+      err.status = 404;
+      throw err;
     }
     return group;
   }
@@ -176,8 +178,8 @@ export class WallpaperService {
   }
 
   deleteGroup(id) {
-    const group = this.getGroupById(id);
-    
+    this.getGroupById(id); // 验证分组存在
+
     // 检查分组下是否有壁纸
     const wallpapers = this.wallpaperModel.findAll(id);
     if (wallpapers.length > 0) {

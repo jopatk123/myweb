@@ -81,13 +81,13 @@ myweb/
 - **开发环境**:
   - 前端: http://localhost:3000
   - 后端API: http://localhost:3002
-  
 - **生产环境**:
   - 应用: http://localhost:50001
 
 ## 📋 API接口
 
 ### 壁纸管理
+
 - `GET /api/wallpapers` - 获取壁纸列表
 - `POST /api/wallpapers` - 上传壁纸
 - `PUT /api/wallpapers/:id/active` - 设置活跃壁纸
@@ -95,6 +95,7 @@ myweb/
 - `GET /api/wallpapers/random` - 随机获取壁纸
 
 ### 分组管理
+
 - `GET /api/wallpapers/groups/all` - 获取分组列表
 - `POST /api/wallpapers/groups` - 创建分组
 - `PUT /api/wallpapers/groups/:id` - 更新分组

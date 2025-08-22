@@ -13,7 +13,7 @@ export async function createUploadDirs() {
     path.join(__dirname, '../../uploads/apps/icons'),
     path.join(__dirname, '../../uploads/files'),
     path.join(__dirname, '../../data'),
-    path.join(__dirname, '../../logs')
+    path.join(__dirname, '../../logs'),
   ];
 
   for (const dir of uploadDirs) {

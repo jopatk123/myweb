@@ -29,7 +29,7 @@ export class AppGroupModel {
       name: 'name',
       slug: 'slug',
       isDefault: 'is_default',
-      is_default: 'is_default'
+      is_default: 'is_default',
     };
 
     const fields = [];
@@ -37,11 +37,17 @@ export class AppGroupModel {
 
     for (const [key, value] of Object.entries(payload)) {
       if (value === undefined) continue;
-      const col = fieldMap[key] || (fieldMap[key] === undefined ? null : fieldMap[key]);
+      const col =
+        fieldMap[key] || (fieldMap[key] === undefined ? null : fieldMap[key]);
       // 如果键已是 camelCase（如 isDefault），尝试映射
-      const mapped = col || fieldMap[Object.keys(fieldMap).find(k => k.toLowerCase() === key.toLowerCase())];
+      const mapped =
+        col ||
+        fieldMap[
+          Object.keys(fieldMap).find(k => k.toLowerCase() === key.toLowerCase())
+        ];
       if (!mapped) continue;
-      if (mapped === 'is_default') params.push(value ? 1 : 0); else params.push(value);
+      if (mapped === 'is_default') params.push(value ? 1 : 0);
+      else params.push(value);
       fields.push(`${mapped} = ?`);
     }
 
@@ -58,5 +64,3 @@ export class AppGroupModel {
     return true;
   }
 }
-
-

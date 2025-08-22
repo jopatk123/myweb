@@ -18,13 +18,13 @@ const storage = multer.diskStorage({
     const ext = path.extname(file.originalname);
     const filename = `${uuidv4()}${ext}`;
     cb(null, filename);
-  }
+  },
 });
 
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB
+    fileSize: 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
@@ -32,7 +32,7 @@ const upload = multer({
     } else {
       cb(new Error('只支持图片文件'), false);
     }
-  }
+  },
 });
 
 export class WallpaperController {
@@ -49,7 +49,11 @@ export class WallpaperController {
       if (page && limit) {
         const pageNum = Number(page) || 1;
         const lim = Number(limit) || 20;
-        const result = await this.service.getAllWallpapers(group_id, pageNum, lim);
+        const result = await this.service.getAllWallpapers(
+          group_id,
+          pageNum,
+          lim
+        );
         res.json({ code: 200, data: result, message: '获取成功' });
       } else {
         const wallpapers = await this.service.getAllWallpapers(group_id);
@@ -68,7 +72,7 @@ export class WallpaperController {
       res.json({
         code: 200,
         data: wallpaper,
-        message: '获取成功'
+        message: '获取成功',
       });
     } catch (error) {
       next(error);
@@ -81,7 +85,7 @@ export class WallpaperController {
       if (!req.file) {
         return res.status(400).json({
           code: 400,
-          message: '请选择文件'
+          message: '请选择文件',
         });
       }
 
@@ -90,7 +94,11 @@ export class WallpaperController {
       const { group_id, name } = normalizedBody;
       // 存储到数据库的 file_path 应为 web 可访问的相对路径（例如: uploads/wallpapers/<filename>）
       // 这样前端可以直接用 `${API_BASE}/${file_path}` 访问；同时删除时再解析到磁盘路径
-      const webPath = path.posix.join('uploads', 'wallpapers', req.file.filename);
+      const webPath = path.posix.join(
+        'uploads',
+        'wallpapers',
+        req.file.filename
+      );
 
       const fileData = {
         filename: req.file.filename,
@@ -98,14 +106,14 @@ export class WallpaperController {
         file_path: webPath,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
-        name: name || req.file.originalname // 如果没有提供名称，则使用原始文件名
+        name: name || req.file.originalname, // 如果没有提供名称，则使用原始文件名
       };
 
       const wallpaper = await this.service.uploadWallpaper(fileData, group_id);
       res.status(201).json({
         code: 201,
         data: wallpaper,
-        message: '上传成功'
+        message: '上传成功',
       });
     } catch (error) {
       next(error);
@@ -119,13 +127,14 @@ export class WallpaperController {
       // 移除不再支持的字段
       // 请求已被全局中间件归一化为 snake_case，但确保 multipart 路径也归一
       const data = { ...req.body };
-      if (!data.original_name && req.body && req.body.originalName) data.original_name = req.body.originalName;
+      if (!data.original_name && req.body && req.body.originalName)
+        data.original_name = req.body.originalName;
       if (data.description !== undefined) delete data.description;
       const wallpaper = await this.service.updateWallpaper(id, data);
       res.json({
         code: 200,
         data: wallpaper,
-        message: '更新成功'
+        message: '更新成功',
       });
     } catch (error) {
       next(error);
@@ -139,7 +148,7 @@ export class WallpaperController {
       await this.service.deleteWallpaper(id);
       res.json({
         code: 200,
-        message: '删除成功'
+        message: '删除成功',
       });
     } catch (error) {
       next(error);
@@ -154,14 +163,16 @@ export class WallpaperController {
         return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
       }
       // 规范化 ids：转换为整数并过滤非法值
-      const sanitizedIds = ids.map(i => Number(i)).filter(n => Number.isInteger(n) && n > 0);
+      const sanitizedIds = ids
+        .map(i => Number(i))
+        .filter(n => Number.isInteger(n) && n > 0);
       if (sanitizedIds.length === 0) {
         return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
       }
       await this.service.deleteMultipleWallpapers(sanitizedIds);
       res.json({
         code: 200,
-        message: '批量删除成功'
+        message: '批量删除成功',
       });
     } catch (error) {
       next(error);
@@ -179,7 +190,9 @@ export class WallpaperController {
         return res.status(400).json({ code: 400, message: '请提供目标分组ID' });
       }
       // 规范化 ids
-      const sanitizedIds = ids.map(i => Number(i)).filter(n => Number.isInteger(n) && n > 0);
+      const sanitizedIds = ids
+        .map(i => Number(i))
+        .filter(n => Number.isInteger(n) && n > 0);
       if (sanitizedIds.length === 0) {
         return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
       }
@@ -190,7 +203,7 @@ export class WallpaperController {
       await this.service.moveMultipleWallpapers(sanitizedIds, groupId);
       res.json({
         code: 200,
-        message: '批量移动成功'
+        message: '批量移动成功',
       });
     } catch (error) {
       next(error);
@@ -204,7 +217,7 @@ export class WallpaperController {
       await this.service.setActiveWallpaper(id);
       res.json({
         code: 200,
-        message: '设置成功'
+        message: '设置成功',
       });
     } catch (error) {
       next(error);
@@ -218,7 +231,7 @@ export class WallpaperController {
       res.json({
         code: 200,
         data: wallpaper,
-        message: '获取成功'
+        message: '获取成功',
       });
     } catch (error) {
       next(error);
@@ -233,7 +246,7 @@ export class WallpaperController {
       res.json({
         code: 200,
         data: wallpaper,
-        message: wallpaper ? '获取成功' : '该分组暂无壁纸'
+        message: wallpaper ? '获取成功' : '该分组暂无壁纸',
       });
     } catch (error) {
       next(error);
@@ -247,7 +260,7 @@ export class WallpaperController {
       res.json({
         code: 200,
         data: groups,
-        message: '获取成功'
+        message: '获取成功',
       });
     } catch (error) {
       next(error);
@@ -260,7 +273,7 @@ export class WallpaperController {
       res.status(201).json({
         code: 201,
         data: group,
-        message: '创建成功'
+        message: '创建成功',
       });
     } catch (error) {
       next(error);
@@ -274,7 +287,7 @@ export class WallpaperController {
       res.json({
         code: 200,
         data: group,
-        message: '更新成功'
+        message: '更新成功',
       });
     } catch (error) {
       next(error);
@@ -287,7 +300,7 @@ export class WallpaperController {
       await this.service.deleteGroup(id);
       res.json({
         code: 200,
-        message: '删除成功'
+        message: '删除成功',
       });
     } catch (error) {
       next(error);

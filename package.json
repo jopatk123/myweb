@@ -2,17 +2,42 @@
   "name": "myweb",
   "version": "1.0.0",
   "description": "MyWeb Project",
-  "workspaces": ["client", "server"],
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
-    "dev:fe": "cd client && npm run dev",
-    "dev:be": "cd server && npm run dev",
-    "test:fe": "cd client && npm run test:cov",
-    "test:be": "cd server && npm run test:cov",
-    "commit": "git-cz"
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "format": "prettier --write \"**/*.{js,vue,css,md,json,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{js,vue,css,md,json,yml,yaml}\"",
+    "lint": "eslint --fix \"**/*.{js,vue}\"",
+    "lint:check": "eslint \"**/*.{js,vue}\""
   },
   "devDependencies": {
+    "@vue/eslint-config-prettier": "^10.2.0",
     "commitizen": "^4.3.0",
-    "cz-conventional-changelog": "^3.3.0"
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "^9.33.0",
+    "eslint-plugin-vue": "^10.4.0",
+    "globals": "^16.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.5",
+    "prettier": "^3.6.2"
+  },
+  "lint-staged": {
+    "*.{js,vue,css,md,json,yml,yaml}": [
+      "prettier --write"
+    ],
+    "*.{js}": [
+      "eslint --fix"
+    ]
   },
   "config": {
     "commitizen": {

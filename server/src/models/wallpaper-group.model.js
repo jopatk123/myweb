@@ -7,17 +7,25 @@ export class WallpaperGroupModel {
   }
 
   findAll() {
-    return this.db.prepare('SELECT * FROM wallpaper_groups WHERE deleted_at IS NULL ORDER BY is_default DESC, created_at ASC').all();
+    return this.db
+      .prepare(
+        'SELECT * FROM wallpaper_groups WHERE deleted_at IS NULL ORDER BY is_default DESC, created_at ASC'
+      )
+      .all();
   }
 
   findById(id) {
-    return this.db.prepare('SELECT * FROM wallpaper_groups WHERE id = ? AND deleted_at IS NULL').get(id);
+    return this.db
+      .prepare(
+        'SELECT * FROM wallpaper_groups WHERE id = ? AND deleted_at IS NULL'
+      )
+      .get(id);
   }
 
   create(data) {
     const { name } = data;
     const sql = 'INSERT INTO wallpaper_groups (name) VALUES (?)';
-    
+
     const result = this.db.prepare(sql).run(name);
     return this.findById(result.lastInsertRowid);
   }
@@ -29,7 +37,7 @@ export class WallpaperGroupModel {
       isDefault: 'is_default',
       is_default: 'is_default',
       isCurrent: 'is_current',
-      is_current: 'is_current'
+      is_current: 'is_current',
     };
 
     const fields = [];
@@ -62,23 +70,40 @@ export class WallpaperGroupModel {
       throw new Error('不能删除默认分组');
     }
 
-    const sql = 'UPDATE wallpaper_groups SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?';
+    const sql =
+      'UPDATE wallpaper_groups SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?';
     return this.db.prepare(sql).run(id);
   }
 
   getDefault() {
-    return this.db.prepare('SELECT * FROM wallpaper_groups WHERE is_default = 1 AND deleted_at IS NULL').get();
+    return this.db
+      .prepare(
+        'SELECT * FROM wallpaper_groups WHERE is_default = 1 AND deleted_at IS NULL'
+      )
+      .get();
   }
 
   getCurrent() {
-    return this.db.prepare('SELECT * FROM wallpaper_groups WHERE is_current = 1 AND deleted_at IS NULL').get();
+    return this.db
+      .prepare(
+        'SELECT * FROM wallpaper_groups WHERE is_current = 1 AND deleted_at IS NULL'
+      )
+      .get();
   }
 
   setCurrent(id) {
-  // 先清空当前标记（只影响未删除的分组）
-  this.db.prepare('UPDATE wallpaper_groups SET is_current = 0 WHERE deleted_at IS NULL').run();
+    // 先清空当前标记（只影响未删除的分组）
+    this.db
+      .prepare(
+        'UPDATE wallpaper_groups SET is_current = 0 WHERE deleted_at IS NULL'
+      )
+      .run();
     // 设置指定分组为当前
-    this.db.prepare('UPDATE wallpaper_groups SET is_current = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL').run(id);
+    this.db
+      .prepare(
+        'UPDATE wallpaper_groups SET is_current = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL'
+      )
+      .run(id);
     return this.findById(id);
   }
 }
