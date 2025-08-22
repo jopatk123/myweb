@@ -32,7 +32,7 @@ export function createFileRoutes(db) {
     try {
       const baseUrl = (req.get('x-api-base') || '').trim();
       const files = req.files || [];
-      if (!files.length) return res.status(400).json({ success: false, message: '请选择文件' });
+      if (!files.length) return res.status(400).json({ code: 400, success: false, message: '请选择文件' });
 
       const results = files.map((f) => {
         const webPath = path.posix.join('uploads', 'files', f.filename);
@@ -48,7 +48,7 @@ export function createFileRoutes(db) {
       });
 
       const data = Array.isArray(results) && results.length === 1 ? results[0] : results;
-      res.status(201).json({ success: true, data });
+      res.status(201).json({ code: 201, success: true, data, message: '上传成功' });
     } catch (error) {
       next(error);
     }
@@ -59,7 +59,7 @@ export function createFileRoutes(db) {
     try {
       const { page = 1, limit = 20, type = '', search = '' } = req.query;
       const result = service.list({ page: Number(page), limit: Number(limit), type: type || null, search: search || null });
-      res.json({ success: true, data: { files: result.items, pagination: { page: Number(page), limit: Number(limit), total: result.total, totalPages: Math.ceil(result.total / Number(limit || 1)) } } });
+      res.json({ code: 200, success: true, data: { files: result.items, pagination: { page: Number(page), limit: Number(limit), total: result.total, totalPages: Math.ceil(result.total / Number(limit || 1)) } }, message: '获取成功' });
     } catch (error) { next(error); }
   });
 
@@ -67,7 +67,7 @@ export function createFileRoutes(db) {
   router.get('/:id', async (req, res, next) => {
     try {
       const row = service.get(req.params.id);
-      res.json({ success: true, data: row });
+      res.json({ code: 200, success: true, data: row, message: '获取成功' });
     } catch (error) { next(error); }
   });
 
@@ -90,7 +90,7 @@ export function createFileRoutes(db) {
   router.delete('/:id', async (req, res, next) => {
     try {
       await service.remove(req.params.id);
-      res.json({ success: true, message: '文件删除成功' });
+      res.json({ code: 200, success: true, message: '文件删除成功' });
     } catch (error) { next(error); }
   });
 
