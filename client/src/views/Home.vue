@@ -208,7 +208,7 @@
     display: flex;
     flex-direction: column;
     gap: 15px;
-    z-index: 3;
+    z-index: 15;
   }
 
   .control-btn {

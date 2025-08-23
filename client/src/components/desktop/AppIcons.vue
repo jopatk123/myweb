@@ -237,7 +237,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, 72px);
     gap: 16px;
-    z-index: 2;
+    z-index: 10;
   }
   .icon-item {
     width: 72px;
