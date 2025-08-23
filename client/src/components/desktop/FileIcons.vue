@@ -57,6 +57,9 @@
   const STORAGE_KEY = 'desktopFileIconPositions';
   let dragState = null;
 
+  // 网格配置：统一与应用图标一致，从左上角 20px 开始，单元 88x88
+  const GRID = { originX: 20, originY: 20, cellW: 88, cellH: 88, maxRows: 8 };
+
   const { getDownloadUrl, remove } = useFiles();
   const confirm = ref({ visible: false, file: null });
 
@@ -157,6 +160,7 @@
   }
 
   function onMouseUp() {
+    if (dragState?.dragging) finalizeDrag(dragState.id);
     cleanupDrag();
     savePositionsToStorage();
   }
@@ -171,11 +175,78 @@
     dragState = null;
   }
 
+  function positionToCell(pos) {
+    const col = Math.max(0, Math.round((pos.x - GRID.originX) / GRID.cellW));
+    const row = Math.max(0, Math.round((pos.y - GRID.originY) / GRID.cellH));
+    return { col, row };
+  }
+
+  function cellToPosition(cell) {
+    return {
+      x: GRID.originX + cell.col * GRID.cellW,
+      y: GRID.originY + cell.row * GRID.cellH,
+    };
+  }
+
+  function getOccupiedCellKeys(excludeId) {
+    const set = new Set();
+    for (const [k, v] of Object.entries(positions.value || {})) {
+      if (Number(k) === Number(excludeId)) continue;
+      if (!v) continue;
+      const c = positionToCell(v);
+      set.add(`${c.col}:${c.row}`);
+    }
+    return set;
+  }
+
+  function findNextFreeCell(desiredCell, occupied) {
+    let { col, row } = desiredCell;
+    for (let i = 0; i < 10000; i++) {
+      const key = `${col}:${row}`;
+      if (!occupied.has(key)) return { col, row };
+      row += 1;
+      if (row > GRID.maxRows * 5) {
+        row = 0;
+        col += 1;
+      }
+    }
+    return desiredCell;
+  }
+
+  function finalizeDrag(id) {
+    const p = positions.value?.[id];
+    if (!p) return;
+    const desired = positionToCell(p);
+    const occupied = getOccupiedCellKeys(id);
+    const cell = findNextFreeCell(desired, occupied);
+    positions.value = { ...positions.value, [id]: cellToPosition(cell) };
+  }
+
   function getIconStyle(file) {
     const p = positions.value[file.id];
     if (!p) return undefined;
     return { position: 'fixed', left: `${p.x}px`, top: `${p.y}px` };
   }
+
+  // 自动排列：支持从指定列开始，按列优先，每列最多 8 行
+  async function autoArrange(startCol = 0) {
+    const arranged = {};
+    let col = startCol;
+    let row = 0;
+    for (const f of props.files || []) {
+      arranged[f.id] = cellToPosition({ col, row });
+      row += 1;
+      if (row >= GRID.maxRows) {
+        row = 0;
+        col += 1;
+      }
+    }
+    positions.value = arranged;
+    savePositionsToStorage();
+    return col + (row > 0 ? 1 : 0);
+  }
+
+  defineExpose({ autoArrange });
 
   function savePositionsToStorage() {
     try {

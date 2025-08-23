@@ -49,7 +49,7 @@
   import AppLauncherModal from './AppLauncherModal.vue';
   import ContextMenu from '@/components/common/ContextMenu.vue';
 
-  const { apps, fetchApps, getAppIconUrl } = useApps();
+  const { apps, fetchApps, getAppIconUrl, setVisible } = useApps();
 
   const show = ref(false);
   const currentComponent = shallowRef(null);
@@ -59,6 +59,9 @@
   const positions = ref({}); // { [appId]: { x, y } }
   const STORAGE_KEY = 'desktopIconPositions';
   let dragState = null; // { id, startX, startY, originX, originY, longPressTimer }
+
+  // 网格配置（与样式保持一致：left/top 起点 20px，图标宽 72 + 间距 16）
+  const GRID = { originX: 20, originY: 20, cellW: 88, cellH: 88, maxRows: 8 };
 
   const visibleApps = computed(() =>
     (apps.value || []).filter(a => a.is_visible)
@@ -161,6 +164,8 @@
   }
 
   function onMouseUp() {
+    // 释放时吸附到网格并避免与同组图标重叠
+    if (dragState?.dragging) finalizeDrag(dragState.id);
     cleanupDrag();
   }
 
@@ -179,6 +184,55 @@
     savePositionsToStorage();
   }
 
+  function positionToCell(pos) {
+    const col = Math.max(0, Math.round((pos.x - GRID.originX) / GRID.cellW));
+    const row = Math.max(0, Math.round((pos.y - GRID.originY) / GRID.cellH));
+    return { col, row };
+  }
+
+  function cellToPosition(cell) {
+    return {
+      x: GRID.originX + cell.col * GRID.cellW,
+      y: GRID.originY + cell.row * GRID.cellH,
+    };
+  }
+
+  function getOccupiedCellKeys(excludeId) {
+    const set = new Set();
+    for (const [k, v] of Object.entries(positions.value || {})) {
+      if (Number(k) === Number(excludeId)) continue;
+      if (!v) continue;
+      const c = positionToCell(v);
+      set.add(`${c.col}:${c.row}`);
+    }
+    return set;
+  }
+
+  function findNextFreeCell(desiredCell, occupied) {
+    let { col, row } = desiredCell;
+    for (let i = 0; i < 10000; i++) {
+      const key = `${col}:${row}`;
+      if (!occupied.has(key)) return { col, row };
+      // 顺序向下寻找空位
+      row += 1;
+      // 防止无限向下，超过一定行数后换到下一列
+      if (row > GRID.maxRows * 5) {
+        row = 0;
+        col += 1;
+      }
+    }
+    return desiredCell;
+  }
+
+  function finalizeDrag(id) {
+    const p = positions.value?.[id];
+    if (!p) return;
+    const desired = positionToCell(p);
+    const occupied = getOccupiedCellKeys(id);
+    const cell = findNextFreeCell(desired, occupied);
+    positions.value = { ...positions.value, [id]: cellToPosition(cell) };
+  }
+
   function getIconStyle(app) {
     const p = positions.value[app.id];
     if (!p) return undefined;
@@ -188,6 +242,26 @@
       top: `${p.y}px`,
     };
   }
+
+  // 自动排列：从左上角开始，按列优先，每列最多 8 行
+  async function autoArrange(startCol = 0) {
+    const arranged = {};
+    let col = startCol;
+    let row = 0;
+    for (const app of visibleApps.value || []) {
+      arranged[app.id] = cellToPosition({ col, row });
+      row += 1;
+      if (row >= GRID.maxRows) {
+        row = 0;
+        col += 1;
+      }
+    }
+    positions.value = arranged;
+    savePositionsToStorage();
+    return col + (row > 0 ? 1 : 0);
+  }
+
+  defineExpose({ autoArrange });
 
   onMounted(async () => {
     await fetchApps({ visible: true }, true);

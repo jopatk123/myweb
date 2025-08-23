@@ -11,10 +11,15 @@
     <WallpaperBackground :wallpaper="current" />
 
     <!-- 桌面图标（内部应用） -->
-    <AppIcons />
+    <AppIcons ref="appIconsRef" />
 
     <!-- 桌面文件图标（可拖动） -->
-    <FileIcons :files="files" :icons="fileTypeIcons" @open="onOpenFile" />
+    <FileIcons
+      ref="fileIconsRef"
+      :files="files"
+      :icons="fileTypeIcons"
+      @open="onOpenFile"
+    />
 
     <!-- 文件上传进度条 -->
     <FileUploadProgress :uploading="uploading" :progress="uploadProgress" />
@@ -70,6 +75,8 @@
   const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
     useWallpaper();
   const current = ref(null);
+  const appIconsRef = ref(null);
+  const fileIconsRef = ref(null);
   // 文件上传 & 列表
   const {
     items: files,
@@ -164,6 +171,7 @@
       { key: 'switch', label: '切换壁纸' },
       { key: 'manage', label: '管理后台' },
       { key: 'refresh', label: '刷新' },
+      { key: 'autoArrange', label: '自动排列图标' },
     ];
     desktopMenu.value.visible = true;
   }
@@ -175,6 +183,16 @@
     }
     if (key === 'refresh') {
       location.reload();
+      return;
+    }
+    if (key === 'autoArrange') {
+      // 先排列应用图标，再承接列偏移排列文件图标
+      const nextCol = appIconsRef.value?.autoArrange
+        ? appIconsRef.value.autoArrange(0)
+        : 0;
+      Promise.resolve(nextCol)
+        .then(col => fileIconsRef.value?.autoArrange?.(col))
+        .catch(() => {});
       return;
     }
   }
