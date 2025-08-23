@@ -10,7 +10,7 @@
       v-for="app in visibleApps"
       :key="app.id"
       class="icon-item"
-      :class="{ selected: selectedId === app.id }"
+      :class="{ selected: selectedId === app.id || selectedIds.has(app.id) }"
       :data-id="app.id"
       @click="onClick(app, $event)"
       @dblclick="onDblClick(app)"

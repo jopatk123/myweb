@@ -6,6 +6,9 @@
     @dragleave="onDragLeave"
     @drop.prevent="onDrop"
     @contextmenu.prevent="onDesktopContextmenu"
+    @mousedown="onDesktopMouseDown"
+    @mousemove="onDesktopMouseMove"
+    @mouseup="onDesktopMouseUp"
   >
     <!-- 动态背景 -->
     <WallpaperBackground :wallpaper="current" />
@@ -57,6 +60,18 @@
       :items="desktopMenu.items"
       @select="onDesktopMenuSelect"
     />
+
+    <!-- 矩形选框 -->
+    <div
+      v-if="selectionRect.visible"
+      class="selection-rect"
+      :style="{
+        left: selectionRect.x + 'px',
+        top: selectionRect.y + 'px',
+        width: selectionRect.w + 'px',
+        height: selectionRect.h + 'px',
+      }"
+    ></div>
   </div>
 </template>
 
@@ -101,6 +116,18 @@
     archive: '/apps/icons/archive-128.svg',
     other: '/apps/icons/file-128.svg',
   }));
+
+  // 矩形选框状态
+  const selectionRect = ref({
+    visible: false,
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    startX: 0,
+    startY: 0,
+  });
+  let isSelecting = false;
 
   // 页面挂载时触发预加载（保持 2 张缓存）
   fetchCurrentGroup().then(() => {
@@ -204,6 +231,160 @@
       return;
     }
   }
+
+  // 桌面矩形选框逻辑
+  function onDesktopMouseDown(e) {
+    // 只在点击空白区域时开始选框（不是图标项）
+    if (e.target.closest('.icon-item')) return;
+
+    isSelecting = true;
+    selectionRect.value.startX = e.clientX;
+    selectionRect.value.startY = e.clientY;
+    selectionRect.value.x = e.clientX;
+    selectionRect.value.y = e.clientY;
+    selectionRect.value.w = 0;
+    selectionRect.value.h = 0;
+    selectionRect.value.visible = true;
+  }
+
+  function onDesktopMouseMove(e) {
+    if (!isSelecting || !selectionRect.value.visible) return;
+
+    const currentX = e.clientX;
+    const currentY = e.clientY;
+    const startX = selectionRect.value.startX;
+    const startY = selectionRect.value.startY;
+
+    // 计算矩形位置和大小
+    selectionRect.value.x = Math.min(startX, currentX);
+    selectionRect.value.y = Math.min(startY, currentY);
+    selectionRect.value.w = Math.abs(currentX - startX);
+    selectionRect.value.h = Math.abs(currentY - startY);
+  }
+
+  function onDesktopMouseUp(e) {
+    if (!isSelecting) return;
+
+    isSelecting = false;
+
+    if (selectionRect.value.visible) {
+      // 计算选中的图标
+      // eslint-disable-next-line no-console
+      console.log('[multi-select-debug] onDesktopMouseUp fired');
+      const selectedIds = getSelectedIconIds();
+
+      // 分发选中状态到子组件
+      // eslint-disable-next-line no-console
+      console.log('[multi-select-debug] dispatching selected ids', selectedIds);
+      if (appIconsRef.value?.setSelectedIds) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[multi-select-debug] calling appIconsRef.setSelectedIds',
+          selectedIds.apps
+        );
+        appIconsRef.value.setSelectedIds(selectedIds.apps);
+      }
+      if (fileIconsRef.value?.setSelectedIds) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[multi-select-debug] calling fileIconsRef.setSelectedIds',
+          selectedIds.files
+        );
+        fileIconsRef.value.setSelectedIds(selectedIds.files);
+      }
+    }
+
+    // 隐藏选框
+    selectionRect.value.visible = false;
+  }
+
+  // 计算与选框相交的图标
+  function getSelectedIconIds() {
+    const rect = selectionRect.value;
+    const selectedApps = [];
+    const selectedFiles = [];
+
+    // 检查所有图标项（使用组件 ref 判断所属容器更可靠）
+    const iconItems = Array.from(
+      document.querySelectorAll('.icon-item[data-id]')
+    );
+
+    // 优先使用组件 ref 的根元素判断所属容器（更可靠），再回退到样式判断
+    const appContainerEl = appIconsRef.value?.$el || null;
+    const fileContainerEl = fileIconsRef.value?.$el || null;
+
+    // Debug: 输出用于排查为什么没有选中项（使用 console.log 保证在非 debug 模式下也能看到）
+    // eslint-disable-next-line no-console
+    console.log(
+      '[multi-select-debug] selectionRect:',
+      JSON.parse(JSON.stringify(rect)),
+      'iconCount:',
+      iconItems.length
+    );
+    // eslint-disable-next-line no-console
+    console.log(
+      '[multi-select-debug] appContainerEl:',
+      !!appContainerEl,
+      'fileContainerEl:',
+      !!fileContainerEl
+    );
+
+    iconItems.forEach((item, idx) => {
+      const itemRect = item.getBoundingClientRect();
+      const id = parseInt(item.getAttribute('data-id'));
+
+      // Debug: 打印前几个元素的 rect
+      if (idx < 5) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[multi-select-debug] icon',
+          id,
+          'rect',
+          JSON.parse(JSON.stringify(itemRect)),
+          'intersect',
+          rectIntersect(rect, itemRect)
+        );
+      }
+
+      // 检查矩形相交
+      if (!rectIntersect(rect, itemRect)) return;
+
+      // 优先使用组件根元素判断
+      if (appContainerEl && appContainerEl.contains(item)) {
+        selectedApps.push(id);
+        return;
+      }
+      if (fileContainerEl && fileContainerEl.contains(item)) {
+        selectedFiles.push(id);
+        return;
+      }
+
+      // 回退：根据最近的 .desktop-icons 父容器的 inline left 样式（样式表中可能未设为 inline）
+      const parent = item.closest('.desktop-icons');
+      if (parent) {
+        const left = parent.style?.left || '';
+        if (left === '20px') selectedApps.push(id);
+        else selectedFiles.push(id);
+      } else {
+        // 最后一招：按 x 坐标判断（通常应用在左侧）
+        const midX = itemRect.left + itemRect.width / 2;
+        if (midX < window.innerWidth / 2) selectedApps.push(id);
+        else selectedFiles.push(id);
+      }
+    });
+
+    return { apps: selectedApps, files: selectedFiles };
+  }
+
+  // 矩形相交检测
+  function rectIntersect(rect1, rect2) {
+    return !(
+      rect1.x + rect1.w < rect2.left ||
+      rect2.left + rect2.width < rect1.x ||
+      rect1.y + rect1.h < rect2.top ||
+      rect2.top + rect2.height < rect1.y
+    );
+  }
 </script>
 
 <style scoped>
@@ -259,6 +440,15 @@
     background: rgba(0, 0, 0, 0.9);
     transform: scale(1.1);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 矩形选框样式 */
+  .selection-rect {
+    position: fixed;
+    border: 1px solid rgba(0, 123, 255, 0.8);
+    background: rgba(0, 123, 255, 0.1);
+    z-index: 20;
+    pointer-events: none;
   }
 
   /* 响应式设计 */

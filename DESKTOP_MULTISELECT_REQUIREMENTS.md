@@ -13,19 +13,15 @@
 ## 已实现部分
 
 - 单图标的长按拖动、释放时吸附到网格、位置持久化（`AppIcons.vue`、`FileIcons.vue`）。
-- `AppIcons.vue` 已扩展：
-  - 增加了 `selectedIds` 状态支持多选；
-  - 提供了批量拖动的内部实现（当按下的图标属于选中集合时，会同时移动所有选中图标）；
-  - 暴露了 `setSelectedIds(ids)` 方法，供父组件设置选中集合；
-  - 修复了 `defineExpose` 的重复调用问题。
+- 桌面矩形框选（`Home.vue`）的 UI 与逻辑已实现：支持在空白区域按下并拖拽绘制选框、更新选框位置并在释放时计算相交图标。
+- 框选结果已能分发到子组件：`Home.vue` 在 `mouseup` 会调用 `appIconsRef.value?.setSelectedIds(...)` 与 `fileIconsRef.value?.setSelectedIds(...)`。
+- `AppIcons.vue` 与 `FileIcons.vue` 已支持 `selectedIds` 状态与 `setSelectedIds(ids)` 暴露接口；当按下的图标属于 `selectedIds` 时会触发批量拖动（在 `mousemove` 中同时移动所有选中图标），并在 `mouseup` 时执行网格吸附与冲突避让。
 
 ## 未实现/待完成部分
 
-- 在 `Home.vue` 添加矩形选框 UI 与逻辑（绘制、更新、隐藏）；
-- 在 `Home.vue` 计算与分发被选图标 id 到 `AppIcons` 与 `FileIcons`（通过 `setSelectedIds`）；
-- 在 `FileIcons.vue` 添加与 `AppIcons` 对齐的多选支持与批量拖动实现（包括 `setSelectedIds`、在按下时判断是否为多选并同步移动）；
-- 处理键盘修饰（Ctrl/Shift）多选规则（可选）；
 - UX 优化与边界测试（阈值、触控、性能优化、视觉反馈）。
+- 可选功能：键盘修饰（Ctrl/Shift）多选规则（已移除为 MVP 要求，不再默认实现）。
+- 更彻底的触控优化（例如长按与触摸拖动的细节处理）和更多自动化测试覆盖。
 
 ## 关键实现细节（MVP）
 

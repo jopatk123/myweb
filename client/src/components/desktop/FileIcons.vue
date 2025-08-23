@@ -10,7 +10,8 @@
       v-for="f in files"
       :key="f.id"
       class="icon-item"
-      :class="{ selected: selectedId === f.id }"
+      :class="{ selected: selectedId === f.id || selectedIds.has(f.id) }"
+      :data-id="f.id"
       @click="onClick(f, $event)"
       @dblclick="onDblClick(f)"
       @mousedown="onMouseDown(f, $event)"
@@ -53,6 +54,7 @@
   const emit = defineEmits(['open']);
 
   const selectedId = ref(null);
+  const selectedIds = ref(new Set()); // 支持多选
   const positions = ref({}); // { [id]: { x, y } }
   const STORAGE_KEY = 'desktopFileIconPositions';
   let dragState = null;
@@ -69,7 +71,9 @@
   }
 
   function onClick(file) {
+    // 单击只选中（清除其他选中）
     selectedId.value = file.id;
+    selectedIds.value = new Set([file.id]);
   }
   function onDblClick(file) {
     emit('open', file);
@@ -78,6 +82,7 @@
   const menu = ref({ visible: false, x: 0, y: 0, file: null, items: [] });
   function onContextMenu(file, e) {
     selectedId.value = file.id;
+    selectedIds.value = new Set([file.id]);
     menu.value.file = file;
     menu.value.x = e.clientX;
     menu.value.y = e.clientY;
@@ -130,22 +135,52 @@
   }
 
   function onMouseDown(file, e) {
+    // 长按触发拖动（>150ms）
     const id = file.id;
     const rect = e.currentTarget.getBoundingClientRect();
-    dragState = {
-      id,
-      startX: e.clientX,
-      startY: e.clientY,
-      originX: positions.value[id]?.x ?? rect.left,
-      originY: positions.value[id]?.y ?? rect.top,
-      longPressTimer: null,
-      dragging: false,
-    };
+    // 支持批量拖动：当被按下的图标在 selectedIds 中，则拖动所有选中的图标
+    const isMulti = selectedIds.value.has(id);
+    if (isMulti) {
+      const ids = Array.from(selectedIds.value);
+      const origins = {};
+      for (const i of ids) {
+        const r = e.currentTarget.ownerDocument.querySelector(
+          `[data-id="${i}"]`
+        );
+        // 以已保存的位置为准，fallback 到 DOM rect
+        const rectItem = r ? r.getBoundingClientRect() : null;
+        origins[i] = positions.value[i]
+          ? { x: positions.value[i].x, y: positions.value[i].y }
+          : rectItem
+            ? { x: rectItem.left, y: rectItem.top }
+            : { x: 0, y: 0 };
+      }
+      dragState = {
+        ids,
+        startX: e.clientX,
+        startY: e.clientY,
+        origins,
+        longPressTimer: null,
+        dragging: false,
+      };
+    } else {
+      dragState = {
+        id,
+        startX: e.clientX,
+        startY: e.clientY,
+        originX: positions.value[id]?.x ?? rect.left,
+        originY: positions.value[id]?.y ?? rect.top,
+        longPressTimer: null,
+        dragging: false,
+      };
+    }
+
     dragState.longPressTimer = setTimeout(() => {
       dragState.dragging = true;
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp, { once: true });
     }, 150);
+
     document.addEventListener('mouseup', cancelIfNotDrag, { once: true });
   }
 
@@ -153,26 +188,43 @@
     if (!dragState || !dragState.dragging) return;
     const dx = e.clientX - dragState.startX;
     const dy = e.clientY - dragState.startY;
-    positions.value = {
-      ...positions.value,
-      [dragState.id]: { x: dragState.originX + dx, y: dragState.originY + dy },
-    };
+    if (dragState.ids) {
+      const updated = { ...positions.value };
+      for (const i of dragState.ids) {
+        const o = dragState.origins[i] || { x: 0, y: 0 };
+        updated[i] = { x: o.x + dx, y: o.y + dy };
+      }
+      positions.value = updated;
+    } else {
+      positions.value = {
+        ...positions.value,
+        [dragState.id]: {
+          x: dragState.originX + dx,
+          y: dragState.originY + dy,
+        },
+      };
+    }
   }
 
   function onMouseUp() {
-    if (dragState?.dragging) finalizeDrag(dragState.id);
+    // 释放时吸附到网格并避免与同组图标重叠
+    if (dragState?.dragging)
+      finalizeDrag(dragState.ids ? dragState.ids : dragState.id);
     cleanupDrag();
-    savePositionsToStorage();
   }
   function cancelIfNotDrag() {
-    if (dragState && !dragState.dragging && dragState.longPressTimer)
+    if (!dragState) return;
+    if (!dragState.dragging && dragState.longPressTimer) {
       clearTimeout(dragState.longPressTimer);
+    }
     dragState = null;
   }
+
   function cleanupDrag() {
     if (dragState?.longPressTimer) clearTimeout(dragState.longPressTimer);
     document.removeEventListener('mousemove', onMouseMove);
     dragState = null;
+    savePositionsToStorage();
   }
 
   function positionToCell(pos) {
@@ -190,8 +242,9 @@
 
   function getOccupiedCellKeys(excludeId) {
     const set = new Set();
+    const excludeIds = Array.isArray(excludeId) ? excludeId : [excludeId];
     for (const [k, v] of Object.entries(positions.value || {})) {
-      if (Number(k) === Number(excludeId)) continue;
+      if (excludeIds.includes(Number(k))) continue;
       if (!v) continue;
       const c = positionToCell(v);
       set.add(`${c.col}:${c.row}`);
@@ -213,13 +266,22 @@
     return desiredCell;
   }
 
-  function finalizeDrag(id) {
-    const p = positions.value?.[id];
-    if (!p) return;
-    const desired = positionToCell(p);
-    const occupied = getOccupiedCellKeys(id);
-    const cell = findNextFreeCell(desired, occupied);
-    positions.value = { ...positions.value, [id]: cellToPosition(cell) };
+  function finalizeDrag(idOrIds) {
+    // 支持单个 id 或 ids 数组
+    const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+    const updated = { ...positions.value };
+    const occupiedBase = getOccupiedCellKeys(ids);
+    for (const id of ids) {
+      const p = positions.value?.[id];
+      if (!p) continue;
+      const desired = positionToCell(p);
+      const cell = findNextFreeCell(desired, occupiedBase);
+      updated[id] = cellToPosition(cell);
+      occupiedBase.add(
+        `${positionToCell(updated[id]).col}:${positionToCell(updated[id]).row}`
+      );
+    }
+    positions.value = updated;
   }
 
   function getIconStyle(file) {
@@ -246,7 +308,13 @@
     return col + (row > 0 ? 1 : 0);
   }
 
-  defineExpose({ autoArrange });
+  // 外部接口：设置多选
+  function setSelectedIds(ids = []) {
+    selectedIds.value = new Set(ids.map(i => Number(i)));
+    if (ids.length === 1) selectedId.value = ids[0];
+  }
+
+  defineExpose({ autoArrange, setSelectedIds });
 
   function savePositionsToStorage() {
     try {
