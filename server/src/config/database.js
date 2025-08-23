@@ -369,6 +369,33 @@ function seedAppsIfEmpty(db) {
           '🟢 Calculator app already exists, skipping seed for calculator'
         );
       }
+
+      // 也种子笔记本应用
+      const hasNotebook = db
+        .prepare('SELECT id FROM apps WHERE slug = ? AND is_deleted = 0')
+        .get('notebook');
+      if (!hasNotebook) {
+        try {
+          insert.run(
+            '笔记本',
+            'notebook',
+            '待办事项管理，记录和跟踪日常任务',
+            'notebook-128.svg',
+            gid,
+            1
+          );
+          console.log('🌱 Seeded example app: notebook');
+        } catch (e) {
+          console.warn(
+            'seedAppsIfEmpty: failed to seed notebook app:',
+            e?.message || e
+          );
+        }
+      } else {
+        console.log(
+          '🟢 Notebook app already exists, skipping seed for notebook'
+        );
+      }
     }
   } catch (e) {
     console.warn('seedAppsIfEmpty warning:', e?.message || e);

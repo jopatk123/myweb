@@ -18,6 +18,12 @@ export const internalApps = [
       () => import('./calculator/CalculatorApp.vue')
     ),
   },
+  {
+    slug: 'notebook',
+    name: '笔记本',
+    // 异步加载，避免初次加载体积增长
+    component: defineAsyncComponent(() => import('./notebook/NotebookApp.vue')),
+  },
 ];
 
 export function getAppComponentBySlug(slug) {
