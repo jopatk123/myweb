@@ -1,5 +1,14 @@
 import express from 'express';
 import { WallpaperController } from '../controllers/wallpaper.controller.js';
+import {
+  validateBody,
+  uploadWallpaperSchema,
+  deleteWallpapersSchema,
+  moveWallpapersSchema,
+  updateGroupSchema,
+  createGroupSchema,
+  updateWallpaperSchema,
+} from '../dto/wallpaper.dto.js';
 
 export function createWallpaperRoutes(db) {
   const router = express.Router();
@@ -18,20 +27,25 @@ export function createWallpaperRoutes(db) {
   );
 
   // 对于 multipart 表单，multer 处理后需归一化键名
-  router.post('/', controller.upload.single('image'), (req, res, next) =>
-    controller.uploadWallpaper(req, res, next)
+  router.post(
+    '/',
+    controller.upload.single('image'),
+    validateBody(uploadWallpaperSchema),
+    (req, res, next) => controller.uploadWallpaper(req, res, next)
   );
 
   // 批量操作
-  router.delete('/', (req, res, next) =>
+  router.delete('/', validateBody(deleteWallpapersSchema), (req, res, next) =>
     controller.deleteWallpapers(req, res, next)
   );
-  router.put('/move', (req, res, next) =>
+  router.put('/move', validateBody(moveWallpapersSchema), (req, res, next) =>
     controller.moveWallpapers(req, res, next)
   );
 
-  router.put('/:id(\\d+)', (req, res, next) =>
-    controller.updateWallpaper(req, res, next)
+  router.put(
+    '/:id(\\d+)',
+    validateBody(updateWallpaperSchema),
+    (req, res, next) => controller.updateWallpaper(req, res, next)
   );
   router.put('/:id(\\d+)/active', (req, res, next) =>
     controller.setActiveWallpaper(req, res, next)
@@ -44,10 +58,10 @@ export function createWallpaperRoutes(db) {
   router.get('/groups/all', (req, res, next) =>
     controller.getGroups(req, res, next)
   );
-  router.post('/groups', (req, res, next) =>
+  router.post('/groups', validateBody(createGroupSchema), (req, res, next) =>
     controller.createGroup(req, res, next)
   );
-  router.put('/groups/:id', (req, res, next) =>
+  router.put('/groups/:id', validateBody(updateGroupSchema), (req, res, next) =>
     controller.updateGroup(req, res, next)
   );
   router.delete('/groups/:id', (req, res, next) =>

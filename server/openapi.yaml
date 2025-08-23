@@ -1,0 +1,32 @@
+openapi: 3.0.0
+info:
+  title: MyWeb API
+  version: 1.0.0
+paths:
+  /api/wallpapers:
+    get:
+      summary: Get wallpapers
+      responses:
+        '200':
+          description: OK
+  /api/wallpapers/move:
+    put:
+      summary: Move wallpapers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                groupId:
+                  oneOf:
+                    - type: integer
+                    - type: 'null'
+      responses:
+        '200':
+          description: OK

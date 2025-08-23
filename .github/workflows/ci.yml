@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Run server migrations
+        run: npm --workspace server run migrate --if-present
+
+      - name: Test backend
+        run: npm run test:be --if-present
+
+      - name: Test frontend
+        run: npm run test:fe --if-present
+
+      - name: Contract check
+        run: npm run contract-test --if-present || true
+
+      - name: Upload contract report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-report
+          path: contract-report.json
+
+      - name: Build
+        run: npm run build --if-present

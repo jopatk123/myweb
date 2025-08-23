@@ -1,56 +1,53 @@
 import Joi from 'joi';
 
-export const wallpaperSchemas = {
-  // 创建壁纸验证
-  create: Joi.object({
-    groupId: Joi.number().integer().positive().optional(),
-  }),
-
-  // 更新壁纸验证（请求已由中间件归一化为 snake_case）
-  update: Joi.object({
-    groupId: Joi.number().integer().positive().optional(),
-    originalName: Joi.string().max(255).optional(),
-  }),
-
-  // 创建分组验证
-  createGroup: Joi.object({
-    name: Joi.string().min(1).max(100).required(),
-  }),
-
-  // 更新分组验证
-  updateGroup: Joi.object({
-    name: Joi.string().min(1).max(100).optional(),
-  }),
-
-  // 查询参数验证
-  query: Joi.object({
-    groupId: Joi.number().integer().positive().optional(),
-  }),
-};
-
-// 验证中间件
-export function validateWallpaper(schema) {
+// 验证中间件生成器
+export function validateBody(schema) {
   return (req, res, next) => {
-    const { error } = schema.validate(req.body);
+    const { error, value } = schema.validate(req.body, {
+      convert: true,
+      abortEarly: false,
+    });
     if (error) {
-      return res.status(400).json({
-        code: 400,
-        message: error.details[0].message,
-      });
+      return res
+        .status(400)
+        .json({ code: 400, message: '请求参数错误', errors: error.details });
     }
+    // 覆盖为转换后的值（例如字符串数字转换为 number）
+    req.body = value;
     next();
   };
 }
 
-export function validateQuery(schema) {
-  return (req, res, next) => {
-    const { error } = schema.validate(req.query);
-    if (error) {
-      return res.status(400).json({
-        code: 400,
-        message: error.details[0].message,
-      });
-    }
-    next();
-  };
-}
+// 上传（multipart）场景：req.body 经 multer 填充后仍可校验
+export const uploadWallpaperSchema = Joi.object({
+  groupId: Joi.alternatives()
+    .try(Joi.number().integer().positive(), Joi.string().allow('', null))
+    .optional(),
+  name: Joi.string().max(255).allow('', null).optional(),
+});
+
+export const deleteWallpapersSchema = Joi.object({
+  ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
+});
+
+export const moveWallpapersSchema = Joi.object({
+  ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
+  groupId: Joi.alternatives()
+    .try(Joi.number().integer().allow(null), Joi.string().allow(''))
+    .required(),
+});
+
+export const updateWallpaperSchema = Joi.object({
+  name: Joi.string().max(255).optional(),
+  mimeType: Joi.string().optional(),
+});
+
+export const createGroupSchema = Joi.object({
+  name: Joi.string().max(100).required(),
+  isDefault: Joi.boolean().optional(),
+});
+
+export const updateGroupSchema = Joi.object({
+  name: Joi.string().max(100).optional(),
+  isCurrent: Joi.boolean().optional(),
+});
