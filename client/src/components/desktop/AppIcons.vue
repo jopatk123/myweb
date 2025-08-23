@@ -21,12 +21,7 @@
       draggable="false"
       :style="getIconStyle(app)"
     >
-      <img
-        v-if="app.icon_filename"
-        :src="getAppIconUrl(app)"
-        class="icon"
-        draggable="false"
-      />
+      <img :src="getIconUrl(app)" class="icon" draggable="false" />
       <div class="label">{{ app.name }}</div>
     </div>
 
@@ -68,6 +63,22 @@
   const visibleApps = computed(() =>
     (apps.value || []).filter(a => a.is_visible)
   );
+
+  // 优先使用后端提供的图标路径，否则根据 slug 推断本地 public 目录下的图标
+  function getIconUrl(app) {
+    if (app.icon_filename) {
+      return getAppIconUrl(app); // 使用 useApps 中的方法
+    }
+    // 后端未提供图标，根据 slug 推断本地路径
+    // 注意：这里假设了图标文件的命名规范
+    if (app.slug === 'snake') {
+      return `/apps/icons/snake-128.png`;
+    }
+    if (app.slug === 'calculator') {
+      return `/apps/icons/calculator-128.png`;
+    }
+    return '/apps/icons/file-128.svg'; // 提供一个默认图标
+  }
 
   function open(app) {
     const comp = getAppComponentBySlug(app.slug);

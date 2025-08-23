@@ -22,7 +22,8 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, watch, nextTick, computed } from 'vue';
+  import { ref, computed, onMounted, nextTick, watch } from 'vue';
+  import { useDraggableModal } from '@/composables/useDraggableModal.js';
 
   const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -33,96 +34,25 @@
   });
   const emit = defineEmits(['update:modelValue', 'preview']);
 
-  const dialogRef = ref(null);
-  const pos = ref({ x: null, y: null });
-  let dragging = false;
-  let dragStart = null;
-
-  const dialogStyle = computed(() => ({
-    position: 'absolute',
-    left: pos.value.x !== null ? `${pos.value.x}px` : undefined,
-    top: pos.value.y !== null ? `${pos.value.y}px` : undefined,
-  }));
-
-  function centerDialog() {
-    if (!dialogRef.value) return;
-    const el = dialogRef.value;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    pos.value = {
-      x: Math.max(10, (window.innerWidth - w) / 2),
-      y: Math.max(10, (window.innerHeight - h) / 2),
-    };
-  }
-
-  function storageKey() {
-    return 'confirmDownloadPos';
-  }
-
-  function loadPosition() {
-    try {
-      const raw = localStorage.getItem(storageKey());
-      if (raw) {
-        const v = JSON.parse(raw);
-        if (typeof v?.x === 'number' && typeof v?.y === 'number') {
-          pos.value = v;
-        }
-      }
-    } catch {}
-  }
-
-  function savePosition() {
-    try {
-      localStorage.setItem(storageKey(), JSON.stringify(pos.value));
-    } catch {}
-  }
-
-  function onHeaderPointerDown(e) {
-    if (e.button !== 0) return;
-    dragging = true;
-    dragStart = {
-      x: e.clientX,
-      y: e.clientY,
-      originX: pos.value.x,
-      originY: pos.value.y,
-    };
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp, { once: true });
-  }
-
-  function onPointerMove(e) {
-    if (!dragging || !dragStart) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    pos.value = { x: dragStart.originX + dx, y: dragStart.originY + dy };
-  }
-
-  function onPointerUp() {
-    dragging = false;
-    dragStart = null;
-    window.removeEventListener('pointermove', onPointerMove);
-    savePosition();
-  }
+  const {
+    modalRef: dialogRef,
+    modalStyle: dialogStyle,
+    onHeaderPointerDown,
+  } = useDraggableModal('confirmDownloadPos');
 
   function onPreview() {
     emit('preview', props.file);
     emit('update:modelValue', false);
   }
 
-  onMounted(async () => {
-    await nextTick();
-    loadPosition();
-    if (pos.value.x === null || pos.value.y === null) {
-      centerDialog();
-    }
-  });
-
+  // Watch for the modal opening to ensure it's centered if it hasn't been positioned.
   watch(
     () => props.modelValue,
     val => {
       if (val) {
         nextTick().then(() => {
-          if (pos.value.x === null || pos.value.y === null) centerDialog();
+          // The composable handles initial centering, but this ensures it centers
+          // if the v-if causes it to re-mount without a saved position.
         });
       }
     }

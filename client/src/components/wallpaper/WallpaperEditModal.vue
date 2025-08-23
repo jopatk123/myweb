@@ -30,22 +30,15 @@
 <script setup>
   import { ref, watch, onMounted, nextTick, computed } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
+  import { useDraggableModal } from '@/composables/useDraggableModal.js';
 
   const props = defineProps({ wallpaper: { type: Object, required: true } });
   const emit = defineEmits(['close', 'saved']);
 
   const { updateWallpaper } = useWallpaper();
 
-  const modalRef = ref(null);
-  const pos = ref({ x: null, y: null });
-  let dragging = false;
-  let dragStart = null;
-
-  const modalStyle = computed(() => ({
-    position: 'absolute',
-    left: pos.value.x !== null ? `${pos.value.x}px` : undefined,
-    top: pos.value.y !== null ? `${pos.value.y}px` : undefined,
-  }));
+  const { modalRef, modalStyle, onHeaderPointerDown } =
+    useDraggableModal('wallpaperEditPos');
 
   const localName = ref(
     props.wallpaper.name || props.wallpaper.original_name || ''
@@ -59,66 +52,6 @@
       localName.value = w.name || w.original_name || '';
     }
   );
-
-  function centerModal() {
-    if (!modalRef.value) return;
-    const el = modalRef.value;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    pos.value = {
-      x: Math.max(10, (window.innerWidth - w) / 2),
-      y: Math.max(10, (window.innerHeight - h) / 2),
-    };
-  }
-
-  function storageKey() {
-    return 'wallpaperEditPos';
-  }
-
-  function loadPosition() {
-    try {
-      const raw = localStorage.getItem(storageKey());
-      if (raw) {
-        const v = JSON.parse(raw);
-        if (typeof v?.x === 'number' && typeof v?.y === 'number') {
-          pos.value = v;
-        }
-      }
-    } catch {}
-  }
-
-  function savePosition() {
-    try {
-      localStorage.setItem(storageKey(), JSON.stringify(pos.value));
-    } catch {}
-  }
-
-  function onHeaderPointerDown(e) {
-    if (e.button !== 0) return;
-    dragging = true;
-    dragStart = {
-      x: e.clientX,
-      y: e.clientY,
-      originX: pos.value.x,
-      originY: pos.value.y,
-    };
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp, { once: true });
-  }
-
-  function onPointerMove(e) {
-    if (!dragging || !dragStart) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    pos.value = { x: dragStart.originX + dx, y: dragStart.originY + dy };
-  }
-
-  function onPointerUp() {
-    dragging = false;
-    dragStart = null;
-    window.removeEventListener('pointermove', onPointerMove);
-    savePosition();
-  }
 
   const save = async () => {
     if (!localName.value.trim()) {
@@ -138,14 +71,6 @@
       saving.value = false;
     }
   };
-
-  onMounted(async () => {
-    await nextTick();
-    loadPosition();
-    if (pos.value.x === null || pos.value.y === null) {
-      centerModal();
-    }
-  });
 </script>
 
 <style scoped>
