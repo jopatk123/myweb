@@ -18,7 +18,8 @@
     "format": "prettier --write \"**/*.{js,vue,css,md,json,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{js,vue,css,md,json,yml,yaml}\"",
     "lint": "eslint --fix \"**/*.{js,vue}\"",
-    "lint:check": "eslint \"**/*.{js,vue}\""
+    "lint:check": "eslint \"**/*.{js,vue}\"",
+    "contract-test": "spectral lint openapi.yaml --format json > contract-report.json"
   },
   "devDependencies": {
     "@vue/eslint-config-prettier": "^10.2.0",
@@ -45,10 +46,5 @@
       "path": "cz-conventional-changelog"
     }
   },
-  "scripts_contract": {
-    "contract-test": "spectral lint openapi.yaml --format json > contract-report.json"
-  },
-  "scripts": {
-    "contract-test": "spectral lint openapi.yaml --format json > contract-report.json"
-  }
+  
 }
