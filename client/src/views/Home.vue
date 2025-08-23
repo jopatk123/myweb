@@ -117,17 +117,78 @@
     other: '/apps/icons/file-128.svg',
   }));
 
-  // 矩形选框状态
-  const selectionRect = ref({
-    visible: false,
-    x: 0,
-    y: 0,
-    w: 0,
-    h: 0,
-    startX: 0,
-    startY: 0,
-  });
-  let isSelecting = false;
+  // 矩形选框（使用 composable）
+  import { useSelectionRect } from '@/composables/useSelectionRect.js';
+
+  // hitTestItems 将使用子组件 refs 来判定哪些 id 被选中
+  async function hitTestItems(rect) {
+    // Always compute DOM fallback to ensure full coverage, then merge with any
+    // component-provided hitTest results (components may have more accurate logic).
+    const selectedApps = [];
+    const selectedFiles = [];
+    const iconItems = Array.from(
+      document.querySelectorAll('.icon-item[data-id]')
+    );
+    const appContainerEl = appIconsRef.value?.$el || null;
+    const fileContainerEl = fileIconsRef.value?.$el || null;
+
+    function rectIntersectLocal(r, b) {
+      return !(
+        r.x + r.w < b.left ||
+        b.left + b.width < r.x ||
+        r.y + r.h < b.top ||
+        b.top + b.height < r.y
+      );
+    }
+
+    iconItems.forEach(item => {
+      const itemRect = item.getBoundingClientRect();
+      if (!rectIntersectLocal(rect, itemRect)) return;
+      const id = parseInt(item.getAttribute('data-id'));
+      if (appContainerEl && appContainerEl.contains(item)) {
+        selectedApps.push(id);
+        return;
+      }
+      if (fileContainerEl && fileContainerEl.contains(item)) {
+        selectedFiles.push(id);
+        return;
+      }
+
+      const parent = item.closest('.desktop-icons');
+      if (parent) {
+        const left = parent.style?.left || '';
+        if (left === '20px') selectedApps.push(id);
+        else selectedFiles.push(id);
+      } else {
+        const midX = itemRect.left + itemRect.width / 2;
+        if (midX < window.innerWidth / 2) selectedApps.push(id);
+        else selectedFiles.push(id);
+      }
+    });
+
+    // If components provide hitTest, merge their results (prefer unique ids)
+    try {
+      if (typeof appIconsRef.value?.hitTest === 'function') {
+        const appsResult = await appIconsRef.value.hitTest(rect);
+        (appsResult || []).forEach(id => {
+          if (!selectedApps.includes(id)) selectedApps.push(id);
+        });
+      }
+      if (typeof fileIconsRef.value?.hitTest === 'function') {
+        const filesResult = await fileIconsRef.value.hitTest(rect);
+        (filesResult || []).forEach(id => {
+          if (!selectedFiles.includes(id)) selectedFiles.push(id);
+        });
+      }
+    } catch (err) {
+      console.error('component hitTest failed', err);
+    }
+
+    return { apps: selectedApps, files: selectedFiles };
+  }
+
+  const { selectionRect, onMouseDown, onMouseMove, onMouseUp } =
+    useSelectionRect({ hitTestItems });
 
   // 页面挂载时触发预加载（保持 2 张缓存）
   fetchCurrentGroup().then(() => {
@@ -236,116 +297,31 @@
   function onDesktopMouseDown(e) {
     // 只在点击空白区域时开始选框（不是图标项）
     if (e.target.closest('.icon-item')) return;
-
-    isSelecting = true;
-    selectionRect.value.startX = e.clientX;
-    selectionRect.value.startY = e.clientY;
-    selectionRect.value.x = e.clientX;
-    selectionRect.value.y = e.clientY;
-    selectionRect.value.w = 0;
-    selectionRect.value.h = 0;
-    selectionRect.value.visible = true;
+    onMouseDown(e);
   }
 
   function onDesktopMouseMove(e) {
-    if (!isSelecting || !selectionRect.value.visible) return;
-
-    const currentX = e.clientX;
-    const currentY = e.clientY;
-    const startX = selectionRect.value.startX;
-    const startY = selectionRect.value.startY;
-
-    // 计算矩形位置和大小
-    selectionRect.value.x = Math.min(startX, currentX);
-    selectionRect.value.y = Math.min(startY, currentY);
-    selectionRect.value.w = Math.abs(currentX - startX);
-    selectionRect.value.h = Math.abs(currentY - startY);
+    onMouseMove(e);
   }
 
-  function onDesktopMouseUp(e) {
-    if (!isSelecting) return;
-
-    isSelecting = false;
-
-    if (selectionRect.value.visible) {
-      // 计算选中的图标
-      const selectedIds = getSelectedIconIds();
-
-      // 分发选中状态到子组件
-      if (appIconsRef.value?.setSelectedIds) {
-        appIconsRef.value.setSelectedIds(selectedIds.apps);
+  async function onDesktopMouseUp(e) {
+    try {
+      const res = await onMouseUp(e);
+      if (res) {
+        if (appIconsRef.value?.setSelectedIds) {
+          appIconsRef.value.setSelectedIds(res.apps || []);
+        }
+        if (fileIconsRef.value?.setSelectedIds) {
+          fileIconsRef.value.setSelectedIds(res.files || []);
+        }
       }
-      if (fileIconsRef.value?.setSelectedIds) {
-        fileIconsRef.value.setSelectedIds(selectedIds.files);
-      }
+    } catch (err) {
+      // swallow but log — caller/UX can be improved later
+      console.error('hitTestItems error', err);
     }
-
-    // 隐藏选框
-    selectionRect.value.visible = false;
   }
 
-  // 计算与选框相交的图标
-  function getSelectedIconIds() {
-    const rect = selectionRect.value;
-    const selectedApps = [];
-    const selectedFiles = [];
-
-    // 检查所有图标项（使用组件 ref 判断所属容器更可靠）
-    const iconItems = Array.from(
-      document.querySelectorAll('.icon-item[data-id]')
-    );
-
-    // 优先使用组件 ref 的根元素判断所属容器（更可靠），再回退到样式判断
-    const appContainerEl = appIconsRef.value?.$el || null;
-    const fileContainerEl = fileIconsRef.value?.$el || null;
-
-    // Debug: 输出用于排查为什么没有选中项（保留 logic, removed console logs）
-
-    iconItems.forEach((item, idx) => {
-      const itemRect = item.getBoundingClientRect();
-      const id = parseInt(item.getAttribute('data-id'));
-
-      // Debug: 打印前几个元素的 rect (removed console logs)
-
-      // 检查矩形相交
-      if (!rectIntersect(rect, itemRect)) return;
-
-      // 优先使用组件根元素判断
-      if (appContainerEl && appContainerEl.contains(item)) {
-        selectedApps.push(id);
-        return;
-      }
-      if (fileContainerEl && fileContainerEl.contains(item)) {
-        selectedFiles.push(id);
-        return;
-      }
-
-      // 回退：根据最近的 .desktop-icons 父容器的 inline left 样式（样式表中可能未设为 inline）
-      const parent = item.closest('.desktop-icons');
-      if (parent) {
-        const left = parent.style?.left || '';
-        if (left === '20px') selectedApps.push(id);
-        else selectedFiles.push(id);
-      } else {
-        // 最后一招：按 x 坐标判断（通常应用在左侧）
-        const midX = itemRect.left + itemRect.width / 2;
-        if (midX < window.innerWidth / 2) selectedApps.push(id);
-        else selectedFiles.push(id);
-      }
-    });
-
-    return { apps: selectedApps, files: selectedFiles };
-  }
-
-  // 矩形相交检测
-  function rectIntersect(rect1, rect2) {
-    return !(
-      rect1.x + rect1.w < rect2.left ||
-      rect2.left + rect2.width < rect1.x ||
-      rect1.y + rect1.h < rect2.top ||
-      rect2.top + rect2.height < rect1.y
-    );
-  }
+  // 交由子组件实现 hitTest（已在 useSelectionRect 中调用）
 </script>
 
 <style scoped>

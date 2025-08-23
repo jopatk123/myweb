@@ -5,6 +5,7 @@ export function useApps() {
   const groups = ref([]);
   const loading = ref(false);
   const error = ref('');
+  const lastError = ref(null);
 
   const page = ref(1);
   const limit = ref(20);
@@ -17,6 +18,7 @@ export function useApps() {
     try {
       loading.value = true;
       error.value = '';
+      lastError.value = null;
       const params = new URLSearchParams();
       if (groupId) params.append('groupId', groupId);
       if (visible !== null && visible !== undefined)
@@ -39,7 +41,9 @@ export function useApps() {
         throw new Error(json?.message || '加载失败');
       }
     } catch (e) {
+      lastError.value = e;
       error.value = e.message || String(e);
+      throw e;
     } finally {
       loading.value = false;
     }
@@ -47,75 +51,120 @@ export function useApps() {
 
   async function fetchGroups() {
     try {
+      lastError.value = null;
       const resp = await fetch('/api/apps/groups/all');
       const json = await resp.json();
       if (resp.ok && json?.data) groups.value = json.data;
       else throw new Error(json?.message || '加载分组失败');
     } catch (e) {
+      lastError.value = e;
       error.value = e.message || String(e);
+      throw e;
     }
   }
 
   async function createApp(payload) {
-    const resp = await fetch('/api/apps', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '创建失败');
-    return json.data;
+    try {
+      lastError.value = null;
+      const resp = await fetch('/api/apps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json?.message || '创建失败');
+      return json.data;
+    } catch (e) {
+      lastError.value = e;
+      error.value = e.message || String(e);
+      throw e;
+    }
   }
 
   async function updateApp(id, payload) {
-    const resp = await fetch(`/api/apps/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '更新失败');
-    return json.data;
+    try {
+      lastError.value = null;
+      const resp = await fetch(`/api/apps/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json?.message || '更新失败');
+      return json.data;
+    } catch (e) {
+      lastError.value = e;
+      error.value = e.message || String(e);
+      throw e;
+    }
   }
 
   async function deleteApp(id) {
-    const resp = await fetch(`/api/apps/${id}`, { method: 'DELETE' });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '删除失败');
-    return true;
+    try {
+      lastError.value = null;
+      const resp = await fetch(`/api/apps/${id}`, { method: 'DELETE' });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json?.message || '删除失败');
+      return true;
+    } catch (e) {
+      lastError.value = e;
+      error.value = e.message || String(e);
+      throw e;
+    }
   }
 
   async function setVisible(id, visible) {
-    const resp = await fetch(`/api/apps/${id}/visible`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visible }),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '设置失败');
-    return json.data;
+    try {
+      lastError.value = null;
+      const resp = await fetch(`/api/apps/${id}/visible`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visible }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json?.message || '设置失败');
+      return json.data;
+    } catch (e) {
+      lastError.value = e;
+      error.value = e.message || String(e);
+      throw e;
+    }
   }
 
   async function setVisibleBulk(ids, visible) {
-    const resp = await fetch('/api/apps/bulk/visible', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, visible }),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '批量设置失败');
-    return true;
+    try {
+      lastError.value = null;
+      const resp = await fetch('/api/apps/bulk/visible', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, visible }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json?.message || '批量设置失败');
+      return true;
+    } catch (e) {
+      lastError.value = e;
+      error.value = e.message || String(e);
+      throw e;
+    }
   }
 
   async function moveApps(ids, targetGroupId) {
-    const resp = await fetch('/api/apps/move', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, targetGroupId }),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '移动失败');
-    return true;
+    try {
+      lastError.value = null;
+      const resp = await fetch('/api/apps/move', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, targetGroupId }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json?.message || '移动失败');
+      return true;
+    } catch (e) {
+      lastError.value = e;
+      error.value = e.message || String(e);
+      throw e;
+    }
   }
 
   function setPage(p) {
@@ -137,6 +186,7 @@ export function useApps() {
     groups,
     loading,
     error,
+    lastError,
     page,
     limit,
     total,

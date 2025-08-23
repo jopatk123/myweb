@@ -11,6 +11,7 @@ export function useFiles() {
   const uploading = ref(false);
   const uploadProgress = ref(0);
   const error = ref('');
+  const lastError = ref(null);
 
   const totalPages = computed(() =>
     Math.ceil((total.value || 0) / (limit.value || 1))
@@ -30,6 +31,8 @@ export function useFiles() {
 
   async function fetchList() {
     try {
+      error.value = '';
+      lastError.value = null;
       const raw = await filesApi.list({
         page: page.value,
         limit: limit.value,
@@ -40,7 +43,9 @@ export function useFiles() {
       items.value = data.files || [];
       total.value = data.pagination?.total || 0;
     } catch (e) {
+      lastError.value = e;
       error.value = e.message || '加载失败';
+      throw e;
     }
   }
 
@@ -49,9 +54,11 @@ export function useFiles() {
     uploadProgress.value = 0;
     error.value = '';
     try {
+      lastError.value = null;
       await filesApi.upload(files, p => (uploadProgress.value = p));
       await fetchList();
     } catch (e) {
+      lastError.value = e;
       error.value = e.message || '上传失败';
       throw e;
     } finally {
@@ -60,8 +67,15 @@ export function useFiles() {
   }
 
   async function remove(id) {
-    await filesApi.delete(id);
-    await fetchList();
+    try {
+      lastError.value = null;
+      await filesApi.delete(id);
+      await fetchList();
+    } catch (e) {
+      lastError.value = e;
+      error.value = e.message || '删除失败';
+      throw e;
+    }
   }
 
   function getDownloadUrl(id) {
@@ -79,6 +93,7 @@ export function useFiles() {
     uploading,
     uploadProgress,
     error,
+    lastError,
     fetchList,
     upload,
     remove,
