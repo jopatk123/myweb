@@ -10,38 +10,12 @@
       </nav>
     </aside>
 
-    <!-- 模块侧边栏（后续可替换为 AppSidebar 组件） -->
-    <aside class="module-sider">
-      <div class="module-header-row">
-        <div class="module-title">分组管理</div>
-        <div class="header-actions">
-          <button
-            class="btn btn-secondary btn-sm"
-            @click="/* 打开创建分组 */ null"
-          >
-            新建
-          </button>
-        </div>
-      </div>
-      <div class="group-list">
-        <div
-          class="group-item"
-          :class="{ active: selectedGroupId === '' }"
-          @click="selectGroup('')"
-        >
-          全部应用
-        </div>
-        <div
-          class="group-item"
-          v-for="g in groups"
-          :key="g.id"
-          :class="{ active: selectedGroupId === g.id }"
-          @click="selectGroup(g.id)"
-        >
-          {{ g.name }}
-        </div>
-      </div>
-    </aside>
+    <!-- 应用模块侧边栏 -->
+    <AppSidebar
+      :groups="groups"
+      :selected-group-id="selectedGroupId"
+      @select-group="selectGroup"
+    />
 
     <!-- 主内容区（列表骨架） -->
     <main class="content-area">
@@ -170,6 +144,7 @@
 <script setup>
   import { ref, computed, onMounted } from 'vue';
   import { useApps } from '@/composables/useApps.js';
+  import AppSidebar from '@/components/app/AppSidebar.vue';
 
   const {
     apps,
@@ -306,34 +281,6 @@
   .menu-item.active {
     background: #1e293b;
     color: #fff;
-  }
-
-  .module-sider {
-    background: #fff;
-    border-right: 1px solid #e5e7eb;
-    padding: 16px;
-  }
-  .module-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-  .module-title {
-    font-weight: 600;
-  }
-  .group-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .group-item {
-    padding: 8px 10px;
-    cursor: pointer;
-    border-radius: 6px;
-  }
-  .group-item.active {
-    background: #eef2ff;
   }
 
   .content-area {
