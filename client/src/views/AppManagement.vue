@@ -118,25 +118,14 @@
       </div>
 
       <!-- 分页 -->
-      <div class="pagination-controls">
-        <button class="btn" :disabled="page === 1" @click="prevPage">
-          上一页
-        </button>
-        <span>第 {{ page }} 页 / 共 {{ totalPages }} 页</span>
-        <button
-          class="btn"
-          :disabled="page === totalPages || totalPages === 0"
-          @click="nextPage"
-        >
-          下一页
-        </button>
-        <select v-model.number="limit" @change="onLimitChange">
-          <option :value="10">10 / 页</option>
-          <option :value="20">20 / 页</option>
-          <option :value="50">50 / 页</option>
-        </select>
-        <span v-if="total">共 {{ total }} 条</span>
-      </div>
+      <PaginationControls
+        :page="page"
+        :limit="limit"
+        :total="total"
+        @prev="prevPage"
+        @next="nextPage"
+        @limit-change="onLimitChange"
+      />
     </main>
   </div>
 </template>
@@ -145,6 +134,7 @@
   import { ref, computed, onMounted } from 'vue';
   import { useApps } from '@/composables/useApps.js';
   import AppSidebar from '@/components/app/AppSidebar.vue';
+  import PaginationControls from '@/components/common/PaginationControls.vue';
 
   const {
     apps,
