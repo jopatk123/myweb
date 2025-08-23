@@ -485,6 +485,25 @@ if (error)
   - PR 检查：必须包含至少一位代码审阅者批准、CI 通过、并且没有未解决的安全扫描告警（依赖漏洞）。
 
 - **工具建议**：使用 GitHub Actions / GitLab CI / CircleCI，测试阶段可使用 sqlite 内存模式或临时容器化 DB；使用 `swagger-cli` / `openapi-core` 在 CI 中做 contract 校验。
+ - **工具建议**：使用 GitHub Actions / GitLab CI / CircleCI，测试阶段可使用 sqlite 内存模式或临时容器化 DB；使用 `swagger-cli` / `openapi-core` 在 CI 中做 contract 校验。
+ 
+    注意：历史上有工具如 `speccy` 用于 OpenAPI lint，但已不再维护或版本不可用。**推荐使用 Stoplight Spectral（`@stoplight/spectral`）作为现代的 OpenAPI linter**，它维护活跃、规则丰富并支持自定义配置（通过 `.spectral.yml`）。
+
+    简单用法示例（根 package.json 的 `scripts` 中）：
+
+    ```json
+    "scripts": {
+      "contract-test": "spectral lint server/openapi.yaml --format json > contract-report.json"
+    }
+    ```
+
+    CI 中可直接调用 `npm run contract-test --if-present` 或使用 `npx`：
+
+    ```bash
+    npx @stoplight/spectral lint server/openapi.yaml --format json > contract-report.json || true
+    ```
+
+    建议把 `.spectral.yml` 加入仓库以统一规则，并把 `contract-report.json` 上传为 CI artifact 以便审查。
 
 #### 示例：GitHub Actions（简易 CI 模板）
 
