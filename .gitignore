@@ -86,22 +86,8 @@ Thumbs.db
 .cache/
 
 # Uploads
-server/uploads/**/*.png
-server/uploads/**/*.PNG
-server/uploads/**/*.jpg
-server/uploads/**/*.JPG
-server/uploads/**/*.jpeg
-server/uploads/**/*.JPEG
-server/uploads/**/*.gif
-server/uploads/**/*.bmp
-server/uploads/**/*.webp
-server/uploads/**/*.svg
-server/uploads/**/*.mp4
-server/uploads/**/*.mov
-server/uploads/**/*.avi
-server/uploads/**/*.mkv
-server/uploads/**/*.flv
-server/uploads/**/*.wmv
+server/uploads/*
+
 
 # Keep .gitkeep files
 !.gitkeep

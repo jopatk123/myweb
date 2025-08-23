@@ -5,6 +5,7 @@
     @dragover.prevent="onDragOver"
     @dragleave="onDragLeave"
     @drop.prevent="onDrop"
+    @contextmenu.prevent="onDesktopContextmenu"
   >
     <!-- 动态背景 -->
     <WallpaperBackground :wallpaper="current" />
@@ -32,20 +33,24 @@
       >
         🛠️
       </a>
-      <a
-        href="/files"
-        target="_blank"
-        rel="noopener"
-        class="control-btn"
-        title="文件管理"
-      >
-        📁
-      </a>
     </div>
     <ConfirmDownloadModal
       v-model="showConfirm"
       :filename="selectedFileName"
       :downloadUrl="selectedDownloadUrl"
+      :showPreview="canPreviewSelected"
+      :file="selectedFile"
+      @preview="onPreviewFromConfirm"
+    />
+
+    <FilePreviewModal v-model="showPreview" :file="previewFile" />
+
+    <ContextMenu
+      v-model="desktopMenu.visible"
+      :x="desktopMenu.x"
+      :y="desktopMenu.y"
+      :items="desktopMenu.items"
+      @select="onDesktopMenuSelect"
     />
   </div>
 </template>
@@ -59,6 +64,8 @@
   import FileIcons from '@/components/desktop/FileIcons.vue';
   import FileUploadProgress from '@/components/file/FileUploadProgress.vue';
   import ConfirmDownloadModal from '@/components/file/ConfirmDownloadModal.vue';
+  import FilePreviewModal from '@/components/file/FilePreviewModal.vue';
+  import ContextMenu from '@/components/common/ContextMenu.vue';
 
   const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
     useWallpaper();
@@ -76,6 +83,9 @@
   const showConfirm = ref(false);
   const selectedFileName = ref('');
   const selectedDownloadUrl = ref('');
+  const selectedFile = ref(null);
+  const showPreview = ref(false);
+  const previewFile = ref(null);
   const fileTypeIcons = computed(() => ({
     image: '/apps/icons/image-128.svg',
     video: '/apps/icons/video-128.svg',
@@ -115,9 +125,58 @@
 
   // 供未来在桌面展示文件图标时使用的打开回调
   function onOpenFile(f) {
+    if (f && f.__preview) {
+      previewFile.value = f;
+      showPreview.value = true;
+      return;
+    }
+    selectedFile.value = f;
     selectedFileName.value = f.original_name;
     selectedDownloadUrl.value = getDownloadUrl(f.id);
     showConfirm.value = true;
+  }
+
+  const canPreviewSelected = computed(() => {
+    const f = selectedFile.value || {};
+    const t = String(f.type_category || '');
+    if (t === 'image' || t === 'video' || t === 'word' || t === 'excel')
+      return true;
+    const name = String(f.original_name || f.stored_name || f.file_path || '');
+    return /(\.(png|jpe?g|gif|bmp|webp|svg|avif|mp4|webm|ogg|ogv|mov|mkv|docx?|xlsx?|xlsm|xlsb))$/i.test(
+      name
+    );
+  });
+
+  function onPreviewFromConfirm(f) {
+    previewFile.value = f;
+    showPreview.value = true;
+  }
+
+  // 桌面空白区右键菜单
+  const desktopMenu = ref({ visible: false, x: 0, y: 0, items: [] });
+  function onDesktopContextmenu(e) {
+    // 仅在点击空白处时展示（排除有最近的图标项）
+    const icon = e.target.closest('.icon-item');
+    if (icon) return; // 交给子组件
+    desktopMenu.value.x = e.clientX;
+    desktopMenu.value.y = e.clientY;
+    desktopMenu.value.items = [
+      { key: 'switch', label: '切换壁纸' },
+      { key: 'manage', label: '管理后台' },
+      { key: 'refresh', label: '刷新' },
+    ];
+    desktopMenu.value.visible = true;
+  }
+  function onDesktopMenuSelect(key) {
+    if (key === 'switch') return onRandom();
+    if (key === 'manage') {
+      window.open('/wallpapers', '_blank', 'noopener');
+      return;
+    }
+    if (key === 'refresh') {
+      location.reload();
+      return;
+    }
   }
 </script>
 

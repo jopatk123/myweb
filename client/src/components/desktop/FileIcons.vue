@@ -14,6 +14,7 @@
       @click="onClick(f, $event)"
       @dblclick="onDblClick(f)"
       @mousedown="onMouseDown(f, $event)"
+      @contextmenu.prevent.stop="onContextMenu(f, $event)"
       @dragstart.prevent
       @dragover.prevent.stop
       @drop.stop.prevent
@@ -23,11 +24,27 @@
       <img :src="getIcon(f)" class="icon" draggable="false" />
       <div class="label">{{ f.original_name }}</div>
     </div>
+    <ContextMenu
+      v-model="menu.visible"
+      :x="menu.x"
+      :y="menu.y"
+      :items="menu.items"
+      @select="onMenuSelect"
+    />
   </div>
+  <ConfirmDialog
+    v-model="confirm.visible"
+    title="确认删除"
+    :message="`是否删除文件：${confirm.file?.original_name || ''}？`"
+    @confirm="onConfirmDelete"
+  />
 </template>
 
 <script setup>
   import { ref, watch, onMounted } from 'vue';
+  import ContextMenu from '@/components/common/ContextMenu.vue';
+  import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
+  import { useFiles } from '@/composables/useFiles.js';
 
   const props = defineProps({
     files: { type: Array, default: () => [] },
@@ -40,6 +57,9 @@
   const STORAGE_KEY = 'desktopFileIconPositions';
   let dragState = null;
 
+  const { getDownloadUrl, remove } = useFiles();
+  const confirm = ref({ visible: false, file: null });
+
   function getIcon(file) {
     const t = file?.type_category || 'other';
     return props.icons?.[t] || props.icons?.other || '/apps/icons/file-128.svg';
@@ -50,6 +70,60 @@
   }
   function onDblClick(file) {
     emit('open', file);
+  }
+
+  const menu = ref({ visible: false, x: 0, y: 0, file: null, items: [] });
+  function onContextMenu(file, e) {
+    selectedId.value = file.id;
+    menu.value.file = file;
+    menu.value.x = e.clientX;
+    menu.value.y = e.clientY;
+    const baseItems = [
+      { key: 'download', label: '下载' },
+      { key: 'delete', label: '删除', danger: true },
+    ];
+    if (
+      file.type_category === 'image' ||
+      file.type_category === 'video' ||
+      file.type_category === 'word' ||
+      file.type_category === 'excel'
+    ) {
+      baseItems.unshift({ key: 'preview', label: '预览' });
+    }
+    menu.value.items = baseItems;
+    menu.value.visible = true;
+  }
+  async function onMenuSelect(key) {
+    const file = menu.value.file;
+    if (!file) return;
+    if (key === 'download') {
+      const url = getDownloadUrl(file.id);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.original_name || '';
+      a.target = '_blank';
+      a.click();
+      return;
+    }
+    if (key === 'delete') {
+      confirm.value = { visible: true, file };
+      return;
+    }
+    if (key === 'preview') {
+      // 向父组件冒泡一个预览请求
+      emit('open', { ...file, __preview: true });
+      return;
+    }
+  }
+
+  async function onConfirmDelete() {
+    const f = confirm.value.file;
+    confirm.value.visible = false;
+    if (!f) return;
+    try {
+      await remove(f.id);
+      location.reload();
+    } catch {}
   }
 
   function onMouseDown(file, e) {

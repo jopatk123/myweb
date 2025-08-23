@@ -14,6 +14,7 @@
       @click="onClick(app, $event)"
       @dblclick="onDblClick(app)"
       @mousedown="onMouseDown(app, $event)"
+      @contextmenu.prevent.stop="onContextMenu(app, $event)"
       @dragstart.prevent
       @dragover.prevent.stop
       @drop.stop.prevent
@@ -35,6 +36,14 @@
       :title="currentTitle"
       :storageKey="currentStorageKey"
     />
+
+    <ContextMenu
+      v-model="menu.visible"
+      :x="menu.x"
+      :y="menu.y"
+      :items="menu.items"
+      @select="onMenuSelect"
+    />
   </div>
 </template>
 
@@ -43,6 +52,7 @@
   import { useApps } from '@/composables/useApps.js';
   import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
   import AppLauncherModal from './AppLauncherModal.vue';
+  import ContextMenu from '@/components/common/ContextMenu.vue';
 
   const { apps, fetchApps, getAppIconUrl } = useApps();
 
@@ -76,6 +86,34 @@
   function onDblClick(app) {
     // 双击打开
     open(app);
+  }
+
+  // 右键菜单
+  const menu = ref({ visible: false, x: 0, y: 0, app: null, items: [] });
+  function onContextMenu(app, e) {
+    selectedId.value = app.id;
+    menu.value.app = app;
+    menu.value.x = e.clientX;
+    menu.value.y = e.clientY;
+    menu.value.items = [
+      { key: 'open', label: '打开' },
+      { key: 'toggleVisible', label: app.is_visible ? '隐藏' : '显示' },
+    ];
+    menu.value.visible = true;
+  }
+  async function onMenuSelect(key) {
+    const app = menu.value.app;
+    if (!app) return;
+    if (key === 'open') {
+      open(app);
+      return;
+    }
+    if (key === 'toggleVisible') {
+      try {
+        await setVisible(app.id, !app.is_visible);
+        await fetchApps({ visible: true }, true);
+      } catch {}
+    }
   }
 
   function onMouseDown(app, e) {

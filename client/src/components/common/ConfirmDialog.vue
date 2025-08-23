@@ -1,19 +1,15 @@
 <template>
-  <div v-if="modelValue" class="backdrop">
+  <div
+    v-if="modelValue"
+    class="backdrop"
+    @click.self="$emit('update:modelValue', false)"
+  >
     <div class="dialog">
-      <div class="title">确认下载</div>
-      <div class="content">是否下载文件「{{ filename }}」？</div>
+      <div class="title">{{ title }}</div>
+      <div class="content">{{ message }}</div>
       <div class="actions">
         <button @click="$emit('update:modelValue', false)">取消</button>
-        <button v-if="showPreview" @click="onPreview" class="secondary">
-          预览
-        </button>
-        <a
-          :href="downloadUrl"
-          @click="$emit('update:modelValue', false)"
-          class="primary"
-          >下载</a
-        >
+        <button class="danger" @click="onConfirm">确认</button>
       </div>
     </div>
   </div>
@@ -22,14 +18,12 @@
 <script setup>
   const props = defineProps({
     modelValue: { type: Boolean, default: false },
-    filename: { type: String, default: '' },
-    downloadUrl: { type: String, default: '' },
-    showPreview: { type: Boolean, default: false },
-    file: { type: Object, default: null },
+    title: { type: String, default: '确认操作' },
+    message: { type: String, default: '是否继续？' },
   });
-  const emit = defineEmits(['update:modelValue', 'preview']);
-  function onPreview() {
-    emit('preview', props.file);
+  const emit = defineEmits(['update:modelValue', 'confirm']);
+  function onConfirm() {
+    emit('confirm');
     emit('update:modelValue', false);
   }
 </script>
@@ -42,7 +36,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 100;
+    z-index: 2100;
   }
   .dialog {
     width: 360px;
@@ -67,24 +61,16 @@
     padding: 10px 16px;
     border-top: 1px solid #eee;
   }
-  button,
-  .primary {
+  button {
     padding: 6px 12px;
     border: 1px solid #ddd;
     background: #f9f9f9;
     border-radius: 6px;
     cursor: pointer;
-    text-decoration: none;
-    color: #333;
   }
-  .secondary {
-    background: #2563eb;
+  .danger {
+    background: #dc2626;
     color: #fff;
-    border-color: #2563eb;
-  }
-  .primary {
-    background: #16a34a;
-    color: #fff;
-    border-color: #16a34a;
+    border-color: #dc2626;
   }
 </style>
