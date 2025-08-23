@@ -50,6 +50,18 @@
   import AppLauncherModal from './AppLauncherModal.vue';
   import ContextMenu from '@/components/common/ContextMenu.vue';
 
+  import useDesktopGrid from '@/composables/useDesktopGrid.js';
+  const {
+    GRID,
+    positionToCell,
+    cellToPosition,
+    getOccupiedCellKeys,
+    findNextFreeCell,
+    finalizeDragForPositions,
+    savePositionsToStorage: gridSavePositionsToStorage,
+    loadPositionsFromStorage: gridLoadPositionsToStorage,
+  } = useDesktopGrid();
+
   const { apps, fetchApps, getAppIconUrl, setVisible } = useApps();
 
   const show = ref(false);
@@ -62,8 +74,7 @@
   const STORAGE_KEY = 'desktopIconPositions';
   let dragState = null; // { id, startX, startY, originX, originY, longPressTimer }
 
-  // 网格配置（与样式保持一致：left/top 起点 20px，图标宽 72 + 间距 16）
-  const GRID = { originX: 20, originY: 20, cellW: 88, cellH: 88, maxRows: 8 };
+  // 网格配置由 useDesktopGrid 提供
 
   const visibleApps = computed(() =>
     (apps.value || []).filter(a => a.isVisible ?? a.is_visible)
@@ -241,62 +252,10 @@
     savePositionsToStorage();
   }
 
-  function positionToCell(pos) {
-    const col = Math.max(0, Math.round((pos.x - GRID.originX) / GRID.cellW));
-    const row = Math.max(0, Math.round((pos.y - GRID.originY) / GRID.cellH));
-    return { col, row };
-  }
-
-  function cellToPosition(cell) {
-    return {
-      x: GRID.originX + cell.col * GRID.cellW,
-      y: GRID.originY + cell.row * GRID.cellH,
-    };
-  }
-
-  function getOccupiedCellKeys(excludeId) {
-    const set = new Set();
-    for (const [k, v] of Object.entries(positions.value || {})) {
-      if (Number(k) === Number(excludeId)) continue;
-      if (!v) continue;
-      const c = positionToCell(v);
-      set.add(`${c.col}:${c.row}`);
-    }
-    return set;
-  }
-
-  function findNextFreeCell(desiredCell, occupied) {
-    let { col, row } = desiredCell;
-    for (let i = 0; i < 10000; i++) {
-      const key = `${col}:${row}`;
-      if (!occupied.has(key)) return { col, row };
-      // 顺序向下寻找空位
-      row += 1;
-      // 防止无限向下，超过一定行数后换到下一列
-      if (row > GRID.maxRows * 5) {
-        row = 0;
-        col += 1;
-      }
-    }
-    return desiredCell;
-  }
+  // grid helpers provided by useDesktopGrid
 
   function finalizeDrag(idOrIds) {
-    // 支持单个 id 或 ids 数组
-    const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
-    const updated = { ...positions.value };
-    const occupiedBase = getOccupiedCellKeys(ids);
-    for (const id of ids) {
-      const p = positions.value?.[id];
-      if (!p) continue;
-      const desired = positionToCell(p);
-      const cell = findNextFreeCell(desired, occupiedBase);
-      updated[id] = cellToPosition(cell);
-      occupiedBase.add(
-        `${positionToCell(updated[id]).col}:${positionToCell(updated[id]).row}`
-      );
-    }
-    positions.value = updated;
+    finalizeDragForPositions(positions, idOrIds);
   }
 
   function getIconStyle(app) {
@@ -331,53 +290,51 @@
       }
     }
     positions.value = arranged;
-    savePositionsToStorage();
+    gridSavePositionsToStorage(STORAGE_KEY, positions.value, visibleApps.value);
     return col + (row > 0 ? 1 : 0);
   }
 
   onMounted(async () => {
     await fetchApps({ visible: true }, true);
-    loadPositionsFromStorage();
+    positions.value = gridLoadPositionsToStorage
+      ? gridLoadPositionsToStorage(STORAGE_KEY, visibleApps.value)
+      : {};
+    // NOTE: ensure alias name matches the composable alias
+    positions.value = gridLoadPositionsToStorage
+      ? gridLoadPositionsToStorage(STORAGE_KEY, visibleApps.value)
+      : {};
   });
 
   // 当 apps 列表更新后，重新加载已保存的位置（例如从后端异步拉取完成）
   watch(apps, () => {
-    loadPositionsFromStorage();
+    positions.value = gridLoadPositionsToStorage
+      ? gridLoadPositionsToStorage(STORAGE_KEY, visibleApps.value)
+      : {};
   });
 
   // 将位置持久化到 localStorage
   function savePositionsToStorage() {
     try {
-      // 仅保存当前存在的应用 id 的位置
-      const validIds = new Set((apps.value || []).map(a => a.id));
-      const data = {};
-      for (const [k, v] of Object.entries(positions.value || {})) {
-        if (validIds.has(Number(k))) data[k] = v;
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+      gridSavePositionsToStorage(
+        STORAGE_KEY,
+        positions.value,
+        visibleApps.value
+      );
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('AppIcons.savePositionsToStorage error', e);
+    }
   }
 
   function loadPositionsFromStorage() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      // 过滤无效 id
-      const validIds = new Set((apps.value || []).map(a => a.id));
-      const filtered = {};
-      for (const [k, v] of Object.entries(data || {})) {
-        if (
-          validIds.has(Number(k)) &&
-          v &&
-          typeof v.x === 'number' &&
-          typeof v.y === 'number'
-        ) {
-          filtered[k] = { x: v.x, y: v.y };
-        }
-      }
-      positions.value = filtered;
-    } catch {}
+      positions.value = gridLoadPositionsToStorage
+        ? gridLoadPositionsToStorage(STORAGE_KEY, visibleApps.value)
+        : {};
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('AppIcons.loadPositionsFromStorage error', e);
+    }
   }
 
   // 当应用列表变化时，清理无效位置

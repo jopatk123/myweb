@@ -46,6 +46,17 @@
   import ContextMenu from '@/components/common/ContextMenu.vue';
   import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
   import { useFiles } from '@/composables/useFiles.js';
+  import useDesktopGrid from '@/composables/useDesktopGrid.js';
+  const {
+    GRID,
+    positionToCell,
+    cellToPosition,
+    getOccupiedCellKeys,
+    findNextFreeCell,
+    finalizeDragForPositions,
+    savePositionsToStorage: gridSavePositionsToStorage,
+    loadPositionsFromStorage: gridLoadPositionsFromStorage,
+  } = useDesktopGrid();
 
   const props = defineProps({
     files: { type: Array, default: () => [] },
@@ -59,8 +70,7 @@
   const STORAGE_KEY = 'desktopFileIconPositions';
   let dragState = null;
 
-  // 网格配置：统一与应用图标一致，从左上角 20px 开始，单元 88x88
-  const GRID = { originX: 20, originY: 20, cellW: 88, cellH: 88, maxRows: 8 };
+  // 网格配置由 useDesktopGrid 提供
 
   const { getDownloadUrl, remove } = useFiles();
   const confirm = ref({ visible: false, file: null });
@@ -227,62 +237,7 @@
     savePositionsToStorage();
   }
 
-  function positionToCell(pos) {
-    const col = Math.max(0, Math.round((pos.x - GRID.originX) / GRID.cellW));
-    const row = Math.max(0, Math.round((pos.y - GRID.originY) / GRID.cellH));
-    return { col, row };
-  }
-
-  function cellToPosition(cell) {
-    return {
-      x: GRID.originX + cell.col * GRID.cellW,
-      y: GRID.originY + cell.row * GRID.cellH,
-    };
-  }
-
-  function getOccupiedCellKeys(excludeId) {
-    const set = new Set();
-    const excludeIds = Array.isArray(excludeId) ? excludeId : [excludeId];
-    for (const [k, v] of Object.entries(positions.value || {})) {
-      if (excludeIds.includes(Number(k))) continue;
-      if (!v) continue;
-      const c = positionToCell(v);
-      set.add(`${c.col}:${c.row}`);
-    }
-    return set;
-  }
-
-  function findNextFreeCell(desiredCell, occupied) {
-    let { col, row } = desiredCell;
-    for (let i = 0; i < 10000; i++) {
-      const key = `${col}:${row}`;
-      if (!occupied.has(key)) return { col, row };
-      row += 1;
-      if (row > GRID.maxRows * 5) {
-        row = 0;
-        col += 1;
-      }
-    }
-    return desiredCell;
-  }
-
-  function finalizeDrag(idOrIds) {
-    // 支持单个 id 或 ids 数组
-    const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
-    const updated = { ...positions.value };
-    const occupiedBase = getOccupiedCellKeys(ids);
-    for (const id of ids) {
-      const p = positions.value?.[id];
-      if (!p) continue;
-      const desired = positionToCell(p);
-      const cell = findNextFreeCell(desired, occupiedBase);
-      updated[id] = cellToPosition(cell);
-      occupiedBase.add(
-        `${positionToCell(updated[id]).col}:${positionToCell(updated[id]).row}`
-      );
-    }
-    positions.value = updated;
-  }
+  // grid helpers provided by useDesktopGrid
 
   function getIconStyle(file) {
     const p = positions.value[file.id];
@@ -304,7 +259,7 @@
       }
     }
     positions.value = arranged;
-    savePositionsToStorage();
+    gridSavePositionsToStorage(STORAGE_KEY, positions.value, props.files);
     return col + (row > 0 ? 1 : 0);
   }
 
@@ -318,40 +273,38 @@
 
   function savePositionsToStorage() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(positions.value));
-    } catch {}
+      gridSavePositionsToStorage(STORAGE_KEY, positions.value, props.files);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('FileIcons.savePositionsToStorage error', e);
+    }
   }
 
   function loadPositionsFromStorage() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      const filtered = {};
-      const validIds = new Set((props.files || []).map(f => f.id));
-      for (const [k, v] of Object.entries(data || {})) {
-        if (
-          validIds.has(Number(k)) &&
-          v &&
-          typeof v.x === 'number' &&
-          typeof v.y === 'number'
-        )
-          filtered[k] = { x: v.x, y: v.y };
-      }
-      positions.value = filtered;
-    } catch {}
+      positions.value = gridLoadPositionsFromStorage
+        ? gridLoadPositionsFromStorage(STORAGE_KEY, props.files)
+        : {};
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('FileIcons.loadPositionsFromStorage error', e);
+    }
   }
 
   // 初次载入时尝试恢复位置（在组件挂载后，确保 props.files 已可用）
   onMounted(() => {
-    loadPositionsFromStorage();
+    positions.value = gridLoadPositionsFromStorage
+      ? gridLoadPositionsFromStorage(STORAGE_KEY, props.files)
+      : {};
   });
 
   // 当父组件传入的 files 变化时，重新加载位置（例如异步 fetch 完成后）
   watch(
     () => props.files,
     () => {
-      loadPositionsFromStorage();
+      positions.value = gridLoadPositionsFromStorage
+        ? gridLoadPositionsFromStorage(STORAGE_KEY, props.files)
+        : {};
     }
   );
 </script>

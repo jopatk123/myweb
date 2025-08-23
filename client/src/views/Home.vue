@@ -269,27 +269,13 @@
 
     if (selectionRect.value.visible) {
       // 计算选中的图标
-      // eslint-disable-next-line no-console
-      console.log('[multi-select-debug] onDesktopMouseUp fired');
       const selectedIds = getSelectedIconIds();
 
       // 分发选中状态到子组件
-      // eslint-disable-next-line no-console
-      console.log('[multi-select-debug] dispatching selected ids', selectedIds);
       if (appIconsRef.value?.setSelectedIds) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[multi-select-debug] calling appIconsRef.setSelectedIds',
-          selectedIds.apps
-        );
         appIconsRef.value.setSelectedIds(selectedIds.apps);
       }
       if (fileIconsRef.value?.setSelectedIds) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[multi-select-debug] calling fileIconsRef.setSelectedIds',
-          selectedIds.files
-        );
         fileIconsRef.value.setSelectedIds(selectedIds.files);
       }
     }
@@ -313,38 +299,13 @@
     const appContainerEl = appIconsRef.value?.$el || null;
     const fileContainerEl = fileIconsRef.value?.$el || null;
 
-    // Debug: 输出用于排查为什么没有选中项（使用 console.log 保证在非 debug 模式下也能看到）
-    // eslint-disable-next-line no-console
-    console.log(
-      '[multi-select-debug] selectionRect:',
-      JSON.parse(JSON.stringify(rect)),
-      'iconCount:',
-      iconItems.length
-    );
-    // eslint-disable-next-line no-console
-    console.log(
-      '[multi-select-debug] appContainerEl:',
-      !!appContainerEl,
-      'fileContainerEl:',
-      !!fileContainerEl
-    );
+    // Debug: 输出用于排查为什么没有选中项（保留 logic, removed console logs）
 
     iconItems.forEach((item, idx) => {
       const itemRect = item.getBoundingClientRect();
       const id = parseInt(item.getAttribute('data-id'));
 
-      // Debug: 打印前几个元素的 rect
-      if (idx < 5) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[multi-select-debug] icon',
-          id,
-          'rect',
-          JSON.parse(JSON.stringify(itemRect)),
-          'intersect',
-          rectIntersect(rect, itemRect)
-        );
-      }
+      // Debug: 打印前几个元素的 rect (removed console logs)
 
       // 检查矩形相交
       if (!rectIntersect(rect, itemRect)) return;
