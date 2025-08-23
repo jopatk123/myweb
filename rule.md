@@ -347,3 +347,106 @@ db.get(`SELECT * FROM users WHERE email = '${email}'`);
 ```
 
 ---
+
+## 11. 前后端字段命名与请求归一化
+
+- **约定**：JSON 载荷（前端 <-> 后端 HTTP 接口）使用 **camelCase** 字段（例如 `groupId`, `userId`）。数据库层使用 **snake_case**（例如 `group_id`）。
+- **原因**：JavaScript 生态（前端与 Node）普遍使用 camelCase，数据库/SQL 使用 snake_case 更符合传统与可读性，两者通过明确的归一化层做转换。
+
+- **后端要求**：应当在请求进入控制器前使用中间件把所有请求键统一转换为 camelCase，控制器内统一使用 camelCase；在对外响应（body.data）时也统一转换为 camelCase（已有的 `normalizeResponseMiddleware` 可用于响应处理）。
+- **兼容性**：对于外部或历史客户端可能发送的 snake_case 字段，控制器层在短期内可以做容错（同时读取 `groupId` 与 `group_id`），但不应长期依赖此做法，应在文档中强制并升级客户端。
+
+示例：把请求键从 snake_case 转为 camelCase 的中间件（放在 `server/src/middleware/`）：
+
+```js
+// server/src/middleware/normalizeRequestToCamel.middleware.js
+import { snakeToCamel } from '../utils/case-helper.js';
+
+function convertKeys(obj) {
+  if (Array.isArray(obj)) return obj.map(convertKeys);
+  if (!obj || typeof obj !== 'object') return obj;
+  const res = {};
+  for (const [k, v] of Object.entries(obj)) {
+    res[snakeToCamel(k)] = convertKeys(v);
+  }
+  return res;
+}
+
+export default function normalizeRequestToCamel(req, res, next) {
+  try {
+    if (req.body && typeof req.body === 'object')
+      req.body = convertKeys(req.body);
+    if (req.query && typeof req.query === 'object')
+      req.query = convertKeys(req.query);
+  } catch (e) {
+    console.warn('normalizeRequestToCamel warning:', e?.message || e);
+  }
+  next();
+}
+```
+
+中间件加载顺序建议（在 `server/src/app.js`）：
+
+```js
+app.use(express.json());
+app.use(normalizeRequestToCamel); // 先归一化请求键
+// 其它中间件（鉴权、校验、路由）
+```
+
+---
+
+## 12. 请求校验、DTO 与错误响应格式
+
+- **DTO 与校验**：后端必须为外部可调用的每个路由维护 DTO（`server/src/dto/*.dto.js`），并使用 Joi / class-validator / Zod 等库做入参校验。
+- **优先级**：在路由层或控制器入口处进行校验，失败时返回规范错误，不让控制器内部处理低级别校验细节。
+
+错误响应统一格式（示例）：
+
+```json
+{
+  "code": 400,
+  "message": "请求参数校验失败",
+  "errors": [{ "field": "groupId", "message": "必须为整数" }]
+}
+```
+
+示例：使用 Joi 在 DTO 中声明并在路由中校验
+
+```js
+// server/src/dto/wallpaper.dto.js
+import Joi from 'joi';
+
+export const moveWallpapersSchema = Joi.object({
+  ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
+  groupId: Joi.alternatives()
+    .try(Joi.number().integer().allow(null), Joi.string().allow(''))
+    .required(),
+});
+
+// 在路由或控制器入口处使用
+const { error, value } = moveWallpapersSchema.validate(req.body, {
+  convert: true,
+});
+if (error)
+  return res
+    .status(400)
+    .json({ code: 400, message: '请求参数错误', errors: error.details });
+```
+
+---
+
+## 13. API 契约与文档化（强制建议）
+
+- **描述文件**：使用 OpenAPI / Swagger 描述所有公共接口（尤其是关键路径如上传、批量操作），并在 CI 中校验生成的文档。
+- **示例**：对 `PUT /api/wallpapers/move` 指明 `ids: integer[]` 与 `groupId: integer|null`，并标注错误响应体格式。
+
+---
+
+## 14. CI / 开发工具与工程化建议
+
+- **静态检查**：项目应启用 `ESLint` + `Prettier`（前端与后端分别配置），并在 CI 中运行 `lint` 阶段阻止不合格提交。
+- **提交检查**：使用 `husky` + `commitlint` 强制提交信息格式（`<type>(<scope>): <desc>`）。
+- **类型/契约**：如果可能，优先考虑在后端或共享代码中引入 TypeScript 或至少在关键模块使用类型注释，减少运行时错误。
+- **测试覆盖**：关键接口（上传、批量移动、批量删除）必须有自动化集成测试（可以使用 sqlite 的内存模式）。
+
+---

@@ -182,7 +182,11 @@ export class WallpaperController {
   // 批量移动壁纸
   async moveWallpapers(req, res, next) {
     try {
-      let { ids, groupId } = req.body;
+      // 兼容前端可能传递的不同命名（camelCase 或 snake_case）
+      let { ids } = req.body;
+      // 优先读取 camelCase，再回退到 snake_case
+      let groupId =
+        req.body.groupId !== undefined ? req.body.groupId : req.body.group_id;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
       }
