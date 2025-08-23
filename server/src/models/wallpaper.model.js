@@ -62,15 +62,16 @@ export class WallpaperModel {
   }
 
   create(data) {
-    const {
-      filename,
-      originalName,
-      filePath,
-      fileSize,
-      mimeType,
-      groupId,
-      name,
-    } = data;
+    // 支持接受 camelCase 或已被 mapToSnake 转换后的 snake_case 字段
+    const filename = data.filename || data.file_name;
+    const originalName =
+      data.originalName || data.original_name || data.originalname;
+    const filePath = data.filePath || data.file_path;
+    const fileSize = data.fileSize || data.file_size || data.size;
+    const mimeType = data.mimeType || data.mime_type || data.mimetype;
+    const groupId = data.groupId || data.group_id || null;
+    const name =
+      data.name || data.title || data.originalName || data.original_name;
     const sql = `
       INSERT INTO wallpapers (filename, original_name, file_path, file_size, mime_type, group_id, name)
       VALUES (?, ?, ?, ?, ?, ?, ?)

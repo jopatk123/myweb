@@ -1,5 +1,6 @@
 import { WallpaperModel } from '../models/wallpaper.model.js';
 import { WallpaperGroupModel } from '../models/wallpaper-group.model.js';
+import { mapToSnake } from '../utils/field-mapper.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -54,7 +55,7 @@ export class WallpaperService {
       groupId = def?.id || null;
     }
 
-    // 在 service 层统一把 camelCase 字段映射为 model 层需要的字段名
+    // 在 service 层统一把 camelCase 字段映射为 model/DB 层需要的 snake_case 字段
     const payload = {
       filename,
       originalName,
@@ -65,7 +66,8 @@ export class WallpaperService {
       name,
     };
 
-    return this.wallpaperModel.create(payload);
+    const dbPayload = mapToSnake(payload);
+    return this.wallpaperModel.create(dbPayload);
   }
 
   updateWallpaper(id, data) {

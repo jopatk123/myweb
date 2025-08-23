@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { FileModel } from '../models/file.model.js';
+import { mapToSnake } from '../utils/field-mapper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,7 +70,7 @@ export class FileService {
       '/'
     );
 
-    return this.model.create({
+    const payload = {
       originalName,
       storedName,
       filePath: normalizedPath,
@@ -78,7 +79,8 @@ export class FileService {
       typeCategory,
       fileUrl,
       uploaderId,
-    });
+    };
+    return this.model.create(mapToSnake(payload));
   }
 
   async remove(id) {

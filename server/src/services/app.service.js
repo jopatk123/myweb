@@ -16,8 +16,15 @@ export class AppService {
     return this.appModel.findById(id);
   }
 
-  createApp(payload) {
-    return this.appModel.create(payload);
+  async createApp(payload) {
+    // 接受 camelCase payload，映射为 snake_case 给 model
+    try {
+      const { mapToSnake } = await import('../utils/field-mapper.js');
+      return this.appModel.create(mapToSnake(payload));
+    } catch (e) {
+      // 回退：若动态 import 失败，则直接传入 payload（model 层会兼容）
+      return this.appModel.create(payload);
+    }
   }
 
   updateApp(id, payload) {
