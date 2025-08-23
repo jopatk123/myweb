@@ -74,7 +74,7 @@ client/
 | 样式文件   | kebab-case           | `user-profile.scss`                                                   |
 | 单元测试   | 同名 + `.test.js`    | `UserList.test.js`                                                    |
 
-### 3.4 变量与参数命名
+### 3.3 变量与参数命名
 
 - **通用约定**：变量和函数参数应使用有语义的驼峰式命名（camelCase），避免在业务逻辑中使用无意义或单字母变量（如 `f`, `g`, `k`），除非在极短的数学循环或临时上下文中（例如 `for (let i = 0; i < n; i++)`）。
 - **实体与集合命名**：集合使用复数（`files`、`users`），单个实体使用有意义的单数名（`file`、`user`）。
@@ -85,7 +85,7 @@ client/
 
 ---
 
-### 3.3 自动生成示例
+### 3.4 自动生成示例
 
 > 当用户说「新建一个订单管理页面」 → 执行：
 >
@@ -209,8 +209,10 @@ services:
 ```
 当用户说“新建一个<BaseXxx>组件”：
 1. 文件名：client/src/components/common/BaseXxx.vue
-2. 必须包含props: { value: …, label: … } 和 emit: ['update:value']
-3. 样式使用CSS Modules写法 <style module>...
+2. 必需（最低要求）：props 中应包含组件核心数据（例如 `value` 或 `modelValue`）以及必要的事件发射（例如 `update:value` / `update:modelValue`）以支持 v-model 绑定。
+3. 推荐：包含 `label`、`helpText` 等可复用属性，确保组件具有明确的可配置性。
+4. 样式：推荐使用局部/模块化样式（CSS Modules / Scoped CSS）以避免全局污染；如果项目统一使用某种方案（如 `<style module>`），在模板中遵守该约定。
+5. 文档：为 Base 组件添加简短的 README 或 Storybook 示例，说明 props、事件、插槽与注意事项。
 ```
 
 ### snippet 3：创建DTO和验证
@@ -222,6 +224,22 @@ services:
 ```
 
 ---
+
+## 6.1 数据库迁移、备份与 seed（新增建议）
+
+- **迁移工具推荐**：在项目中使用 `knex`（带 migrations）或 `umzug`（配合 Sequelize / sqlite）来管理 schema 变更。不要直接依赖 AI 自动写入 `CREATE TABLE` 到数据文件，迁移应由可控脚本管理并记录版本。
+- **迁移规范**：所有 schema 变更需提供向前与向后迁移脚本（up / down）。迁移文件按时间戳命名并存放 `server/src/migrations/`。
+- **备份策略**：定期备份 `data/{{DB_NAME}}`（生产环境应使用托管 DB 并配置自动备份）。在部署前执行备份并保留至少 7 天的备份快照。
+- **seed 数据**：在 `server/src/seeds/` 保持必要的初始数据（管理员账户、基础字典）。CI 在集成测试阶段可使用 seed 脚本来初始化内存 sqlite 数据库。
+- **本地开发**：提供 `npm run migrate` / `npm run migrate:rollback` 和 `npm run seed` 脚本以便开发者重置数据库状态。
+
+## 6.2 日志与可观测性（新增建议）
+
+- **结构化日志**：使用 `pino` 或 `winston` 输出 JSON 格式日志，字段至少包含 `timestamp`, `level`, `service`, `requestId`, `msg`, `err`（如有）。
+- **请求追踪 ID**：在入口中间件注入 `X-Request-Id`（若请求未提供则生成 UUID），并在日志上下文中包含该 ID，便于串联请求链路。
+- **性能/指标**：暴露 `/healthz`（Liveness）和 `/ready`（Readiness）端点；采集业务/基础指标（请求量、错误率、平均响应时间）并导出到 Prometheus。
+- **集中采集**：建议把日志集中化（ELK / Loki）并把指标推送到 Prometheus，再用 Grafana 建立常用仪表盘与告警规则。
+- **错误上下文**：在捕获异常时记录上下文信息（userId, route, payload size 等），但切勿把敏感信息（密码、token）写入日志。
 
 ## 7. 环境变量模板（.env.example）
 
@@ -449,5 +467,54 @@ if (error)
 - **提交检查**：使用 `husky` + `commitlint` 强制提交信息格式（`<type>(<scope>): <desc>`）。
 - **类型/契约**：如果可能，优先考虑在后端或共享代码中引入 TypeScript 或至少在关键模块使用类型注释，减少运行时错误。
 - **测试覆盖**：关键接口（上传、批量移动、批量删除）必须有自动化集成测试（可以使用 sqlite 的内存模式）。
+
+### 14.1 CI/CD 示例流程与质量门槛（新增建议）
+
+- **示例流水线步骤（顺序）**：
+  1. checkout
+  2. install
+  3. lint（前端/后端分别运行 ESLint/Prettier，lint 失败阻止合并）
+  4. test（运行单元与集成测试，若能区分则并行执行）
+  5. contract-test（校验 OpenAPI 文档与实现的一致性）
+  6. build
+  7. deploy（仅主分支或带 tag 的构建）
+
+- **质量门槛建议**：
+  - 覆盖率阈值：项目整体最低 70%，关键模块（上传、批量操作）建议 85%+。
+  - Lint 阈值：所有 new code 必须通过 lint；禁用过多规则前需在 PR 中说明理由。
+  - PR 检查：必须包含至少一位代码审阅者批准、CI 通过、并且没有未解决的安全扫描告警（依赖漏洞）。
+
+- **工具建议**：使用 GitHub Actions / GitLab CI / CircleCI，测试阶段可使用 sqlite 内存模式或临时容器化 DB；使用 `swagger-cli` / `openapi-core` 在 CI 中做 contract 校验。
+
+#### 示例：GitHub Actions（简易 CI 模板）
+
+```yaml
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint --if-present
+      - name: Test
+        run: npm run test --if-present -- --coverage
+      - name: Contract check
+        run: npm run contract-test --if-present
+      - name: Build
+        run: npm run build --if-present
+```
+
+#### 额外建议
+
+- 在 CI 中加入依赖安全扫描（Dependabot / Snyk），并阻止存在高危告警的合并。
+- 使用 coverage 报告（lcov）并在 PR 中显示覆盖率变更，必要时拒绝覆盖率下降超过阈值的 PR。
 
 ---
