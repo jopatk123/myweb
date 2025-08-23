@@ -240,66 +240,7 @@
 </script>
 
 <style scoped>
-  .admin-layout {
-    display: grid;
-    grid-template-columns: 200px 260px 1fr;
-    grid-template-rows: 1fr;
-    min-height: 100vh;
-  }
-  .global-sider {
-    background: #0f172a;
-    color: #e2e8f0;
-    padding: 16px 12px;
-  }
-  .brand {
-    font-weight: 700;
-    font-size: 18px;
-    margin-bottom: 20px;
-  }
-  .global-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .menu-item {
-    display: block;
-    padding: 10px 12px;
-    color: #cbd5e1;
-    text-decoration: none;
-    border-radius: 6px;
-  }
-  .menu-item.active {
-    background: #1e293b;
-    color: #fff;
-  }
-
-  .content-area {
-    padding: 20px;
-  }
-  .toolbar-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-  .search {
-    padding: 6px 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-  }
-  .app-list table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .app-list th,
-  .app-list td {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    text-align: left;
-  }
+  /* 页面特有细节保留（与全局不冲突） */
   .icon {
     width: 32px;
     height: 32px;
@@ -311,53 +252,5 @@
     height: 32px;
     text-align: center;
     color: #888;
-  }
-
-  .pagination-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 0;
-  }
-
-  /* 开关样式 */
-  .switch {
-    position: relative;
-    display: inline-block;
-    width: 46px;
-    height: 24px;
-  }
-  .switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: 0.2s;
-    border-radius: 24px;
-  }
-  .slider:before {
-    position: absolute;
-    content: '';
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.2s;
-    border-radius: 50%;
-  }
-  .switch input:checked + .slider {
-    background-color: #4caf50;
-  }
-  .switch input:checked + .slider:before {
-    transform: translateX(22px);
   }
 </style>
