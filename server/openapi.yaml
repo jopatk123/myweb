@@ -2,16 +2,135 @@ openapi: 3.0.0
 info:
   title: MyWeb API
   version: 1.0.0
+servers:
+  - url: http://localhost:3002
 paths:
   /api/wallpapers:
     get:
-      summary: Get wallpapers
+      summary: List wallpapers (supports pagination)
+      parameters:
+        - in: query
+          name: groupId
+          schema:
+            type: integer
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Wallpaper'
+    post:
+      summary: Upload wallpaper (multipart/form-data)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                groupId:
+                  type: integer
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Created
+
+  /api/wallpapers/active:
+    get:
+      summary: Get active wallpaper
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseWallpaper'
+
+  /api/wallpapers/random:
+    get:
+      summary: Get random wallpaper from a group
+      parameters:
+        - in: query
+          name: groupId
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseWallpaper'
+
+  /api/wallpapers/{id}:
+    get:
+      summary: Get wallpaper by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseWallpaper'
+
+    put:
+      summary: Update wallpaper
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WallpaperUpdate'
+      responses:
+        '200':
+          description: OK
+
+    delete:
+      summary: Delete wallpaper
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+
   /api/wallpapers/move:
     put:
-      summary: Move wallpapers
+      summary: Move multiple wallpapers to a group
       requestBody:
         required: true
         content:
@@ -30,3 +149,243 @@ paths:
       responses:
         '200':
           description: OK
+
+  /api/wallpapers/batch-delete:
+    delete:
+      summary: Delete multiple wallpapers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: OK
+
+  /api/wallpapers/groups:
+    get:
+      summary: List groups
+      responses:
+        '200':
+          description: OK
+
+    post:
+      summary: Create group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupCreate'
+      responses:
+        '201':
+          description: Created
+
+  /api/wallpapers/groups/{id}:
+    put:
+      summary: Update group
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupUpdate'
+      responses:
+        '200':
+          description: OK
+
+    delete:
+      summary: Delete group
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+
+  /api/wallpapers/groups/current:
+    get:
+      summary: Get current group
+      responses:
+        '200':
+          description: OK
+
+    put:
+      summary: Set current group
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+  /api/apps:
+    get:
+      summary: List apps
+      responses:
+        '200':
+          description: OK
+
+    post:
+      summary: Create app
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppCreate'
+      responses:
+        '201':
+          description: Created
+
+  /api/apps/{id}:
+    get:
+      summary: Get app by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+    put:
+      summary: Update app
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppUpdate'
+      responses:
+        '200':
+          description: OK
+
+    delete:
+      summary: Delete app
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+
+  /api/files/upload:
+    post:
+      summary: Upload files
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '201':
+          description: Created
+
+components:
+  schemas:
+    Wallpaper:
+      type: object
+      properties:
+        id:
+          type: integer
+        mimeType:
+          type: string
+        groupId:
+          type: integer
+        name:
+          type: string
+        isActive:
+          type: boolean
+        filePath:
+          type: string
+
+    ResponseWallpaper:
+      type: object
+      properties:
+        code:
+          type: integer
+        data:
+          $ref: '#/components/schemas/Wallpaper'
+        message:
+          type: string
+
+    WallpaperUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+
+    GroupCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        isDefault:
+          type: boolean
+      required: [name]
+
+    GroupUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        isCurrent:
+          type: boolean
+
+    AppCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        icon_filename:
+          type: string
+      required: [name, slug]
+
+    AppUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
