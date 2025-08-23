@@ -17,14 +17,11 @@
         移动 ({{ selectedCount }})
       </button>
       <div class="upload-group">
-        <button @click="$emit('upload-wallpaper')" class="btn btn-primary">
-          上传壁纸
-        </button>
         <button
           @click="$emit('open-bulk-upload')"
           class="btn btn-primary small"
         >
-          批量上传
+          上传壁纸
         </button>
       </div>
       <button @click="$emit('random-wallpaper')" class="btn btn-accent">

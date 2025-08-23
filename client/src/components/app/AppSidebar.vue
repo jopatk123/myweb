@@ -41,7 +41,9 @@
       default: () => [],
     },
     selectedGroupId: {
-      type: String,
+      // accept both String and Number to avoid prop type warnings when parent
+      // passes numeric ids
+      type: [String, Number],
       default: '',
     },
   });
