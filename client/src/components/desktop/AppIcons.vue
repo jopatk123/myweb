@@ -64,13 +64,14 @@
   const GRID = { originX: 20, originY: 20, cellW: 88, cellH: 88, maxRows: 8 };
 
   const visibleApps = computed(() =>
-    (apps.value || []).filter(a => a.is_visible)
+    (apps.value || []).filter(a => a.isVisible ?? a.is_visible)
   );
 
   // 优先使用后端提供的图标路径，否则根据 slug 推断本地 public 目录下的图标
   function getIconUrl(app) {
-    if (app.icon_filename) {
-      return getAppIconUrl(app); // 使用 useApps 中的方法
+    const filename = app.iconFilename || app.icon_filename;
+    if (filename) {
+      return getAppIconUrl({ iconFilename: filename }); // 使用 useApps 中的方法
     }
     // 后端未提供图标，根据 slug 推断本地路径
     // 注意：这里假设了图标文件的命名规范
@@ -85,9 +86,10 @@
 
   function open(app) {
     // 自定义APP：若存在 target_url，则新窗口打开
-    if (app.target_url) {
+    if (app.targetUrl || app.target_url) {
+      const url = app.targetUrl || app.target_url;
       try {
-        window.open(app.target_url, '_blank');
+        window.open(url, '_blank');
         return;
       } catch {}
     }
@@ -119,7 +121,10 @@
     menu.value.y = e.clientY;
     menu.value.items = [
       { key: 'open', label: '打开' },
-      { key: 'toggleVisible', label: app.is_visible ? '隐藏' : '显示' },
+      {
+        key: 'toggleVisible',
+        label: (app.isVisible ?? app.is_visible) ? '隐藏' : '显示',
+      },
     ];
     menu.value.visible = true;
   }
@@ -132,7 +137,7 @@
     }
     if (key === 'toggleVisible') {
       try {
-        await setVisible(app.id, !app.is_visible);
+        await setVisible(app.id, !(app.isVisible ?? app.is_visible));
         await fetchApps({ visible: true }, true);
       } catch {}
     }
