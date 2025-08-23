@@ -30,7 +30,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
-    "speccy": "^1.8.0"
+    "@stoplight/spectral": "^6.5.0"
   },
   "lint-staged": {
     "*.{js,vue,css,md,json,yml,yaml}": [
@@ -46,6 +46,9 @@
     }
   },
   "scripts_contract": {
-    "contract-test": "speccy lint openapi.yaml --reporter json > contract-report.json"
+    "contract-test": "spectral lint openapi.yaml --format json > contract-report.json"
+  },
+  "scripts": {
+    "contract-test": "spectral lint openapi.yaml --format json > contract-report.json"
   }
 }
