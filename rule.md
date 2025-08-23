@@ -468,7 +468,7 @@ if (error)
 - **类型/契约**：如果可能，优先考虑在后端或共享代码中引入 TypeScript 或至少在关键模块使用类型注释，减少运行时错误。
 - **测试覆盖**：关键接口（上传、批量移动、批量删除）必须有自动化集成测试（可以使用 sqlite 的内存模式）。
 
-### 14.1 CI/CD 示例流程与质量门槛（新增建议）
+### 14.1 CI/CD 示例流程与质量门槛
 
 - **示例流水线步骤（顺序）**：
   1. checkout
@@ -485,25 +485,24 @@ if (error)
   - PR 检查：必须包含至少一位代码审阅者批准、CI 通过、并且没有未解决的安全扫描告警（依赖漏洞）。
 
 - **工具建议**：使用 GitHub Actions / GitLab CI / CircleCI，测试阶段可使用 sqlite 内存模式或临时容器化 DB；使用 `swagger-cli` / `openapi-core` 在 CI 中做 contract 校验。
- - **工具建议**：使用 GitHub Actions / GitLab CI / CircleCI，测试阶段可使用 sqlite 内存模式或临时容器化 DB；使用 `swagger-cli` / `openapi-core` 在 CI 中做 contract 校验。
- 
-    注意：历史上有工具如 `speccy` 用于 OpenAPI lint，但已不再维护或版本不可用。**推荐使用 Stoplight Spectral（`@stoplight/spectral`）作为现代的 OpenAPI linter**，它维护活跃、规则丰富并支持自定义配置（通过 `.spectral.yml`）。
 
-    简单用法示例（根 package.json 的 `scripts` 中）：
+  注意：历史上有工具如 `speccy` 用于 OpenAPI lint，但已不再维护或版本不可用。**推荐使用 Stoplight Spectral（`@stoplight/spectral`）作为现代的 OpenAPI linter**，它维护活跃、规则丰富并支持自定义配置（通过 `.spectral.yml`）。
 
-    ```json
-    "scripts": {
-      "contract-test": "spectral lint server/openapi.yaml --format json > contract-report.json"
-    }
-    ```
+  简单用法示例（根 package.json 的 `scripts` 中）：
 
-    CI 中可直接调用 `npm run contract-test --if-present` 或使用 `npx`：
+  ```json
+  "scripts": {
+    "contract-test": "spectral lint server/openapi.yaml --format json > contract-report.json"
+  }
+  ```
 
-    ```bash
-    npx @stoplight/spectral lint server/openapi.yaml --format json > contract-report.json || true
-    ```
+  CI 中可直接调用 `npm run contract-test --if-present` 或使用 `npx`：
 
-    建议把 `.spectral.yml` 加入仓库以统一规则，并把 `contract-report.json` 上传为 CI artifact 以便审查。
+  ```bash
+  npx @stoplight/spectral lint server/openapi.yaml --format json > contract-report.json || true
+  ```
+
+  建议把 `.spectral.yml` 加入仓库以统一规则，并把 `contract-report.json` 上传为 CI artifact 以便审查。
 
 #### 示例：GitHub Actions（简易 CI 模板）
 
@@ -530,10 +529,3 @@ jobs:
       - name: Build
         run: npm run build --if-present
 ```
-
-#### 额外建议
-
-- 在 CI 中加入依赖安全扫描（Dependabot / Snyk），并阻止存在高危告警的合并。
-- 使用 coverage 报告（lcov）并在 PR 中显示覆盖率变更，必要时拒绝覆盖率下降超过阈值的 PR。
-
----

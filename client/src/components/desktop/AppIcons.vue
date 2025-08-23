@@ -11,6 +11,7 @@
       :key="app.id"
       class="icon-item"
       :class="{ selected: selectedId === app.id }"
+      :data-id="app.id"
       @click="onClick(app, $event)"
       @dblclick="onDblClick(app)"
       @mousedown="onMouseDown(app, $event)"
@@ -56,6 +57,7 @@
   const currentTitle = ref('');
   const currentStorageKey = ref('');
   const selectedId = ref(null);
+  const selectedIds = ref(new Set()); // 支持多选
   const positions = ref({}); // { [appId]: { x, y } }
   const STORAGE_KEY = 'desktopIconPositions';
   let dragState = null; // { id, startX, startY, originX, originY, longPressTimer }
@@ -103,8 +105,9 @@
   }
 
   function onClick(app, e) {
-    // 单击只选中
+    // 单击只选中（清除其他选中）
     selectedId.value = app.id;
+    selectedIds.value = new Set([app.id]);
   }
 
   function onDblClick(app) {
@@ -116,6 +119,7 @@
   const menu = ref({ visible: false, x: 0, y: 0, app: null, items: [] });
   function onContextMenu(app, e) {
     selectedId.value = app.id;
+    selectedIds.value = new Set([app.id]);
     menu.value.app = app;
     menu.value.x = e.clientX;
     menu.value.y = e.clientY;
@@ -147,15 +151,42 @@
     // 长按触发拖动（>150ms）
     const id = app.id;
     const rect = e.currentTarget.getBoundingClientRect();
-    dragState = {
-      id,
-      startX: e.clientX,
-      startY: e.clientY,
-      originX: positions.value[id]?.x ?? rect.left,
-      originY: positions.value[id]?.y ?? rect.top,
-      longPressTimer: null,
-      dragging: false,
-    };
+    // 支持批量拖动：当被按下的图标在 selectedIds 中，则拖动所有选中的图标
+    const isMulti = selectedIds.value.has(id);
+    if (isMulti) {
+      const ids = Array.from(selectedIds.value);
+      const origins = {};
+      for (const i of ids) {
+        const r = e.currentTarget.ownerDocument.querySelector(
+          `[data-id="${i}"]`
+        );
+        // 以已保存的位置为准，fallback 到 DOM rect
+        const rectItem = r ? r.getBoundingClientRect() : null;
+        origins[i] = positions.value[i]
+          ? { x: positions.value[i].x, y: positions.value[i].y }
+          : rectItem
+            ? { x: rectItem.left, y: rectItem.top }
+            : { x: 0, y: 0 };
+      }
+      dragState = {
+        ids,
+        startX: e.clientX,
+        startY: e.clientY,
+        origins,
+        longPressTimer: null,
+        dragging: false,
+      };
+    } else {
+      dragState = {
+        id,
+        startX: e.clientX,
+        startY: e.clientY,
+        originX: positions.value[id]?.x ?? rect.left,
+        originY: positions.value[id]?.y ?? rect.top,
+        longPressTimer: null,
+        dragging: false,
+      };
+    }
 
     dragState.longPressTimer = setTimeout(() => {
       dragState.dragging = true;
@@ -170,15 +201,28 @@
     if (!dragState || !dragState.dragging) return;
     const dx = e.clientX - dragState.startX;
     const dy = e.clientY - dragState.startY;
-    positions.value = {
-      ...positions.value,
-      [dragState.id]: { x: dragState.originX + dx, y: dragState.originY + dy },
-    };
+    if (dragState.ids) {
+      const updated = { ...positions.value };
+      for (const i of dragState.ids) {
+        const o = dragState.origins[i] || { x: 0, y: 0 };
+        updated[i] = { x: o.x + dx, y: o.y + dy };
+      }
+      positions.value = updated;
+    } else {
+      positions.value = {
+        ...positions.value,
+        [dragState.id]: {
+          x: dragState.originX + dx,
+          y: dragState.originY + dy,
+        },
+      };
+    }
   }
 
   function onMouseUp() {
     // 释放时吸附到网格并避免与同组图标重叠
-    if (dragState?.dragging) finalizeDrag(dragState.id);
+    if (dragState?.dragging)
+      finalizeDrag(dragState.ids ? dragState.ids : dragState.id);
     cleanupDrag();
   }
 
@@ -237,13 +281,22 @@
     return desiredCell;
   }
 
-  function finalizeDrag(id) {
-    const p = positions.value?.[id];
-    if (!p) return;
-    const desired = positionToCell(p);
-    const occupied = getOccupiedCellKeys(id);
-    const cell = findNextFreeCell(desired, occupied);
-    positions.value = { ...positions.value, [id]: cellToPosition(cell) };
+  function finalizeDrag(idOrIds) {
+    // 支持单个 id 或 ids 数组
+    const ids = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+    const updated = { ...positions.value };
+    const occupiedBase = getOccupiedCellKeys(ids);
+    for (const id of ids) {
+      const p = positions.value?.[id];
+      if (!p) continue;
+      const desired = positionToCell(p);
+      const cell = findNextFreeCell(desired, occupiedBase);
+      updated[id] = cellToPosition(cell);
+      occupiedBase.add(
+        `${positionToCell(updated[id]).col}:${positionToCell(updated[id]).row}`
+      );
+    }
+    positions.value = updated;
   }
 
   function getIconStyle(app) {
@@ -255,6 +308,14 @@
       top: `${p.y}px`,
     };
   }
+
+  // 外部接口：设置多选
+  function setSelectedIds(ids = []) {
+    selectedIds.value = new Set(ids.map(i => Number(i)));
+    if (ids.length === 1) selectedId.value = ids[0];
+  }
+
+  defineExpose({ autoArrange, setSelectedIds });
 
   // 自动排列：从左上角开始，按列优先，每列最多 8 行
   async function autoArrange(startCol = 0) {
@@ -273,8 +334,6 @@
     savePositionsToStorage();
     return col + (row > 0 ? 1 : 0);
   }
-
-  defineExpose({ autoArrange });
 
   onMounted(async () => {
     await fetchApps({ visible: true }, true);
