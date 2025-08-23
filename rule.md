@@ -74,6 +74,17 @@ client/
 | 样式文件   | kebab-case           | `user-profile.scss`                                                   |
 | 单元测试   | 同名 + `.test.js`    | `UserList.test.js`                                                    |
 
+### 3.4 变量与参数命名
+
+- **通用约定**：变量和函数参数应使用有语义的驼峰式命名（camelCase），避免在业务逻辑中使用无意义或单字母变量（如 `f`, `g`, `k`），除非在极短的数学循环或临时上下文中（例如 `for (let i = 0; i < n; i++)`）。
+- **实体与集合命名**：集合使用复数（`files`、`users`），单个实体使用有意义的单数名（`file`、`user`）。
+- **几何/坐标缩写**：表示坐标或向量时允许使用 `x`/`y`/`z`，但宽高建议使用 `width`/`height`（仅在非常局部上下文允许 `w`/`h`）。
+- **位置/状态变量**：使用明确命名如 `position`、`pos`、`isLoading`、`isVisible`，避免 `p`、`t` 等模糊缩写。
+- **常量命名**：常量请在文件顶部声明并使用大写下划线（SCREAMING_SNAKE），例如 `const BYTES_BASE = 1024;`，不要在函数体内用 `k` 替代。
+- **DB 与边界转换**：JS 层内部统一使用 camelCase（例如 `originalName`）；仅在与数据库或外部 API 交互时在边界处转换为 snake_case（例如 `original_name`）。
+
+---
+
 ### 3.3 自动生成示例
 
 > 当用户说「新建一个订单管理页面」 → 执行：
