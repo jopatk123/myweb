@@ -5,37 +5,9 @@
         <div class="title">预览：{{ file?.original_name || '' }}</div>
         <button class="close" @click="close">✕</button>
       </div>
-      <div class="content" :class="{ 'content-video': isVideo }">
+      <div class="content">
         <img v-if="isImage" :src="previewUrl" class="media" />
-        <div v-else-if="isVideo" class="video-wrap">
-          <video
-            ref="videoRef"
-            :src="previewUrl"
-            class="media video-el"
-            preload="metadata"
-            controls
-            @timeupdate="onTimeUpdate"
-            @loadedmetadata="onLoadedMeta"
-          />
-          <div class="controls">
-            <button class="btn" @click="togglePlay">
-              {{ playing ? '暂停' : '播放' }}
-            </button>
-            <input
-              class="seek"
-              type="range"
-              min="0"
-              :max="duration"
-              step="0.05"
-              v-model.number="currentTime"
-              @input="onSeek"
-            />
-            <div class="time">{{ timeText }}</div>
-            <button class="btn" @click="toggleMute">
-              {{ muted ? '🔇' : '🔊' }}
-            </button>
-          </div>
-        </div>
+        <video v-else-if="isVideo" :src="previewUrl" class="media" controls />
         <div v-else-if="isWord || isExcel" class="doc-wrap">
           <iframe
             :src="viewerSrc"
@@ -43,6 +15,9 @@
             referrerpolicy="no-referrer"
           ></iframe>
           <div class="doc-actions">
+            <span class="doc-tip"
+              >若预览失败，请尝试在新窗口打开（可能需要登录 Office 账号）</span
+            >
             <a :href="previewUrl" target="_blank" rel="noopener" class="btn"
               >在新窗口打开</a
             >
@@ -55,7 +30,7 @@
 </template>
 
 <script setup>
-  import { computed, ref, watch } from 'vue';
+  import { computed } from 'vue';
 
   const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -110,7 +85,7 @@
       window.location.origin ||
       ''
     ).toString();
-    const prefix = base.replace(/\/+$/g, '') + '/';
+    const prefix = base.replace(/\/+\$/g, '') + '/';
     const path = raw.replace(/^\/+/, '').replace(/\\/g, '/');
     return `${prefix}${path}`;
   });
@@ -125,75 +100,6 @@
   function close() {
     emit('update:modelValue', false);
   }
-
-  // 视频控制
-  const videoRef = ref(null);
-  const duration = ref(0);
-  const currentTime = ref(0);
-  const playing = ref(false);
-  const muted = ref(false);
-
-  const timeText = computed(() => {
-    const fmt = s => {
-      const m = Math.floor(s / 60)
-        .toString()
-        .padStart(2, '0');
-      const ss = Math.floor(s % 60)
-        .toString()
-        .padStart(2, '0');
-      return `${m}:${ss}`;
-    };
-    return `${fmt(currentTime.value)} / ${fmt(duration.value || 0)}`;
-  });
-
-  function onLoadedMeta() {
-    if (!videoRef.value) return;
-    duration.value = Number(videoRef.value.duration || 0);
-  }
-  function onTimeUpdate() {
-    if (!videoRef.value) return;
-    currentTime.value = Number(videoRef.value.currentTime || 0);
-  }
-  function togglePlay() {
-    const v = videoRef.value;
-    if (!v) return;
-    if (v.paused) {
-      v.play();
-      playing.value = true;
-    } else {
-      v.pause();
-      playing.value = false;
-    }
-  }
-  function toggleMute() {
-    const v = videoRef.value;
-    if (!v) return;
-    v.muted = !v.muted;
-    muted.value = v.muted;
-  }
-  function onSeek() {
-    const v = videoRef.value;
-    if (!v) return;
-    v.currentTime = Number(currentTime.value || 0);
-  }
-
-  watch(
-    () => props.modelValue,
-    v => {
-      const vid = videoRef.value;
-      if (!vid) return;
-      if (!v) {
-        try {
-          vid.pause();
-        } catch {}
-        playing.value = false;
-      } else {
-        duration.value = Number(vid.duration || 0);
-        currentTime.value = Number(vid.currentTime || 0);
-        muted.value = Boolean(vid.muted);
-      }
-    }
-  );
 </script>
 
 <style scoped>
@@ -240,10 +146,14 @@
     align-items: center;
     justify-content: center;
     padding: 10px;
+    overflow: hidden; /* Prevent content from overflowing */
   }
   .doc-wrap {
     width: 100%;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
   }
   .doc-frame {
     width: 100%;
@@ -251,12 +161,7 @@
     border: none;
     background: #fff;
     border-radius: 8px;
-  }
-  .video-wrap {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+    flex-grow: 1;
   }
   .media {
     max-width: 100%;
@@ -265,42 +170,30 @@
     background: #000;
     border-radius: 8px;
   }
-  .video-el {
-    flex: 1;
-    width: 100%;
-  }
-  .controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 6px;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 8px;
-    margin-top: 8px;
-  }
-  .seek {
-    flex: 1;
-  }
-  .btn {
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border-radius: 6px;
-    padding: 6px 10px;
-    cursor: pointer;
-  }
-  .time {
-    width: 120px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
   .fallback {
     color: #ddd;
   }
   .doc-actions {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 12px;
+    right: 20px;
     z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .doc-tip {
+    font-size: 13px;
+    color: #555;
+  }
+  .btn {
+    border: 1px solid rgba(150, 150, 150, 0.4);
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 13px;
   }
 </style>
