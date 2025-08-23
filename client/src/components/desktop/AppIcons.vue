@@ -84,6 +84,14 @@
   }
 
   function open(app) {
+    // 自定义APP：若存在 target_url，则新窗口打开
+    if (app.target_url) {
+      try {
+        window.open(app.target_url, '_blank');
+        return;
+      } catch {}
+    }
+    // 内置APP：使用本地组件
     const comp = getAppComponentBySlug(app.slug);
     const meta = getAppMetaBySlug(app.slug);
     currentComponent.value = comp;

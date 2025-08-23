@@ -25,6 +25,17 @@ export class AppService {
   }
 
   deleteApp(id) {
+    const app = this.appModel.findById(id);
+    if (!app) {
+      const err = new Error('应用不存在');
+      err.status = 404;
+      throw err;
+    }
+    if (app.is_builtin) {
+      const err = new Error('内置应用不允许删除');
+      err.status = 400;
+      throw err;
+    }
     return this.appModel.softDelete(id);
   }
 

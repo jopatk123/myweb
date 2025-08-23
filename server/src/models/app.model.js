@@ -56,8 +56,10 @@ export class AppModel {
     icon_filename = null,
     group_id = null,
     is_visible = 1,
+    is_builtin = 0,
+    target_url = null,
   }) {
-    const sql = `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible) VALUES (?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_builtin, target_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
     const info = this.db
       .prepare(sql)
       .run(
@@ -66,7 +68,9 @@ export class AppModel {
         description,
         icon_filename,
         group_id,
-        is_visible ? 1 : 0
+        is_visible ? 1 : 0,
+        is_builtin ? 1 : 0,
+        target_url
       );
     return this.findById(info.lastInsertRowid);
   }
@@ -83,6 +87,10 @@ export class AppModel {
       group_id: 'group_id',
       isVisible: 'is_visible',
       is_visible: 'is_visible',
+      isBuiltin: 'is_builtin',
+      is_builtin: 'is_builtin',
+      targetUrl: 'target_url',
+      target_url: 'target_url',
     };
 
     const fields = [];

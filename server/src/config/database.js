@@ -305,6 +305,9 @@ function ensureAppTablesAndColumns(db) {
   try {
     ensureColumn('apps', 'description', 'TEXT');
     ensureColumn('apps', 'icon_filename', 'TEXT');
+    // 新增：是否内置应用 与 自定义跳转URL
+    ensureColumn('apps', 'is_builtin', 'INTEGER DEFAULT 0');
+    ensureColumn('apps', 'target_url', 'TEXT');
     ensureColumn(
       'apps',
       'group_id',
@@ -331,7 +334,7 @@ function seedAppsIfEmpty(db) {
         .get();
       const gid = g ? g.id : null;
       const insert = db.prepare(
-        `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible) VALUES (?,?,?,?,?,?)`
+        `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_builtin, target_url) VALUES (?,?,?,?,?,?,?,?)`
       );
       insert.run(
         '贪吃蛇',
@@ -339,7 +342,9 @@ function seedAppsIfEmpty(db) {
         '经典小游戏（本地实现示例）',
         'snake-128.png',
         gid,
-        1
+        1,
+        1,
+        null
       );
       console.log('🌱 Seeded example app: snake');
 
@@ -355,7 +360,9 @@ function seedAppsIfEmpty(db) {
             '科学计算器，支持基本运算和内存功能',
             'calculator-128.png',
             gid,
-            1
+            1,
+            1,
+            null
           );
           console.log('🌱 Seeded example app: calculator');
         } catch (e) {
@@ -382,7 +389,9 @@ function seedAppsIfEmpty(db) {
             '待办事项管理，记录和跟踪日常任务',
             'notebook-128.svg',
             gid,
-            1
+            1,
+            1,
+            null
           );
           console.log('🌱 Seeded example app: notebook');
         } catch (e) {

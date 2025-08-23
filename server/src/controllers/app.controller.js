@@ -10,6 +10,8 @@ const appSchema = Joi.object({
   icon_filename: Joi.string().allow(null, '').optional(),
   group_id: Joi.number().integer().allow(null).optional(),
   is_visible: Joi.boolean().optional(),
+  is_builtin: Joi.boolean().optional(),
+  target_url: Joi.string().uri().allow(null, '').optional(),
 });
 
 export class AppController {
@@ -48,7 +50,11 @@ export class AppController {
   async create(req, res, next) {
     try {
       const payload = await appSchema.validateAsync(req.body);
-      const app = await this.service.createApp(payload);
+      // 对于自定义 APP，强制 is_builtin = 0；内置 APP 由我们手工种子/维护
+      const app = await this.service.createApp({
+        ...payload,
+        is_builtin: payload.is_builtin ? 1 : 0,
+      });
       res.status(201).json({ code: 201, data: app, message: '创建成功' });
     } catch (error) {
       next(error);
@@ -61,6 +67,8 @@ export class AppController {
       const payload = await appSchema
         .fork(['name', 'slug'], s => s.optional())
         .validateAsync(req.body);
+      // 禁止将应用改为内置
+      if (payload.is_builtin) delete payload.is_builtin;
       const app = await this.service.updateApp(id, payload);
       res.json({ code: 200, data: app, message: '更新成功' });
     } catch (error) {
