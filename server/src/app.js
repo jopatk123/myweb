@@ -9,7 +9,10 @@ import { createAppRoutes } from './routes/apps.routes.js';
 import { initDatabase } from './config/database.js';
 import { createFileRoutes } from './routes/files.routes.js';
 import errorHandler from './middleware/error.middleware.js';
-import { normalizeRequestKeys } from './utils/case-helper.js';
+import {
+  normalizeRequestKeys,
+  normalizeResponseMiddleware,
+} from './utils/case-helper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,8 +50,11 @@ app.use(
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// 统一请求键名（camelCase -> snake_case），便于后端模型一律使用 snake_case 列名
+// 统一请求键名（snake_case 或 camelCase -> camelCase），便于后端控制器/服务使用 camelCase
 app.use(normalizeRequestKeys);
+
+// 响应归一化：确保对外返回的 data 字段为 camelCase（若 controller 返回的是 DB row）
+app.use(normalizeResponseMiddleware);
 
 // 静态文件服务
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

@@ -41,7 +41,10 @@
     useDraggableModal('wallpaperEditPos');
 
   const localName = ref(
-    props.wallpaper.name || props.wallpaper.original_name || ''
+    props.wallpaper.name ||
+      props.wallpaper.originalName ||
+      props.wallpaper.original_name ||
+      ''
   );
   const saving = ref(false);
   const error = ref('');

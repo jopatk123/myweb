@@ -17,7 +17,8 @@ export function normalizeKeys(obj) {
 
   const res = {};
   for (const [k, v] of Object.entries(obj)) {
-    const nk = camelToSnake(k);
+    // 默认将键从 snake_case 转为 camelCase，适配推荐 A（后端内部使用 camelCase）
+    const nk = snakeToCamel(k);
     res[nk] = normalizeKeys(v);
   }
   return res;

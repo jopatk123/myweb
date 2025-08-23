@@ -350,40 +350,30 @@ db.get(`SELECT * FROM users WHERE email = '${email}'`);
 
 ## 11. 前后端字段命名与请求归一化
 
-- **约定**：JSON 载荷（前端 <-> 后端 HTTP 接口）使用 **camelCase** 字段（例如 `groupId`, `userId`）。数据库层使用 **snake_case**（例如 `group_id`）。
-- **原因**：JavaScript 生态（前端与 Node）普遍使用 camelCase，数据库/SQL 使用 snake_case 更符合传统与可读性，两者通过明确的归一化层做转换。
+- **约定（推荐 A）**：
+  - 客户端请求与接收 JSON 载荷使用 **camelCase**（例如 `groupId`, `userId`）。
+  - 后端控制器/服务内部使用 **camelCase**（与 JS 生态一致）。
+  - 数据库层使用 **snake_case**（例如 `group_id`、`file_path`），通过 service/model 层的映射进行转换。
 
-- **后端要求**：应当在请求进入控制器前使用中间件把所有请求键统一转换为 camelCase，控制器内统一使用 camelCase；在对外响应（body.data）时也统一转换为 camelCase（已有的 `normalizeResponseMiddleware` 可用于响应处理）。
-- **兼容性**：对于外部或历史客户端可能发送的 snake_case 字段，控制器层在短期内可以做容错（同时读取 `groupId` 与 `group_id`），但不应长期依赖此做法，应在文档中强制并升级客户端。
+- **实现要点**：
+  - 在请求进入路由控制器前，使用入口中间件把所有请求键（query/body/form）**统一转换为 camelCase**（仓库中实现为 `server/src/utils/case-helper.js` 的 `normalizeRequestKeys`）。
+  - Controller/Service 使用 camelCase 字段，Service 负责把业务字段映射为 DB 列名（snake_case）并调用 Model；Model 保持对数据库列的操作，Service 在必要时把 DB 结果转换为 camelCase 后返回给 Controller。
+  - 使用 `normalizeResponseMiddleware` 确保对外返回的 `data` 字段为 camelCase，避免直接泄露 snake_case 列名。
 
-示例：把请求键从 snake_case 转为 camelCase 的中间件（放在 `server/src/middleware/`）：
+- **兼容性策略**：
+  - 本项目为全新启动，建议立即强制客户端使用 camelCase；短期内可在 Service 层对 snake_case 做被动兼容（fallback），但应在文档中声明兼容期并计划逐步移除。
+  - multipart/form-data（`multer`）场景需在 controller 局部对 `req.body` 做 snake→camel 转换（可复用 `normalizeKeys`），并确保传入 Service 的字段为 camelCase。
 
-```js
-// server/src/middleware/normalizeRequestToCamel.middleware.js
-import { snakeToCamel } from '../utils/case-helper.js';
+- **中间件顺序建议**（位于 `server/src/app.js`）：
+  1. `express.json()` / `express.urlencoded()`（解析请求体）
+  2. `normalizeRequestKeys`（将请求键转换为 camelCase）
+  3. 认证/校验/路由
+  4. `normalizeResponseMiddleware`（确保对外返回 camelCase）
 
-function convertKeys(obj) {
-  if (Array.isArray(obj)) return obj.map(convertKeys);
-  if (!obj || typeof obj !== 'object') return obj;
-  const res = {};
-  for (const [k, v] of Object.entries(obj)) {
-    res[snakeToCamel(k)] = convertKeys(v);
-  }
-  return res;
-}
+- **文档与契约**：
+  - 使用 OpenAPI/Swagger 把所有公共接口字段声明为 camelCase，并在 CI 中校验生成的文档与实现的一致性。
 
-export default function normalizeRequestToCamel(req, res, next) {
-  try {
-    if (req.body && typeof req.body === 'object')
-      req.body = convertKeys(req.body);
-    if (req.query && typeof req.query === 'object')
-      req.query = convertKeys(req.query);
-  } catch (e) {
-    console.warn('normalizeRequestToCamel warning:', e?.message || e);
-  }
-  next();
-}
-```
+示例工具函数位于 `server/src/utils/case-helper.js`，包含 `snakeToCamel`、`camelToSnake`、`normalizeRequestKeys`、`normalizeResponseMiddleware` 等实用函数，负责键名互转与中间件包装。
 
 中间件加载顺序建议（在 `server/src/app.js`）：
 

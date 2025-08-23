@@ -316,7 +316,9 @@
     const k = keyword.value.trim().toLowerCase();
     if (!k) return list;
     return list.filter(w =>
-      (w.name || w.original_name || '').toLowerCase().includes(k)
+      (w.name || w.originalName || w.original_name || '')
+        .toLowerCase()
+        .includes(k)
     );
   });
 

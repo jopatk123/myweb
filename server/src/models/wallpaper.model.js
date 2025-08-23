@@ -75,7 +75,7 @@ export class WallpaperModel {
       INSERT INTO wallpapers (filename, original_name, file_path, file_size, mime_type, group_id, name)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-
+    // 将 camelCase 字段映射为 snake_case 列值
     const result = this.db
       .prepare(sql)
       .run(filename, originalName, filePath, fileSize, mimeType, groupId, name);

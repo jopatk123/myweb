@@ -126,9 +126,10 @@ export function useApps() {
   }
 
   function getAppIconUrl(app) {
-    if (!app?.icon_filename) return '';
+    const filename = app?.iconFilename || app?.icon_filename;
+    if (!filename) return '';
     // 后端静态托管目录
-    return `/uploads/apps/icons/${app.icon_filename}`;
+    return `/uploads/apps/icons/${filename}`;
   }
 
   return {

@@ -30,7 +30,13 @@
               v-model="selectedIds"
             />
           </td>
-          <td>{{ wallpaper.name || wallpaper.original_name }}</td>
+          <td>
+            {{
+              wallpaper.name ||
+              wallpaper.originalName ||
+              wallpaper.original_name
+            }}
+          </td>
           <td>
             <img
               :src="getWallpaperUrl(wallpaper)"
@@ -38,8 +44,16 @@
               class="thumbnail"
             />
           </td>
-          <td>{{ formatFileSize(wallpaper.file_size) }}</td>
-          <td>{{ new Date(wallpaper.created_at).toLocaleString() }}</td>
+          <td>
+            {{ formatFileSize(wallpaper.fileSize || wallpaper.file_size) }}
+          </td>
+          <td>
+            {{
+              new Date(
+                wallpaper.createdAt || wallpaper.created_at
+              ).toLocaleString()
+            }}
+          </td>
           <td>
             <button
               @click="$emit('set-active', wallpaper.id)"
@@ -123,7 +137,7 @@
 
   const getWallpaperUrl = wallpaper => {
     if (!wallpaper) return null;
-    return `${import.meta.env.VITE_API_BASE || 'http://localhost:3002'}/${wallpaper.file_path}`;
+    return `${import.meta.env.VITE_API_BASE || 'http://localhost:3002'}/${wallpaper.filePath || wallpaper.file_path}`;
   };
 
   const formatFileSize = bytes => {

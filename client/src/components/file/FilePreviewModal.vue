@@ -59,12 +59,19 @@
     // The primary benefit of code reduction is still achieved.
   });
 
-  const typeCat = computed(() => String(props.file?.type_category || ''));
-  const mime = computed(() => String(props.file?.mime_type || ''));
+  const typeCat = computed(() =>
+    String(props.file?.typeCategory || props.file?.type_category || '')
+  );
+  const mime = computed(() =>
+    String(props.file?.mimeType || props.file?.mime_type || '')
+  );
   const nameOrPath = computed(() =>
     String(
-      props.file?.original_name ||
+      props.file?.originalName ||
+        props.file?.original_name ||
+        props.file?.storedName ||
         props.file?.stored_name ||
+        props.file?.filePath ||
         props.file?.file_path ||
         ''
     )
@@ -98,7 +105,9 @@
 
   const previewUrl = computed(() => {
     const f = props.file || {};
-    const raw = String(f.file_url || f.file_path || '');
+    const raw = String(
+      f.fileUrl || f.file_url || f.filePath || f.file_path || ''
+    );
     if (!raw) return '';
     if (/^https?:\/\//i.test(raw)) return raw;
     const base = (

@@ -8,8 +8,8 @@ export const wallpaperSchemas = {
 
   // 更新壁纸验证（请求已由中间件归一化为 snake_case）
   update: Joi.object({
-    group_id: Joi.number().integer().positive().optional(),
-    original_name: Joi.string().max(255).optional(),
+    groupId: Joi.number().integer().positive().optional(),
+    originalName: Joi.string().max(255).optional(),
   }),
 
   // 创建分组验证
@@ -24,7 +24,7 @@ export const wallpaperSchemas = {
 
   // 查询参数验证
   query: Joi.object({
-    group_id: Joi.number().integer().positive().optional(),
+    groupId: Joi.number().integer().positive().optional(),
   }),
 };
 

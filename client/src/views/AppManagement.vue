@@ -76,12 +76,12 @@
               </td>
               <td>{{ app.name }}</td>
               <td>{{ app.slug }}</td>
-              <td>{{ displayGroupName(app.group_id) }}</td>
+              <td>{{ displayGroupName(app.groupId || app.group_id) }}</td>
               <td>
                 <label class="switch">
                   <input
                     type="checkbox"
-                    :checked="!!app.is_visible"
+                    :checked="!!(app.isVisible ?? app.is_visible)"
                     @change="onToggleVisible(app, $event.target.checked)"
                   />
                   <span class="slider"></span>
@@ -96,9 +96,16 @@
                 </button>
                 <button
                   class="btn btn-sm btn-danger"
-                  :disabled="app.is_builtin === 1 || app.is_builtin === true"
-                  :title="app.is_builtin ? '内置应用不可删除' : '删除'"
-                  @click="!app.is_builtin && remove(app.id)"
+                  :disabled="
+                    (app.isBuiltin ?? app.is_builtin) === 1 ||
+                    (app.isBuiltin ?? app.is_builtin) === true
+                  "
+                  :title="
+                    (app.isBuiltin ?? app.is_builtin)
+                      ? '内置应用不可删除'
+                      : '删除'
+                  "
+                  @click="!(app.isBuiltin ?? app.is_builtin) && remove(app.id)"
                 >
                   删除
                 </button>
@@ -186,10 +193,10 @@
   const createForm = ref({
     name: '',
     slug: '',
-    target_url: '',
-    icon_filename: null,
-    group_id: null,
-    is_visible: true,
+    targetUrl: '',
+    iconFilename: null,
+    groupId: null,
+    isVisible: true,
   });
 
   const keyword = ref('');
@@ -285,10 +292,22 @@
       const payload = {
         name: createForm.value.name.trim(),
         slug: createForm.value.slug.trim(),
-        target_url: createForm.value.target_url.trim() || null,
-        icon_filename: createForm.value.icon_filename || null,
-        group_id: selectedGroupId.value || null,
-        is_visible: !!createForm.value.is_visible,
+        targetUrl:
+          createForm.value.targetUrl?.trim() ||
+          createForm.value.target_url?.trim() ||
+          null,
+        iconFilename:
+          createForm.value.iconFilename ||
+          createForm.value.icon_filename ||
+          null,
+        groupId:
+          selectedGroupId.value ||
+          createForm.value.groupId ||
+          createForm.value.group_id ||
+          null,
+        isVisible: !!(
+          createForm.value.isVisible ?? createForm.value.is_visible
+        ),
       };
       // 简要校验
       if (!payload.name || !payload.slug) {
@@ -310,10 +329,10 @@
       createForm.value = {
         name: '',
         slug: '',
-        target_url: '',
-        icon_filename: null,
-        group_id: null,
-        is_visible: true,
+        targetUrl: '',
+        iconFilename: null,
+        groupId: null,
+        isVisible: true,
       };
     } catch (e) {
       alert(e?.message || '创建失败');

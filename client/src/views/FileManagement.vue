@@ -88,9 +88,13 @@
                   <span class="file-icon">{{
                     getFileIcon(f.type_category)
                   }}</span>
-                  <span class="name-text">{{ f.original_name }}</span>
+                  <span class="name-text">{{
+                    f.originalName || f.original_name
+                  }}</span>
                 </td>
-                <td class="file-size">{{ formatFileSize(f.file_size) }}</td>
+                <td class="file-size">
+                  {{ formatFileSize(f.fileSize || f.file_size) }}
+                </td>
                 <td class="file-type">
                   <span class="type-badge">{{ f.type_category }}</span>
                 </td>

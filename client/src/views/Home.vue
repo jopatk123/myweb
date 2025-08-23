@@ -138,7 +138,7 @@
       return;
     }
     selectedFile.value = f;
-    selectedFileName.value = f.original_name;
+    selectedFileName.value = f.originalName || f.original_name;
     selectedDownloadUrl.value = getDownloadUrl(f.id);
     showConfirm.value = true;
   }
@@ -148,7 +148,15 @@
     const t = String(f.type_category || '');
     if (t === 'image' || t === 'video' || t === 'word' || t === 'excel')
       return true;
-    const name = String(f.original_name || f.stored_name || f.file_path || '');
+    const name = String(
+      f.originalName ||
+        f.original_name ||
+        f.storedName ||
+        f.stored_name ||
+        f.filePath ||
+        f.file_path ||
+        ''
+    );
     return /(\.(png|jpe?g|gif|bmp|webp|svg|avif|mp4|webm|ogg|ogv|mov|mkv|docx?|xlsx?|xlsm|xlsb))$/i.test(
       name
     );

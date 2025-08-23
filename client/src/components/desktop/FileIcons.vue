@@ -22,7 +22,7 @@
       :style="getIconStyle(f)"
     >
       <img :src="getIcon(f)" class="icon" draggable="false" />
-      <div class="label">{{ f.original_name }}</div>
+      <div class="label">{{ f.originalName || f.original_name }}</div>
     </div>
     <ContextMenu
       v-model="menu.visible"
@@ -103,7 +103,7 @@
       const url = getDownloadUrl(file.id);
       const a = document.createElement('a');
       a.href = url;
-      a.download = file.original_name || '';
+      a.download = file.originalName || file.original_name || '';
       a.target = '_blank';
       a.click();
       return;

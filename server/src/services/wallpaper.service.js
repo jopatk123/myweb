@@ -33,7 +33,7 @@ export class WallpaperService {
   }
 
   async uploadWallpaper(fileData, groupId = null) {
-    // 兼容 camelCase 与 snake_case 的字段名
+    // 期望 controller 传入 camelCase 的 fileData；在此做一次必要的 fallback 兼容
     const filename = fileData.filename || fileData.file_name;
     const originalName =
       fileData.originalName || fileData.original_name || fileData.originalname;
@@ -54,7 +54,8 @@ export class WallpaperService {
       groupId = def?.id || null;
     }
 
-    return this.wallpaperModel.create({
+    // 在 service 层统一把 camelCase 字段映射为 model 层需要的字段名
+    const payload = {
       filename,
       originalName,
       filePath,
@@ -62,7 +63,9 @@ export class WallpaperService {
       mimeType,
       groupId,
       name,
-    });
+    };
+
+    return this.wallpaperModel.create(payload);
   }
 
   updateWallpaper(id, data) {

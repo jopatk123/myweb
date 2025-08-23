@@ -334,7 +334,9 @@ export function useWallpaper() {
   const getWallpaperUrl = wallpaper => {
     if (!wallpaper) return null;
     const base = import.meta.env.VITE_API_BASE || '';
-    const pathPart = String(wallpaper.file_path || '').replace(/^\/+/, '');
+    const pathPart = String(
+      wallpaper.filePath || wallpaper.file_path || ''
+    ).replace(/^\/+/, '');
     if (base) {
       return `${String(base).replace(/\/+$/, '')}/${pathPart}`;
     }

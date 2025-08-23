@@ -44,19 +44,20 @@ export class WallpaperController {
   // 获取所有壁纸
   async getWallpapers(req, res, next) {
     try {
-      const { group_id, page, limit } = req.query;
+      // 中间件已将 req.query 归一为 camelCase
+      const { groupId, page, limit } = req.query;
       // 如果提供 page 和 limit，返回分页结构
       if (page && limit) {
         const pageNum = Number(page) || 1;
         const lim = Number(limit) || 20;
         const result = await this.service.getAllWallpapers(
-          group_id,
+          groupId,
           pageNum,
           lim
         );
         res.json({ code: 200, data: result, message: '获取成功' });
       } else {
-        const wallpapers = await this.service.getAllWallpapers(group_id);
+        const wallpapers = await this.service.getAllWallpapers(groupId);
         res.json({ code: 200, data: wallpapers, message: '获取成功' });
       }
     } catch (error) {
@@ -90,8 +91,9 @@ export class WallpaperController {
       }
 
       // multer 会在此处填充 req.body（multipart），需要手动归一化键名
+      // multer: 需要把 multipart form 的键从 snake_case 转为 camelCase
       const normalizedBody = normalizeKeys(req.body || {});
-      const { group_id, name } = normalizedBody;
+      const { groupId, name } = normalizedBody;
       // 存储到数据库的 file_path 应为 web 可访问的相对路径（例如: uploads/wallpapers/<filename>）
       // 这样前端可以直接用 `${API_BASE}/${file_path}` 访问；同时删除时再解析到磁盘路径
       const webPath = path.posix.join(
@@ -100,16 +102,17 @@ export class WallpaperController {
         req.file.filename
       );
 
+      // 使用 camelCase 字段传给 service 层
       const fileData = {
         filename: req.file.filename,
-        original_name: req.file.originalname,
-        file_path: webPath,
-        file_size: req.file.size,
-        mime_type: req.file.mimetype,
+        originalName: req.file.originalname,
+        filePath: webPath,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
         name: name || req.file.originalname, // 如果没有提供名称，则使用原始文件名
       };
 
-      const wallpaper = await this.service.uploadWallpaper(fileData, group_id);
+      const wallpaper = await this.service.uploadWallpaper(fileData, groupId);
       res.status(201).json({
         code: 201,
         data: wallpaper,
@@ -126,9 +129,8 @@ export class WallpaperController {
       const { id } = req.params;
       // 移除不再支持的字段
       // 请求已被全局中间件归一化为 snake_case，但确保 multipart 路径也归一
+      // 请求 body 已为 camelCase
       const data = { ...req.body };
-      if (!data.original_name && req.body && req.body.originalName)
-        data.original_name = req.body.originalName;
       if (data.description !== undefined) delete data.description;
       const wallpaper = await this.service.updateWallpaper(id, data);
       res.json({
@@ -185,8 +187,8 @@ export class WallpaperController {
       // 兼容前端可能传递的不同命名（camelCase 或 snake_case）
       let { ids } = req.body;
       // 优先读取 camelCase，再回退到 snake_case
-      let groupId =
-        req.body.groupId !== undefined ? req.body.groupId : req.body.group_id;
+      // req.body 已统一为 camelCase
+      let groupId = req.body.groupId;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
       }

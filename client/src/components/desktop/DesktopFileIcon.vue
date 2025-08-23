@@ -14,7 +14,9 @@
     onOpen: { type: Function, default: null },
   });
 
-  const label = computed(() => props.file?.original_name || '文件');
+  const label = computed(
+    () => props.file?.originalName || props.file?.original_name || '文件'
+  );
   const iconSrc = computed(() => {
     const map = props.icons || {};
     const t = props.file?.type_category || 'other';
