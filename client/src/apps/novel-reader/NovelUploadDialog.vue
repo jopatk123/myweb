@@ -7,17 +7,10 @@
       </div>
 
       <div class="dialog-content">
-        <div
-          class="upload-area"
-          :class="{ 'drag-over': isDragOver }"
-          @drop="handleDrop"
-          @dragover.prevent="isDragOver = true"
-          @dragleave="isDragOver = false"
-          @click="triggerFileInput"
-        >
+        <div class="upload-area" @click="triggerFileInput">
           <div class="upload-icon">📁</div>
           <p class="upload-text">
-            <strong>点击选择文件</strong> 或拖拽文件到此处
+            <strong>点击选择文件</strong>
           </p>
           <p class="upload-hint">支持格式: TXT, EPUB, PDF 等</p>
 
@@ -68,7 +61,6 @@
 
   const fileInput = ref(null);
   const selectedFiles = ref([]);
-  const isDragOver = ref(false);
   const uploading = ref(false);
 
   function triggerFileInput() {
@@ -77,14 +69,6 @@
 
   function handleFileSelect(event) {
     const files = Array.from(event.target.files);
-    addFiles(files);
-  }
-
-  function handleDrop(event) {
-    event.preventDefault();
-    isDragOver.value = false;
-
-    const files = Array.from(event.dataTransfer.files);
     addFiles(files);
   }
 

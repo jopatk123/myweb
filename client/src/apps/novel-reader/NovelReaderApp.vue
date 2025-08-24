@@ -239,8 +239,10 @@
   }
 
   function parseChapters(content) {
-    // 简单的章节分割逻辑，可以根据需要优化
-    const chapterRegex = /第[一二三四五六七八九十\d]+[章节]/g;
+    // 简单的章节分割逻辑：支持中文数字（零 一 二 两 三 四 五 六 七 八 九 十 百 千 万 亿）和阿拉伯数字
+    // 以及常见的章节后缀（章/节/回/卷/篇/部）。这可以避免仅匹配到 99 章的问题。
+    const chapterRegex =
+      /第[\d零一二两三四五六七八九十百千万亿]+[章节回卷部篇节]/g;
     const chapters = [];
     const matches = [...content.matchAll(chapterRegex)];
 
@@ -490,6 +492,52 @@
     }
   }
 
+  // 从后端同步小说列表（按需合并到本地）
+  async function syncServerNovels() {
+    try {
+      loading.value = true;
+      const resp = await filesApi.list({ type: 'novel', page: 1, limit: 1000 });
+      const serverFiles =
+        resp && resp.data && Array.isArray(resp.data.files)
+          ? resp.data.files
+          : [];
+
+      const existingIds = new Set(
+        books.value.map(b => b.fileId || b.file_id).filter(Boolean)
+      );
+
+      for (const f of serverFiles) {
+        const id = f.id || f.ID;
+        if (!id || existingIds.has(id)) continue;
+        const downloadUrl = filesApi.downloadUrl(id);
+        const titleRaw = f.original_name || f.originalName || '未命名';
+        const title = titleRaw.replace(/\.[^/.]+$/, '');
+        const format = titleRaw.split('.').pop()?.toLowerCase?.() || '';
+
+        const bookMeta = {
+          id: generateId(),
+          title,
+          author: '未知作者',
+          size: f.file_size || f.fileSize || 0,
+          format,
+          content: null,
+          chapters: [],
+          addedAt: new Date().toISOString(),
+          lastRead: null,
+          fileId: id,
+          fileUrl: f.file_url || downloadUrl,
+        };
+        books.value.push(bookMeta);
+      }
+
+      saveBooks();
+    } catch (err) {
+      console.error('同步后端小说列表失败:', err);
+    } finally {
+      loading.value = false;
+    }
+  }
+
   // 监听设置变化
   watch(readerSettings, saveSettings, { deep: true });
 
@@ -498,6 +546,8 @@
     loadBooks();
     loadProgress();
     loadSettings();
+    // 从后端加载小说（适配多浏览器/多设备同步）
+    syncServerNovels();
     focusApp();
   });
 </script>
