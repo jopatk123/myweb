@@ -231,7 +231,7 @@ function setLimit(l) {
   limit.value = l;
 }
 
-function getAppIconUrl(app) {
+export function getAppIconUrl(app) {
   const filename = app?.iconFilename || app?.icon_filename;
   if (!filename) return '';
   // 后端静态托管目录
