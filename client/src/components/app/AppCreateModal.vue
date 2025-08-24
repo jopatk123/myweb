@@ -18,16 +18,16 @@
           <label>URL</label>
           <input v-model="form.target_url" placeholder="https://example.com" />
         </div>
-        <div class="form-row">
+        <div class="form-row icon-row">
           <label>图标</label>
-          <input
-            type="file"
-            accept="image/*"
-            @change="onIconSelected"
-            ref="fileInput"
-          />
-          <div v-if="form.icon_filename" class="preview">
-            <img :src="`/uploads/apps/icons/${form.icon_filename}`" />
+          <div class="icon-selector-container">
+            <IconSelector
+              v-model="selectedIconPath"
+              :icon-filename="form.icon_filename"
+              @update:icon-filename="form.icon_filename = $event"
+              @upload="handleIconUpload"
+              ref="iconSelectorRef"
+            />
           </div>
         </div>
         <div class="actions">
@@ -41,6 +41,7 @@
 
 <script setup>
   import { ref, watch } from 'vue';
+  import IconSelector from './IconSelector.vue';
 
   const props = defineProps({
     show: Boolean,
@@ -59,7 +60,8 @@
   };
 
   const form = ref({ ...initialFormState });
-  const fileInput = ref(null);
+  const selectedIconPath = ref('');
+  const iconSelectorRef = ref(null);
 
   watch(
     () => props.show,
@@ -67,8 +69,9 @@
       if (newVal) {
         // Reset form when modal opens
         form.value = { ...initialFormState, group_id: props.groupId };
-        if (fileInput.value) {
-          fileInput.value.value = ''; // Reset file input
+        selectedIconPath.value = '';
+        if (iconSelectorRef.value) {
+          iconSelectorRef.value.reset();
         }
       }
     }
@@ -95,13 +98,19 @@
       return;
     }
 
+    // 如果选择了预选图标，需要处理图标路径
+    if (selectedIconPath.value && !form.value.icon_filename) {
+      // 预选图标：提取文件名
+      const iconPath = selectedIconPath.value;
+      const filename = iconPath.split('/').pop();
+      payload.preset_icon = filename; // 添加预选图标标识
+    }
+
     emit('submit', payload);
   };
 
-  // Icon upload logic remains internal to the modal
-  async function onIconSelected(e) {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
+  // Icon upload logic
+  async function handleIconUpload(file) {
     const formData = new FormData();
     formData.append('file', file);
     try {
@@ -112,6 +121,7 @@
       const json = await resp.json();
       if (resp.ok && json?.data?.filename) {
         form.value.icon_filename = json.data.filename;
+        selectedIconPath.value = ''; // 清除预选图标
       } else {
         alert(json?.message || '上传失败');
       }
@@ -174,13 +184,11 @@
     border: 1px solid #ddd;
     border-radius: 6px;
   }
-  .preview img {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
-    border: 1px dashed #ddd;
-    border-radius: 8px;
-    padding: 4px;
+  .icon-row {
+    align-items: flex-start;
+  }
+  .icon-selector-container {
+    flex: 1;
   }
   .actions {
     display: flex;

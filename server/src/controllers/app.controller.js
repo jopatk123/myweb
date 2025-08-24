@@ -8,7 +8,10 @@ const appSchema = Joi.object({
     .required(),
   description: Joi.string().allow(null, '').optional(),
   icon_filename: Joi.string().allow(null, '').optional(),
-  group_id: Joi.number().integer().allow(null).optional(),
+  preset_icon: Joi.string().allow(null, '').optional(),
+  group_id: Joi.alternatives()
+    .try(Joi.number().integer().allow(null), Joi.string().allow('', null))
+    .optional(),
   is_visible: Joi.boolean().optional(),
   is_builtin: Joi.boolean().optional(),
   target_url: Joi.string().uri().allow(null, '').optional(),
@@ -53,7 +56,23 @@ export class AppController {
       // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
       const { mapToSnake } = await import('../utils/field-mapper.js');
       const bodySnake = mapToSnake(req.body || {});
-      const payload = await appSchema.validateAsync(bodySnake);
+      // 启用 Joi 的类型转换（例如字符串数字 -> number）以确保 group_id 被转换为 number
+      const payload = await appSchema.validateAsync(bodySnake, {
+        convert: true,
+      });
+
+      // 处理前端可能发送的空字符串：把空字符串归一为 null
+      if (payload.group_id === '') payload.group_id = null;
+
+      // 处理预选图标：如果使用预选图标，将其复制到uploads目录并设置icon_filename
+      if (payload.preset_icon && !payload.icon_filename) {
+        const iconFilename = await this.service.copyPresetIcon(
+          payload.preset_icon
+        );
+        payload.icon_filename = iconFilename;
+        delete payload.preset_icon; // 移除临时字段
+      }
+
       // 对于自定义 APP，强制 is_builtin = 0；内置 APP 由我们手工种子/维护
       const app = await this.service.createApp({
         ...payload,
