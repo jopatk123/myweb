@@ -1,13 +1,14 @@
 <template>
   <div
     class="app-window"
+    :data-window-id="window.id"
     :class="{
       active: isActive,
       minimized: window.minimized,
       maximized: window.maximized,
     }"
     :style="windowStyle"
-    @mousedown="onWindowClick"
+    @pointerdown.capture="onWindowClick"
   >
     <div
       class="window-header"
@@ -37,8 +38,15 @@
     </div>
 
     <div class="window-body">
-      <component :is="window.component" v-if="window.component" />
+      <component
+        :is="window.component"
+        v-if="window.component"
+        v-bind="window.props"
+      />
       <div v-else class="empty">未找到应用组件</div>
+    </div>
+    <div class="resize-handle" @pointerdown.prevent="onResizeStart">
+      <div class="resize-corner" />
     </div>
   </div>
 </template>
@@ -103,6 +111,86 @@
 
   function onHeaderDoubleClick() {
     emit('maximize', props.window.id);
+  }
+
+  // 窗口缩放支持（右下角把手）
+  const MIN_WIDTH = 300;
+  const MIN_HEIGHT = 200;
+
+  let resizing = false;
+  let startX = 0;
+  let startY = 0;
+  let startWidth = 0;
+  let startHeight = 0;
+
+  function loadPersistedSize() {
+    try {
+      const key = props.window.storageKey
+        ? `${props.window.storageKey}:size`
+        : null;
+      if (!key) return;
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.width === 'number')
+        props.window.width = parsed.width;
+      if (parsed && typeof parsed.height === 'number')
+        props.window.height = parsed.height;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function persistSize() {
+    try {
+      const key = props.window.storageKey
+        ? `${props.window.storageKey}:size`
+        : null;
+      if (!key) return;
+      const obj = {
+        width: Number(props.window.width || 0),
+        height: Number(props.window.height || 0),
+      };
+      localStorage.setItem(key, JSON.stringify(obj));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function onResizeStart(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (props.window.maximized) return; // 禁止在最大化时缩放
+    resizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startWidth = Number(props.window.width || 520);
+    startHeight = Number(props.window.height || 400);
+    document.addEventListener('pointermove', onResizing);
+    document.addEventListener('pointerup', onResizeEnd, { once: true });
+  }
+
+  function onResizing(e) {
+    if (!resizing) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const newW = Math.max(MIN_WIDTH, Math.round(startWidth + dx));
+    const newH = Math.max(MIN_HEIGHT, Math.round(startHeight + dy));
+    props.window.width = newW;
+    props.window.height = newH;
+  }
+
+  function onResizeEnd() {
+    resizing = false;
+    document.removeEventListener('pointermove', onResizing);
+    // 持久化尺寸
+    persistSize();
+  }
+
+  // 初始化时尝试加载持久化尺寸
+  if (typeof window !== 'undefined') {
+    // 在下一个事件循环调用以确保 props.window 已就绪
+    setTimeout(() => loadPersistedSize(), 0);
   }
 </script>
 
@@ -202,6 +290,24 @@
     padding: 12px;
     height: calc(100% - 45px);
     overflow: auto;
+  }
+
+  /* 右下角缩放把手 */
+  .resize-handle {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 14px;
+    height: 14px;
+    cursor: nwse-resize;
+    z-index: 20;
+    opacity: 0.6;
+  }
+
+  .resize-corner {
+    width: 100%;
+    height: 100%;
+    background: transparent;
   }
 
   .empty {

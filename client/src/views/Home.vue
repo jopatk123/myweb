@@ -89,6 +89,8 @@
   import FileUploadProgress from '@/components/file/FileUploadProgress.vue';
   import ConfirmDownloadModal from '@/components/file/ConfirmDownloadModal.vue';
   import FilePreviewModal from '@/components/file/FilePreviewModal.vue';
+  import FilePreviewWindow from '@/components/file/FilePreviewWindow.vue';
+  import { useWindowManager } from '@/composables/useWindowManager.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
 
   const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
@@ -112,6 +114,7 @@
   const selectedFile = ref(null);
   const showPreview = ref(false);
   const previewFile = ref(null);
+  const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
   const fileTypeIcons = computed(() => ({
     image: '/apps/icons/image-128.svg',
     video: '/apps/icons/video-128.svg',
@@ -164,8 +167,17 @@
   // 供未来在桌面展示文件图标时使用的打开回调
   function onOpenFile(f) {
     if (f && f.__preview) {
-      previewFile.value = f;
-      showPreview.value = true;
+      // 允许多开文件预览窗口：每次都创建新窗口并传入文件作为 props
+      createWindow({
+        component: FilePreviewWindow,
+        title: f.originalName || f.original_name || '文件预览',
+        appSlug: 'filePreview',
+        width: Math.min(1200, window.innerWidth * 0.9),
+        height: Math.min(800, window.innerHeight * 0.9),
+        props: { file: f },
+        storageKey: `previewPos:${f.id}`,
+      });
+
       return;
     }
     selectedFile.value = f;
@@ -194,6 +206,20 @@
   });
 
   function onPreviewFromConfirm(f) {
+    // 从确认下载弹窗中打开为独立窗口预览（允许多开）
+    if (f) {
+      createWindow({
+        component: FilePreviewWindow,
+        title: f.originalName || f.original_name || '文件预览',
+        appSlug: 'filePreview',
+        width: Math.min(1200, window.innerWidth * 0.9),
+        height: Math.min(800, window.innerHeight * 0.9),
+        props: { file: f },
+        storageKey: `previewPos:${f.id}`,
+      });
+      return;
+    }
+
     previewFile.value = f;
     showPreview.value = true;
   }

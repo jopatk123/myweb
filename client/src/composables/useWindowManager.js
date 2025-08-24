@@ -19,8 +19,13 @@ export function useWindowManager() {
    * @param {number} options.width - 窗口宽度
    * @param {number} options.height - 窗口高度
    */
-  function createWindow(options) {
+  function createWindow(options = {}) {
     const windowId = nextWindowId++;
+
+    // 允许传入 props 和自定义 storageKey
+    const storageKey = String(
+      options.storageKey || `window:${options.appSlug || windowId}:${windowId}`
+    );
 
     const window = reactive({
       id: windowId,
@@ -31,13 +36,15 @@ export function useWindowManager() {
       appSlug: options.appSlug || '',
       width: options.width || 520,
       height: options.height || 400,
-      x: null, // 将由 useDraggableModal 管理
+      x: null, // 将由 useDraggableModal / 拖拽逻辑管理
       y: null,
       zIndex: baseZIndex + windowId,
       minimized: false,
       maximized: false,
       visible: true,
-      storageKey: `window:${options.appSlug || windowId}:${windowId}`,
+      storageKey,
+      // 可选 props，将被传递给渲染组件
+      props: options.props || {},
     });
 
     windows.value.push(window);
