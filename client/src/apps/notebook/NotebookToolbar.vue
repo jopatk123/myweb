@@ -12,6 +12,15 @@
         />
       </div>
 
+      <!-- 视图切换 -->
+      <button
+        class="btn btn-view-toggle"
+        @click="toggleCompactView"
+        :title="compactView ? '切换到普通视图' : '切换到紧凑视图'"
+      >
+        {{ compactView ? '📋' : '📝' }}
+      </button>
+
       <!-- 新建按钮 -->
       <button class="btn btn-primary" @click="$emit('addNote')">➕ 新建</button>
     </div>
@@ -73,12 +82,17 @@
       type: Array,
       default: () => [],
     },
+    compactView: {
+      type: Boolean,
+      default: false,
+    },
   });
 
   const emit = defineEmits([
     'update:search',
     'update:filter',
     'update:category',
+    'update:compactView',
     'addNote',
   ]);
 
@@ -86,6 +100,7 @@
   const searchValue = ref(props.search);
   const filterValue = ref(props.filter);
   const categoryValue = ref(props.category);
+  const compactView = ref(props.compactView);
 
   // 监听props变化
   watch(
@@ -109,6 +124,13 @@
     }
   );
 
+  watch(
+    () => props.compactView,
+    newVal => {
+      compactView.value = newVal;
+    }
+  );
+
   // 更新方法
   function updateSearch() {
     emit('update:search', searchValue.value);
@@ -121,24 +143,30 @@
   function updateCategory() {
     emit('update:category', categoryValue.value);
   }
+
+  function toggleCompactView() {
+    compactView.value = !compactView.value;
+    emit('update:compactView', compactView.value);
+  }
 </script>
 
 <style scoped>
   .notebook-toolbar {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 12px;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 8px;
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
   }
 
   .toolbar-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
   }
 
@@ -149,12 +177,12 @@
 
   .search-input {
     width: 100%;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
+    border-radius: 5px;
     background: rgba(255, 255, 255, 0.1);
     color: white;
-    font-size: 14px;
+    font-size: 13px;
     backdrop-filter: blur(10px);
   }
 
@@ -182,12 +210,12 @@
   }
 
   .filter-select {
-    padding: 6px 10px;
+    padding: 5px 8px;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
+    border-radius: 5px;
     background: rgba(255, 255, 255, 0.1);
     color: white;
-    font-size: 13px;
+    font-size: 12px;
     backdrop-filter: blur(10px);
     cursor: pointer;
   }
@@ -203,13 +231,13 @@
   }
 
   .btn {
-    padding: 8px 16px;
+    padding: 6px 12px;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    font-size: 14px;
+    font-size: 13px;
     white-space: nowrap;
   }
 
@@ -225,6 +253,16 @@
 
   .btn-primary:hover {
     background: linear-gradient(45deg, #22c55e, #16a34a);
+  }
+
+  .btn-view-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .btn-view-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
 
   @media (max-width: 768px) {

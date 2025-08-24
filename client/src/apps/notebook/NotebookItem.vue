@@ -5,6 +5,7 @@
       completed: note.completed,
       'high-priority': note.priority === 'high',
       'medium-priority': note.priority === 'medium',
+      'compact-view': compactView,
     }"
   >
     <div class="item-content">
@@ -33,11 +34,11 @@
           </div>
         </div>
 
-        <p v-if="note.description" class="note-description">
+        <p v-if="note.description && !compactView" class="note-description">
           {{ note.description }}
         </p>
 
-        <div class="note-footer">
+        <div v-if="!compactView" class="note-footer">
           <span class="note-date">
             {{ formatDate(note.updatedAt || note.createdAt) }}
           </span>
@@ -62,10 +63,14 @@
 </template>
 
 <script setup>
-  defineProps({
+  const props = defineProps({
     note: {
       type: Object,
       required: true,
+    },
+    compactView: {
+      type: Boolean,
+      default: false,
     },
   });
 
@@ -110,10 +115,11 @@
 <style scoped>
   .notebook-item {
     background: rgba(255, 255, 255, 0.9);
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: 6px;
+    padding: 8px 10px;
     transition: all 0.2s ease;
-    border-left: 4px solid #667eea;
+    border-left: 3px solid #667eea;
+    min-height: 60px;
   }
 
   .notebook-item:hover {
@@ -135,25 +141,64 @@
     border-left-color: #f59e0b;
   }
 
+  .notebook-item.compact-view {
+    padding: 4px 6px;
+    min-height: 36px;
+  }
+
+  .notebook-item.compact-view .item-content {
+    gap: 6px;
+    min-height: 28px;
+  }
+
+  .notebook-item.compact-view .note-title {
+    font-size: 13px;
+    line-height: 1.1;
+  }
+
+  .notebook-item.compact-view .note-meta {
+    gap: 4px;
+  }
+
+  .notebook-item.compact-view .note-category,
+  .notebook-item.compact-view .note-priority {
+    padding: 1px 3px;
+    font-size: 9px;
+  }
+
+  .notebook-item.compact-view .status-btn {
+    font-size: 14px;
+    min-width: 18px;
+    height: 18px;
+  }
+
+  .notebook-item.compact-view .action-btn {
+    font-size: 11px;
+    width: 18px;
+    height: 18px;
+  }
+
   .item-content {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
+    min-height: 44px;
   }
 
   .status-btn {
     background: none;
     border: none;
-    font-size: 18px;
+    font-size: 16px;
     cursor: pointer;
     padding: 2px;
     border-radius: 4px;
     transition: all 0.2s ease;
-    min-width: 24px;
-    height: 24px;
+    min-width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
 
   .status-btn:hover {
@@ -170,16 +215,16 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 6px;
-    gap: 8px;
+    margin-bottom: 4px;
+    gap: 6px;
   }
 
   .note-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     color: #333;
-    line-height: 1.3;
+    line-height: 1.2;
     word-break: break-word;
   }
 
@@ -197,16 +242,16 @@
   .note-category {
     background: #e5e7eb;
     color: #374151;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 11px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 10px;
     font-weight: 500;
   }
 
   .note-priority {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 11px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 10px;
     font-weight: 500;
   }
 
@@ -226,11 +271,15 @@
   }
 
   .note-description {
-    margin: 0 0 8px 0;
-    font-size: 14px;
+    margin: 0 0 4px 0;
+    font-size: 12px;
     color: #666;
-    line-height: 1.4;
+    line-height: 1.3;
     word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .notebook-item.completed .note-description {
@@ -244,7 +293,7 @@
   }
 
   .note-date {
-    font-size: 12px;
+    font-size: 10px;
     color: #888;
   }
 
@@ -257,16 +306,17 @@
   .action-btn {
     background: none;
     border: none;
-    font-size: 14px;
+    font-size: 12px;
     cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
+    padding: 3px;
+    border-radius: 3px;
     transition: all 0.2s ease;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
 
   .action-btn:hover {

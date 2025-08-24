@@ -196,35 +196,36 @@
 <style scoped>
   .notebook-form {
     background: rgba(255, 255, 255, 0.95);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 16px;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
+    flex-shrink: 0;
   }
 
   .form-header {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     text-align: center;
   }
 
   .form-header h3 {
     margin: 0;
     color: #333;
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     font-weight: 600;
   }
 
   .form-content {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
 
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
   }
 
   .form-label {
@@ -236,10 +237,10 @@
   .form-input,
   .form-textarea,
   .form-select {
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 14px;
+    border-radius: 6px;
+    font-size: 13px;
     transition: border-color 0.2s ease;
     background: white;
   }
@@ -254,7 +255,7 @@
 
   .form-textarea {
     resize: vertical;
-    min-height: 80px;
+    min-height: 60px;
     font-family: inherit;
   }
 

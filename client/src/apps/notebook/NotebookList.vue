@@ -5,6 +5,7 @@
         v-for="note in notes"
         :key="note.id"
         :note="note"
+        :compact-view="compactView"
         @edit="$emit('edit', note)"
         @delete="$emit('delete', note.id)"
         @toggle-status="$emit('toggleStatus', note.id)"
@@ -21,6 +22,10 @@
       type: Array,
       default: () => [],
     },
+    compactView: {
+      type: Boolean,
+      default: false,
+    },
   });
 
   defineEmits(['edit', 'delete', 'toggleStatus']);
@@ -30,15 +35,18 @@
   .notebook-list {
     flex: 1;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .list-container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    max-height: 400px;
+    gap: 4px;
+    flex: 1;
     overflow-y: auto;
     padding-right: 4px;
+    min-height: 0;
   }
 
   /* 自定义滚动条样式 */
