@@ -47,8 +47,8 @@
           @add-category="handleAddCategory"
         />
 
+        <!-- 始终渲染列表（即使过滤后为空），以便列表区域可以占满空间 -->
         <NotebookList
-          v-if="filteredNotes.length > 0"
           :notes="filteredNotes"
           :compact-view="compactView"
           @edit="handleEditNote"
@@ -56,15 +56,16 @@
           @toggle-status="handleToggleStatus"
         />
 
-        <!-- 加载更多按钮 -->
-        <div v-if="hasMoreNotes" class="load-more">
+        <!-- 仅在列表有内容时显示加载更多按钮 -->
+        <div v-if="filteredNotes.length > 0 && hasMoreNotes" class="load-more">
           <button class="btn btn-load-more" @click="loadMoreNotes">
             加载更多 ({{ notes.length - displayLimit }} 条)
           </button>
         </div>
 
+        <!-- 仅当完全没有任何笔记时显示空状态提示 -->
         <NotebookEmptyState
-          v-else-if="!showAddForm"
+          v-if="notes.length === 0 && !showAddForm"
           :has-notes="notes.length > 0"
           :search-query="searchQuery"
           @add-note="showAddForm = true"

@@ -26,13 +26,6 @@
       <div class="label">{{ app.name }}</div>
     </div>
 
-    <AppLauncherModal
-      v-model="show"
-      :component="currentComponent"
-      :title="currentTitle"
-      :storageKey="currentStorageKey"
-    />
-
     <ContextMenu
       v-model="menu.visible"
       :x="menu.x"
@@ -47,7 +40,7 @@
   import { ref, shallowRef, computed, onMounted, watch } from 'vue';
   import { useApps } from '@/composables/useApps.js';
   import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
-  import AppLauncherModal from './AppLauncherModal.vue';
+  import { useWindowManager } from '@/composables/useWindowManager.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
 
   import useDesktopGrid from '@/composables/useDesktopGrid.js';
@@ -63,11 +56,7 @@
   } = useDesktopGrid();
 
   const { apps, fetchApps, getAppIconUrl, setVisible } = useApps();
-
-  const show = ref(false);
-  const currentComponent = shallowRef(null);
-  const currentTitle = ref('');
-  const currentStorageKey = ref('');
+  const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
   const selectedId = ref(null);
   const selectedIds = ref(new Set()); // 支持多选
   const positions = ref({}); // { [appId]: { x, y } }
@@ -106,13 +95,29 @@
         return;
       } catch {}
     }
-    // 内置APP：使用本地组件
+
+    // 检查应用是否已经打开，如果是则激活现有窗口
+    const existingWindow = findWindowByApp(app.slug);
+    if (existingWindow) {
+      setActiveWindow(existingWindow.id);
+      return;
+    }
+
+    // 内置APP：创建新窗口
     const comp = getAppComponentBySlug(app.slug);
     const meta = getAppMetaBySlug(app.slug);
-    currentComponent.value = comp;
-    currentTitle.value = meta?.name || app.name || '';
-    currentStorageKey.value = app.slug || String(app.id || '');
-    show.value = true;
+
+    if (comp) {
+      // 使用 registry 中提供的元信息（如 preferredSize）来初始化窗口大小
+      const preferred = meta?.preferredSize || { width: 520, height: 400 };
+      createWindow({
+        component: comp,
+        title: meta?.name || app.name || '',
+        appSlug: app.slug,
+        width: preferred.width,
+        height: preferred.height,
+      });
+    }
   }
 
   function onClick(app, e) {

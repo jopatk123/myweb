@@ -7,12 +7,15 @@ export const internalApps = [
   {
     slug: 'snake',
     name: '贪吃蛇',
+    // 推荐窗口尺寸（宽 x 高），可被窗口管理器用于初始大小
+    preferredSize: { width: 480, height: 750 },
     // 异步加载，避免初次加载体积增长
     component: defineAsyncComponent(() => import('./snake/SnakeApp.vue')),
   },
   {
     slug: 'calculator',
     name: '计算器',
+    preferredSize: { width: 450, height: 670 },
     // 异步加载，避免初次加载体积增长
     component: defineAsyncComponent(
       () => import('./calculator/CalculatorApp.vue')
@@ -21,6 +24,7 @@ export const internalApps = [
   {
     slug: 'notebook',
     name: '笔记本',
+    preferredSize: { width: 500, height: 800 },
     // 异步加载，避免初次加载体积增长
     component: defineAsyncComponent(() => import('./notebook/NotebookApp.vue')),
   },

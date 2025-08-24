@@ -1,24 +1,16 @@
 <template>
   <div class="empty-state">
-    <div class="empty-content">
-      <div class="empty-icon">
-        {{ hasNotes ? '🔍' : '📝' }}
-      </div>
-
+    <!-- 简化空状态：移除大图与冗余说明，保留标题和新建按钮以腾出列表空间 -->
+    <div class="empty-content compact">
       <h3 class="empty-title">
         {{ emptyTitle }}
       </h3>
-
-      <p class="empty-message">
-        {{ emptyMessage }}
-      </p>
-
       <button
         v-if="!hasNotes"
         class="btn btn-primary"
         @click="$emit('addNote')"
       >
-        ➕ 创建第一条笔记
+        ➕ 新建笔记
       </button>
     </div>
   </div>
@@ -66,13 +58,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 200px;
-    padding: 40px 20px;
+    /* 缩小空状态占用高度，给列表留更多空间 */
+    min-height: 120px;
+    padding: 20px 12px;
   }
 
   .empty-content {
     text-align: center;
     max-width: 300px;
+  }
+
+  .empty-content.compact {
+    max-width: 100%;
   }
 
   .empty-icon {
@@ -121,8 +118,8 @@
 
   @media (max-width: 768px) {
     .empty-state {
-      min-height: 150px;
-      padding: 30px 20px;
+      min-height: 100px;
+      padding: 15px 12px;
     }
 
     .empty-icon {
