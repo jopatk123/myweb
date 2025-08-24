@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="16" fill="#d4a574"/>
+  <g transform="translate(16,16)" fill="none" stroke="#8b6914" stroke-width="2">
+    <rect width="96" height="96" rx="8"/>
+    <g stroke-width="1">
+      <path d="M0 16h96M0 32h96M0 48h96M0 64h96M0 80h96"/>
+      <path d="M16 0v96M32 0v96M48 0v96M64 0v96M80 0v96"/>
+    </g>
+  </g>
+  <g transform="translate(64,64)">
+    <circle cx="-12" cy="0" r="8" fill="#000"/>
+    <circle cx="12" cy="0" r="8" fill="#fff" stroke="#e0e0e0" stroke-width="1"/>
+  </g>
+</svg>
+
+

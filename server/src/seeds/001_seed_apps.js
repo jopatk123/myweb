@@ -43,5 +43,13 @@ export async function seed(knex) {
       is_visible: 1,
       is_builtin: 1,
     },
+    {
+      name: '五子棋',
+      slug: 'gomoku',
+      description: '五子棋对战，挑战AI',
+      icon_filename: 'gomoku-128.svg',
+      is_visible: 1,
+      is_builtin: 1,
+    },
   ]);
 }

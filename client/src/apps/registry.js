@@ -46,6 +46,13 @@ export const internalApps = [
       () => import('./novel-reader/NovelReaderApp.vue')
     ),
   },
+  {
+    slug: 'gomoku',
+    name: '五子棋',
+    preferredSize: { width: 600, height: 800 },
+    // 异步加载，避免初次加载体积增长
+    component: defineAsyncComponent(() => import('./gomoku/GomokuApp.vue')),
+  },
 ];
 
 export function getAppComponentBySlug(slug) {
