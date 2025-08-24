@@ -37,47 +37,55 @@
 
 <style scoped>
   .notebook-header {
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
     color: white;
-    margin-bottom: 20px;
+    margin-bottom: 8px;
+    gap: 12px;
+    flex-shrink: 0;
+    text-align: left;
   }
 
   .header-title {
-    font-size: 2rem;
-    margin: 0 0 16px 0;
+    font-size: 1.2rem;
+    margin: 0;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
     font-weight: bold;
   }
 
   .header-stats {
     display: flex;
-    gap: 20px;
-    justify-content: center;
-    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
   }
 
   .stat-item {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 8px 16px;
-    border-radius: 10px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    min-width: 60px;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 4px 8px;
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    min-width: auto;
   }
 
   .stat-label {
-    font-size: 0.8rem;
-    opacity: 0.8;
-    margin-bottom: 4px;
+    font-size: 0.75rem;
+    opacity: 0.85;
+    margin: 0;
     font-weight: 500;
+    white-space: nowrap;
   }
 
   .stat-value {
-    font-size: 1.4rem;
-    font-weight: bold;
+    font-size: 1rem;
+    font-weight: 700;
     color: #ffffff;
   }
 
@@ -91,19 +99,20 @@
 
   @media (max-width: 768px) {
     .header-title {
-      font-size: 1.6rem;
+      font-size: 1.1rem;
     }
 
     .header-stats {
-      gap: 12px;
+      gap: 6px;
+      flex-wrap: wrap;
     }
 
     .stat-item {
-      padding: 6px 12px;
+      padding: 4px 8px;
     }
 
     .stat-value {
-      font-size: 1.2rem;
+      font-size: 1rem;
     }
   }
 </style>
