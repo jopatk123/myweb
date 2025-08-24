@@ -16,6 +16,8 @@
       :selected-group-id="selectedGroupId"
       @select-group="selectGroup"
       @create-group="() => openGroupModal('create')"
+      @edit-group="onEditSelectedGroup"
+      @delete-group="onDeleteSelectedGroup"
     />
 
     <!-- 主内容区（列表骨架） -->
@@ -30,24 +32,13 @@
             新增应用
           </button>
           <button
-            class="btn btn-secondary"
+            class="btn btn-primary btn-move btn-space"
             @click="openMoveModal"
             :disabled="selectedIds.length === 0"
             title="移动已选择的应用"
           >
             移动
           </button>
-          <template v-if="showGroupActions">
-            <button class="btn btn-outline" @click="onEditSelectedGroup">
-              编辑分组
-            </button>
-            <button
-              class="btn btn-outline btn-danger"
-              @click="onDeleteSelectedGroup"
-            >
-              删除分组
-            </button>
-          </template>
         </div>
         <div class="right">
           <input
@@ -553,6 +544,22 @@
     height: 32px;
     text-align: center;
     color: #888;
+  }
+  /* 新增按钮间距样式 */
+  .btn-space {
+    margin-left: 8px;
+  }
+  /* 移动按钮：和新增保持同一尺寸/阴影，但背景颜色不同 */
+  .btn-move {
+    background: #6b21a8; /* 深紫色，与主色区分 */
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+  }
+  .btn-move:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 </style>
 

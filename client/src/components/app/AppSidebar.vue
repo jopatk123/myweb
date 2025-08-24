@@ -10,6 +10,22 @@
         >
           新建
         </button>
+        <template v-if="selectedGroupId !== '' && selectedGroupId !== null">
+          <button
+            class="btn btn-secondary btn-sm"
+            @click="$emit('edit-group')"
+            title="编辑"
+          >
+            编辑
+          </button>
+          <button
+            class="btn btn-secondary btn-sm btn-danger"
+            @click="$emit('delete-group')"
+            title="删除"
+          >
+            删除
+          </button>
+        </template>
       </div>
     </div>
     <div class="group-list">
@@ -47,7 +63,7 @@
     },
   });
 
-  defineEmits(['select-group', 'create-group']);
+  defineEmits(['select-group', 'create-group', 'edit-group', 'delete-group']);
 </script>
 
 <style scoped>
