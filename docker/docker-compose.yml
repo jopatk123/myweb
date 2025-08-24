@@ -12,11 +12,13 @@ services:
       - NODE_ENV=production
       - PORT=3002
       - DB_PATH=/app/data/myweb.db
-      - CORS_ORIGIN=http://localhost:50001
+      # 默认 CORS_ORIGIN 指向部署的宿主机和端口（可在环境或 .env 中覆盖）
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://43.163.120.212:10010}
     volumes:
-      - ../server/data:/app/data
-      - ../server/uploads:/app/uploads
-      - ../server/logs:/app/logs
+      # 将重要数据持久化到宿主机对应目录（相对于本 compose 文件的路径）
+      - ../server/data:/app/data:rw
+      - ../server/uploads:/app/uploads:rw
+      - ../server/logs:/app/logs:rw
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3002/health']
@@ -37,9 +39,11 @@ services:
     image: nginx:alpine
     container_name: myweb-nginx
     ports:
-      - '50001:80'
+      # 暴露到宿主机 10010 端口（请确保服务器防火墙/安全组已允许该端口）
+      - '10010:80'
     volumes:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template
+      # 将上传目录挂载到 nginx 静态服务目录，设置为只读
       - ../server/uploads:/usr/share/nginx/html/uploads:ro
     depends_on:
       - frontend

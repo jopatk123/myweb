@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# 自动化 Docker 部署脚本（参考用户提供示例）
+# - 在项目根以 docker-compose 方式部署
+# - 支持重试/二次执行（拉代码、重建、零停机重启）
+# - 健康检查端口: 10010
+
+APP_NAME="myweb"
+IMAGE_NAME="myweb:latest"
+COMPOSE_FILE="docker/docker-compose.yml"
+HOST_IP="43.163.120.212"
+HOST_PORT="10010"
+
+log()  { echo -e "\033[1;34m[INFO]\033[0m $*"; }
+ok()   { echo -e "\033[1;32m[SUCCESS]\033[0m $*"; }
+warn() { echo -e "\033[1;33m[WARN]\033[0m $*"; }
+err()  { echo -e "\033[1;31m[ERROR]\033[0m $*"; }
+
+need_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    err "缺少命令: $1"
+    exit 1
+  fi
+}
+
+detect_compose() {
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    echo "docker compose"
+    return
+  fi
+  if command -v docker-compose >/dev/null 2>&1; then
+    echo "docker-compose"
+    return
+  fi
+  err "未检测到 docker compose，请安装 Docker 并启用 compose 插件"
+  exit 1
+}
+
+main() {
+  log "检查依赖..."
+  need_cmd git
+  need_cmd docker
+
+  local DC
+  DC=$(detect_compose)
+  log "使用 compose 命令: $DC"
+
+  log "同步代码..."
+  if [ -d .git ]; then
+    git fetch --all --prune
+    # 尽量保持在 main 分支
+    if git rev-parse --abbrev-ref HEAD | grep -q "main"; then
+      git pull --rebase
+    else
+      warn "当前不在 main 分支，尝试拉取更新但不强制切换"
+      git pull --rebase || true
+    fi
+  else
+    warn "未检测到 .git 目录，跳过拉取"
+  fi
+
+  # 如果有 docker/Dockerfile，先构建备用镜像；否则交由 compose 构建
+  if [ -f docker/Dockerfile ]; then
+    log "构建镜像: $IMAGE_NAME via docker/Dockerfile"
+    docker build -t "$IMAGE_NAME" -f docker/Dockerfile .
+  else
+    log "未检测到 docker/Dockerfile，交由 compose 根据配置构建（如果需要）"
+  fi
+
+  log "启动/更新服务: $APP_NAME (使用 $COMPOSE_FILE)"
+  $DC -f "$COMPOSE_FILE" up -d --build --remove-orphans
+
+  log "等待服务就绪..."
+  sleep 3
+  $DC -f "$COMPOSE_FILE" ps || true
+
+  # 健康检查（本机 127.0.0.1:${HOST_PORT}，由 Nginx/反代映射到宿主端口）
+  if command -v curl >/dev/null 2>&1; then
+    if curl -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/api/health" >/dev/null 2>&1; then
+      ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}  | 健康检查: http://${HOST_IP}:${HOST_PORT}/api/health"
+    else
+      warn "健康检查未通过，正在输出关键容器日志以供排查："
+      echo
+      echo "==== docker compose ps ===="
+      $DC -f "$COMPOSE_FILE" ps || true
+      echo
+      echo "==== ${APP_NAME} (最近日志) ===="
+      $DC -f "$COMPOSE_FILE" logs --no-color --tail=200 "$APP_NAME" || true
+      echo
+      warn "请检查容器日志或重试访问: http://${HOST_IP}:${HOST_PORT}/api/health"
+    fi
+  else
+    ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}（本机没有 curl 可用，无法执行健康检查）"
+  fi
+}
+
+main "$@"
