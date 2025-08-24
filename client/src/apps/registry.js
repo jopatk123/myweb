@@ -28,6 +28,15 @@ export const internalApps = [
     // 异步加载，避免初次加载体积增长
     component: defineAsyncComponent(() => import('./notebook/NotebookApp.vue')),
   },
+  {
+    slug: 'work-timer',
+    name: '下班计时器',
+    preferredSize: { width: 400, height: 700 },
+    // 异步加载，避免初次加载体积增长
+    component: defineAsyncComponent(
+      () => import('./work-timer/WorkTimerApp.vue')
+    ),
+  },
 ];
 
 export function getAppComponentBySlug(slug) {

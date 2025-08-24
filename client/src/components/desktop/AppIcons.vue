@@ -83,6 +83,9 @@
     if (app.slug === 'calculator') {
       return `/apps/icons/calculator-128.png`;
     }
+    if (app.slug === 'work-timer') {
+      return `/apps/icons/work-timer-128.svg`;
+    }
     return '/apps/icons/file-128.svg'; // 提供一个默认图标
   }
 

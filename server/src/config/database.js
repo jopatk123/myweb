@@ -444,6 +444,15 @@ function ensureBuiltinApps(db) {
         is_builtin: 1,
         target_url: null,
       },
+      {
+        name: '下班计时器',
+        slug: 'work-timer',
+        description: '工作时间管理和下班倒计时',
+        icon_filename: 'work-timer-128.svg',
+        is_visible: 1,
+        is_builtin: 1,
+        target_url: null,
+      },
     ];
 
     const findStmt = db.prepare(
