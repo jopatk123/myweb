@@ -49,9 +49,9 @@ app.use(
   })
 );
 
-// 请求体解析
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+// 请求体解析 - 放开大小限制
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
 // 统一请求键名（snake_case 或 camelCase -> camelCase），便于后端控制器/服务使用 camelCase
 app.use(normalizeRequestKeys);

@@ -25,7 +25,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 200 * 1024 * 1024 },
+  limits: { fileSize: 1000 * 1024 * 1024 }, // 1GB - 放开限制供私人使用
 });
 
 // Ensure novels upload directory exists and provide a dedicated storage for novels
@@ -50,7 +50,7 @@ const storageNovels = multer.diskStorage({
 
 const uploadNovels = multer({
   storage: storageNovels,
-  limits: { fileSize: 200 * 1024 * 1024 },
+  limits: { fileSize: 1000 * 1024 * 1024 }, // 1GB - 放开限制供私人使用
 });
 
 export function createFileRoutes(db) {
