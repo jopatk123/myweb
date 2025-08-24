@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { FileService } from '../services/file.service.js';
@@ -20,6 +21,32 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
+  limits: { fileSize: 200 * 1024 * 1024 },
+});
+
+// Ensure novels upload directory exists and provide a dedicated storage for novels
+const novelsDir = path.join(__dirname, '../../uploads/novels');
+if (!fs.existsSync(novelsDir)) {
+  try {
+    fs.mkdirSync(novelsDir, { recursive: true });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('无法创建 novels 上传目录:', e.message);
+  }
+}
+
+const storageNovels = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, novelsDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '';
+    cb(null, `${uuidv4()}${ext}`);
+  },
+});
+
+const uploadNovels = multer({
+  storage: storageNovels,
   limits: { fileSize: 200 * 1024 * 1024 },
 });
 
@@ -59,6 +86,43 @@ export function createFileRoutes(db) {
       next(error);
     }
   });
+
+  // 专用于小说上传的端点，保存到 uploads/novels
+  router.post(
+    '/upload/novel',
+    uploadNovels.array('file', 10),
+    async (req, res, next) => {
+      try {
+        const baseUrl = (req.get('x-api-base') || '').trim();
+        const files = req.files || [];
+        if (!files.length)
+          return res
+            .status(400)
+            .json({ code: 400, success: false, message: '请选择文件' });
+
+        const results = files.map(f => {
+          const webPath = path.posix.join('uploads', 'novels', f.filename);
+          return service.create({
+            originalName: f.originalname,
+            storedName: f.filename,
+            filePath: webPath,
+            mimeType: f.mimetype,
+            fileSize: f.size,
+            uploaderId: null,
+            baseUrl,
+          });
+        });
+
+        const data =
+          Array.isArray(results) && results.length === 1 ? results[0] : results;
+        res
+          .status(201)
+          .json({ code: 201, success: true, data, message: '小说上传成功' });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 
   // 列表
   router.get('/', async (req, res, next) => {
