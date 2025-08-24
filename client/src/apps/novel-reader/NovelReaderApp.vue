@@ -127,8 +127,28 @@
     try {
       // 上传到后端（小说专用端点）
       const resp = await filesApi.uploadNovels(files, p => {});
+      // 后端现在返回 { code, success, data, novels? }
       const created = resp && resp.data ? resp.data : null;
-      const uploaded = Array.isArray(created) ? created : created ? [created] : [];
+      // 支持两种后端返回：单个 file 对象或数组；并兼容后端新增的 novels 字段
+      let uploadedFiles = [];
+      let uploadedNovels = [];
+      if (created) {
+        if (Array.isArray(created)) {
+          uploadedFiles = created;
+        } else if (created.file) {
+          // 当后端把 file 放在 data.file 时
+          uploadedFiles = [created.file];
+        } else if (created.id || created.originalName) {
+          uploadedFiles = [created];
+        }
+      }
+      if (resp && resp.novels) {
+        uploadedNovels = Array.isArray(resp.novels)
+          ? resp.novels
+          : [resp.novels];
+      }
+
+      const uploaded = uploadedFiles;
 
       for (const f of uploaded) {
         try {
@@ -144,7 +164,10 @@
               title: f.original_name || f.originalName || '未命名',
               author: '未知作者',
               size: f.file_size || f.fileSize || 0,
-              format: (f.original_name || f.originalName || '').split('.').pop().toLowerCase(),
+              format: (f.original_name || f.originalName || '')
+                .split('.')
+                .pop()
+                .toLowerCase(),
               content,
               chapters: parseChapters(content),
               addedAt: new Date().toISOString(),
@@ -160,7 +183,10 @@
               title: f.original_name || f.originalName || '未命名',
               author: '未知作者',
               size: f.file_size || f.fileSize || 0,
-              format: (f.original_name || f.originalName || '').split('.').pop().toLowerCase(),
+              format: (f.original_name || f.originalName || '')
+                .split('.')
+                .pop()
+                .toLowerCase(),
               content: null,
               chapters: [],
               addedAt: new Date().toISOString(),
@@ -245,7 +271,7 @@
     return chapters;
   }
 
-  function openBook(book) {
+  async function openBook(book) {
     currentBook.value = book;
     currentChapterIndex.value = 0;
 
@@ -256,7 +282,10 @@
     }
 
     // 若本地没有内容但存在后端引用，按需从后端加载内容（避免一次性拉取所有大文件）
-    if ((!book.content || book.content === null) && (book.fileUrl || book.file_url)) {
+    if (
+      (!book.content || book.content === null) &&
+      (book.fileUrl || book.file_url)
+    ) {
       const url = book.fileUrl || book.file_url;
       try {
         const r = await fetch(url);
@@ -331,14 +360,35 @@
     saveBooks();
   }
 
-  function deleteBook(bookId) {
+  async function deleteBook(bookId) {
     const index = books.value.findIndex(book => book.id === bookId);
-    if (index !== -1) {
-      books.value.splice(index, 1);
-      delete readingProgress.value[bookId];
-      saveBooks();
-      saveProgress();
+    if (index === -1) return;
+
+    const book = books.value[index];
+    // 如果有后端 fileId，先调用后端删除以保证一致性（后端会在事务中删除 files/novels/磁盘文件）
+    const fileId = book.fileId || book.file_id;
+    if (fileId) {
+      // 乐观界面：禁用交互以避免重复操作
+      try {
+        // 调用后端删除
+        await filesApi.delete(fileId);
+      } catch (err) {
+        // 若后端提示文件不存在(已被删除)，视为已删除并继续，不作为错误日志打印
+        if (err && (err.code === 404 || err.status === 404)) {
+          console.warn('后端记录已不存在，继续从本地移除');
+        } else {
+          console.error('后端删除失败:', err);
+          alert(err?.message || '删除失败，请重试');
+          return;
+        }
+      }
     }
+
+    // 更新本地状态
+    books.value.splice(index, 1);
+    delete readingProgress.value[bookId];
+    saveBooks();
+    saveProgress();
   }
 
   function showBookInfo(book) {
@@ -358,7 +408,10 @@
         return;
       } catch (err) {
         // 回退：保存仅含元数据的版本（移除 content 与 chapters 字段）
-        console.warn('保存完整书籍到 localStorage 失败，尝试只保存元数据：', err);
+        console.warn(
+          '保存完整书籍到 localStorage 失败，尝试只保存元数据：',
+          err
+        );
         const metaOnly = books.value.map(b => {
           const { content, chapters, ...meta } = b;
           return meta;

@@ -5,6 +5,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { FileService } from '../services/file.service.js';
+import { NovelModel } from '../models/novel.model.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,7 +31,6 @@ if (!fs.existsSync(novelsDir)) {
   try {
     fs.mkdirSync(novelsDir, { recursive: true });
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.warn('无法创建 novels 上传目录:', e.message);
   }
 }
@@ -53,6 +53,7 @@ const uploadNovels = multer({
 export function createFileRoutes(db) {
   const router = express.Router();
   const service = new FileService(db);
+  const novelModel = new NovelModel(db);
 
   // 上传（支持多文件）
   router.post('/upload', upload.array('file', 10), async (req, res, next) => {
@@ -100,9 +101,12 @@ export function createFileRoutes(db) {
             .status(400)
             .json({ code: 400, success: false, message: '请选择文件' });
 
-        const results = files.map(f => {
+        const fileResults = [];
+        const novelResults = [];
+        for (const f of files) {
           const webPath = path.posix.join('uploads', 'novels', f.filename);
-          return service.create({
+          // 保存到 files 表以便通用文件管理使用
+          const fileRow = service.create({
             originalName: f.originalname,
             storedName: f.filename,
             filePath: webPath,
@@ -110,14 +114,46 @@ export function createFileRoutes(db) {
             fileSize: f.size,
             uploaderId: null,
             baseUrl,
+            typeCategory: 'novel',
           });
-        });
+
+          // 同时在独立的 novels 表中保存语义化记录（便于阅读器业务与后续扩展）
+          const novelRow = novelModel.create({
+            title: f.originalname.replace(/\.[^/.]+$/, ''),
+            author: null,
+            originalName: f.originalname,
+            storedName: f.filename,
+            filePath: webPath,
+            mimeType: f.mimetype,
+            fileSize: f.size,
+            fileUrl: `${baseUrl ? `${baseUrl}/` : ''}${webPath}`.replace(
+              /\/+/g,
+              '/'
+            ),
+            uploaderId: null,
+          });
+
+          fileResults.push(fileRow);
+          novelResults.push(novelRow);
+        }
 
         const data =
-          Array.isArray(results) && results.length === 1 ? results[0] : results;
+          Array.isArray(fileResults) && fileResults.length === 1
+            ? fileResults[0]
+            : fileResults;
+        const novels =
+          Array.isArray(novelResults) && novelResults.length === 1
+            ? novelResults[0]
+            : novelResults;
         res
           .status(201)
-          .json({ code: 201, success: true, data, message: '小说上传成功' });
+          .json({
+            code: 201,
+            success: true,
+            data,
+            novels,
+            message: '小说上传成功',
+          });
       } catch (error) {
         next(error);
       }

@@ -19,7 +19,7 @@
     <!-- 桌面文件图标（可拖动） -->
     <FileIcons
       ref="fileIconsRef"
-      :files="files"
+      :files="desktopFiles"
       :icons="fileTypeIcons"
       @open="onOpenFile"
     />
@@ -79,7 +79,7 @@
 </template>
 
 <script setup>
-  import { ref, computed } from 'vue';
+  import { ref, computed, unref } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { useFiles } from '@/composables/useFiles.js';
   import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
@@ -123,6 +123,18 @@
     archive: '/apps/icons/archive-128.svg',
     other: '/apps/icons/file-128.svg',
   }));
+
+  // 仅用于桌面显示：过滤掉被标记为小说（novel）的上传文件
+  const desktopFiles = computed(() => {
+    const list = unref(files) || [];
+    return Array.isArray(list)
+      ? list.filter(
+          f =>
+            String(f.type_category || f.typeCategory || '').toLowerCase() !==
+            'novel'
+        )
+      : [];
+  });
 
   // 矩形选框状态
   const selectionRect = ref({

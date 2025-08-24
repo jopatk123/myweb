@@ -12,6 +12,7 @@ export async function createUploadDirs() {
     path.join(__dirname, '../../uploads/apps'),
     path.join(__dirname, '../../uploads/apps/icons'),
     path.join(__dirname, '../../uploads/files'),
+    path.join(__dirname, '../../uploads/novels'),
     path.join(__dirname, '../../data'),
     path.join(__dirname, '../../logs'),
   ];

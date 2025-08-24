@@ -125,7 +125,7 @@ export function initFileTables(db) {
       file_path TEXT NOT NULL,
       mime_type TEXT NOT NULL,
       file_size INTEGER NOT NULL,
-      type_category TEXT NOT NULL CHECK(type_category IN ('image', 'video', 'word', 'excel', 'archive', 'other')),
+      type_category TEXT NOT NULL CHECK(type_category IN ('image', 'video', 'word', 'excel', 'archive', 'other', 'novel')),
       file_url TEXT,
       uploader_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -139,4 +139,33 @@ export function initFileTables(db) {
 
   db.exec(filesTableSql);
   console.log('📁 File management tables initialized');
+}
+
+/**
+ * Initializes novels table
+ * @param {import('better-sqlite3').Database} db
+ */
+export function initNovelTables(db) {
+  const novelsTableSql = `
+    CREATE TABLE IF NOT EXISTS novels (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT,
+      author TEXT,
+      original_name TEXT NOT NULL,
+      stored_name TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      file_url TEXT,
+      uploader_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_novels_created_at ON novels(created_at);
+    CREATE INDEX IF NOT EXISTS idx_novels_uploader_id ON novels(uploader_id);
+  `;
+
+  db.exec(novelsTableSql);
+  console.log('📚 Novels table initialized');
 }

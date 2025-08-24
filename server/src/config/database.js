@@ -6,8 +6,10 @@ import {
   initWallpaperTables,
   initAppTables,
   initFileTables,
+  initNovelTables,
 } from '../db/schema.js';
 import { ensureWallpaperColumns } from '../db/migration.js';
+import { ensureFilesTypeCategoryIncludesNovel } from '../db/migration.js';
 import { ensureBuiltinApps, seedAppsIfEmpty } from '../db/seeding.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,12 +39,20 @@ export async function initDatabase() {
   initWallpaperTables(db);
   initAppTables(db);
   initFileTables(db);
+  // 新增 novels 表初始化
+  initNovelTables(db);
 
   // 迁移: 确保缺失列存在
   ensureWallpaperColumns(db);
   // 迁移: 初始化应用管理相关表与缺失列
   // ensureAppTablesAndColumns 的列检查逻辑直接放在 migration.js 的后续版本
   // 迁移: 初始化文件管理相关表（已由 schema 负责）
+  // 确保 files.type_category 包含 'novel'（若旧库未包含）
+  try {
+    ensureFilesTypeCategoryIncludesNovel(db);
+  } catch (e) {
+    console.warn('文件类型分类迁移检查失败（非致命）:', e.message || e);
+  }
   // 确保内置应用存在（用于恢复误删或旧库缺失）
   ensureBuiltinApps(db);
   // 数据种子：仅当 apps 表为空时插入示例应用（兼容旧逻辑）
