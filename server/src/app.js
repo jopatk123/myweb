@@ -19,8 +19,8 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// 信任代理设置
-app.set('trust proxy', true);
+// 信任代理设置（在生产环境中使用更精确的配置）
+app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 
 // 安全中间件
 app.use(
