@@ -1,5 +1,5 @@
 <template>
-  <div class="notebook-app" @click="focusApp" ref="appEl" tabindex="0">
+  <div class="notebook-app" @click.self="focusApp" ref="appEl" tabindex="0">
     <NotebookHeader
       :total-count="notes.length"
       :completed-count="completedCount"
