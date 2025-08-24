@@ -137,7 +137,14 @@
 
   const getWallpaperUrl = wallpaper => {
     if (!wallpaper) return null;
-    return `${import.meta.env.VITE_API_BASE || 'http://localhost:3002'}/${wallpaper.filePath || wallpaper.file_path}`;
+    const base = import.meta.env.VITE_API_BASE || '';
+    const fp = wallpaper.filePath || wallpaper.file_path || '';
+    // 如果在 build 时设置了 VITE_API_BASE，则使用它（去除多余斜杠），
+    // 否则使用相对路径 /uploads/...（以便 nginx/container 环境下正常访问）
+    if (base) {
+      return `${String(base).replace(/\/+$/g, '')}/${String(fp).replace(/^\/+/, '')}`;
+    }
+    return fp.startsWith('/') ? fp : `/${fp}`;
   };
 
   const formatFileSize = bytes => {

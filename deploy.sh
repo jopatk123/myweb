@@ -76,22 +76,40 @@ main() {
   sleep 3
   $DC -f "$COMPOSE_FILE" ps || true
 
+    # Ensure client/.env.production contains VITE_API_BASE when building frontend inside Dockerfile.client
+    # Allow override via environment variable DEPLOY_VITE_API_BASE; default to '/api'
+    if [ -n "${DEPLOY_VITE_API_BASE:-}" ]; then
+      log "创建 client/.env.production with VITE_API_BASE=${DEPLOY_VITE_API_BASE}"
+      mkdir -p client
+      cat > client/.env.production <<EOF
+  VITE_API_BASE=${DEPLOY_VITE_API_BASE}
+  EOF
+    else
+      # If not explicitly provided, set to '/api' so production build uses relative API/uploads paths
+      if [ ! -f client/.env.production ]; then
+        log "创建 client/.env.production with default VITE_API_BASE=/api"
+        mkdir -p client
+        cat > client/.env.production <<EOF
+  VITE_API_BASE=/api
+  EOF
+      fi
+    fi
   # 健康检查（本机 127.0.0.1:${HOST_PORT}，由 Nginx/反代映射到宿主端口）
   if command -v curl >/dev/null 2>&1; then
     if curl -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/api/health" >/dev/null 2>&1; then
       ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}  | 健康检查: http://${HOST_IP}:${HOST_PORT}/api/health"
     else
       warn "健康检查未通过，正在输出关键容器日志以供排查："
-      echo
-      echo "==== docker compose ps ===="
-      $DC -f "$COMPOSE_FILE" ps || true
-      echo
-      echo "==== ${APP_NAME} (最近日志) ===="
-      $DC -f "$COMPOSE_FILE" logs --no-color --tail=200 "$APP_NAME" || true
-      echo
-      warn "请检查容器日志或重试访问: http://${HOST_IP}:${HOST_PORT}/api/health"
-    fi
-  else
+      else
+        # If not explicitly provided, create an empty VITE_API_BASE so build uses relative paths (e.g. /uploads/...)
+        if [ ! -f client/.env.production ]; then
+          log "\u521b\u5efa client/.env.production with empty VITE_API_BASE (use relative paths)"
+          mkdir -p client
+          cat > client/.env.production <<EOF
+  VITE_API_BASE=
+  EOF
+        fi
+      fi
     ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}（本机没有 curl 可用，无法执行健康检查）"
   fi
 }
