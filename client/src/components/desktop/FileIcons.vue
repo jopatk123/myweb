@@ -3,8 +3,8 @@
     class="desktop-icons"
     @mousedown.stop
     @dragstart.prevent
-    @dragover.prevent.stop
-    @drop.prevent.stop
+    @dragover.prevent
+    @drop.prevent
   >
     <div
       v-for="f in files"
@@ -17,8 +17,8 @@
       @mousedown="onMouseDown(f, $event)"
       @contextmenu.prevent.stop="onContextMenu(f, $event)"
       @dragstart.prevent
-      @dragover.prevent.stop
-      @drop.stop.prevent
+      @dragover.prevent
+      @drop.prevent
       draggable="false"
       :style="getIconStyle(f)"
     >
@@ -76,7 +76,7 @@
   const confirm = ref({ visible: false, file: null });
 
   function getIcon(file) {
-    const t = file?.type_category || 'other';
+    const t = file?.typeCategory || file?.type_category || 'other';
     return props.icons?.[t] || props.icons?.other || '/apps/icons/file-128.svg';
   }
 
@@ -100,12 +100,8 @@
       { key: 'download', label: '下载' },
       { key: 'delete', label: '删除', danger: true },
     ];
-    if (
-      file.type_category === 'image' ||
-      file.type_category === 'video' ||
-      file.type_category === 'word' ||
-      file.type_category === 'excel'
-    ) {
+    const fc = file.typeCategory || file.type_category || '';
+    if (fc === 'image' || fc === 'video' || fc === 'word' || fc === 'excel') {
       baseItems.unshift({ key: 'preview', label: '预览' });
     }
     menu.value.items = baseItems;

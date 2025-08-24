@@ -3,8 +3,8 @@
     class="desktop-icons"
     @mousedown.stop
     @dragstart.prevent
-    @dragover.prevent.stop
-    @drop.prevent.stop
+    @dragover.prevent
+    @drop.prevent
   >
     <div
       v-for="app in visibleApps"
@@ -17,8 +17,8 @@
       @mousedown="onMouseDown(app, $event)"
       @contextmenu.prevent.stop="onContextMenu(app, $event)"
       @dragstart.prevent
-      @dragover.prevent.stop
-      @drop.stop.prevent
+      @dragover.prevent
+      @drop.prevent
       draggable="false"
       :style="getIconStyle(app)"
     >

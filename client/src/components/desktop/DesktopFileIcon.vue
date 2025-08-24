@@ -19,7 +19,7 @@
   );
   const iconSrc = computed(() => {
     const map = props.icons || {};
-    const t = props.file?.type_category || 'other';
+    const t = props.file?.typeCategory || props.file?.type_category || 'other';
     return map[t] || map.other || '/apps/icons/file-128.svg';
   });
 

@@ -233,7 +233,7 @@
 
   const canPreviewSelected = computed(() => {
     const f = selectedFile.value || {};
-    const t = String(f.type_category || '');
+    const t = String(f.typeCategory || f.type_category || '');
     if (t === 'image' || t === 'video' || t === 'word' || t === 'excel')
       return true;
     const name = String(

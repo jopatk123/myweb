@@ -17,7 +17,6 @@ export const filesApi = {
     const arr = Array.isArray(files) ? files : [files];
     for (const f of arr) form.append('file', f);
     return api.post('/files/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: e => {
         if (!onUploadProgress) return;
         if (!e.total) return;
