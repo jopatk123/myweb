@@ -1,4 +1,4 @@
-exports.up = function (knex) {
+export function up(knex) {
   return knex.schema
     .createTable('wallpaper_groups', function (table) {
       table.increments('id').primary();
@@ -27,10 +27,10 @@ exports.up = function (knex) {
       table.string('file_path');
       table.integer('file_size');
     });
-};
+}
 
-exports.down = function (knex) {
+export function down(knex) {
   return knex.schema
     .dropTableIfExists('wallpapers')
     .dropTableIfExists('wallpaper_groups');
-};
+}

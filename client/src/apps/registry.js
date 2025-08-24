@@ -37,6 +37,15 @@ export const internalApps = [
       () => import('./work-timer/WorkTimerApp.vue')
     ),
   },
+  {
+    slug: 'novel-reader',
+    name: '小说阅读器',
+    preferredSize: { width: 900, height: 700 },
+    // 异步加载，避免初次加载体积增长
+    component: defineAsyncComponent(
+      () => import('./novel-reader/NovelReaderApp.vue')
+    ),
+  },
 ];
 
 export function getAppComponentBySlug(slug) {

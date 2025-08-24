@@ -86,8 +86,8 @@ Thumbs.db
 .cache/
 
 # Uploads
-server/uploads/*
-
+server/uploads/files/*
+server/uploads/wallpapers/*
 
 # Keep .gitkeep files
 !.gitkeep
