@@ -43,8 +43,8 @@ services:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template
       # 挂载前端构建的静态文件
       - ../client/dist:/usr/share/nginx/html:ro
-      # 将上传目录挂载到 nginx 静态服务目录，设置为只读
-      - ../server/uploads:/usr/share/nginx/html/uploads:ro
+      # 挂载上传目录到nginx的单独路径
+      - ../server/uploads:/usr/share/nginx/uploads:ro
     depends_on:
       - backend
     environment:
