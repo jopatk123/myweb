@@ -17,6 +17,25 @@ export class AppGroupModel {
   }
 
   create({ name, slug, is_default = 0 }) {
+    // 如果提供了 slug，先检查是否存在（包含已被软删除的记录）
+    if (slug) {
+      const existing = this.db
+        .prepare('SELECT id, deleted_at FROM app_groups WHERE slug = ?')
+        .get(slug);
+      if (existing) {
+        // 若存在且已被软删除，则恢复该分组并更新字段
+        if (existing.deleted_at) {
+          const upd = this.db.prepare(
+            'UPDATE app_groups SET name = ?, is_default = ?, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+          );
+          upd.run(name, is_default ? 1 : 0, existing.id);
+          return this.findById(existing.id);
+        }
+        // 存在且未删除，直接返回现有记录
+        return this.findById(existing.id);
+      }
+    }
+
     const sql = `INSERT INTO app_groups (name, slug, is_default) VALUES (?, ?, ?)`;
     const info = this.db.prepare(sql).run(name, slug, is_default ? 1 : 0);
     return this.findById(info.lastInsertRowid);
@@ -59,8 +78,15 @@ export class AppGroupModel {
   }
 
   softDelete(id) {
-    const sql = `UPDATE app_groups SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?`;
-    this.db.prepare(sql).run(id);
-    return true;
+    // 硬删除：从数据库中移除分组，确保应用表中的 group_id 受到外键约束的 ON DELETE 行为处理（通常 SET NULL）
+    const sql = `DELETE FROM app_groups WHERE id = ?`;
+    const info = this.db.prepare(sql).run(id);
+    console.log(
+      '[AppGroupModel.softDelete] deleted id=',
+      id,
+      'changes=',
+      info.changes
+    );
+    return info.changes === undefined ? true : info.changes;
   }
 }
