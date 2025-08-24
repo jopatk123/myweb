@@ -352,8 +352,9 @@
 
       // 检查矩形相交
       if (rectIntersect(rect, itemRect)) {
-        // 根据父容器判断是应用图标还是文件图标
-        const isAppIcon = item.closest('.desktop-icons')?.style.left === '20px';
+        // 根据父容器 data-group 判断是应用图标还是文件图标
+        const group = item.closest('.desktop-icons')?.dataset?.group;
+        const isAppIcon = group === 'apps';
         if (isAppIcon) {
           selectedApps.push(id);
         } else {

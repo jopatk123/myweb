@@ -1,7 +1,7 @@
 <template>
   <div
     class="desktop-icons"
-    @mousedown.stop
+    data-group="files"
     @dragstart.prevent
     @dragover.prevent
     @drop.prevent
