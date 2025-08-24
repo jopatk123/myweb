@@ -2,6 +2,9 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import fsPromises from 'fs/promises';
+import jschardet from 'jschardet';
+import iconv from 'iconv-lite';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { FileService } from '../services/file.service.js';
@@ -105,6 +108,26 @@ export function createFileRoutes(db) {
         const novelResults = [];
         for (const f of files) {
           const webPath = path.posix.join('uploads', 'novels', f.filename);
+          const diskPath = path.join(novelsDir, f.filename);
+          // 统一检测编码并转换为 UTF-8，覆盖磁盘文件以便后续读取一致
+          try {
+            const buf = await fsPromises.readFile(diskPath);
+            const detected = jschardet.detect(buf) || {};
+            const enc = (detected.encoding || '').toLowerCase();
+            // 如果检测不到或不是 utf 编码，则以 gb18030 为回退解码（覆盖常见 GBK/GB2312）
+            if (!enc || !enc.includes('utf')) {
+              const fromEnc = /gb/.test(enc) ? 'gb18030' : enc || 'gb18030';
+              const str = iconv.decode(buf, fromEnc);
+              await fsPromises.writeFile(diskPath, Buffer.from(str, 'utf8'));
+            }
+          } catch (convErr) {
+            console.warn(
+              '小说文件编码转换失败：',
+              diskPath,
+              convErr && convErr.message
+            );
+            // 转码失败不阻止上传流程，记录警告即可
+          }
           // 保存到 files 表以便通用文件管理使用
           const fileRow = service.create({
             originalName: f.originalname,
@@ -145,15 +168,13 @@ export function createFileRoutes(db) {
           Array.isArray(novelResults) && novelResults.length === 1
             ? novelResults[0]
             : novelResults;
-        res
-          .status(201)
-          .json({
-            code: 201,
-            success: true,
-            data,
-            novels,
-            message: '小说上传成功',
-          });
+        res.status(201).json({
+          code: 201,
+          success: true,
+          data,
+          novels,
+          message: '小说上传成功',
+        });
       } catch (error) {
         next(error);
       }
