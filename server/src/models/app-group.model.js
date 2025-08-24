@@ -78,7 +78,60 @@ export class AppGroupModel {
   }
 
   softDelete(id) {
-    // 硬删除：从数据库中移除分组，确保应用表中的 group_id 受到外键约束的 ON DELETE 行为处理（通常 SET NULL）
+    // 删除分组前：
+    // 1) 不允许删除默认分组（is_default = 1）
+    // 2) 确保存在默认分组（若不存在则创建），并把要删除分组下的应用移动到默认分组
+    const row = this.db
+      .prepare('SELECT id, is_default FROM app_groups WHERE id = ?')
+      .get(id);
+    if (!row) return false;
+    if (row.is_default) {
+      const err = new Error('默认分组不可删除');
+      err.status = 400;
+      throw err;
+    }
+
+    // 查找默认分组 id
+    let def = this.db
+      .prepare('SELECT id FROM app_groups WHERE is_default = 1')
+      .get();
+    let defaultId = def ? def.id : null;
+    if (!defaultId) {
+      // 若缺失默认分组，则创建一个
+      const insert = this.db
+        .prepare(
+          'INSERT INTO app_groups (name, slug, is_default) VALUES (?,?,?)'
+        )
+        .run('默认', 'default', 1);
+      defaultId = insert.lastInsertRowid;
+      console.log(
+        '[AppGroupModel.softDelete] created default group id=',
+        defaultId
+      );
+    }
+
+    // 将属于该分组的应用移动到默认分组
+    try {
+      const upd = this.db.prepare(
+        'UPDATE apps SET group_id = ? WHERE group_id = ?'
+      );
+      const infoUpd = upd.run(defaultId, id);
+      console.log(
+        '[AppGroupModel.softDelete] moved apps count=',
+        infoUpd.changes,
+        'from group=',
+        id,
+        'to default=',
+        defaultId
+      );
+    } catch (e) {
+      console.warn(
+        '[AppGroupModel.softDelete] failed to move apps:',
+        e?.message || e
+      );
+    }
+
+    // 删除分组记录（物理删除）
     const sql = `DELETE FROM app_groups WHERE id = ?`;
     const info = this.db.prepare(sql).run(id);
     console.log(
