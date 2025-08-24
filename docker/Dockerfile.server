@@ -10,8 +10,9 @@ RUN adduser -S nodejs -u 1001
 # 复制package.json
 COPY server/package*.json ./
 
-# 安装依赖
-RUN npm ci --only=production && npm cache clean --force
+# 安装依赖（使用 npm install 而非 npm ci 以避免在单独构建镜像时因 lockfile 与 workspace 不一致导致失败）
+# 使用 --omit=dev 避免安装开发依赖，--no-audit 和 --no-fund 让构建日志更干净
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # 复制源代码
 COPY server/src ./src
