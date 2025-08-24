@@ -124,6 +124,15 @@ export function ensureBuiltinApps(db) {
         target_url: null,
       },
       {
+        name: '小说阅读器',
+        slug: 'novel-reader',
+        description: '用于阅读本地小说文件，支持章节与进度管理',
+        icon_filename: 'novel-reader.svg',
+        is_visible: 1,
+        is_builtin: 1,
+        target_url: null,
+      },
+      {
         name: '下班计时器',
         slug: 'work-timer',
         description: '工作时间管理和下班倒计时',
