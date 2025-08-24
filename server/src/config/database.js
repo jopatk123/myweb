@@ -8,7 +8,7 @@ import {
   initFileTables,
   initNovelTables,
 } from '../db/schema.js';
-import { ensureWallpaperColumns } from '../db/migration.js';
+import { ensureWallpaperColumns, ensureAppsColumns } from '../db/migration.js';
 import { ensureFilesTypeCategoryIncludesNovel } from '../db/migration.js';
 import { ensureBuiltinApps, seedAppsIfEmpty } from '../db/seeding.js';
 
@@ -44,6 +44,12 @@ export async function initDatabase() {
 
   // 迁移: 确保缺失列存在
   ensureWallpaperColumns(db);
+  // 迁移: 确保 apps 表包含必要列（is_builtin, target_url）
+  try {
+    ensureAppsColumns(db);
+  } catch (e) {
+    console.warn('apps 表列迁移失败（非致命）:', e.message || e);
+  }
   // 迁移: 初始化应用管理相关表与缺失列
   // ensureAppTablesAndColumns 的列检查逻辑直接放在 migration.js 的后续版本
   // 迁移: 初始化文件管理相关表（已由 schema 负责）

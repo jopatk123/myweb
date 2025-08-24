@@ -88,6 +88,6 @@ Thumbs.db
 # Uploads
 server/uploads/files/*
 server/uploads/wallpapers/*
-
+server/uploads/novels/*
 # Keep .gitkeep files
 !.gitkeep

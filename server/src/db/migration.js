@@ -235,3 +235,24 @@ export function ensureFilesTypeCategoryIncludesNovel(db) {
     throw err;
   }
 }
+
+/**
+ * Ensure apps table has required columns like is_builtin and target_url
+ * @param {import('better-sqlite3').Database} db
+ */
+export function ensureAppsColumns(db) {
+  const existingColumns = db.prepare('PRAGMA table_info(apps)').all();
+  const existingColumnNames = new Set(existingColumns.map(col => col.name));
+
+  const maybeAddColumn = (name, type) => {
+    if (!existingColumnNames.has(name)) {
+      db.prepare(`ALTER TABLE apps ADD COLUMN ${name} ${type}`).run();
+      console.log(`🛠️ Added column to apps: ${name} ${type}`);
+    }
+  };
+
+  // 新增 is_builtin（默认 0）以便区分内置应用
+  maybeAddColumn('is_builtin', 'INTEGER DEFAULT 0');
+  // 新增 target_url（可为 null）用于外部链接应用
+  maybeAddColumn('target_url', 'TEXT');
+}
