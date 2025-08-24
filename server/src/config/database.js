@@ -34,7 +34,9 @@ export async function initDatabase() {
   ensureAppTablesAndColumns(db);
   // 迁移: 初始化文件管理相关表
   ensureFileTables(db);
-  // 数据种子：仅当 apps 表为空时插入一个示例应用（贪吃蛇）
+  // 确保内置应用存在（用于恢复误删或旧库缺失）
+  ensureBuiltinApps(db);
+  // 数据种子：仅当 apps 表为空时插入示例应用（兼容旧逻辑）
   seedAppsIfEmpty(db);
 
   console.log(`📊 Database initialized: ${dbPath}`);
@@ -408,6 +410,102 @@ function seedAppsIfEmpty(db) {
     }
   } catch (e) {
     console.warn('seedAppsIfEmpty warning:', e?.message || e);
+  }
+}
+
+// 确保内置应用（snake, calculator, notebook）存在并且为 is_builtin
+function ensureBuiltinApps(db) {
+  try {
+    const builtins = [
+      {
+        name: '贪吃蛇',
+        slug: 'snake',
+        description: '经典小游戏（本地实现示例）',
+        icon_filename: 'snake-128.png',
+        is_visible: 1,
+        is_builtin: 1,
+        target_url: null,
+      },
+      {
+        name: '计算器',
+        slug: 'calculator',
+        description: '科学计算器，支持基本运算和内存功能',
+        icon_filename: 'calculator-128.png',
+        is_visible: 1,
+        is_builtin: 1,
+        target_url: null,
+      },
+      {
+        name: '笔记本',
+        slug: 'notebook',
+        description: '待办事项管理，记录和跟踪日常任务',
+        icon_filename: 'notebook-128.svg',
+        is_visible: 1,
+        is_builtin: 1,
+        target_url: null,
+      },
+    ];
+
+    const findStmt = db.prepare(
+      'SELECT id, is_deleted FROM apps WHERE slug = ?'
+    );
+    const insertStmt = db.prepare(
+      `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_builtin, target_url, is_deleted) VALUES (?,?,?,?,?,?,?,?,?)`
+    );
+    const updateStmt = db.prepare(
+      `UPDATE apps SET name = ?, description = ?, icon_filename = ?, is_visible = ?, is_builtin = ?, target_url = ?, is_deleted = 0, updated_at = CURRENT_TIMESTAMP WHERE slug = ?`
+    );
+
+    // ensure default group id exists
+    const g = db
+      .prepare(
+        "SELECT id FROM app_groups WHERE slug = 'default' AND deleted_at IS NULL"
+      )
+      .get();
+    const gid = g ? g.id : null;
+
+    for (const b of builtins) {
+      const row = findStmt.get(b.slug);
+      if (!row) {
+        insertStmt.run(
+          b.name,
+          b.slug,
+          b.description,
+          b.icon_filename,
+          gid,
+          b.is_visible,
+          b.is_builtin,
+          b.target_url,
+          0
+        );
+        console.log(`🌱 Inserted builtin app: ${b.slug}`);
+      } else if (row.is_deleted === 1) {
+        updateStmt.run(
+          b.name,
+          b.description,
+          b.icon_filename,
+          b.is_visible,
+          b.is_builtin,
+          b.target_url,
+          b.slug
+        );
+        console.log(`♻️ Restored builtin app: ${b.slug}`);
+      } else {
+        // ensure it is marked as builtin and visible
+        db.prepare(
+          'UPDATE apps SET is_builtin = ?, is_visible = ?, icon_filename = ?, description = ?, target_url = ? WHERE slug = ?'
+        ).run(
+          b.is_builtin,
+          b.is_visible,
+          b.icon_filename,
+          b.description,
+          b.target_url,
+          b.slug
+        );
+      }
+    }
+  } catch (e) {
+    console.warn('ensureBuiltinApps warning:', e?.message || e);
   }
 }
 

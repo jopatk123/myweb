@@ -129,7 +129,20 @@ export class AppModel {
   moveToGroup(ids, targetGroupId) {
     const placeholders = ids.map(() => '?').join(',');
     const sql = `UPDATE apps SET group_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`;
-    this.db.prepare(sql).run(targetGroupId, ...ids);
-    return true;
+    const info = this.db.prepare(sql).run(targetGroupId, ...ids);
+    // Log for debugging: which ids were updated and how many rows affected
+    try {
+      console.log(
+        '[AppModel.moveToGroup] sql=',
+        sql,
+        'params=',
+        [targetGroupId, ...ids],
+        'changes=',
+        info.changes
+      );
+    } catch (e) {
+      // ignore logging errors
+    }
+    return info.changes === undefined ? true : info.changes;
   }
 }

@@ -15,6 +15,7 @@
       :groups="groups"
       :selected-group-id="selectedGroupId"
       @select-group="selectGroup"
+      @create-group="() => openGroupModal('create')"
     />
 
     <!-- 主内容区（列表骨架） -->
@@ -28,6 +29,25 @@
           >
             新增应用
           </button>
+          <button
+            class="btn btn-secondary"
+            @click="openMoveModal"
+            :disabled="selectedIds.length === 0"
+            title="移动已选择的应用"
+          >
+            移动
+          </button>
+          <template v-if="showGroupActions">
+            <button class="btn btn-outline" @click="onEditSelectedGroup">
+              编辑分组
+            </button>
+            <button
+              class="btn btn-outline btn-danger"
+              @click="onDeleteSelectedGroup"
+            >
+              删除分组
+            </button>
+          </template>
         </div>
         <div class="right">
           <input
@@ -55,6 +75,7 @@
               <th>图标</th>
               <th>名称</th>
               <th>Slug</th>
+              <th>类型</th>
               <th>分组</th>
               <th>可见</th>
               <th>操作</th>
@@ -76,6 +97,9 @@
               </td>
               <td>{{ app.name }}</td>
               <td>{{ app.slug }}</td>
+              <td>
+                {{ (app.isBuiltin ?? app.is_builtin) ? '内置' : '第三方' }}
+              </td>
               <td>{{ displayGroupName(app.groupId || app.group_id) }}</td>
               <td>
                 <label class="switch">
@@ -162,6 +186,55 @@
         </div>
       </div>
     </div>
+    <!-- 分组管理模态 -->
+    <div v-if="showGroupModal" class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="title">
+            {{ groupModalMode === 'create' ? '新建分组' : '编辑分组' }}
+          </div>
+          <button class="close" @click="showGroupModal = false">✖</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <label>名称</label>
+            <input v-model="groupForm.name" placeholder="例如：办公" />
+          </div>
+          <div class="form-row">
+            <label>Slug</label>
+            <input v-model="groupForm.slug" placeholder="例如：office" />
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" @click="submitGroup">保存</button>
+            <button class="btn" @click="showGroupModal = false">取消</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 移动模态 -->
+    <div v-if="showMoveModal" class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="title">移动应用到分组</div>
+          <button class="close" @click="showMoveModal = false">✖</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <label>目标分组</label>
+            <select v-model="moveTargetGroupId">
+              <option :value="null">请选择分组</option>
+              <option v-for="g in groups" :key="g.id" :value="g.id">
+                {{ g.name }}
+              </option>
+            </select>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" @click="submitMove">移动</button>
+            <button class="btn" @click="showMoveModal = false">取消</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -187,21 +260,34 @@
     setPage,
     setLimit,
     getAppIconUrl,
+    createApp,
+    createGroup,
+    updateGroup,
+    deleteGroup,
+    moveApps,
   } = useApps();
 
   const showCreate = ref(false);
   const createForm = ref({
     name: '',
     slug: '',
-    targetUrl: '',
-    iconFilename: null,
-    groupId: null,
-    isVisible: true,
+    target_url: '',
+    icon_filename: null,
+    group_id: null,
+    is_visible: true,
   });
 
   const keyword = ref('');
   const selectedGroupId = ref('');
   const selectedIds = ref([]);
+  // 移动操作
+  const showMoveModal = ref(false);
+  const moveTargetGroupId = ref(null);
+  // 分组管理模态
+  const showGroupModal = ref(false);
+  const groupModalMode = ref('create'); // 'create' | 'edit'
+  const editingGroup = ref(null);
+  const groupForm = ref({ name: '', slug: '' });
 
   const filteredApps = computed(() => {
     const k = (keyword.value || '').trim().toLowerCase();
@@ -210,8 +296,11 @@
         !k ||
         (a.name || '').toLowerCase().includes(k) ||
         (a.slug || '').toLowerCase().includes(k);
-      const matchGroup =
-        !selectedGroupId.value || a.group_id === selectedGroupId.value;
+      // normalize group id comparison to avoid string/number mismatch
+      const appGroupId = Number(a.group_id ?? a.groupId ?? 0) || 0;
+      const sel =
+        selectedGroupId.value === '' ? null : Number(selectedGroupId.value);
+      const matchGroup = !sel || appGroupId === sel;
       return matchKeyword && matchGroup;
     });
   });
@@ -228,9 +317,24 @@
   }
 
   function selectGroup(id) {
-    selectedGroupId.value = id;
+    selectedGroupId.value = id === '' ? '' : Number(id);
     setPage(1);
     fetchApps({ groupId: id || null }, true);
+  }
+
+  // 侧栏选中一个分组后，显示编辑/删除按钮在页面顶部供用户操作
+  const showGroupActions = computed(
+    () => selectedGroupId.value !== '' && selectedGroupId.value !== null
+  );
+  function onEditSelectedGroup() {
+    const g = groups.value.find(x => x.id === selectedGroupId.value);
+    if (!g) return alert('未选择有效分组');
+    openGroupModal('edit', g);
+  }
+  async function onDeleteSelectedGroup() {
+    const g = groups.value.find(x => x.id === selectedGroupId.value);
+    if (!g) return alert('未选择有效分组');
+    await confirmDeleteGroup(g);
   }
 
   function displayGroupName(groupId) {
@@ -283,6 +387,84 @@
     await Promise.all([fetchGroups(), fetchApps({}, true)]);
   });
 
+  function openGroupModal(mode = 'create', group = null) {
+    groupModalMode.value = mode;
+    if (mode === 'edit' && group) {
+      editingGroup.value = group;
+      groupForm.value = { name: group.name || '', slug: group.slug || '' };
+    } else {
+      editingGroup.value = null;
+      groupForm.value = { name: '', slug: '' };
+    }
+    showGroupModal.value = true;
+  }
+
+  async function submitGroup() {
+    try {
+      if (!groupForm.value.name || !groupForm.value.name.trim()) {
+        alert('请填写分组名称');
+        return;
+      }
+      if (groupModalMode.value === 'create') {
+        await createGroup({
+          name: groupForm.value.name.trim(),
+          slug: groupForm.value.slug?.trim() || undefined,
+        });
+      } else if (groupModalMode.value === 'edit' && editingGroup.value) {
+        await updateGroup(editingGroup.value.id, {
+          name: groupForm.value.name.trim(),
+          slug: groupForm.value.slug?.trim() || undefined,
+        });
+      }
+      showGroupModal.value = false;
+    } catch (e) {
+      alert(e?.message || '操作失败');
+    }
+  }
+
+  async function confirmDeleteGroup(group) {
+    if (!confirm(`确定删除分组 「${group.name}」？`)) return;
+    try {
+      await deleteGroup(group.id);
+      // 如果当前选中该分组，切回全部
+      if (selectedGroupId.value === group.id) selectGroup('');
+    } catch (e) {
+      alert(e?.message || '删除失败');
+    }
+  }
+
+  function openMoveModal() {
+    if (!selectedIds.value || selectedIds.value.length === 0) return;
+    moveTargetGroupId.value = null;
+    showMoveModal.value = true;
+  }
+
+  async function submitMove() {
+    try {
+      console.log('submitMove called', {
+        selected: selectedIds.value,
+        target: moveTargetGroupId.value,
+      });
+      if (!moveTargetGroupId.value) {
+        alert('请选择目标分组');
+        return;
+      }
+      // ensure numeric ids
+      const ids = (selectedIds.value || []).map(i => Number(i));
+      const gid = Number(moveTargetGroupId.value);
+      console.log('calling moveApps', { ids, targetGroupId: gid });
+      await moveApps(ids, gid);
+      console.log('moveApps completed');
+      // 刷新列表并清空选择
+      selectedIds.value = [];
+      showMoveModal.value = false;
+      await fetchApps({ groupId: selectedGroupId.value || null }, true);
+    } catch (e) {
+      console.error('submitMove error', e);
+      alert(e?.message || '移动失败');
+    }
+  }
+
   // 新增自定义APP
   function openCreateModal() {
     showCreate.value = true;
@@ -292,21 +474,21 @@
       const payload = {
         name: createForm.value.name.trim(),
         slug: createForm.value.slug.trim(),
-        targetUrl:
-          createForm.value.targetUrl?.trim() ||
+        target_url:
           createForm.value.target_url?.trim() ||
+          createForm.value.targetUrl?.trim() ||
           null,
-        iconFilename:
-          createForm.value.iconFilename ||
+        icon_filename:
           createForm.value.icon_filename ||
+          createForm.value.iconFilename ||
           null,
-        groupId:
+        group_id:
           selectedGroupId.value ||
-          createForm.value.groupId ||
           createForm.value.group_id ||
+          createForm.value.groupId ||
           null,
-        isVisible: !!(
-          createForm.value.isVisible ?? createForm.value.is_visible
+        is_visible: !!(
+          createForm.value.is_visible ?? createForm.value.isVisible
         ),
       };
       // 简要校验
@@ -318,21 +500,21 @@
         alert('请填写URL');
         return;
       }
-      await fetch('/api/apps', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const created = await createApp(payload);
+      // 保证界面立即显示新建的应用（若后端返回对象）
+      if (created && created.id) {
+        apps.value = [created, ...(apps.value || [])];
+      }
       showCreate.value = false;
       await fetchApps({ groupId: selectedGroupId.value || null }, true);
       // 重置
       createForm.value = {
         name: '',
         slug: '',
-        targetUrl: '',
-        iconFilename: null,
-        groupId: null,
-        isVisible: true,
+        target_url: '',
+        icon_filename: null,
+        group_id: null,
+        is_visible: true,
       };
     } catch (e) {
       alert(e?.message || '创建失败');

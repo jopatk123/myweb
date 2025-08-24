@@ -6,8 +6,7 @@
         <button
           class="btn btn-secondary btn-sm"
           @click="$emit('create-group')"
-          title="暂未开放"
-          disabled
+          title="新建分组"
         >
           新建
         </button>
@@ -28,7 +27,7 @@
         :class="{ active: selectedGroupId === g.id }"
         @click="$emit('select-group', g.id)"
       >
-        {{ g.name }}
+        <span class="group-name">{{ g.name }}</span>
       </div>
     </div>
   </aside>

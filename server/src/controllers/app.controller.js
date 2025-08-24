@@ -21,9 +21,10 @@ export class AppController {
 
   async list(req, res, next) {
     try {
-      const { group_id, visible, page, limit } = req.query;
+      // req.query is normalized to camelCase by middleware, so accept camelCase keys
+      const { groupId, visible, page, limit } = req.query;
       const query = {
-        groupId: group_id || null,
+        groupId: groupId || null,
         visible:
           visible !== undefined ? visible === '1' || visible === 'true' : null,
         page: page ? Number(page) : null,
@@ -49,7 +50,10 @@ export class AppController {
 
   async create(req, res, next) {
     try {
-      const payload = await appSchema.validateAsync(req.body);
+      // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
+      const { mapToSnake } = await import('../utils/field-mapper.js');
+      const bodySnake = mapToSnake(req.body || {});
+      const payload = await appSchema.validateAsync(bodySnake);
       // 对于自定义 APP，强制 is_builtin = 0；内置 APP 由我们手工种子/维护
       const app = await this.service.createApp({
         ...payload,
@@ -64,9 +68,12 @@ export class AppController {
   async update(req, res, next) {
     try {
       const id = Number(req.params.id);
+      // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
+      const { mapToSnake } = await import('../utils/field-mapper.js');
+      const bodySnake = mapToSnake(req.body || {});
       const payload = await appSchema
         .fork(['name', 'slug'], s => s.optional())
-        .validateAsync(req.body);
+        .validateAsync(bodySnake);
       // 禁止将应用改为内置
       if (payload.is_builtin) delete payload.is_builtin;
       const app = await this.service.updateApp(id, payload);
@@ -117,12 +124,17 @@ export class AppController {
   async move(req, res, next) {
     try {
       const { ids, targetGroupId } = req.body;
+      console.log('[AppController.move] received', { ids, targetGroupId });
       if (!Array.isArray(ids) || ids.length === 0) {
         return res
           .status(400)
           .json({ code: 400, message: 'ids 必须为非空数组' });
       }
-      await this.service.moveApps(ids.map(Number), Number(targetGroupId));
+      const result = await this.service.moveApps(
+        ids.map(Number),
+        Number(targetGroupId)
+      );
+      console.log('[AppController.move] moveApps result', result);
       res.json({ code: 200, message: '移动成功' });
     } catch (error) {
       next(error);
