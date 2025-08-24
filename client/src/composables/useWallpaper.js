@@ -333,10 +333,17 @@ export function useWallpaper() {
   // 获取壁纸URL
   const getWallpaperUrl = wallpaper => {
     if (!wallpaper) return null;
+    const fp = wallpaper.filePath || wallpaper.file_path || '';
+
+    // 对于图片文件，应该直接使用相对路径，不经过API
+    // 因为图片文件由Nginx直接提供静态文件服务
+    if (fp.startsWith('uploads/')) {
+      return `/${fp}`;
+    }
+
+    // 兼容其他情况
     const base = import.meta.env.VITE_API_BASE || '';
-    const pathPart = String(
-      wallpaper.filePath || wallpaper.file_path || ''
-    ).replace(/^\/+/, '');
+    const pathPart = String(fp).replace(/^\/+/, '');
     if (base) {
       return `${String(base).replace(/\/+$/, '')}/${pathPart}`;
     }

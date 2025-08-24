@@ -29,20 +29,10 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.client
     container_name: myweb-frontend
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    container_name: myweb-nginx
     ports:
       # 暴露到宿主机 10010 端口（请确保服务器防火墙/安全组已允许该端口）
       - '10010:80'
     volumes:
-      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template
-      # 挂载前端构建的静态文件
-      - ../client/dist:/usr/share/nginx/html:ro
       # 挂载上传目录到nginx的单独路径
       - ../server/uploads:/usr/share/nginx/uploads:ro
     depends_on:

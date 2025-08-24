@@ -24,8 +24,15 @@
       @open="onOpenFile"
     />
 
-    <!-- 文件上传进度条 -->
-    <FileUploadProgress :uploading="uploading" :progress="uploadProgress" />
+    <!-- 文件上传进度面板 -->
+    <FileUploadProgress
+      :uploading="uploading"
+      :progress="uploadProgress"
+      :uploaded-bytes="uploadedBytes"
+      :total-bytes="totalBytes"
+      :current-file-name="currentFileName"
+      :upload-queue="uploadQueue"
+    />
 
     <!-- 浮动控制按钮 -->
     <div class="floating-controls">
@@ -105,6 +112,10 @@
     upload,
     uploading,
     uploadProgress,
+    uploadedBytes,
+    totalBytes,
+    currentFileName,
+    uploadQueue,
     getDownloadUrl,
   } = useFiles();
   const dragOver = ref(false);

@@ -21,7 +21,7 @@ export const filesApi = {
         if (!onUploadProgress) return;
         if (!e.total) return;
         const pct = Math.round((e.loaded * 100) / e.total);
-        onUploadProgress(pct);
+        onUploadProgress(pct, e.loaded, e.total);
       },
     });
   },
@@ -35,7 +35,7 @@ export const filesApi = {
         if (!onUploadProgress) return;
         if (!e.total) return;
         const pct = Math.round((e.loaded * 100) / e.total);
-        onUploadProgress(pct);
+        onUploadProgress(pct, e.loaded, e.total);
       },
     });
   },
@@ -53,6 +53,7 @@ export const filesApi = {
   },
 
   downloadUrl(id) {
+    // 文件下载应该通过API接口，所以使用API路径
     const base = import.meta.env.VITE_API_BASE
       ? `${import.meta.env.VITE_API_BASE}/api`
       : '/api';

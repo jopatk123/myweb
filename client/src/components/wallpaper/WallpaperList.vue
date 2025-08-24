@@ -137,10 +137,16 @@
 
   const getWallpaperUrl = wallpaper => {
     if (!wallpaper) return null;
-    const base = import.meta.env.VITE_API_BASE || '';
     const fp = wallpaper.filePath || wallpaper.file_path || '';
-    // 如果在 build 时设置了 VITE_API_BASE，则使用它（去除多余斜杠），
-    // 否则使用相对路径 /uploads/...（以便 nginx/container 环境下正常访问）
+
+    // 对于图片文件，应该直接使用相对路径，不经过API
+    // 因为图片文件由Nginx直接提供静态文件服务
+    if (fp.startsWith('uploads/')) {
+      return `/${fp}`;
+    }
+
+    // 兼容其他情况
+    const base = import.meta.env.VITE_API_BASE || '';
     if (base) {
       return `${String(base).replace(/\/+$/g, '')}/${String(fp).replace(/^\/+/, '')}`;
     }

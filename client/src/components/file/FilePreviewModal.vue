@@ -110,6 +110,13 @@
     );
     if (!raw) return '';
     if (/^https?:\/\//i.test(raw)) return raw;
+
+    // 对于uploads路径的文件，应该直接使用相对路径
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+
+    // 其他情况使用完整的base URL
     const base = (
       import.meta.env.VITE_API_BASE ||
       window.location.origin ||

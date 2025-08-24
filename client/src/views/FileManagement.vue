@@ -139,7 +139,14 @@
         />
       </div>
 
-      <FileUploadProgress :uploading="uploading" :progress="uploadProgress" />
+      <FileUploadProgress
+        :uploading="uploading"
+        :progress="uploadProgress"
+        :uploaded-bytes="uploadedBytes"
+        :total-bytes="totalBytes"
+        :current-file-name="currentFileName"
+        :upload-queue="uploadQueue"
+      />
     </main>
   </div>
 </template>
@@ -159,6 +166,10 @@
     search,
     uploading,
     uploadProgress,
+    uploadedBytes,
+    totalBytes,
+    currentFileName,
+    uploadQueue,
     fetchList,
     upload,
     remove,

@@ -24,6 +24,9 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # 复制nginx配置
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
 
+# 创建uploads目录
+RUN mkdir -p /usr/share/nginx/uploads
+
 # 暴露端口
 EXPOSE 80
 
