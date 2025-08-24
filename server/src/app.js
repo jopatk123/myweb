@@ -19,6 +19,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// 信任代理设置
+app.set('trust proxy', true);
+
 // 安全中间件
 app.use(
   helmet({
