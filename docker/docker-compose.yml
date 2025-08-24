@@ -41,10 +41,11 @@ services:
       - '10010:80'
     volumes:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template
+      # 挂载前端构建的静态文件
+      - ../client/dist:/usr/share/nginx/html:ro
       # 将上传目录挂载到 nginx 静态服务目录，设置为只读
       - ../server/uploads:/usr/share/nginx/html/uploads:ro
     depends_on:
-      - frontend
       - backend
     environment:
       - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
