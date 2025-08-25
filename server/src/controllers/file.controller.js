@@ -114,7 +114,6 @@ export function createFileRoutes(db) {
             const buf = await fsPromises.readFile(diskPath);
             const detected = jschardet.detect(buf) || {};
             const enc = (detected.encoding || '').toLowerCase();
-            // 如果检测不到或不是 utf 编码，则以 gb18030 为回退解码（覆盖常见 GBK/GB2312）
             if (!enc || !enc.includes('utf')) {
               const fromEnc = /gb/.test(enc) ? 'gb18030' : enc || 'gb18030';
               const str = iconv.decode(buf, fromEnc);
@@ -126,38 +125,64 @@ export function createFileRoutes(db) {
               diskPath,
               convErr && convErr.message
             );
-            // 转码失败不阻止上传流程，记录警告即可
           }
-          // 保存到 files 表以便通用文件管理使用
-          const fileRow = service.create({
-            originalName: f.originalname,
-            storedName: f.filename,
-            filePath: webPath,
-            mimeType: f.mimetype,
-            fileSize: f.size,
-            uploaderId: null,
-            baseUrl,
-            typeCategory: 'novel',
+          // 将 files 与 novels 的写入包裹在同一事务中
+          const db = service.model.db;
+          const txn = db.transaction(() => {
+            const fileRow = service.create({
+              originalName: f.originalname,
+              storedName: f.filename,
+              filePath: webPath,
+              mimeType: f.mimetype,
+              fileSize: f.size,
+              uploaderId: null,
+              baseUrl,
+              typeCategory: 'novel',
+            });
+            const novelRow = novelModel.create({
+              title: f.originalname.replace(/\.[^/.]+$/, ''),
+              author: null,
+              originalName: f.originalname,
+              storedName: f.filename,
+              filePath: webPath,
+              mimeType: f.mimetype,
+              fileSize: f.size,
+              fileUrl: `${baseUrl ? `${baseUrl}/` : ''}${webPath}`.replace(
+                /\/+/g,
+                '/'
+              ),
+              uploaderId: null,
+            });
+            fileResults.push(fileRow);
+            novelResults.push(novelRow);
           });
 
-          // 同时在独立的 novels 表中保存语义化记录（便于阅读器业务与后续扩展）
-          const novelRow = novelModel.create({
-            title: f.originalname.replace(/\.[^/.]+$/, ''),
-            author: null,
-            originalName: f.originalname,
-            storedName: f.filename,
-            filePath: webPath,
-            mimeType: f.mimetype,
-            fileSize: f.size,
-            fileUrl: `${baseUrl ? `${baseUrl}/` : ''}${webPath}`.replace(
-              /\/+/g,
-              '/'
-            ),
-            uploaderId: null,
-          });
+          try {
+            txn();
+          } catch (dbErr) {
+            // 单文件失败时仅清理当前文件，继续处理其它文件
+            try {
+              await fsPromises.unlink(diskPath);
+            } catch (unlinkErr) {
+              console.warn(
+                '无法删除失败交易产生的文件：',
+                diskPath,
+                unlinkErr && unlinkErr.message
+              );
+            }
+            console.warn(
+              'novel upload transaction failed for',
+              diskPath,
+              dbErr && dbErr.message
+            );
+            continue;
+          }
+        }
 
-          fileResults.push(fileRow);
-          novelResults.push(novelRow);
+        if (fileResults.length === 0) {
+          return res
+            .status(500)
+            .json({ code: 500, success: false, message: '小说上传失败' });
         }
 
         const data =

@@ -93,6 +93,8 @@
   // 响应式数据
   const appEl = ref(null);
   const currentTime = ref('');
+  // 当前时间的时间戳，用于驱动倒计时的重新计算
+  const nowMs = ref(Date.now());
   const endTime = ref('18:00');
   const isTimerActive = ref(false);
   const startWorkTime = ref(null);
@@ -114,7 +116,7 @@
   const timeRemaining = computed(() => {
     if (!isTimerActive.value || !endTime.value) return 0;
 
-    const now = new Date();
+    const now = new Date(nowMs.value);
     const [hours, minutes] = endTime.value.split(':').map(Number);
     const endDateTime = new Date();
     endDateTime.setHours(hours, minutes, 0, 0);
@@ -144,7 +146,7 @@
 
     if (isOvertime.value) {
       // 显示加班时间
-      const now = new Date();
+      const now = new Date(nowMs.value);
       const [hours, minutes] = endTime.value.split(':').map(Number);
       const endDateTime = new Date();
       endDateTime.setHours(hours, minutes, 0, 0);
@@ -235,6 +237,8 @@
       minute: '2-digit',
       second: '2-digit',
     });
+    // 更新时间戳，触发依赖时间的计算属性重新计算
+    nowMs.value = now.getTime();
   }
 
   function setPreset(time) {

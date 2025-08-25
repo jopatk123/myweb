@@ -67,7 +67,26 @@ export class WallpaperService {
     };
 
     const dbPayload = mapToSnake(payload);
-    return this.wallpaperModel.create(dbPayload);
+    try {
+      return this.wallpaperModel.create(dbPayload);
+    } catch (error) {
+      // DB 插入失败时，尝试回滚删除已落盘文件，避免产生孤儿文件
+      try {
+        let diskPath = dbPayload.file_path;
+        if (!path.isAbsolute(diskPath)) {
+          diskPath = path.join(__dirname, '../../', diskPath);
+        }
+        await fs.unlink(diskPath);
+      } catch (cleanupErr) {
+        if (cleanupErr.code !== 'ENOENT') {
+          console.warn(
+            '壁纸上传失败后的文件清理失败:',
+            cleanupErr && cleanupErr.message
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   updateWallpaper(id, data) {
@@ -77,36 +96,35 @@ export class WallpaperService {
 
   async deleteWallpaper(id) {
     const wallpaper = this.getWallpaperById(id);
-    if (!wallpaper) return; // 壁纸不存在或已被删除
+    if (!wallpaper) return;
 
-    // 先删除物理文件
+    // 先从数据库软删除，确保前端与 DB 状态一致
+    const dbResult = this.wallpaperModel.delete(id);
+
+    // 再尽力删除物理文件（失败不影响已完成的 DB 变更）
     try {
-      // wallpaper.file_path 在数据库中可能是两种形式:
-      // 1) 旧记录存储的是磁盘绝对路径 (例如 /home/.../uploads/...)，
-      // 2) 新记录我们存储为 web 相对路径 (例如 uploads/wallpapers/xxx.jpg)
       let diskPath = wallpaper.file_path;
       if (!path.isAbsolute(diskPath)) {
-        // 从项目根解析到文件系统路径
         diskPath = path.join(__dirname, '../../', diskPath);
       }
       await fs.unlink(diskPath);
     } catch (error) {
-      // 如果文件不存在，可以忽略错误，否则向上抛出
       if (error.code !== 'ENOENT') {
-        console.error('删除物理文件失败:', error);
-        throw new Error('删除物理文件失败');
+        console.warn('删除壁纸物理文件失败（已忽略）:', error && error.message);
       }
     }
 
-    // 再从数据库删除
-    return this.wallpaperModel.delete(id);
+    return dbResult;
   }
 
   async deleteMultipleWallpapers(ids) {
     const wallpapers = this.wallpaperModel.findManyByIds(ids);
     if (!wallpapers || wallpapers.length === 0) return;
 
-    // 1. 批量删除物理文件
+    // 1. 先批量从数据库软删除
+    const dbResult = this.wallpaperModel.deleteMany(ids);
+
+    // 2. 再尽力批量删除物理文件（失败仅记录，不影响 DB 已生效的变更）
     for (const wallpaper of wallpapers) {
       try {
         let diskPath = wallpaper.file_path;
@@ -116,14 +134,15 @@ export class WallpaperService {
         await fs.unlink(diskPath);
       } catch (error) {
         if (error.code !== 'ENOENT') {
-          console.error(`删除文件 ${wallpaper.file_path} 失败:`, error);
-          // 选择性地决定是否因为单个文件删除失败而中断整个过程
+          console.warn(
+            `批量删除壁纸时文件删除失败（已忽略）: ${wallpaper.file_path}`,
+            error && error.message
+          );
         }
       }
     }
 
-    // 2. 批量从数据库删除
-    return this.wallpaperModel.deleteMany(ids);
+    return dbResult;
   }
 
   async moveMultipleWallpapers(ids, groupId) {

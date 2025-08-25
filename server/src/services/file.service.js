@@ -88,16 +88,14 @@ export class FileService {
   }
 
   async remove(id) {
-    // 使用事务确保原子性：删除磁盘文件、files 表记录、以及 novels 表关联记录
-    const db = this.model.db; // better-sqlite3 Database
+    // 先事务性删除 DB（files + novels），再尽力删除磁盘文件，保证前端与 DB 一致
+    const db = this.model.db;
     const file = this.get(id);
     const filePath = file.file_path;
 
+    // 1) 事务：删除 files 记录与 novels 关联记录
     const transaction = db.transaction(() => {
-      // 从 files 表中删除记录
       this.model.delete(id);
-
-      // 如果是小说类型，删除 novels 表中对应记录
       if (
         (file.type_category || file.typeCategory || '').toLowerCase() ===
         'novel'
@@ -106,27 +104,21 @@ export class FileService {
       }
     });
 
+    transaction();
+
+    // 2) 尝试删除磁盘文件（失败仅记录，不影响已完成的 DB 状态）
     try {
-      // 删除磁盘文件（若存在）
       let diskPath = filePath;
-      if (!path.isAbsolute(diskPath))
+      if (!path.isAbsolute(diskPath)) {
         diskPath = path.join(__dirname, '../../', filePath);
-      try {
-        await fs.unlink(diskPath);
-      } catch (err) {
-        if (err.code !== 'ENOENT') {
-          // 若磁盘删除失败（非文件不存在），抛错以终止事务
-          throw err;
-        }
       }
-
-      // 执行 DB 事务
-      transaction();
-
-      return true;
-    } catch (error) {
-      console.error('删除文件失败（回滚）：', error);
-      throw error;
+      await fs.unlink(diskPath);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.warn('删除磁盘文件失败（已忽略）:', err && err.message);
+      }
     }
+
+    return true;
   }
 }
