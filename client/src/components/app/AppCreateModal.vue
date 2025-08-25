@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="modal-backdrop" @click.self="close">
+  <div v-if="show" class="modal-backdrop">
     <div class="modal">
       <div class="modal-header">
         <div class="title">新增自定义应用</div>
@@ -10,10 +10,7 @@
           <label>名称</label>
           <input v-model="form.name" placeholder="例如：Google" />
         </div>
-        <div class="form-row">
-          <label>Slug</label>
-          <input v-model="form.slug" placeholder="例如：google" />
-        </div>
+        <!-- Slug 字段由前端根据名称自动生成，隐藏输入 -->
         <div class="form-row">
           <label>URL</label>
           <input v-model="form.target_url" placeholder="https://example.com" />
@@ -59,6 +56,19 @@
     is_visible: true,
   };
 
+  // 简单的 slug 生成函数：把名称转换为小写、替换非字母数字为连字符、去重连字符
+  function generateSlugFromName(name) {
+    if (!name) return '';
+    return name
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\-\s]/g, '') // 移除非法字符
+      .replace(/\s+/g, '-') // 空白转为连字符
+      .replace(/\-+/g, '-') // 合并连续连字符
+      .replace(/^-|-$/g, ''); // 移除首尾连字符
+  }
+
   const form = ref({ ...initialFormState });
   const selectedIconPath = ref('');
   const iconSelectorRef = ref(null);
@@ -84,19 +94,33 @@
   };
 
   const submit = async () => {
+    // 在提交前确保生成 slug
+    const computedSlug = generateSlugFromName(form.value.name);
     const payload = {
       ...form.value,
       name: form.value.name.trim(),
-      slug: form.value.slug.trim(),
+      slug: computedSlug,
       target_url: form.value.target_url?.trim() || null,
     };
 
     if (!payload.name || !payload.slug) {
-      alert('请填写名称与slug');
+      alert('请填写名称，系统无法生成有效的 slug');
       return;
     }
     if (!payload.target_url) {
       alert('请填写URL');
+      return;
+    }
+
+    // 前端 URL 校验：确保是可解析的 URL 且协议为 http/https，友好提示错误
+    try {
+      const parsed = new URL(payload.target_url);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        alert('URL 必须以 http:// 或 https:// 开头');
+        return;
+      }
+    } catch (e) {
+      alert('URL 格式不正确，请输入有效的 URL，例如：https://example.com');
       return;
     }
 
