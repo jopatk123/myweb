@@ -69,6 +69,24 @@ main() {
     log "未检测到 docker/Dockerfile，交由 compose 根据配置构建（如果需要）"
   fi
 
+  # 在使用 docker compose 构建 frontend 镜像之前，确保 client/.env.production 存在并包含 VITE_API_BASE
+  # 这样在 Dockerfile.client 的构建阶段，Vite 会读取正确的 API 根路径
+  if [ -n "${DEPLOY_VITE_API_BASE:-}" ]; then
+    log "为 frontend 构建创建 client/.env.production with VITE_API_BASE=${DEPLOY_VITE_API_BASE}"
+    mkdir -p client
+    cat > client/.env.production <<EOF
+VITE_API_BASE=${DEPLOY_VITE_API_BASE}
+EOF
+  else
+    if [ ! -f client/.env.production ]; then
+      log "创建 client/.env.production with default VITE_API_BASE=/api"
+      mkdir -p client
+      cat > client/.env.production <<EOF
+VITE_API_BASE=/api
+EOF
+    fi
+  fi
+
   log "启动/更新服务: $APP_NAME (使用 $COMPOSE_FILE)"
   # 确保上传目录权限正确（nodejs用户）
   if [ -d server/uploads ]; then
