@@ -44,7 +44,7 @@ export class AppService {
     return this.appModel.update(id, payload);
   }
 
-  deleteApp(id) {
+  async deleteApp(id) {
     const app = this.appModel.findById(id);
     if (!app) {
       const err = new Error('应用不存在');
@@ -56,6 +56,23 @@ export class AppService {
       err.status = 400;
       throw err;
     }
+
+    // 删除前尝试清理图标文件（仅当无其他未删除应用引用该文件时）
+    const iconFilename = app.icon_filename || app.iconFilename;
+    if (iconFilename) {
+      try {
+        const count = this.appModel.countByIconFilename(iconFilename);
+        // 当前这条记录仍算未删除，所以 count > 1 表示还有其他引用；== 1 表示仅此一处
+        if (count <= 1) {
+          const filePath = path.join(this.uploadsDir, iconFilename);
+          await fs.unlink(filePath).catch(() => {});
+        }
+      } catch (e) {
+        // 清理失败不影响删除流程，仅日志提示
+        console.warn('[AppService.deleteApp] 清理图标失败:', e?.message || e);
+      }
+    }
+
     return this.appModel.softDelete(id);
   }
 
@@ -91,7 +108,9 @@ export class AppService {
       await fs.mkdir(this.uploadsDir, { recursive: true });
 
       // 源文件路径（public/apps/icons目录）
-      const sourcePath = path.join(this.publicIconsDir, presetIconFilename);
+      // 兼容传入为完整路径（/apps/icons/xxx.svg）或仅文件名（xxx.svg）
+      const safeFilename = path.basename(presetIconFilename || '');
+      const sourcePath = path.join(this.publicIconsDir, safeFilename);
 
       // 检查源文件是否存在
       try {
@@ -101,7 +120,7 @@ export class AppService {
       }
 
       // 生成新的文件名
-      const ext = path.extname(presetIconFilename);
+      const ext = path.extname(safeFilename);
       const newFilename = `${uuidv4()}${ext}`;
       const targetPath = path.join(this.uploadsDir, newFilename);
 
@@ -111,7 +130,26 @@ export class AppService {
       return newFilename;
     } catch (error) {
       console.error('复制预选图标失败:', error);
-      throw new Error('复制预选图标失败');
+      throw new Error(`复制预选图标失败: ${error?.message || '未知错误'}`);
+    }
+  }
+
+  // 删除上传的图标文件（若存在）。安全：仅按文件名删除
+  async deleteIconFileIfExists(filename) {
+    try {
+      if (!filename) return false;
+      const safe = path.basename(String(filename));
+      const p = path.join(this.uploadsDir, safe);
+      await fs.unlink(p);
+      return true;
+    } catch (e) {
+      if (e && e.code === 'ENOENT') return false;
+      // 其他错误打印但不抛出，避免影响主流程
+      console.warn(
+        '[AppService.deleteIconFileIfExists] 删除失败:',
+        e?.message || e
+      );
+      return false;
     }
   }
 }

@@ -126,6 +126,15 @@ export class AppModel {
     return true;
   }
 
+  /**
+   * 统计指定图标文件在未删除的应用中的引用数量
+   */
+  countByIconFilename(iconFilename) {
+    const sql = `SELECT COUNT(1) AS cnt FROM apps WHERE is_deleted = 0 AND icon_filename = ?`;
+    const row = this.db.prepare(sql).get(iconFilename);
+    return row ? Number(row.cnt) : 0;
+  }
+
   moveToGroup(ids, targetGroupId) {
     const placeholders = ids.map(() => '?').join(',');
     const sql = `UPDATE apps SET group_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`;

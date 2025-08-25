@@ -138,6 +138,11 @@ echo "✅ Dependencies installed successfully!"
 
 echo "🔥 Starting development servers..."
 
+# 确保本地上传目录存在且可写（当前用户）
+mkdir -p server/uploads/apps/icons server/data server/logs 2>/dev/null || true
+chown -R "$(whoami)":"$(whoami)" server/uploads server/data server/logs 2>/dev/null || true
+chmod -R 775 server/uploads server/data server/logs 2>/dev/null || true
+
 # 后端
 echo "🔧 Preparing backend (port ${BACKEND_PORT})..."
 ensure_port_free "${BACKEND_PORT}" "${BACKEND_PIDFILE}" "backend"

@@ -25,7 +25,7 @@
               v-model="selectedIconPath"
               :icon-filename="form.icon_filename"
               @update:icon-filename="form.icon_filename = $event"
-              @upload="handleIconUpload"
+              @select-file="onSelectLocalFile"
               ref="iconSelectorRef"
             />
           </div>
@@ -62,6 +62,7 @@
   const form = ref({ ...initialFormState });
   const selectedIconPath = ref('');
   const iconSelectorRef = ref(null);
+  const pendingFile = ref(null); // 延迟上传的本地文件
 
   watch(
     () => props.show,
@@ -70,6 +71,7 @@
         // Reset form when modal opens
         form.value = { ...initialFormState, group_id: props.groupId };
         selectedIconPath.value = '';
+        pendingFile.value = null;
         if (iconSelectorRef.value) {
           iconSelectorRef.value.reset();
         }
@@ -81,7 +83,7 @@
     emit('update:show', false);
   };
 
-  const submit = () => {
+  const submit = async () => {
     const payload = {
       ...form.value,
       name: form.value.name.trim(),
@@ -98,37 +100,47 @@
       return;
     }
 
-    // 如果选择了预选图标，需要处理图标路径
-    if (selectedIconPath.value && !form.value.icon_filename) {
-      // 预选图标：提取文件名
+    // 如果选择了预选图标且还未有上传文件名
+    if (
+      selectedIconPath.value &&
+      !form.value.icon_filename &&
+      !pendingFile.value
+    ) {
       const iconPath = selectedIconPath.value;
       const filename = iconPath.split('/').pop();
-      payload.preset_icon = filename; // 添加预选图标标识
+      payload.preset_icon = filename;
+    }
+
+    // 若存在延迟上传的本地文件，则先上传获取 filename
+    if (pendingFile.value && !form.value.icon_filename) {
+      try {
+        const formData = new FormData();
+        formData.append('file', pendingFile.value);
+        const resp = await fetch('/api/apps/icons/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const json = await resp.json();
+        if (resp.ok && json?.data?.filename) {
+          payload.icon_filename = json.data.filename;
+        } else {
+          alert(json?.message || '上传失败');
+          return;
+        }
+      } catch (error) {
+        console.error('Icon upload failed:', error);
+        alert('图标上传失败');
+        return;
+      }
     }
 
     emit('submit', payload);
   };
 
-  // Icon upload logic
-  async function handleIconUpload(file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const resp = await fetch('/api/apps/icons/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const json = await resp.json();
-      if (resp.ok && json?.data?.filename) {
-        form.value.icon_filename = json.data.filename;
-        selectedIconPath.value = ''; // 清除预选图标
-      } else {
-        alert(json?.message || '上传失败');
-      }
-    } catch (error) {
-      console.error('Icon upload failed:', error);
-      alert('图标上传失败');
-    }
+  function onSelectLocalFile(file) {
+    pendingFile.value = file || null;
+    // 选择自定义文件后，清空预选图标路径，避免二者并存
+    if (file) selectedIconPath.value = '';
   }
 </script>
 

@@ -88,10 +88,11 @@ EOF
   fi
 
   log "启动/更新服务: $APP_NAME (使用 $COMPOSE_FILE)"
-  # 确保上传目录权限正确（nodejs用户）
-  if [ -d server/uploads ]; then
-    chown -R 1001:65533 server/uploads server/data server/logs 2>/dev/null || true
-  fi
+  # 确保必要目录存在并授权给容器内用户（nodejs:nodejs -> 1001:1001）
+  mkdir -p server/uploads/apps/icons server/data server/logs || true
+  # node:18-alpine Dockerfile.server 中创建的用户为 uid=1001,gid=1001
+  chown -R 1001:1001 server/uploads server/data server/logs 2>/dev/null || true
+  chmod -R 775 server/uploads server/data server/logs 2>/dev/null || true
   $DC -f "$COMPOSE_FILE" up -d --build --remove-orphans
 
   log "等待服务就绪..."

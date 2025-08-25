@@ -61,12 +61,14 @@
   const emit = defineEmits([
     'update:modelValue',
     'update:iconFilename',
-    'upload',
+    // 改为延迟上传：不再立即上传，改为通知父组件选择了文件
+    'select-file',
   ]);
 
   const activeTab = ref('preset');
   const selectedIcon = ref(props.modelValue || '');
   const uploadedIcon = ref('');
+  const objectUrl = ref('');
   const fileInput = ref(null);
 
   // 丰富的预选图标库
@@ -166,8 +168,17 @@
   async function onFileSelected(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-
-    emit('upload', file);
+    // 仅本地预览与上抛文件，由父组件在提交时执行上传
+    try {
+      if (objectUrl.value) {
+        URL.revokeObjectURL(objectUrl.value);
+        objectUrl.value = '';
+      }
+    } catch (_) {}
+    objectUrl.value = URL.createObjectURL(file);
+    uploadedIcon.value = objectUrl.value;
+    selectedIcon.value = uploadedIcon.value;
+    emit('select-file', file);
   }
 
   // 当上传成功后，父组件会更新 iconFilename
@@ -179,6 +190,12 @@
       if (fileInput.value) {
         fileInput.value.value = '';
       }
+      try {
+        if (objectUrl.value) {
+          URL.revokeObjectURL(objectUrl.value);
+          objectUrl.value = '';
+        }
+      } catch (_) {}
     },
   });
 </script>
