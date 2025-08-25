@@ -502,6 +502,11 @@
           ? resp.data.files
           : [];
 
+      // 先构建后端现存的小说文件ID集合
+      const serverIdSet = new Set(
+        serverFiles.map(f => f.id || f.ID).filter(Boolean)
+      );
+
       const existingIds = new Set(
         books.value.map(b => b.fileId || b.file_id).filter(Boolean)
       );
@@ -528,6 +533,21 @@
           fileUrl: f.file_url || downloadUrl,
         };
         books.value.push(bookMeta);
+      }
+
+      // 清理：若本地存在 fileId 但服务器已不存在，对应条目应被移除
+      const removedLocalBookIds = [];
+      books.value = books.value.filter(b => {
+        const fid = b.fileId || b.file_id;
+        if (!fid) return true; // 纯本地书籍保留
+        if (serverIdSet.has(fid)) return true;
+        removedLocalBookIds.push(b.id);
+        return false;
+      });
+
+      // 同步移除这些书籍的阅读进度
+      for (const bid of removedLocalBookIds) {
+        if (readingProgress.value[bid]) delete readingProgress.value[bid];
       }
 
       saveBooks();

@@ -30,30 +30,12 @@
 </template>
 
 <script setup>
-  import { filesApi } from '@/api/files.js';
   const emit = defineEmits(['open', 'delete', 'info']);
 
   async function handleDelete() {
     if (!confirm(`确定要删除《${props.book.title}》吗？`)) return;
-
-    try {
-      // 优先使用 book.fileId / book.fileId 字段来定位后端文件 id
-      const fileId = props.book.fileId || props.book.file_id;
-      if (!fileId) {
-        // 若没有后端 id，则直接通知父组件删除本地记录
-        emit('delete');
-        return;
-      }
-
-      // 调用后端删除（后端会在事务中删除 files 与 novels 以及磁盘文件）
-      await filesApi.delete(fileId);
-
-      // 删除成功后通知父组件更新本地状态
-      emit('delete');
-    } catch (err) {
-      console.error('删除失败:', err);
-      alert(err?.message || '删除失败，请稍后重试');
-    }
+    // 仅上抛事件，由父组件统一处理后端/本地删除与404容错
+    emit('delete');
   }
 
   function formatFileSize(bytes) {
