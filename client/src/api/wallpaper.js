@@ -1,9 +1,7 @@
 import axios from 'axios';
 
 // 优先使用环境变量提供的绝对地址；否则使用相对路径通过 Vite 代理，避免跨域
-const apiBase = import.meta.env.VITE_API_BASE
-  ? `${import.meta.env.VITE_API_BASE}/api`
-  : '/api';
+const apiBase = import.meta.env.VITE_API_BASE || '/api';
 
 const api = axios.create({
   baseURL: apiBase,

@@ -1,8 +1,6 @@
 import axios from 'axios';
 
-const apiBase = import.meta.env.VITE_API_BASE
-  ? `${import.meta.env.VITE_API_BASE}/api`
-  : '/api';
+const apiBase = import.meta.env.VITE_API_BASE || '/api';
 
 const api = axios.create({ baseURL: apiBase, timeout: 300000 });
 
@@ -54,9 +52,7 @@ export const filesApi = {
 
   downloadUrl(id) {
     // 文件下载应该通过API接口，所以使用API路径
-    const base = import.meta.env.VITE_API_BASE
-      ? `${import.meta.env.VITE_API_BASE}/api`
-      : '/api';
+    const base = import.meta.env.VITE_API_BASE || '/api';
     return `${base}/files/${id}/download`;
   },
 };
