@@ -44,6 +44,13 @@ export async function initDatabase() {
   initNovelTables(db);
   // 新增 notebook 表初始化
   initNotebookTables(db);
+  // 新增 work-timer 表初始化
+  try {
+    const { initWorkTimerTables } = await import('../db/schema.js');
+    initWorkTimerTables(db);
+  } catch (e) {
+    console.warn('无法初始化 work-timer 表（非致命）:', e.message || e);
+  }
 
   // 迁移: 确保缺失列存在
   ensureWallpaperColumns(db);

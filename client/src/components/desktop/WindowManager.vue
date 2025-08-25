@@ -1,8 +1,8 @@
 <template>
   <div class="window-manager">
-    <!-- 渲染所有窗口 -->
+    <!-- 渲染所有窗口（包括已最小化的），以保证组件保持挂载，计时器不会因卸载而停止 -->
     <AppWindow
-      v-for="window in visibleWindows"
+      v-for="window in windows"
       :key="window.id"
       :window="window"
       :is-active="window.id === activeWindowId"

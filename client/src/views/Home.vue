@@ -98,6 +98,7 @@
   import FilePreviewModal from '@/components/file/FilePreviewModal.vue';
   import FilePreviewWindow from '@/components/file/FilePreviewWindow.vue';
   import { useWindowManager } from '@/composables/useWindowManager.js';
+  import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
 
   const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
@@ -166,6 +167,32 @@
   });
   // 初始加载文件列表（用于在桌面显示图标）
   fetchFiles().catch(() => {});
+
+  // 每次打开页面都自动启动下班计时器并自动开始计时
+  try {
+    setTimeout(() => {
+      const existing = findWindowByApp('work-timer');
+      if (existing) {
+        existing.props = existing.props || {};
+        existing.props.autoStart = true;
+        setActiveWindow(existing.id);
+      } else {
+        const comp = getAppComponentBySlug('work-timer');
+        const meta = getAppMetaBySlug('work-timer');
+        if (comp) {
+          const preferred = meta?.preferredSize || { width: 520, height: 400 };
+          createWindow({
+            component: comp,
+            title: meta?.name || '下班计时器',
+            appSlug: 'work-timer',
+            width: preferred.width,
+            height: preferred.height,
+            props: { autoStart: true },
+          });
+        }
+      }
+    }, 120);
+  } catch (e) {}
 
   const onRandom = async () => {
     const w = await randomWallpaper();
