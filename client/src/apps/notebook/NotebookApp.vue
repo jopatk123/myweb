@@ -82,6 +82,7 @@
   import NotebookForm from './NotebookForm.vue';
   import NotebookList from './NotebookList.vue';
   import NotebookEmptyState from './NotebookEmptyState.vue';
+  import { notebookApi } from '../../api/notebook.js';
 
   // 响应式数据
   const appEl = ref(null);
@@ -96,6 +97,7 @@
   const quickAddText = ref('');
   const quickAddFocused = ref(false);
   const displayLimit = ref(50); // 初始显示数量
+  const serverReady = ref(true);
 
   // 计算属性
   const completedCount = computed(
@@ -184,33 +186,77 @@
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
-  function handleSaveNote(noteData) {
-    if (editingNote.value) {
-      // 编辑现有笔记
-      const index = notes.value.findIndex(
-        note => note.id === editingNote.value.id
-      );
-      if (index !== -1) {
-        notes.value[index] = {
-          ...notes.value[index],
+  async function handleSaveNote(noteData) {
+    try {
+      if (serverReady.value) {
+        if (editingNote.value) {
+          const res = await notebookApi.update(editingNote.value.id, noteData);
+          const row = res.data;
+          const idx = notes.value.findIndex(n => n.id === row.id);
+          if (idx !== -1) notes.value[idx] = normalizeNote(row);
+          editingNote.value = null;
+        } else {
+          const res = await notebookApi.create(noteData);
+          const row = res.data;
+          notes.value.unshift(normalizeNote(row));
+        }
+        persistLocalMirror();
+      } else {
+        // 回退：本地
+        if (editingNote.value) {
+          const index = notes.value.findIndex(
+            note => note.id === editingNote.value.id
+          );
+          if (index !== -1) {
+            notes.value[index] = {
+              ...notes.value[index],
+              ...noteData,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          editingNote.value = null;
+        } else {
+          const newNote = {
+            id: generateId(),
+            ...noteData,
+            completed: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          notes.value.unshift(newNote);
+        }
+        saveToStorage();
+      }
+    } catch (e) {
+      console.warn('保存到服务器失败，回退本地：', e?.message || e);
+      serverReady.value = false;
+      // 回退
+      if (editingNote.value) {
+        const index = notes.value.findIndex(
+          note => note.id === editingNote.value.id
+        );
+        if (index !== -1) {
+          notes.value[index] = {
+            ...notes.value[index],
+            ...noteData,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        editingNote.value = null;
+      } else {
+        const newNote = {
+          id: generateId(),
           ...noteData,
+          completed: false,
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
+        notes.value.unshift(newNote);
       }
-      editingNote.value = null;
-    } else {
-      // 创建新笔记
-      const newNote = {
-        id: generateId(),
-        ...noteData,
-        completed: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      notes.value.unshift(newNote);
+      saveToStorage();
+    } finally {
+      showAddForm.value = false;
     }
-    showAddForm.value = false;
-    saveToStorage();
   }
 
   function handleCancelEdit() {
@@ -223,20 +269,59 @@
     showAddForm.value = false;
   }
 
-  function handleDeleteNote(noteId) {
-    const index = notes.value.findIndex(note => note.id === noteId);
-    if (index !== -1) {
-      notes.value.splice(index, 1);
-      saveToStorage();
+  async function handleDeleteNote(noteId) {
+    try {
+      if (serverReady.value && typeof noteId === 'number') {
+        await notebookApi.remove(noteId);
+      }
+    } catch (e) {
+      console.warn('删除服务器笔记失败，继续删除本地：', e?.message || e);
+      serverReady.value = false;
+    } finally {
+      const index = notes.value.findIndex(note => note.id === noteId);
+      if (index !== -1) {
+        notes.value.splice(index, 1);
+        serverReady.value ? persistLocalMirror() : saveToStorage();
+      }
     }
   }
 
-  function handleToggleStatus(noteId) {
-    const note = notes.value.find(note => note.id === noteId);
-    if (note) {
-      note.completed = !note.completed;
-      note.updatedAt = new Date().toISOString();
-      saveToStorage();
+  async function handleToggleStatus(noteId) {
+    const note = notes.value.find(n => n.id === noteId);
+    if (!note) return;
+    const target = { ...note, completed: !note.completed };
+    try {
+      if (serverReady.value && typeof noteId === 'number') {
+        const res = await notebookApi.update(noteId, {
+          completed: target.completed,
+        });
+        const row = normalizeNote(res.data);
+        const idx = notes.value.findIndex(n => n.id === noteId);
+        if (idx !== -1) notes.value[idx] = row;
+        persistLocalMirror();
+      } else {
+        const idx = notes.value.findIndex(n => n.id === noteId);
+        if (idx !== -1) {
+          notes.value[idx] = {
+            ...notes.value[idx],
+            completed: target.completed,
+            updatedAt: new Date().toISOString(),
+          };
+          saveToStorage();
+        }
+      }
+    } catch (e) {
+      console.warn('更新完成状态失败，回退本地：', e?.message || e);
+      serverReady.value = false;
+      const idx = notes.value.findIndex(n => n.id === noteId);
+      if (idx !== -1) {
+        notes.value[idx] = {
+          ...notes.value[idx],
+          completed: target.completed,
+          updatedAt: new Date().toISOString(),
+        };
+        saveToStorage();
+      }
     }
   }
 
@@ -334,6 +419,28 @@
     }
   }
 
+  function normalizeNote(row) {
+    // 确保和前端使用的字段对齐
+    return {
+      id: row.id,
+      title: row.title || '',
+      description: row.description || '',
+      category: row.category || '',
+      priority: row.priority || 'medium',
+      completed: !!(row.completed === true || row.completed === 1),
+      createdAt: row.createdAt || new Date().toISOString(),
+      updatedAt: row.updatedAt || new Date().toISOString(),
+    };
+  }
+
+  function persistLocalMirror() {
+    try {
+      localStorage.setItem('notebook-notes', JSON.stringify(notes.value));
+    } catch (e) {
+      console.warn('持久化本地镜像失败：', e?.message || e);
+    }
+  }
+
   // 监听数据变化自动保存
   watch(categories, saveCategoriesToStorage, { deep: true });
   watch(compactView, saveViewSettingsToStorage);
@@ -343,9 +450,19 @@
     displayLimit.value = 50;
   });
 
-  // 组件挂载时加载数据
-  onMounted(() => {
-    loadFromStorage();
+  // 组件挂载时加载数据（优先服务器，失败回退到本地）
+  onMounted(async () => {
+    try {
+      const res = await notebookApi.list();
+      const items = res.data?.items || [];
+      notes.value = items.map(normalizeNote);
+      persistLocalMirror();
+      serverReady.value = true;
+    } catch (e) {
+      console.warn('加载服务器笔记失败，回退本地：', e?.message || e);
+      serverReady.value = false;
+      loadFromStorage();
+    }
     loadCategoriesFromStorage();
     loadViewSettingsFromStorage();
     focusApp();

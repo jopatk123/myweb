@@ -7,6 +7,7 @@ import {
   initAppTables,
   initFileTables,
   initNovelTables,
+  initNotebookTables,
 } from '../db/schema.js';
 import { ensureWallpaperColumns, ensureAppsColumns } from '../db/migration.js';
 import { ensureFilesTypeCategoryIncludesNovel } from '../db/migration.js';
@@ -41,6 +42,8 @@ export async function initDatabase() {
   initFileTables(db);
   // 新增 novels 表初始化
   initNovelTables(db);
+  // 新增 notebook 表初始化
+  initNotebookTables(db);
 
   // 迁移: 确保缺失列存在
   ensureWallpaperColumns(db);

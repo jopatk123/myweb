@@ -8,6 +8,7 @@ import { createWallpaperRoutes } from './routes/wallpapers.routes.js';
 import { createAppRoutes } from './routes/apps.routes.js';
 import { initDatabase } from './config/database.js';
 import { createFileRoutes } from './routes/files.routes.js';
+import { createNotebookNotesRoutes } from './routes/notebook-notes.routes.js';
 import errorHandler from './middleware/error.middleware.js';
 import {
   normalizeRequestKeys,
@@ -69,6 +70,7 @@ const db = await initDatabase();
 app.use('/api/wallpapers', createWallpaperRoutes(db));
 app.use('/api/apps', createAppRoutes(db));
 app.use('/api/files', createFileRoutes(db));
+app.use('/api/notebook', createNotebookNotesRoutes(db));
 
 // 健康检查
 app.get('/health', (req, res) => {
