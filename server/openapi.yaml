@@ -236,7 +236,7 @@ paths:
         '200':
           description: OK
 
-  /api/apps:
+  /api/myapps:
     get:
       summary: List apps
       responses:
@@ -255,7 +255,7 @@ paths:
         '201':
           description: Created
 
-  /api/apps/{id}:
+  /api/myapps/{id}:
     get:
       summary: Get app by id
       parameters:

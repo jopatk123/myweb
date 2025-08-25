@@ -5,7 +5,7 @@
       <div class="brand">管理后台</div>
       <nav class="global-menu">
         <a class="menu-item active">壁纸管理</a>
-        <router-link to="/apps" class="menu-item">应用管理</router-link>
+        <router-link to="/myapps" class="menu-item">应用管理</router-link>
         <router-link to="/files" class="menu-item">文件管理</router-link>
       </nav>
     </aside>

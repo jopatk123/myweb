@@ -16,7 +16,7 @@ const routes = [
     component: WallpaperManagement,
   },
   {
-    path: '/apps',
+    path: '/myapps',
     name: 'AppManagement',
     component: AppManagement,
   },

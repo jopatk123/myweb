@@ -18,6 +18,7 @@ export class AppService {
       __dirname,
       '../../../client/public/apps/icons'
     );
+    this.presetIconsDir = path.join(__dirname, '../../preset-icons');
   }
 
   // 应用
@@ -73,7 +74,7 @@ export class AppService {
       }
     }
 
-    return this.appModel.softDelete(id);
+    return this.appModel.hardDelete(id);
   }
 
   setAppVisible(id, visible) {
@@ -110,12 +111,22 @@ export class AppService {
       // 源文件路径（public/apps/icons目录）
       // 兼容传入为完整路径（/apps/icons/xxx.svg）或仅文件名（xxx.svg）
       const safeFilename = path.basename(presetIconFilename || '');
-      const sourcePath = path.join(this.publicIconsDir, safeFilename);
-
-      // 检查源文件是否存在
-      try {
-        await fs.access(sourcePath);
-      } catch (error) {
+      const candidates = [
+        path.join(this.uploadsDir, safeFilename),
+        path.join(this.presetIconsDir, safeFilename),
+        path.join(this.publicIconsDir, safeFilename),
+      ];
+      let sourcePath = null;
+      for (const p of candidates) {
+        try {
+          await fs.access(p);
+          sourcePath = p;
+          break;
+        } catch (e) {
+          // ignore: candidate path not found, continue to next
+        }
+      }
+      if (!sourcePath) {
         throw new Error(`预选图标文件不存在: ${presetIconFilename}`);
       }
 

@@ -19,6 +19,7 @@ RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # 复制源代码
 COPY server/src ./src
+COPY client/public/apps/icons ./preset-icons
 
 # 创建必要的目录
 RUN mkdir -p data uploads logs

@@ -69,7 +69,7 @@ const db = await initDatabase();
 
 // 路由
 app.use('/api/wallpapers', createWallpaperRoutes(db));
-app.use('/api/apps', createAppRoutes(db));
+app.use('/api/myapps', createAppRoutes(db));
 app.use('/api/files', createFileRoutes(db));
 app.use('/api/notebook', createNotebookNotesRoutes(db));
 app.use('/api/work-timer', createWorkTimerRoutes(db));

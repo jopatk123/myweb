@@ -126,6 +126,12 @@ export class AppModel {
     return true;
   }
 
+  hardDelete(id) {
+    const sql = `DELETE FROM apps WHERE id = ?`;
+    this.db.prepare(sql).run(id);
+    return true;
+  }
+
   /**
    * 统计指定图标文件在未删除的应用中的引用数量
    */

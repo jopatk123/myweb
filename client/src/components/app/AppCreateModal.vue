@@ -140,7 +140,7 @@
       try {
         const formData = new FormData();
         formData.append('file', pendingFile.value);
-        const resp = await fetch('/api/apps/icons/upload', {
+        const resp = await fetch('/api/myapps/icons/upload', {
           method: 'POST',
           body: formData,
         });
