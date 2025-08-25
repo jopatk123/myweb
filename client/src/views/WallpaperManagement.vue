@@ -12,7 +12,7 @@
 
     <!-- 模块侧边栏 -->
     <WallpaperSidebar
-      :groups="groups"
+      :groups="groupsWithFlag"
       :selected-group-id="selectedGroupId"
       @select-group="selectGroup"
       @create-group="showGroupModal = true"
@@ -138,6 +138,7 @@
   const {
     wallpapers,
     groups,
+    currentGroup,
     activeWallpaper,
     loading,
     error,
@@ -325,6 +326,17 @@
   const displayCurrentGroup = computed(() => {
     const g = groups.value.find(g => g.id === selectedGroupId.value);
     return g ? g.name : '';
+  });
+
+  // 在 groups 列表中标注当前应用分组
+  const groupsWithFlag = computed(() => {
+    const cg = (typeof currentGroup === 'object' ? currentGroup : null) || null;
+    const currentId =
+      cg && cg.value ? cg.value.id || cg.value : currentGroup.value;
+    return (groups.value || []).map(g => ({
+      ...g,
+      is_current: String(g.id) === String(currentId),
+    }));
   });
 
   // 初始化

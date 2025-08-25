@@ -31,7 +31,8 @@
         :class="{ active: selectedGroupId === group.id }"
         @click="$emit('select-group', group.id)"
       >
-        {{ group.name }}
+        <span>{{ group.name }}</span>
+        <span v-if="group.is_current" class="badge">（当前应用壁纸）</span>
       </div>
     </div>
     <div class="apply-current">
