@@ -7,7 +7,8 @@ WORKDIR /app
 COPY client/package*.json ./
 
 # 安装依赖
-RUN npm ci
+# 使用 npm install 以避免因宿主机 lockfile 与构建上下文不同步导致的构建失败
+RUN npm install --no-audit --no-fund
 
 # 复制源代码
 COPY client/ .
