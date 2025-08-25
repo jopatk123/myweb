@@ -118,8 +118,8 @@ EOF
     fi
   # 健康检查（本机 127.0.0.1:${HOST_PORT}，由 Nginx/反代映射到宿主端口）
   if command -v curl >/dev/null 2>&1; then
-    if curl -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/api/health" >/dev/null 2>&1; then
-      ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}  | 健康检查: http://${HOST_IP}:${HOST_PORT}/api/health"
+    if curl -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/health" >/dev/null 2>&1; then
+      ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}  | 健康检查: http://${HOST_IP}:${HOST_PORT}/health"
     else
       warn "健康检查未通过，正在输出关键容器日志以供排查："
       $DC -f "$COMPOSE_FILE" logs --tail 200 --no-color || true
