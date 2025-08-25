@@ -5,10 +5,10 @@ services:
       dockerfile: docker/Dockerfile.server
     container_name: myweb-backend
     ports:
-      - '3002:3002'
+      - '${BACKEND_HOST_PORT:-3002}:${BACKEND_PORT:-3002}'
     environment:
       - NODE_ENV=production
-      - PORT=3002
+      - PORT=${BACKEND_PORT:-3002}
       - DB_PATH=/app/data/myweb.db
       # 默认 CORS_ORIGIN 指向部署的宿主机和端口（可在环境或 .env 中覆盖）
       - CORS_ORIGIN=${CORS_ORIGIN:-http://43.163.120.212:10010}
@@ -17,6 +17,7 @@ services:
       - ../server/data:/app/data:rw
       - ../server/uploads:/app/uploads:rw
       - ../server/logs:/app/logs:rw
+      - ../client/public/apps/icons:/app/preset-icons:ro
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3002/health']
@@ -30,8 +31,8 @@ services:
       dockerfile: docker/Dockerfile.client
     container_name: myweb-frontend
     ports:
-      # 暴露到宿主机 10010 端口（请确保服务器防火墙/安全组已允许该端口）
-      - '10010:80'
+      # 暴露到宿主机端口（请确保服务器防火墙/安全组已允许该端口）
+      - '${FRONTEND_HOST_PORT:-10010}:80'
     volumes:
       # 挂载上传目录到nginx的单独路径
       - ../server/uploads:/usr/share/nginx/uploads:ro

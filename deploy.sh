@@ -137,6 +137,7 @@ EOF
     fi
   # 健康检查（本机 127.0.0.1:${HOST_PORT}，由 Nginx/反代映射到宿主端口）
   if command -v curl >/dev/null 2>&1; then
+    # 后端 health 路由位于 /health（非 /api/health），通过 Nginx 检查 /health
     if curl -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/health" >/dev/null 2>&1; then
       ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}  | 健康检查: http://${HOST_IP}:${HOST_PORT}/health"
     else
