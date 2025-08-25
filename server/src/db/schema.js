@@ -89,6 +89,9 @@ export function initAppTables(db) {
       group_id INTEGER REFERENCES app_groups(id) ON DELETE SET NULL,
       is_visible INTEGER DEFAULT 1,
       is_deleted INTEGER DEFAULT 0,
+      -- 新增列：用于标识内置应用与外部链接（确保新建数据库包含这些列）
+      is_builtin INTEGER DEFAULT 0,
+      target_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
