@@ -47,37 +47,9 @@ main() {
   DC=$(detect_compose)
   log "使用 compose 命令: $DC"
 
-  log "同步代码..."
-  if [ -d .git ]; then
-    git fetch --all --prune
-    # 尽量保持在 main 分支
-    current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-    if [ "$current_branch" = "main" ]; then
-      # 如果有未提交或未暂存的更改，先 stash 再拉取，拉取完成后恢复
-      if [ -n "$(git status --porcelain)" ]; then
-        warn "检测到未提交的本地更改，自动 stash、拉取并恢复"
-        git stash push -u -m "deploy-autostash-$(date +%s)" || true
-        if ! git pull --rebase; then
-          err "git pull 失败，尝试恢复 stash 并退出"
-          git stash pop || true
-          exit 1
-        fi
-        git stash pop || true
-      else
-        git pull --rebase
-      fi
-    else
-      warn "当前不在 main 分支，尝试拉取更新但不强制切换"
-      # 如果有本地更改，不自动拉取以避免冲突
-      if [ -n "$(git status --porcelain)" ]; then
-        warn "检测到未提交更改，跳过自动拉取"
-      else
-        git pull --rebase || true
-      fi
-    fi
-  else
-    warn "未检测到 .git 目录，跳过拉取"
-  fi
+  # 跳过自动拉取远程仓库的逻辑，改为由用户手动决定是否更新代码
+  # 原因: 部署脚本不应在没有人工确认的情况下自动更改工作树或切换分支
+  log "已跳过自动拉取仓库更新。若需要更新，请在部署前手动执行 'git fetch && git pull'。"
 
   # 如果有 docker/Dockerfile，先构建备用镜像；否则交由 compose 构建
   if [ -f docker/Dockerfile ]; then

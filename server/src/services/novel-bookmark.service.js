@@ -77,6 +77,7 @@ export class NovelBookmarkService {
 
   async deleteBookmark(id) {
     try {
+      console.log('[novel-bookmark-service] deleteBookmark called', { id });
       const result = this.bookmarkModel.delete(id);
       return {
         success: true,
@@ -109,8 +110,8 @@ export class NovelBookmarkService {
 
   async syncBookmarks(deviceId, localBookmarks) {
     try {
-      // 获取服务器上的书签
-      const serverBookmarks = this.bookmarkModel.findByDeviceId(deviceId);
+      // 获取服务器上的书签（改为返回所有书签，确保跨设备可见）
+      const serverBookmarks = this.bookmarkModel.findAll();
 
       // 创建本地书签的映射
       const localBookmarkMap = new Map();

@@ -95,24 +95,24 @@ export class NovelBookmarkModel {
   }
 
   delete(id) {
+    // 物理删除记录，保证跨设备同步中已删除项不会被再次下发
     return this.db
       .prepare(
         `
-      UPDATE novel_bookmarks 
-      SET deleted_at = CURRENT_TIMESTAMP 
-      WHERE id = ? AND deleted_at IS NULL
+      DELETE FROM novel_bookmarks
+      WHERE id = ?
     `
       )
       .run(id);
   }
 
   deleteByBookId(bookId) {
+    // 物理删除指定书籍的所有书签
     return this.db
       .prepare(
         `
-      UPDATE novel_bookmarks 
-      SET deleted_at = CURRENT_TIMESTAMP 
-      WHERE book_id = ? AND deleted_at IS NULL
+      DELETE FROM novel_bookmarks
+      WHERE book_id = ?
     `
       )
       .run(bookId);

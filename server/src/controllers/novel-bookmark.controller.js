@@ -133,6 +133,7 @@ export class NovelBookmarkController {
   async deleteBookmark(req, res) {
     try {
       const { id } = req.params;
+      console.log('[novel-bookmark] deleteBookmark request', { id });
 
       if (!id) {
         return res.status(400).json({
@@ -187,6 +188,10 @@ export class NovelBookmarkController {
   async syncBookmarks(req, res) {
     try {
       const { deviceId, bookmarks } = req.body;
+      console.log('[novel-bookmark] syncBookmarks request', {
+        deviceId,
+        bookmarksLength: Array.isArray(bookmarks) ? bookmarks.length : 0,
+      });
 
       if (!deviceId) {
         return res.status(400).json({
@@ -199,6 +204,13 @@ export class NovelBookmarkController {
         deviceId,
         bookmarks || []
       );
+
+      console.log('[novel-bookmark] syncBookmarks result', {
+        success: result && result.success,
+        uploaded: result?.data?.uploaded?.length,
+        toDownload: result?.data?.toDownload?.length,
+        serverBookmarks: result?.data?.serverBookmarks?.length,
+      });
 
       if (result.success) {
         res.json(result);

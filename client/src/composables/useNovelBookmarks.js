@@ -23,6 +23,12 @@ export function useNovelBookmarks() {
     try {
       loading.value = true;
 
+      console.log('[bookmarks] addBookmark start', {
+        bookId,
+        bookmarkData,
+        deviceId: deviceId.value,
+      });
+
       // 本地添加
       if (!bookmarks.value[bookId]) {
         bookmarks.value[bookId] = [];
@@ -38,6 +44,11 @@ export function useNovelBookmarks() {
 
       // 保存到本地存储
       saveBookmarksToLocal();
+      console.log('[bookmarks] added local temp bookmark', {
+        bookId,
+        tempId: newBookmark.id,
+        bookmarks: bookmarks.value[bookId],
+      });
 
       // 同步到服务器
       try {
@@ -52,14 +63,46 @@ export function useNovelBookmarks() {
         });
 
         if (response.success && response.data) {
-          // 更新本地书签的服务器ID
-          const localBookmark = bookmarks.value[bookId].find(
-            b => b.id === newBookmark.id
-          );
-          if (localBookmark) {
-            localBookmark.serverId = response.data.id;
+          console.log('[bookmarks] server create response', response.data);
+          const serverId = response.data.id;
+
+          // 找到本地临时书签（使用临时 id），并替换为服务器 id，保持其他字段
+          const localList = bookmarks.value[bookId] || [];
+          const tempIndex = localList.findIndex(b => b.id === newBookmark.id);
+          if (tempIndex !== -1) {
+            const bookmarkObj = localList[tempIndex];
+            // 更新 id 为服务器 id，同时记录 serverId
+            bookmarkObj.id = serverId;
+            bookmarkObj.serverId = serverId;
+            // 更新时间戳，如果服务器返回则使用服务器的时间
+            if (response.data.updatedAt) {
+              bookmarkObj.updatedAt = response.data.updatedAt;
+            }
+            console.log('[bookmarks] replaced temp id with server id', {
+              bookId,
+              tempId: newBookmark.id,
+              serverId,
+            });
+          } else {
+            // 如果找不到临时项（极少见），直接加入服务器返回的书签
+            bookmarks.value[bookId] = bookmarks.value[bookId] || [];
+            bookmarks.value[bookId].push({
+              id: serverId,
+              title: response.data.title,
+              chapterIndex: response.data.chapterIndex,
+              scrollPosition: response.data.scrollPosition,
+              note: response.data.note,
+              createdAt: response.data.createdAt,
+              updatedAt: response.data.updatedAt,
+              serverId: serverId,
+            });
           }
+
           saveBookmarksToLocal();
+          console.log('[bookmarks] after create merged local list', {
+            bookId,
+            bookmarks: bookmarks.value[bookId],
+          });
         }
       } catch (error) {
         console.warn('书签同步到服务器失败，将在下次同步时重试:', error);
@@ -79,6 +122,8 @@ export function useNovelBookmarks() {
     try {
       loading.value = true;
 
+      console.log('[bookmarks] deleteBookmark start', { bookId, bookmarkId });
+
       // 本地删除
       const bookmarksList = bookmarks.value[bookId];
       if (bookmarksList) {
@@ -89,11 +134,20 @@ export function useNovelBookmarks() {
 
           // 保存到本地存储
           saveBookmarksToLocal();
+          console.log('[bookmarks] removed local bookmark', {
+            bookId,
+            bookmarkId,
+            remaining: bookmarks.value[bookId],
+          });
 
           // 从服务器删除
           if (bookmark.serverId) {
             try {
-              await bookmarksApi.delete(bookmark.serverId);
+              const resp = await bookmarksApi.delete(bookmark.serverId);
+              console.log('[bookmarks] server delete response', {
+                serverId: bookmark.serverId,
+                resp,
+              });
             } catch (error) {
               console.warn('从服务器删除书签失败:', error);
             }
@@ -149,17 +203,38 @@ export function useNovelBookmarks() {
 
       // 先从本地加载
       loadBookmarksFromLocal();
+      console.log('[bookmarks] loadBookmarks from local', {
+        bookId,
+        local: bookmarks.value[bookId],
+      });
 
-      // 从服务器加载
+      // 从服务器加载：优先按 bookId 查询，若无结果再按 fileId 查询
       try {
-        let response;
-        if (fileId) {
+        let response = await bookmarksApi.getByBookId(bookId);
+        // 如果按 bookId 没有返回结果且存在 fileId，则尝试按 fileId 查询
+        if (
+          !(
+            response &&
+            response.success &&
+            response.data &&
+            response.data.length > 0
+          ) &&
+          fileId
+        ) {
+          console.log(
+            '[bookmarks] no server results by bookId, trying fileId',
+            { bookId, fileId }
+          );
           response = await bookmarksApi.getByFileId(fileId);
-        } else {
-          response = await bookmarksApi.getByBookId(bookId);
         }
 
-        if (response.success && response.data) {
+        if (response && response.success && response.data) {
+          console.log('[bookmarks] loadBookmarks server response', {
+            bookId,
+            fileId,
+            data: response.data,
+          });
+
           // 合并服务器数据到本地
           const serverBookmarks = response.data;
           const localBookmarks = bookmarks.value[bookId] || [];
@@ -196,6 +271,10 @@ export function useNovelBookmarks() {
           });
 
           saveBookmarksToLocal();
+          console.log('[bookmarks] loadBookmarks merged local', {
+            bookId,
+            result: bookmarks.value[bookId],
+          });
         }
       } catch (error) {
         console.warn('从服务器加载书签失败，使用本地数据:', error);
@@ -212,6 +291,10 @@ export function useNovelBookmarks() {
   async function syncAllBookmarks() {
     try {
       loading.value = true;
+
+      console.log('[bookmarks] syncAllBookmarks start', {
+        deviceId: deviceId.value,
+      });
 
       // 收集所有本地书签
       const allLocalBookmarks = [];
@@ -232,22 +315,31 @@ export function useNovelBookmarks() {
       });
 
       // 同步到服务器
+      console.log('[bookmarks] syncAllBookmarks payload', {
+        allLocalBookmarks,
+      });
+
       const response = await bookmarksApi.sync(
         deviceId.value,
         allLocalBookmarks
       );
 
-      if (response.success && response.data) {
-        // 处理服务器返回的新书签
-        const { toDownload } = response.data;
+      console.log('[bookmarks] syncAllBookmarks server response', response);
 
+      if (response.success && response.data) {
+        const {
+          toDownload = [],
+          uploaded = [],
+          serverBookmarks = [],
+        } = response.data;
+
+        // 先将服务器要下发的书签合并到本地
         toDownload.forEach(serverBookmark => {
           const bookId = serverBookmark.bookId;
           if (!bookmarks.value[bookId]) {
             bookmarks.value[bookId] = [];
           }
 
-          // 检查是否已存在
           const exists = bookmarks.value[bookId].some(
             b => b.id === serverBookmark.id
           );
@@ -265,7 +357,84 @@ export function useNovelBookmarks() {
           }
         });
 
+        // 处理服务器新创建（uploaded）项：尝试匹配本地临时项并替换 id
+        uploaded.forEach(up => {
+          const bookId = up.bookId;
+          if (!bookmarks.value[bookId]) bookmarks.value[bookId] = [];
+          const localList = bookmarks.value[bookId];
+
+          const matchIndex = localList.findIndex(
+            b =>
+              (b.serverId && b.serverId === up.id) ||
+              (b.title === up.title &&
+                b.chapterIndex === up.chapterIndex &&
+                b.scrollPosition === up.scrollPosition)
+          );
+
+          if (matchIndex !== -1) {
+            const local = localList[matchIndex];
+            local.id = up.id;
+            local.serverId = up.id;
+            local.createdAt = up.createdAt;
+            local.updatedAt = up.updatedAt;
+            console.log('[bookmarks] sync matched uploaded -> local', {
+              bookId,
+              upId: up.id,
+              local,
+            });
+          } else {
+            localList.push({
+              id: up.id,
+              title: up.title,
+              chapterIndex: up.chapterIndex,
+              scrollPosition: up.scrollPosition,
+              note: up.note,
+              createdAt: up.createdAt,
+              updatedAt: up.updatedAt,
+              serverId: up.id,
+            });
+          }
+        });
+
+        // 将服务器端的全量书签作为可信源进行合并/更新
+        serverBookmarks.forEach(sb => {
+          const bookId = sb.bookId;
+          if (!bookmarks.value[bookId]) bookmarks.value[bookId] = [];
+          const exists = bookmarks.value[bookId].some(b => b.id === sb.id);
+          if (!exists) {
+            bookmarks.value[bookId].push({
+              id: sb.id,
+              title: sb.title,
+              chapterIndex: sb.chapterIndex,
+              scrollPosition: sb.scrollPosition,
+              note: sb.note,
+              createdAt: sb.createdAt,
+              updatedAt: sb.updatedAt,
+              serverId: sb.id,
+            });
+          } else {
+            const local = bookmarks.value[bookId].find(b => b.id === sb.id);
+            Object.assign(local, {
+              title: sb.title,
+              chapterIndex: sb.chapterIndex,
+              scrollPosition: sb.scrollPosition,
+              note: sb.note,
+              createdAt: sb.createdAt,
+              updatedAt: sb.updatedAt,
+              serverId: sb.id,
+            });
+            console.log('[bookmarks] sync updated local from server', {
+              bookId,
+              id: sb.id,
+              local,
+            });
+          }
+        });
+
         saveBookmarksToLocal();
+        console.log('[bookmarks] syncAllBookmarks finished merged', {
+          bookmarks: bookmarks.value,
+        });
       }
     } catch (error) {
       console.error('同步书签失败:', error);

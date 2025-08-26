@@ -254,10 +254,9 @@ export function useNovelReader() {
       });
 
       // 更新当前书籍的书签列表（用于UI显示）
-      if (!currentBook.value.bookmarks) {
-        currentBook.value.bookmarks = [];
-      }
-      currentBook.value.bookmarks.push(newBookmark);
+      // `getBookmarksByBookId` 返回的是 composable 内部的数组引用，
+      // 为避免重复 push（addBookmark 已经把项加入到该数组），直接重新引用最新数组
+      currentBook.value.bookmarks = getBookmarksByBookId(currentBook.value.id);
 
       return newBookmark;
     } catch (error) {

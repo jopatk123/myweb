@@ -146,18 +146,15 @@
     bookmarkTitle.value = '';
   }
 
-  async function deleteBookmark(bookmarkId) {
+  function deleteBookmark(bookmarkId) {
     if (confirm('确定要删除这个书签吗？')) {
-      try {
-        await emit('bookmark-delete', bookmarkId);
-        // 从本地UI中移除
-        const index = props.book.bookmarks.findIndex(b => b.id === bookmarkId);
-        if (index !== -1) {
-          props.book.bookmarks.splice(index, 1);
-        }
-      } catch (error) {
-        console.error('删除书签失败:', error);
-        alert('删除书签失败，请重试');
+      // emit 参数：先传 bookId 再传 bookmarkId，以匹配父组件的处理签名
+      emit('bookmark-delete', props.book.id, bookmarkId);
+
+      // 乐观更新本地 UI（父组件或 composable 也会做持久化删除）
+      const index = props.book.bookmarks.findIndex(b => b.id === bookmarkId);
+      if (index !== -1) {
+        props.book.bookmarks.splice(index, 1);
       }
     }
   }
