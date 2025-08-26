@@ -116,9 +116,10 @@ export class AppService {
       // 兼容传入为完整路径（/apps/icons/xxx.svg）或仅文件名（xxx.svg）
       const safeFilename = path.basename(presetIconFilename || '');
       const candidates = [
-        path.join(this.uploadsDir, safeFilename),
-        path.join(this.presetIconsDir, safeFilename),
         path.join(this.publicIconsDir, safeFilename),
+        path.join(this.presetIconsDir, safeFilename),
+        // 最后才检查uploads目录，避免复制自己
+        path.join(this.uploadsDir, safeFilename),
       ];
       let sourcePath = null;
       for (const p of candidates) {
