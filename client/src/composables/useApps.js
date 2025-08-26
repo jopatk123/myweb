@@ -121,12 +121,15 @@ async function deleteGroup(id) {
 async function createApp(payload) {
   try {
     lastError.value = null;
+    console.log('[useApps.createApp] 发送的数据:', payload);
     const resp = await fetch('/api/myapps', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    console.log('[useApps.createApp] 响应状态:', resp.status);
     const json = await resp.json();
+    console.log('[useApps.createApp] 响应数据:', json);
     if (!resp.ok) throw new Error(json?.message || '创建失败');
     return json.data;
   } catch (e) {

@@ -101,6 +101,10 @@
       name: form.value.name.trim(),
       slug: computedSlug,
       target_url: form.value.target_url?.trim() || null,
+      group_id: form.value.group_id || null,
+      is_visible:
+        form.value.is_visible !== undefined ? form.value.is_visible : true,
+      is_builtin: false,
     };
 
     if (!payload.name || !payload.slug) {

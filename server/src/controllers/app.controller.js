@@ -56,13 +56,16 @@ export class AppController {
 
   async create(req, res, next) {
     try {
+      console.log('[AppController.create] 接收到的请求体:', req.body);
       // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
       const { mapToSnake } = await import('../utils/field-mapper.js');
       const bodySnake = mapToSnake(req.body || {});
+      console.log('[AppController.create] 转换后的数据:', bodySnake);
       // 启用 Joi 的类型转换（例如字符串数字 -> number）以确保 group_id 被转换为 number
       const payload = await appSchema.validateAsync(bodySnake, {
         convert: true,
       });
+      console.log('[AppController.create] 验证后的数据:', payload);
 
       // 处理前端可能发送的空字符串：把空字符串归一为 null
       if (payload.group_id === '') payload.group_id = null;
@@ -83,6 +86,7 @@ export class AppController {
       });
       res.status(201).json({ code: 201, data: app, message: '创建成功' });
     } catch (error) {
+      console.error('[AppController.create] 错误:', error);
       next(error);
     }
   }
