@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, watch } from 'vue';
+  import { ref, onMounted, watch, toRef } from 'vue';
   import { useWorkTimer } from '@/composables/useWorkTimer';
   import TimerHeader from './components/TimerHeader.vue';
   import TimerSettings from './components/TimerSettings.vue';
@@ -75,7 +75,9 @@
 
   // 处理 endTime 更新
   function updateEndTime(newTime) {
-    endTime.value = newTime;
+    if (endTime && typeof endTime.value !== 'undefined') {
+      endTime.value = newTime;
+    }
   }
 
   function formatMsToReadable(ms) {
