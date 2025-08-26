@@ -199,8 +199,17 @@
   }
 
   async function onToggleAutostart(app, checked) {
-    await setAutostart(app.id, checked);
-    reloadApps();
+    try {
+      console.log('[AppManagement] onToggleAutostart', {
+        id: app?.id,
+        checked,
+      });
+      await setAutostart(app.id, checked);
+      reloadApps();
+    } catch (e) {
+      console.error('[AppManagement] onToggleAutostart error', e);
+      alert(e?.message || '设置自启动失败');
+    }
   }
 
   // 分页控制
