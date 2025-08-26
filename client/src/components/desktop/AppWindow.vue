@@ -2,6 +2,7 @@
   <div
     class="app-window"
     :data-window-id="window.id"
+    :data-app-slug="window.appSlug"
     :class="{
       active: isActive,
       minimized: window.minimized,
@@ -9,6 +10,10 @@
     }"
     :style="windowStyle"
     @pointerdown.capture="onWindowClick"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave"
+    @focusin="onFocusIn"
+    @focusout="onFocusOut"
   >
     <div
       class="window-header"
@@ -52,8 +57,9 @@
 </template>
 
 <script setup>
-  import { computed, inject } from 'vue';
+  import { computed, inject, ref, onMounted, onUnmounted } from 'vue';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
+  import { useWindowManager } from '@/composables/useWindowManager.js';
 
   const props = defineProps({
     window: {
@@ -72,6 +78,57 @@
   const { modalRef, modalStyle, onHeaderPointerDown } = useDraggableModal(
     props.window.storageKey
   );
+
+  // 小说阅读器自动最小化功能
+  const { minimizeWindow } = useWindowManager();
+  const minimizeTimer = ref(null);
+  const isNovelReader = computed(() => props.window.appSlug === 'novel-reader');
+
+  // 鼠标进入窗口
+  function onMouseEnter() {
+    if (isNovelReader.value) {
+      cancelMinimize();
+    }
+  }
+
+  // 鼠标离开窗口
+  function onMouseLeave() {
+    if (isNovelReader.value && props.isActive) {
+      scheduleMinimize();
+    }
+  }
+
+  // 窗口获得焦点
+  function onFocusIn() {
+    if (isNovelReader.value) {
+      cancelMinimize();
+    }
+  }
+
+  // 窗口失去焦点
+  function onFocusOut() {
+    if (isNovelReader.value && props.isActive) {
+      scheduleMinimize(0); // 立即最小化
+    }
+  }
+
+  // 安排最小化
+  function scheduleMinimize(delay = 100) {
+    cancelMinimize();
+    minimizeTimer.value = setTimeout(() => {
+      if (!props.window.minimized) {
+        minimizeWindow(props.window.id);
+      }
+    }, delay);
+  }
+
+  // 取消最小化
+  function cancelMinimize() {
+    if (minimizeTimer.value) {
+      clearTimeout(minimizeTimer.value);
+      minimizeTimer.value = null;
+    }
+  }
 
   const windowStyle = computed(() => {
     const baseStyle = {
@@ -192,6 +249,11 @@
     // 在下一个事件循环调用以确保 props.window 已就绪
     setTimeout(() => loadPersistedSize(), 0);
   }
+
+  // 组件卸载时清理定时器
+  onUnmounted(() => {
+    cancelMinimize();
+  });
 </script>
 
 <style scoped>
