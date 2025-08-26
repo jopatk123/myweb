@@ -13,7 +13,9 @@ const appSchema = Joi.object({
     .try(Joi.number().integer().allow(null), Joi.string().allow('', null))
     .optional(),
   is_visible: Joi.boolean().optional(),
-  is_autostart: Joi.boolean().optional(),
+  is_autostart: Joi.alternatives()
+    .try(Joi.boolean(), Joi.number().integer().valid(0, 1))
+    .optional(),
   is_builtin: Joi.boolean().optional(),
   target_url: Joi.string().uri().allow(null, '').optional(),
 });
@@ -91,15 +93,23 @@ export class AppController {
       // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
       const { mapToSnake } = await import('../utils/field-mapper.js');
       const bodySnake = mapToSnake(req.body || {});
+
+      console.log('AppController.update - req.body:', req.body);
+      console.log('AppController.update - bodySnake:', bodySnake);
+
       // 开启 Joi 类型转换，兼容前端字符串数字等情况
       const payload = await appSchema
         .fork(['name', 'slug'], s => s.optional())
         .validateAsync(bodySnake, { convert: true });
+
+      console.log('AppController.update - payload after validation:', payload);
+
       // 禁止将应用改为内置
       if (payload.is_builtin) delete payload.is_builtin;
       const app = await this.service.updateApp(id, payload);
       res.json({ code: 200, data: app, message: '更新成功' });
     } catch (error) {
+      console.error('AppController.update - error:', error);
       next(error);
     }
   }

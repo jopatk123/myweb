@@ -28,12 +28,6 @@ export function createAppRoutes(db) {
   router.get('/autostart-test', (req, res) => res.json({ ok: true }));
   router.get('/:id(\\d+)', (req, res, next) => controller.get(req, res, next));
   router.post('/', (req, res, next) => controller.create(req, res, next));
-  router.put('/:id(\\d+)', (req, res, next) =>
-    controller.update(req, res, next)
-  );
-  router.delete('/:id(\\d+)', (req, res, next) =>
-    controller.remove(req, res, next)
-  );
   router.put('/:id(\\d+)/visible', (req, res, next) =>
     controller.setVisible(req, res, next)
   );
@@ -48,6 +42,12 @@ export function createAppRoutes(db) {
     controller.bulkVisible(req, res, next)
   );
   router.put('/move', (req, res, next) => controller.move(req, res, next));
+  router.put('/:id(\\d+)', (req, res, next) =>
+    controller.update(req, res, next)
+  );
+  router.delete('/:id(\\d+)', (req, res, next) =>
+    controller.remove(req, res, next)
+  );
 
   // 上传图标
   router.post('/icons/upload', upload.single('file'), (req, res, next) => {
@@ -83,14 +83,12 @@ export function createAppRoutes(db) {
 
   // 调试：未匹配到的 myapps 子路由
   router.use((req, res) => {
-    res
-      .status(404)
-      .json({
-        code: 404,
-        message: 'Subroute Not Found',
-        path: req.originalUrl,
-        method: req.method,
-      });
+    res.status(404).json({
+      code: 404,
+      message: 'Subroute Not Found',
+      path: req.originalUrl,
+      method: req.method,
+    });
   });
 
   return router;

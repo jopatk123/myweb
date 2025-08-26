@@ -2,7 +2,8 @@
 export function camelToSnake(str) {
   return String(str)
     .replace(/([A-Z])/g, '_$1')
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/^_/, ''); // 移除开头的下划线
 }
 
 function isPlainObject(v) {
