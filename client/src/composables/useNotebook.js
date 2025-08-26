@@ -166,20 +166,47 @@ export function useNotebook() {
     }
   }
 
-  function quickAddNote(text) {
+  async function quickAddNote(text) {
     if (text.trim()) {
-      const newNote = {
-        id: generateId(),
+      const noteData = {
         title: text,
         description: '',
         category: '',
         priority: 'medium',
         completed: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
-      notes.value.unshift(newNote);
-      saveToStorage();
+
+      try {
+        if (serverReady.value) {
+          // 尝试保存到服务器
+          const res = await notebookApi.create(noteData);
+          const row = res.data;
+          notes.value.unshift(normalizeNote(row));
+          persistLocalMirror();
+        } else {
+          // 回退到本地存储
+          const newNote = {
+            id: generateId(),
+            ...noteData,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          notes.value.unshift(newNote);
+          saveToStorage();
+        }
+      } catch (e) {
+        console.warn('快速添加笔记到服务器失败，回退本地：', e?.message || e);
+        serverReady.value = false;
+        // 回退到本地存储
+        const newNote = {
+          id: generateId(),
+          ...noteData,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        notes.value.unshift(newNote);
+        saveToStorage();
+      }
     }
   }
 

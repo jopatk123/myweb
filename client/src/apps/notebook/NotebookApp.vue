@@ -139,8 +139,8 @@
     addCategory(categoryName);
   }
 
-  function handleQuickAdd(text) {
-    quickAddNote(text);
+  async function handleQuickAdd(text) {
+    await quickAddNote(text);
   }
 
   // 组件挂载时初始化数据
