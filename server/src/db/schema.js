@@ -88,6 +88,7 @@ export function initAppTables(db) {
       icon_filename TEXT,
       group_id INTEGER REFERENCES app_groups(id) ON DELETE SET NULL,
       is_visible INTEGER DEFAULT 1,
+      is_autostart INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
       -- 新增列：用于标识内置应用与外部链接（确保新建数据库包含这些列）
       is_builtin INTEGER DEFAULT 0,
@@ -98,6 +99,7 @@ export function initAppTables(db) {
 
     CREATE INDEX IF NOT EXISTS idx_apps_group_id ON apps(group_id);
     CREATE INDEX IF NOT EXISTS idx_apps_is_visible ON apps(is_visible);
+    CREATE INDEX IF NOT EXISTS idx_apps_is_autostart ON apps(is_autostart);
     CREATE INDEX IF NOT EXISTS idx_apps_is_deleted ON apps(is_deleted);
     CREATE INDEX IF NOT EXISTS idx_apps_slug ON apps(slug);
   `;

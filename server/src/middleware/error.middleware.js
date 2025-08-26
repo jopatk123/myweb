@@ -1,5 +1,4 @@
 export default function errorHandler(err, req, res, next) {
-  // eslint-disable-line no-unused-vars
   // 日志记录
   console.error(`[${new Date().toISOString()}] ${err.stack}`);
 
@@ -31,11 +30,9 @@ export default function errorHandler(err, req, res, next) {
     timestamp: new Date().toISOString(),
   };
 
-  // 开发环境返回堆栈信息
-  if (process.env.NODE_ENV === 'development') {
-    response.stack = err.stack;
-    response.originalMessage = err.message;
-  }
+  // 返回详细错误信息以便调试（在开发环境或短期调试时有用）
+  response.stack = err.stack;
+  response.originalMessage = err.message;
 
   res.status(status).json(response);
 }

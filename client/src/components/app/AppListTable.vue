@@ -12,6 +12,7 @@
           <th>类型</th>
           <th>分组</th>
           <th>可见</th>
+          <th>自启动</th>
           <th>操作</th>
         </tr>
       </thead>
@@ -44,6 +45,16 @@
                 type="checkbox"
                 :checked="!!(app.isVisible ?? app.is_visible)"
                 @change="$emit('toggle-visible', app, $event.target.checked)"
+              />
+              <span class="slider"></span>
+            </label>
+          </td>
+          <td>
+            <label class="switch">
+              <input
+                type="checkbox"
+                :checked="!!(app.isAutostart ?? app.is_autostart)"
+                @change="$emit('toggle-autostart', app, $event.target.checked)"
               />
               <span class="slider"></span>
             </label>
@@ -97,6 +108,7 @@
     'update:selectedIds',
     'update:allSelected',
     'toggle-visible',
+    'toggle-autostart',
     'edit',
     'delete',
   ]);

@@ -59,6 +59,7 @@
         :all-selected="allSelected"
         v-model:selectedIds="selectedIds"
         @toggle-visible="onToggleVisible"
+        @toggle-autostart="onToggleAutostart"
         @delete="remove"
         @update:all-selected="toggleAll"
       />
@@ -116,6 +117,7 @@
     fetchGroups,
     deleteApp,
     setVisible,
+    setAutostart,
     createApp,
     createGroup,
     updateGroup,
@@ -193,6 +195,11 @@
 
   async function onToggleVisible(app, checked) {
     await setVisible(app.id, checked);
+    reloadApps();
+  }
+
+  async function onToggleAutostart(app, checked) {
+    await setAutostart(app.id, checked);
     reloadApps();
   }
 

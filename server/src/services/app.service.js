@@ -35,7 +35,7 @@ export class AppService {
     try {
       const { mapToSnake } = await import('../utils/field-mapper.js');
       return this.appModel.create(mapToSnake(payload));
-    } catch (e) {
+    } catch (error) {
       // 回退：若动态 import 失败，则直接传入 payload（model 层会兼容）
       return this.appModel.create(payload);
     }
@@ -81,6 +81,10 @@ export class AppService {
     return this.appModel.setVisible(id, visible);
   }
 
+  setAppAutostart(id, autostart) {
+    return this.appModel.setAutostart(id, autostart);
+  }
+
   moveApps(ids, targetGroupId) {
     return this.appModel.moveToGroup(ids, targetGroupId);
   }
@@ -122,7 +126,7 @@ export class AppService {
           await fs.access(p);
           sourcePath = p;
           break;
-        } catch (e) {
+        } catch (error) {
           // ignore: candidate path not found, continue to next
         }
       }

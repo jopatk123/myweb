@@ -204,6 +204,25 @@ async function setVisibleBulk(ids, visible) {
   }
 }
 
+async function setAutostart(id, autostart) {
+  try {
+    lastError.value = null;
+    // 统一使用更新端点，兼容后端是否存在单独 autostart 路由
+    const resp = await fetch(`/api/myapps/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_autostart: !!autostart }),
+    });
+    const json = await resp.json();
+    if (!resp.ok) throw new Error(json?.message || '设置失败');
+    return json.data;
+  } catch (e) {
+    lastError.value = e;
+    error.value = e.message || String(e);
+    throw e;
+  }
+}
+
 async function moveApps(ids, targetGroupId) {
   try {
     lastError.value = null;
@@ -258,6 +277,7 @@ export function useApps() {
     deleteGroup,
     setVisible,
     setVisibleBulk,
+    setAutostart,
     moveApps,
     setPage,
     setLimit,

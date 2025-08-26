@@ -99,6 +99,7 @@
   import FilePreviewWindow from '@/components/file/FilePreviewWindow.vue';
   import { useWindowManager } from '@/composables/useWindowManager.js';
   import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
+  import { useApps } from '@/composables/useApps.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
 
   const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
@@ -167,31 +168,57 @@
   });
   // 初始加载文件列表（用于在桌面显示图标）
   fetchFiles().catch(() => {});
-
-  // 每次打开页面都自动启动下班计时器并自动开始计时
+  // 通用：根据配置自启动可见的应用
   try {
-    setTimeout(() => {
-      const existing = findWindowByApp('work-timer');
-      if (existing) {
-        existing.props = existing.props || {};
-        existing.props.autoStart = true;
-        setActiveWindow(existing.id);
-      } else {
-        const comp = getAppComponentBySlug('work-timer');
-        const meta = getAppMetaBySlug('work-timer');
-        if (comp) {
-          const preferred = meta?.preferredSize || { width: 520, height: 400 };
-          createWindow({
-            component: comp,
-            title: meta?.name || '下班计时器',
-            appSlug: 'work-timer',
-            width: preferred.width,
-            height: preferred.height,
-            props: { autoStart: true },
-          });
-        }
-      }
-    }, 120);
+    const { fetchApps, apps } = useApps();
+    // 拉取可见应用（无需分页），后续筛选 is_autostart
+    fetchApps({ visible: true }, false)
+      .then(() => {
+        const list = Array.isArray(apps.value) ? apps.value : [];
+        const autostartApps = list.filter(
+          a =>
+            (a.isAutostart ?? a.is_autostart) === 1 ||
+            (a.isAutostart ?? a.is_autostart) === true
+        );
+        setTimeout(() => {
+          for (const app of autostartApps) {
+            // 第三方应用：与双击行为一致，在新窗口打开 URL
+            const url = app.targetUrl || app.target_url;
+            if (url) {
+              try {
+                window.open(url, '_blank');
+              } catch {}
+              continue;
+            }
+
+            // 内置应用：若已存在则激活，否则创建窗口
+            const existing = findWindowByApp(app.slug);
+            if (existing) {
+              existing.props = existing.props || {};
+              if (app.slug === 'work-timer') existing.props.autoStart = true;
+              setActiveWindow(existing.id);
+              continue;
+            }
+            const comp = getAppComponentBySlug(app.slug);
+            const meta = getAppMetaBySlug(app.slug);
+            if (comp) {
+              const preferred = meta?.preferredSize || {
+                width: 520,
+                height: 400,
+              };
+              createWindow({
+                component: comp,
+                title: meta?.name || app.name || '',
+                appSlug: app.slug,
+                width: preferred.width,
+                height: preferred.height,
+                props: app.slug === 'work-timer' ? { autoStart: true } : {},
+              });
+            }
+          }
+        }, 120);
+      })
+      .catch(() => {});
   } catch (e) {}
 
   const onRandom = async () => {

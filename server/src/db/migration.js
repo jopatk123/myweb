@@ -255,4 +255,6 @@ export function ensureAppsColumns(db) {
   maybeAddColumn('is_builtin', 'INTEGER DEFAULT 0');
   // 新增 target_url（可为 null）用于外部链接应用
   maybeAddColumn('target_url', 'TEXT');
+  // 新增 is_autostart（默认 0）支持自启动
+  maybeAddColumn('is_autostart', 'INTEGER DEFAULT 0');
 }

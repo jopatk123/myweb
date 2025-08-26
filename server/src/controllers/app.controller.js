@@ -13,6 +13,7 @@ const appSchema = Joi.object({
     .try(Joi.number().integer().allow(null), Joi.string().allow('', null))
     .optional(),
   is_visible: Joi.boolean().optional(),
+  is_autostart: Joi.boolean().optional(),
   is_builtin: Joi.boolean().optional(),
   target_url: Joi.string().uri().allow(null, '').optional(),
 });
@@ -90,9 +91,10 @@ export class AppController {
       // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
       const { mapToSnake } = await import('../utils/field-mapper.js');
       const bodySnake = mapToSnake(req.body || {});
+      // 开启 Joi 类型转换，兼容前端字符串数字等情况
       const payload = await appSchema
         .fork(['name', 'slug'], s => s.optional())
-        .validateAsync(bodySnake);
+        .validateAsync(bodySnake, { convert: true });
       // 禁止将应用改为内置
       if (payload.is_builtin) delete payload.is_builtin;
       const app = await this.service.updateApp(id, payload);
@@ -117,6 +119,28 @@ export class AppController {
       const id = Number(req.params.id);
       const { visible } = req.body;
       const app = await this.service.setAppVisible(id, !!visible);
+      res.json({ code: 200, data: app, message: '设置成功' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async setAutostart(req, res, next) {
+    try {
+      const id = Number(req.params.id);
+      // 兼容前端可能发送的字段名：autostart / is_autostart / isAutostart
+      const body = req.body || {};
+      const autostartRaw =
+        body.autostart !== undefined
+          ? body.autostart
+          : body.is_autostart !== undefined
+            ? body.is_autostart
+            : body.isAutostart;
+      // 强制布尔化（支持字符串 '0'/'1' 或数字）
+      const autostart = !!(autostartRaw === '0' || autostartRaw === 0
+        ? false
+        : autostartRaw);
+      const app = await this.service.setAppAutostart(id, autostart);
       res.json({ code: 200, data: app, message: '设置成功' });
     } catch (error) {
       next(error);

@@ -56,10 +56,11 @@ export class AppModel {
     icon_filename = null,
     group_id = null,
     is_visible = 1,
+    is_autostart = 0,
     is_builtin = 0,
     target_url = null,
   }) {
-    const sql = `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_builtin, target_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_autostart, is_builtin, target_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const info = this.db
       .prepare(sql)
       .run(
@@ -69,6 +70,7 @@ export class AppModel {
         icon_filename,
         group_id,
         is_visible ? 1 : 0,
+        is_autostart ? 1 : 0,
         is_builtin ? 1 : 0,
         target_url
       );
@@ -91,6 +93,8 @@ export class AppModel {
       is_builtin: 'is_builtin',
       targetUrl: 'target_url',
       target_url: 'target_url',
+      isAutostart: 'is_autostart',
+      is_autostart: 'is_autostart',
     };
 
     const fields = [];
@@ -99,7 +103,7 @@ export class AppModel {
     for (const [key, value] of Object.entries(payload)) {
       const col = fieldMap[key];
       if (!col) continue;
-      if (col === 'is_visible') {
+      if (col === 'is_visible' || col === 'is_autostart') {
         params.push(value ? 1 : 0);
       } else {
         params.push(value);
@@ -117,6 +121,12 @@ export class AppModel {
   setVisible(id, visible) {
     const sql = `UPDATE apps SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
     this.db.prepare(sql).run(visible ? 1 : 0, id);
+    return this.findById(id);
+  }
+
+  setAutostart(id, autostart) {
+    const sql = `UPDATE apps SET is_autostart = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    this.db.prepare(sql).run(autostart ? 1 : 0, id);
     return this.findById(id);
   }
 
@@ -155,7 +165,7 @@ export class AppModel {
         'changes=',
         info.changes
       );
-    } catch (e) {
+    } catch (error) {
       // ignore logging errors
     }
     return info.changes === undefined ? true : info.changes;
