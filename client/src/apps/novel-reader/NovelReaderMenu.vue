@@ -109,7 +109,12 @@
     },
   });
 
-  const emit = defineEmits(['chapter-select', 'bookmark-add', 'close']);
+  const emit = defineEmits([
+    'chapter-select',
+    'bookmark-add',
+    'bookmark-delete',
+    'close',
+  ]);
 
   const showAddBookmark = ref(false);
   const bookmarkTitle = ref('');
@@ -141,11 +146,18 @@
     bookmarkTitle.value = '';
   }
 
-  function deleteBookmark(bookmarkId) {
+  async function deleteBookmark(bookmarkId) {
     if (confirm('确定要删除这个书签吗？')) {
-      const index = props.book.bookmarks.findIndex(b => b.id === bookmarkId);
-      if (index !== -1) {
-        props.book.bookmarks.splice(index, 1);
+      try {
+        await emit('bookmark-delete', bookmarkId);
+        // 从本地UI中移除
+        const index = props.book.bookmarks.findIndex(b => b.id === bookmarkId);
+        if (index !== -1) {
+          props.book.bookmarks.splice(index, 1);
+        }
+      } catch (error) {
+        console.error('删除书签失败:', error);
+        alert('删除书签失败，请重试');
       }
     }
   }

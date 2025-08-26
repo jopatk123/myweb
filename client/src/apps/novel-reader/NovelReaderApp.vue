@@ -48,6 +48,7 @@
         :current-chapter="currentChapterIndex"
         @chapter-select="selectChapter"
         @bookmark-add="addBookmark"
+        @bookmark-delete="deleteBookmark"
         @close="showMenu = false"
       />
 
@@ -99,6 +100,7 @@
     updateProgress,
     addBookmark,
     deleteBook,
+    deleteBookmark,
     showBookInfo,
     initialize,
   } = useNovelReader();

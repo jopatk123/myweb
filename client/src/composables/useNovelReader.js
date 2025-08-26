@@ -2,6 +2,7 @@ import { ref, computed, watch } from 'vue';
 import { useNovelStorage } from './useNovelStorage.js';
 import { useNovelParser } from './useNovelParser.js';
 import { useNovelSync } from './useNovelSync.js';
+import { useNovelBookmarks } from './useNovelBookmarks.js';
 import { filesApi } from '@/api/files.js';
 
 export function useNovelReader() {
@@ -37,6 +38,17 @@ export function useNovelReader() {
   } = useNovelStorage();
   const { parseChapters, parseBookFile, generateId } = useNovelParser();
   const { syncServerNovels } = useNovelSync();
+  const {
+    bookmarks: bookmarksData,
+    loading: bookmarksLoading,
+    getBookmarksByBookId,
+    addBookmark: addBookmarkToStorage,
+    deleteBookmark: deleteBookmarkFromStorage,
+    updateBookmark: updateBookmarkInStorage,
+    loadBookmarks: loadBookmarksFromServer,
+    syncAllBookmarks,
+    deleteBookmarksByBookId: deleteBookmarksByBookIdFromStorage,
+  } = useNovelBookmarks();
 
   // 计算属性
   const filteredBooks = computed(() => {
@@ -159,6 +171,16 @@ export function useNovelReader() {
       currentChapterIndex.value = progress.chapterIndex || 0;
     }
 
+    // 加载书籍的书签
+    try {
+      await loadBookmarksFromServer(book.id, book.fileId);
+      // 更新当前书籍的书签列表（用于UI显示）
+      book.bookmarks = getBookmarksByBookId(book.id);
+    } catch (error) {
+      console.warn('加载书籍书签失败:', error);
+      book.bookmarks = [];
+    }
+
     // 若本地没有内容但存在后端引用，按需从后端加载内容（避免一次性拉取所有大文件）
     if (
       (!book.content || book.content === null) &&
@@ -222,20 +244,26 @@ export function useNovelReader() {
     }
   }
 
-  function addBookmark(bookmark) {
+  async function addBookmark(bookmark) {
     if (!currentBook.value) return;
 
-    if (!currentBook.value.bookmarks) {
-      currentBook.value.bookmarks = [];
+    try {
+      const newBookmark = await addBookmarkToStorage(currentBook.value.id, {
+        ...bookmark,
+        fileId: currentBook.value.fileId,
+      });
+
+      // 更新当前书籍的书签列表（用于UI显示）
+      if (!currentBook.value.bookmarks) {
+        currentBook.value.bookmarks = [];
+      }
+      currentBook.value.bookmarks.push(newBookmark);
+
+      return newBookmark;
+    } catch (error) {
+      console.error('添加书签失败:', error);
+      throw error;
     }
-
-    currentBook.value.bookmarks.push({
-      id: generateId(),
-      ...bookmark,
-      createdAt: new Date().toISOString(),
-    });
-
-    saveBooks(books.value);
   }
 
   async function deleteBook(bookId) {
@@ -262,6 +290,13 @@ export function useNovelReader() {
       }
     }
 
+    // 删除书籍相关的书签
+    try {
+      await deleteBookmarksByBookIdFromStorage(bookId);
+    } catch (error) {
+      console.warn('删除书籍书签失败:', error);
+    }
+
     // 更新本地状态
     books.value.splice(index, 1);
     delete readingProgress.value[bookId];
@@ -281,6 +316,12 @@ export function useNovelReader() {
     loadSettings(readerSettings);
     // 从后端加载小说（适配多浏览器/多设备同步）
     await syncServerNovels(books, readingProgress, saveBooks);
+    // 同步书签
+    try {
+      await syncAllBookmarks();
+    } catch (error) {
+      console.warn('同步书签失败:', error);
+    }
   }
 
   // 监听设置变化
@@ -317,5 +358,12 @@ export function useNovelReader() {
     deleteBook,
     showBookInfo,
     initialize,
+
+    // 书签相关
+    bookmarksData,
+    bookmarksLoading,
+    getBookmarksByBookId,
+    deleteBookmark: deleteBookmarkFromStorage,
+    updateBookmark: updateBookmarkInStorage,
   };
 }

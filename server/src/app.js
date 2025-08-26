@@ -10,6 +10,7 @@ import { initDatabase } from './config/database.js';
 import { createFileRoutes } from './routes/files.routes.js';
 import { createNotebookNotesRoutes } from './routes/notebook-notes.routes.js';
 import { createWorkTimerRoutes } from './routes/worktimer.routes.js';
+import { createNovelBookmarkRoutes } from './routes/novel-bookmarks.routes.js';
 import errorHandler from './middleware/error.middleware.js';
 import {
   normalizeRequestKeys,
@@ -73,6 +74,7 @@ app.use('/api/myapps', createAppRoutes(db));
 app.use('/api/files', createFileRoutes(db));
 app.use('/api/notebook', createNotebookNotesRoutes(db));
 app.use('/api/work-timer', createWorkTimerRoutes(db));
+app.use('/api/novel-bookmarks', createNovelBookmarkRoutes(db));
 
 // 健康检查
 app.get('/health', (req, res) => {
