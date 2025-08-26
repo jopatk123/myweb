@@ -5,9 +5,9 @@
     <div class="timer-container">
       <TimerSettings
         v-if="!isTimerActive"
-        :end-time="endTimeRef"
+        :end-time="endTime"
         :is-timer-active="isTimerActive"
-        @update:endTime="val => (endTimeRef.value = val)"
+        @update:endTime="val => (endTime.value = val)"
       />
 
       <CountdownDisplay
@@ -21,7 +21,7 @@
 
       <ControlButtons
         :is-timer-active="isTimerActive"
-        :end-time="endTimeRef"
+        :end-time="endTime"
         @start="startTimer"
         @stop="stopTimer"
         @reset="resetTimer"
@@ -54,7 +54,7 @@
   const {
     // state
     currentTime,
-    endTime: endTimeRef,
+    endTime,
     isTimerActive,
     circumference,
     // computed
