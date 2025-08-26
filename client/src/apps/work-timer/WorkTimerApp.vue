@@ -7,7 +7,7 @@
         v-if="!isTimerActive"
         :end-time="endTime"
         :is-timer-active="isTimerActive"
-        @update:endTime="val => (endTime.value = val)"
+        @update:endTime="updateEndTime"
       />
 
       <CountdownDisplay
@@ -73,7 +73,10 @@
     resetTimer,
   } = useWorkTimer();
 
-  // 直接使用 endTimeRef，模板解包 ref
+  // 处理 endTime 更新
+  function updateEndTime(newTime) {
+    endTime.value = newTime;
+  }
 
   function formatMsToReadable(ms) {
     const m = Number(ms || 0);
