@@ -2,10 +2,11 @@
 
 set -euo pipefail
 
-# 自动化 Docker 部署脚本（参考用户提供示例）
+# 自动化 Docker 部署脚本
 # - 在项目根以 docker-compose 方式部署
 # - 支持重试/二次执行（拉代码、重建、零停机重启）
 # - 健康检查端口: 10010
+# - 自动处理权限问题
 
 APP_NAME="myweb"
 IMAGE_NAME="myweb:latest"
@@ -22,6 +23,75 @@ need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     err "缺少命令: $1"
     exit 1
+  fi
+}
+
+# 设置目录权限的函数
+setup_permissions() {
+  local dirs=("server/uploads" "server/data" "server/logs")
+  
+  log "设置目录权限..."
+  
+  for dir in "${dirs[@]}"; do
+    # 确保目录存在
+    mkdir -p "$dir" || true
+    
+    # 尝试设置权限，如果失败则使用sudo
+    if ! chown -R 1001:1001 "$dir" 2>/dev/null; then
+      if command -v sudo >/dev/null 2>&1; then
+        log "使用sudo设置 $dir 权限"
+        sudo chown -R 1001:1001 "$dir" || {
+          err "无法设置 $dir 权限，请检查sudo权限"
+          return 1
+        }
+      else
+        err "无法设置 $dir 权限，且系统没有sudo命令"
+        return 1
+      fi
+    fi
+    
+    # 设置目录权限
+    chmod -R 775 "$dir" 2>/dev/null || {
+      if command -v sudo >/dev/null 2>&1; then
+        sudo chmod -R 775 "$dir" || {
+          err "无法设置 $dir 权限"
+          return 1
+        }
+      else
+        err "无法设置 $dir 权限"
+        return 1
+      fi
+    }
+  done
+  
+  ok "目录权限设置完成"
+}
+
+# 健康检查函数
+health_check() {
+  log "等待服务就绪..."
+  sleep 3
+  
+  if command -v curl >/dev/null 2>&1; then
+    # 后端 health 路由位于 /health（非 /api/health），通过 Nginx 检查 /health
+    if curl -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/health" >/dev/null 2>&1; then
+      ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}  | 健康检查: http://${HOST_IP}:${HOST_PORT}/health"
+      return 0
+    else
+      warn "健康检查失败"
+      return 1
+    fi
+  else
+    # 本机没有 curl：如果不存在 .env.production，则创建一个空的 VITE_API_BASE（生产构建使用相对路径）
+    if [ ! -f client/.env.production ]; then
+      log "创建 client/.env.production with empty VITE_API_BASE (use relative paths)"
+      mkdir -p client
+      cat > client/.env.production <<EOF
+VITE_API_BASE=
+EOF
+    fi
+    ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}（本机没有 curl 可用，无法执行健康检查）"
+    return 0
   fi
 }
 
@@ -78,11 +148,13 @@ EOF
   fi
 
   log "启动/更新服务: $APP_NAME (使用 $COMPOSE_FILE)"
-  # 确保必要目录存在并授权给容器内用户（nodejs:nodejs -> 1001:1001）
-  mkdir -p server/uploads/apps/icons server/data server/logs || true
-  # node:18-alpine Dockerfile.server 中创建的用户为 uid=1001,gid=1001
-  chown -R 1001:1001 server/uploads server/data server/logs 2>/dev/null || true
-  chmod -R 775 server/uploads server/data server/logs 2>/dev/null || true
+  
+  # 设置目录权限
+  setup_permissions || {
+    err "权限设置失败，部署终止"
+    exit 1
+  }
+  
   $DC -f "$COMPOSE_FILE" up -d --build --remove-orphans
 
   log "等待服务就绪..."
@@ -107,27 +179,12 @@ VITE_API_BASE=/api
 EOF
       fi
     fi
-  # 健康检查（本机 127.0.0.1:${HOST_PORT}，由 Nginx/反代映射到宿主端口）
-  if command -v curl >/dev/null 2>&1; then
-    # 后端 health 路由位于 /health（非 /api/health），通过 Nginx 检查 /health
-    if curl -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/health" >/dev/null 2>&1; then
-      ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}  | 健康检查: http://${HOST_IP}:${HOST_PORT}/health"
-    else
-      warn "健康检查未通过，正在输出关键容器日志以供排查："
-      $DC -f "$COMPOSE_FILE" logs --tail 200 --no-color || true
-      exit 1
-    fi
-  else
-    # 本机没有 curl：如果不存在 .env.production，则创建一个空的 VITE_API_BASE（生产构建使用相对路径）
-    if [ ! -f client/.env.production ]; then
-      log "创建 client/.env.production with empty VITE_API_BASE (use relative paths)"
-      mkdir -p client
-      cat > client/.env.production <<EOF
-VITE_API_BASE=
-EOF
-    fi
-    ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}（本机没有 curl 可用，无法执行健康检查）"
-  fi
+  # 健康检查
+  health_check || {
+    warn "健康检查未通过，正在输出关键容器日志以供排查："
+    $DC -f "$COMPOSE_FILE" logs --tail 200 --no-color || true
+    exit 1
+  }
 }
 
 main "$@"

@@ -4,7 +4,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 # 安装Python和构建工具（用于编译better-sqlite3）
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ curl
 
 # 创建非root用户
 RUN addgroup -g 1001 -S nodejs
