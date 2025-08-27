@@ -1,5 +1,5 @@
 <template>
-  <div class="message-list" :ref="listRef">
+  <div class="message-list" ref="internalListRef" :ref="listRef">
     <div v-if="loading && !hasMessages" class="loading">
       加载中...
     </div>
@@ -37,6 +37,7 @@
 </template>
 
 <script setup>
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import ImagePreview from './ImagePreview.vue';
 
 const props = defineProps({
@@ -48,7 +49,61 @@ const props = defineProps({
   formatTime: { type: Function, required: true }
 });
 
-defineEmits(['retry']);
+const emit = defineEmits(['retry']);
+
+const internalListRef = ref(null);
+let isUserScrolling = false;
+let scrollTimeout = null;
+
+const getListElement = () => {
+  return internalListRef.value || (typeof props.listRef === 'function' ? props.listRef() : props.listRef);
+};
+
+const scrollToBottom = async (behavior = 'auto') => {
+  await nextTick();
+  const el = getListElement();
+  if (!el) return;
+  try {
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  } catch (e) {
+    el.scrollTop = el.scrollHeight;
+  }
+};
+
+const onUserScroll = () => {
+  isUserScrolling = true;
+  if (scrollTimeout) clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    isUserScrolling = false;
+  }, 1000);
+};
+
+onMounted(() => {
+  const el = getListElement();
+  if (!el) return;
+  el.addEventListener('wheel', onUserScroll, { passive: true });
+  el.addEventListener('touchstart', onUserScroll, { passive: true });
+  // 初始时滚动到底部
+  scrollToBottom('auto');
+});
+
+onBeforeUnmount(() => {
+  const el = getListElement();
+  if (el) {
+    el.removeEventListener('wheel', onUserScroll);
+    el.removeEventListener('touchstart', onUserScroll);
+  }
+  if (scrollTimeout) clearTimeout(scrollTimeout);
+});
+
+// 当 messages 变化时，如果用户没有在手动滚动，则滚动到底部
+watch(() => props.messages.length, (newLen, oldLen) => {
+  if (newLen === oldLen) return;
+  if (!isUserScrolling) {
+    // 使用平滑滚动以在发送/接收时更自然
+    scrollToBottom('smooth');
+  }
+});
 </script>
 
 <style scoped>
