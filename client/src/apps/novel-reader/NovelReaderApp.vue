@@ -49,6 +49,7 @@
         @chapter-select="selectChapter"
         @bookmark-add="addBookmark"
         @bookmark-delete="deleteBookmark"
+        @force-sync-bookmarks="handleForceSyncBookmarks"
         @close="showMenu = false"
       />
 
@@ -103,6 +104,9 @@
     deleteBookmark,
     showBookInfo,
     initialize,
+    handleForceSyncBookmarks,
+    forceSyncBookmarks,
+    getBookmarksByBookId,
   } = useNovelReader();
 
   // 组件引用

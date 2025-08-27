@@ -46,6 +46,7 @@ export function useNovelReader() {
     deleteBookmark: deleteBookmarkFromStorage,
     updateBookmark: updateBookmarkInStorage,
     loadBookmarks: loadBookmarksFromServer,
+    forceSyncBookmarks,
     syncAllBookmarks,
     deleteBookmarksByBookId: deleteBookmarksByBookIdFromStorage,
   } = useNovelBookmarks();
@@ -171,13 +172,12 @@ export function useNovelReader() {
       currentChapterIndex.value = progress.chapterIndex || 0;
     }
 
-    // 加载书籍的书签
+    // 强制同步书籍的书签（以服务器为准）
     try {
-      await loadBookmarksFromServer(book.id, book.fileId);
-      // 更新当前书籍的书签列表（用于UI显示）
+      await forceSyncBookmarks(book.id, book.fileId);
       book.bookmarks = getBookmarksByBookId(book.id);
     } catch (error) {
-      console.warn('加载书籍书签失败:', error);
+      console.error('强制同步书籍书签失败:', error);
       book.bookmarks = [];
     }
 
@@ -308,6 +308,18 @@ export function useNovelReader() {
     console.log('显示书籍信息:', book);
   }
 
+  // 处理强制同步书签
+  async function handleForceSyncBookmarks(bookId, fileId) {
+    if (!currentBook.value || currentBook.value.id !== bookId) return;
+    
+    try {
+      await forceSyncBookmarks(bookId, fileId);
+      currentBook.value.bookmarks = getBookmarksByBookId(bookId);
+    } catch (error) {
+      console.error('强制同步书签失败:', error);
+    }
+  }
+
   // 初始化函数
   async function initialize() {
     loadBooks(books);
@@ -321,6 +333,17 @@ export function useNovelReader() {
     } catch (error) {
       console.warn('同步书签失败:', error);
     }
+  }
+
+  // 在浏览器获得焦点或网络恢复时自动同步一次（减少手动操作）
+  if (typeof window !== 'undefined') {
+    const autoSync = async () => {
+      try {
+        await syncAllBookmarks();
+      } catch (_) {}
+    };
+    window.addEventListener('focus', autoSync);
+    window.addEventListener('online', autoSync);
   }
 
   // 监听设置变化
@@ -364,5 +387,6 @@ export function useNovelReader() {
     getBookmarksByBookId,
     deleteBookmark: deleteBookmarkFromStorage,
     updateBookmark: updateBookmarkInStorage,
+    handleForceSyncBookmarks,
   };
 }

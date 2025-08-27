@@ -20,11 +20,20 @@ export class NovelBookmarkModel {
   }
 
   findByFileId(fileId) {
+    // 兼容不同格式的 fileId（例如 '2' 与 '2.0'）：
+    // - 优先精确匹配
+    // - 同时尝试以整数比较（CAST(file_id AS INTEGER) = CAST(? AS INTEGER)）
     return this.db
       .prepare(
-        'SELECT * FROM novel_bookmarks WHERE file_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
+        `SELECT * FROM novel_bookmarks 
+         WHERE deleted_at IS NULL AND (
+           file_id = ? OR (
+             CAST(file_id AS INTEGER) = CAST(? AS INTEGER)
+           )
+         )
+         ORDER BY created_at DESC`
       )
-      .all(fileId);
+      .all(fileId, fileId);
   }
 
   findByDeviceId(deviceId) {

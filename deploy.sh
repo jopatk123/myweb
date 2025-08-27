@@ -28,29 +28,43 @@ need_cmd() {
 
 # 设置目录权限的函数
 setup_permissions() {
-  local dirs=("server/uploads" "server/data" "server/logs")
+  # 允许通过环境变量覆盖默认 UID/GID（容器内运行的 node 用户为 1001:1001）
+  local PERM_UID=${PERM_UID:-1001}
+  local PERM_GID=${PERM_GID:-1001}
+
+  # 需要创建和授予权限的目录（包含上传的各子目录）
+  local dirs=(
+    "server/uploads"
+    "server/uploads/wallpapers"
+    "server/uploads/apps"
+    "server/uploads/apps/icons"
+    "server/uploads/files"
+    "server/uploads/novels"
+    "server/data"
+    "server/logs"
+  )
   
-  log "设置目录权限..."
+  log "设置目录权限 (uid=${PERM_UID} gid=${PERM_GID})..."
   
   for dir in "${dirs[@]}"; do
     # 确保目录存在
     mkdir -p "$dir" || true
-    
-    # 尝试设置权限，如果失败则使用sudo
-    if ! chown -R 1001:1001 "$dir" 2>/dev/null; then
+
+    # 设置归属（优先不使用 sudo，失败再回退）
+    if ! chown -R "${PERM_UID}:${PERM_GID}" "$dir" 2>/dev/null; then
       if command -v sudo >/dev/null 2>&1; then
-        log "使用sudo设置 $dir 权限"
-        sudo chown -R 1001:1001 "$dir" || {
-          err "无法设置 $dir 权限，请检查sudo权限"
+        log "使用sudo设置 $dir 权限归属"
+        sudo chown -R "${PERM_UID}:${PERM_GID}" "$dir" || {
+          err "无法设置 $dir 权限归属，请检查 sudo 权限"
           return 1
         }
       else
-        err "无法设置 $dir 权限，且系统没有sudo命令"
+        err "无法设置 $dir 权限归属，且系统没有 sudo 命令"
         return 1
       fi
     fi
-    
-    # 设置目录权限
+
+    # 设置读写执行权限（目录 775）
     chmod -R 775 "$dir" 2>/dev/null || {
       if command -v sudo >/dev/null 2>&1; then
         sudo chmod -R 775 "$dir" || {

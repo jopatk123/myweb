@@ -96,7 +96,7 @@
 </template>
 
 <script setup>
-  import { ref } from 'vue';
+  import { ref, onMounted } from 'vue';
 
   const props = defineProps({
     book: {
@@ -113,11 +113,23 @@
     'chapter-select',
     'bookmark-add',
     'bookmark-delete',
+    'force-sync-bookmarks',
     'close',
   ]);
 
   const showAddBookmark = ref(false);
   const bookmarkTitle = ref('');
+
+  // 在组件挂载时强制同步书签
+  onMounted(async () => {
+    if (props.book && props.book.id) {
+      try {
+        emit('force-sync-bookmarks', props.book.id, props.book.fileId);
+      } catch (error) {
+        console.error('强制同步书签失败:', error);
+      }
+    }
+  });
 
   function selectChapter(index) {
     emit('chapter-select', index);

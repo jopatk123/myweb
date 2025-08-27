@@ -8,6 +8,7 @@ import {
   initFileTables,
   initNovelTables,
   initNotebookTables,
+  initNovelBookmarkTables,
 } from '../db/schema.js';
 import { ensureWallpaperColumns, ensureAppsColumns } from '../db/migration.js';
 import { ensureFilesTypeCategoryIncludesNovel } from '../db/migration.js';
@@ -42,6 +43,12 @@ export async function initDatabase() {
   initFileTables(db);
   // 新增 novels 表初始化
   initNovelTables(db);
+  // 新增 novel_bookmarks 表初始化
+  try {
+    initNovelBookmarkTables(db);
+  } catch (e) {
+    console.warn('无法初始化 novel_bookmarks 表（非致命）:', e.message || e);
+  }
   // 新增 notebook 表初始化
   initNotebookTables(db);
   // 新增 work-timer 表初始化
