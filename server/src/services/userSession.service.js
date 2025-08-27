@@ -22,7 +22,7 @@ export class UserSessionService {
       sessionId,
       nickname: nickname || 'Anonymous',
       avatarColor: avatarColor || '#007bff',
-      autoOpenEnabled: autoOpenEnabled !== false
+      autoOpenEnabled: autoOpenEnabled === undefined ? true : autoOpenEnabled
     });
 
     return userSession;

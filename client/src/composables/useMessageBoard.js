@@ -102,6 +102,10 @@ export function useMessageBoard() {
       const response = await messageAPI.getUserSettings();
       if (response.code === 200) {
         Object.assign(userSettings, response.data);
+        // 确保autoOpenEnabled是布尔值
+        if (typeof userSettings.autoOpenEnabled === 'number') {
+          userSettings.autoOpenEnabled = Boolean(userSettings.autoOpenEnabled);
+        }
       }
     } catch (err) {
       console.error('Fetch user settings error:', err);
@@ -114,6 +118,10 @@ export function useMessageBoard() {
       const response = await messageAPI.updateUserSettings(settings);
       if (response.code === 200) {
         Object.assign(userSettings, response.data);
+        // 确保autoOpenEnabled是布尔值
+        if (typeof userSettings.autoOpenEnabled === 'number') {
+          userSettings.autoOpenEnabled = Boolean(userSettings.autoOpenEnabled);
+        }
         return response.data;
       }
     } catch (err) {

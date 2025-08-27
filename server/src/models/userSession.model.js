@@ -26,7 +26,12 @@ export class UserSessionModel {
       insertStmt.run(sessionId, nickname, avatarColor, autoOpenEnabled ? 1 : 0);
     }
     
-    return this.findBySessionId(sessionId);
+    const result = this.findBySessionId(sessionId);
+    if (result) {
+      // 确保返回的autoOpenEnabled是布尔值
+      result.autoOpenEnabled = Boolean(result.autoOpenEnabled);
+    }
+    return result;
   }
 
   static findBySessionId(sessionId) {
@@ -39,7 +44,12 @@ export class UserSessionModel {
       WHERE session_id = ?
     `);
     
-    return stmt.get(sessionId);
+    const result = stmt.get(sessionId);
+    if (result) {
+      // 将数字转换为布尔值
+      result.autoOpenEnabled = Boolean(result.autoOpenEnabled);
+    }
+    return result;
   }
 
   static getAutoOpenEnabledSessions() {
@@ -52,5 +62,16 @@ export class UserSessionModel {
     `);
     
     return stmt.all().map(row => row.sessionId);
+  }
+
+  static updateLastActive(sessionId) {
+    const db = getDb();
+    const stmt = db.prepare(`
+      UPDATE user_sessions 
+      SET last_active = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE session_id = ?
+    `);
+    
+    return stmt.run(sessionId);
   }
 }

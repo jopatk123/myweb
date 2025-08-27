@@ -49,6 +49,7 @@
           />
           自动打开新消息
         </label>
+        <small class="setting-hint">当有新消息时自动打开留言板</small>
       </div>
       <div class="setting-actions">
         <button @click="saveSettings" class="save-btn">保存</button>
@@ -200,7 +201,7 @@ const cancelSettings = () => {
   tempSettings.value = {
     nickname: userSettings.nickname,
     avatarColor: userSettings.avatarColor,
-    autoOpenEnabled: userSettings.autoOpenEnabled,
+    autoOpenEnabled: Boolean(userSettings.autoOpenEnabled),
   };
   showSettings.value = false;
 };
@@ -210,7 +211,7 @@ watch(userSettings, (newSettings) => {
   tempSettings.value = {
     nickname: newSettings.nickname,
     avatarColor: newSettings.avatarColor,
-    autoOpenEnabled: newSettings.autoOpenEnabled,
+    autoOpenEnabled: Boolean(newSettings.autoOpenEnabled),
   };
 }, { immediate: true });
 
@@ -295,15 +296,26 @@ watch(messages, () => {
 
 .setting-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   margin-bottom: 12px;
-  gap: 8px;
+  gap: 4px;
 }
 
 .setting-item label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
   font-size: 14px;
   color: #495057;
   min-width: 80px;
+}
+
+.setting-hint {
+  color: #6c757d;
+  font-size: 12px;
+  margin-left: 24px;
 }
 
 .setting-item input[type="text"] {
