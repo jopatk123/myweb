@@ -6,6 +6,7 @@
         :key="index"
         class="image-item"
         @click="openLightbox(index)"
+        @contextmenu.prevent="showContextMenu($event, image, index)"
       >
         <img 
           :src="getImageUrl(image)" 
@@ -44,6 +45,14 @@
             :alt="images[currentImageIndex]?.originalName || '图片'"
             class="lightbox-image"
           />
+          <!-- 保存图片按钮 -->
+          <button 
+            @click="saveImage(images[currentImageIndex])" 
+            class="save-image-btn"
+            title="保存图片"
+          >
+            💾
+          </button>
         </div>
         
         <div v-if="images.length > 1" class="lightbox-indicators">
@@ -55,6 +64,25 @@
             @click="currentImageIndex = index"
           ></span>
         </div>
+      </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div 
+      v-if="contextMenuVisible" 
+      class="context-menu"
+      :style="{ 
+        left: contextMenuPosition.x + 'px', 
+        top: contextMenuPosition.y + 'px' 
+      }"
+    >
+      <div class="context-menu-item" @click="handleContextMenuAction('view')">
+        <span class="context-menu-icon">👁️</span>
+        查看图片
+      </div>
+      <div class="context-menu-item" @click="handleContextMenuAction('save')">
+        <span class="context-menu-icon">💾</span>
+        保存图片
       </div>
     </div>
   </div>
@@ -72,6 +100,10 @@ const props = defineProps({
 
 const showLightbox = ref(false);
 const currentImageIndex = ref(0);
+const contextMenu = ref(null);
+const contextMenuVisible = ref(false);
+const contextMenuPosition = ref({ x: 0, y: 0 });
+const contextMenuTarget = ref(null);
 
 // 获取图片URL
 const getImageUrl = (image) => {
@@ -119,6 +151,97 @@ const onImageError = (event) => {
   event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0zMCAzMEg3MFY3MEgzMFYzMFoiIGZpbGw9IiNEN0Q3RDciLz4KPHBhdGggZD0iTTQwIDQwSDUwVjUwSDQwVjQwWiIgZmlsbD0iI0E5QTlBOSIvPgo8L3N2Zz4K';
 };
 
+// 保存图片
+const saveImage = async (image) => {
+  try {
+    const imageUrl = getImageUrl(image);
+    const response = await fetch(imageUrl);
+    
+    if (!response.ok) {
+      throw new Error('图片下载失败');
+    }
+    
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    
+    // 创建下载链接
+    const a = document.createElement('a');
+    a.href = url;
+    
+    // 生成文件名
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const originalName = image.originalName || 'image';
+    const extension = originalName.includes('.') ? originalName.split('.').pop() : 'jpg';
+    const fileName = `message-image-${timestamp}.${extension}`;
+    
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // 清理URL
+    URL.revokeObjectURL(url);
+    
+    // 显示成功提示
+    showSaveSuccess();
+  } catch (error) {
+    console.error('保存图片失败:', error);
+    alert('保存图片失败: ' + error.message);
+  }
+};
+
+// 显示保存成功提示
+const showSaveSuccess = () => {
+  // 创建一个临时的成功提示
+  const successTip = document.createElement('div');
+  successTip.className = 'save-success-tip';
+  successTip.textContent = '图片已保存';
+  document.body.appendChild(successTip);
+  
+  // 2秒后移除提示
+  setTimeout(() => {
+    if (successTip.parentNode) {
+      successTip.parentNode.removeChild(successTip);
+    }
+  }, 2000);
+};
+
+// 显示右键菜单
+const showContextMenu = (event, image, index) => {
+  event.preventDefault();
+  contextMenuPosition.value = { x: event.clientX, y: event.clientY };
+  contextMenuTarget.value = { image, index };
+  contextMenuVisible.value = true;
+  
+  // 点击其他地方关闭菜单
+  const closeMenu = () => {
+    contextMenuVisible.value = false;
+    document.removeEventListener('click', closeMenu);
+  };
+  
+  setTimeout(() => {
+    document.addEventListener('click', closeMenu);
+  }, 0);
+};
+
+// 处理右键菜单操作
+const handleContextMenuAction = (action) => {
+  if (!contextMenuTarget.value) return;
+  
+  const { image, index } = contextMenuTarget.value;
+  
+  switch (action) {
+    case 'save':
+      saveImage(image);
+      break;
+    case 'view':
+      openLightbox(index);
+      break;
+  }
+  
+  contextMenuVisible.value = false;
+};
+
 // 键盘事件处理
 const handleKeydown = (event) => {
   if (!showLightbox.value) return;
@@ -132,6 +255,11 @@ const handleKeydown = (event) => {
       break;
     case 'ArrowRight':
       nextImage();
+      break;
+    case 's':
+    case 'S':
+      // 按S键保存当前图片
+      saveImage(images[currentImageIndex.value]);
       break;
   }
 };
@@ -280,6 +408,82 @@ onUnmounted(() => {
   max-height: 80vh;
   object-fit: contain;
   border-radius: 8px;
+}
+
+.save-image-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  z-index: 10;
+}
+
+.save-image-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.save-success-tip {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #28a745;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 10000;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10001;
+  min-width: 150px;
+  overflow: hidden;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 14px;
+}
+
+.context-menu-item:hover {
+  background: #f8f9fa;
+}
+
+.context-menu-icon {
+  font-size: 16px;
 }
 
 .lightbox-indicators {

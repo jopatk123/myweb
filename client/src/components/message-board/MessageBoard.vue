@@ -107,6 +107,11 @@
           >
             <img :src="image.url" :alt="image.name" />
             <button @click="removeImage(index)" class="remove-image-btn">✕</button>
+            <!-- 压缩信息提示 -->
+            <div v-if="image.compressed" class="compression-info">
+              <span class="compression-badge">已压缩</span>
+              <span class="size-info">{{ formatFileSize(image.originalSize) }} → {{ formatFileSize(image.compressedSize) }}</span>
+            </div>
           </div>
         </div>
         
@@ -156,6 +161,7 @@
 import { ref, computed, nextTick, watch } from 'vue';
 import { useMessageBoard } from '@/composables/useMessageBoard.js';
 import ImagePreview from './ImagePreview.vue';
+import { compressImage, formatFileSize } from '@/utils/imageCompressor.js';
 
 // 组件事件
 const emit = defineEmits(['close']);
@@ -265,17 +271,46 @@ const addImage = async (file) => {
     return;
   }
 
-  if (file.size > 5 * 1024 * 1024) {
-    alert('图片大小不能超过5MB');
-    return;
-  }
+  try {
+    let processedFile = file;
+    let originalSize = file.size;
+    let compressed = false;
 
-  const url = URL.createObjectURL(file);
-  selectedImages.value.push({
-    file,
-    url,
-    name: file.name
-  });
+    // 如果文件超过5MB，尝试压缩
+    if (file.size > 5 * 1024 * 1024) {
+      try {
+        processedFile = await compressImage(file);
+        compressed = true;
+        
+        // 显示压缩信息
+        const originalSizeText = formatFileSize(originalSize);
+        const compressedSizeText = formatFileSize(processedFile.size);
+        console.log(`图片压缩: ${originalSizeText} -> ${compressedSizeText}`);
+        
+        if (processedFile.size > 5 * 1024 * 1024) {
+          alert(`图片压缩后仍然超过5MB限制 (${compressedSizeText})，无法添加`);
+          return;
+        }
+      } catch (error) {
+        console.error('图片压缩失败:', error);
+        alert('图片压缩失败，无法添加');
+        return;
+      }
+    }
+
+    const url = URL.createObjectURL(processedFile);
+    selectedImages.value.push({
+      file: processedFile,
+      url,
+      name: file.name,
+      originalSize,
+      compressed,
+      compressedSize: processedFile.size
+    });
+  } catch (error) {
+    console.error('添加图片失败:', error);
+    alert('添加图片失败');
+  }
 };
 
 // 移除选择的图片
@@ -659,6 +694,37 @@ watch(messages, () => {
 
 .remove-image-btn:hover {
   background: rgba(220, 53, 69, 1);
+}
+
+.compression-info {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.compression-badge {
+  background: #ffc107;
+  color: #000;
+  padding: 1px 3px;
+  border-radius: 2px;
+  font-weight: bold;
+  font-size: 9px;
+  text-align: center;
+}
+
+.size-info {
+  font-size: 9px;
+  text-align: center;
+  opacity: 0.9;
 }
 
 .char-count {
