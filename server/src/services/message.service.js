@@ -9,12 +9,14 @@ export class MessageService {
    * 发送留言
    */
   static async sendMessage({ content, sessionId, authorName, authorColor, images, imageType }) {
-    // 验证内容
-    if (!content || content.trim().length === 0) {
+    // 验证内容：允许没有文字但有图片的情况
+    const hasText = content && content.toString().trim().length > 0;
+    const hasImages = images && Array.isArray(images) && images.length > 0;
+    if (!hasText && !hasImages) {
       throw new Error('留言内容不能为空');
     }
 
-    if (content.length > 1000) {
+    if (hasText && content.toString().length > 1000) {
       throw new Error('留言内容不能超过1000字符');
     }
 

@@ -54,7 +54,10 @@ export function useMessageBoard() {
 
   // 发送留言
   const sendMessage = async (content, images = null, imageType = null) => {
-    if (!content || content.trim().length === 0) {
+    // 允许在没有文字内容的情况下发送，但必须至少有文字或图片
+    const hasText = content && content.toString().trim().length > 0;
+    const hasImages = images && Array.isArray(images) && images.length > 0;
+    if (!hasText && !hasImages) {
       throw new Error('留言内容不能为空');
     }
 
