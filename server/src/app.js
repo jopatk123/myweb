@@ -11,11 +11,13 @@ import { createFileRoutes } from './routes/files.routes.js';
 import { createNotebookNotesRoutes } from './routes/notebook-notes.routes.js';
 import { createWorkTimerRoutes } from './routes/worktimer.routes.js';
 import { createNovelBookmarkRoutes } from './routes/novel-bookmarks.routes.js';
+import messageRoutes from './routes/messages.routes.js';
 import errorHandler from './middleware/error.middleware.js';
 import {
   normalizeRequestKeys,
   normalizeResponseMiddleware,
 } from './utils/case-helper.js';
+import { setDb } from './utils/dbPool.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,6 +69,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // 初始化数据库
 const db = await initDatabase();
+setDb(db);
 
 // 路由
 app.use('/api/wallpapers', createWallpaperRoutes(db));
@@ -75,6 +78,7 @@ app.use('/api/files', createFileRoutes(db));
 app.use('/api/notebook', createNotebookNotesRoutes(db));
 app.use('/api/work-timer', createWorkTimerRoutes(db));
 app.use('/api/novel-bookmarks', createNovelBookmarkRoutes(db));
+app.use('/api/messages', messageRoutes);
 
 // 健康检查
 app.get('/health', (req, res) => {

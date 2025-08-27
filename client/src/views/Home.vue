@@ -39,6 +39,9 @@
       <button @click="onRandom()" class="control-btn" title="随机切换壁纸">
         🎲
       </button>
+      <button @click="openMessageBoard()" class="control-btn" title="留言板">
+        💬
+      </button>
       <a
         href="/wallpapers"
         target="_blank"
@@ -100,6 +103,7 @@
   import { useWindowManager } from '@/composables/useWindowManager.js';
   import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
   import { useApps } from '@/composables/useApps.js';
+  import { useMessageBoardAutoOpen } from '@/composables/useMessageBoardAutoOpen.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
 
   const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
@@ -128,6 +132,7 @@
   const showPreview = ref(false);
   const previewFile = ref(null);
   const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
+  const { manualOpenMessageBoard } = useMessageBoardAutoOpen();
   const fileTypeIcons = computed(() => ({
     image: '/apps/icons/image-128.svg',
     video: '/apps/icons/video-128.svg',
@@ -226,6 +231,10 @@
     if (w) current.value = w;
     // 点击切换后确保缓存维持在 2 张
     ensurePreloaded(2).catch(() => {});
+  };
+
+  const openMessageBoard = () => {
+    manualOpenMessageBoard();
   };
 
   function onDragOver() {
