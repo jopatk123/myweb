@@ -2,7 +2,7 @@
  * 留言路由
  */
 import express from 'express';
-import { MessageController } from '../controllers/message.controller.js';
+import { MessageController, uploadImage } from '../controllers/message.controller.js';
 
 const router = express.Router();
 
@@ -20,5 +20,8 @@ router.get('/user-settings', MessageController.getUserSettings);
 
 // 更新用户设置
 router.put('/user-settings', MessageController.updateUserSettings);
+
+// 上传图片
+router.post('/upload-image', uploadImage.array('images', 5), MessageController.uploadImage);
 
 export default router;

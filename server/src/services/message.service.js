@@ -8,7 +8,7 @@ export class MessageService {
   /**
    * 发送留言
    */
-  static async sendMessage({ content, sessionId, authorName, authorColor }) {
+  static async sendMessage({ content, sessionId, authorName, authorColor, images, imageType }) {
     // 验证内容
     if (!content || content.trim().length === 0) {
       throw new Error('留言内容不能为空');
@@ -16,6 +16,15 @@ export class MessageService {
 
     if (content.length > 1000) {
       throw new Error('留言内容不能超过1000字符');
+    }
+
+    // 验证图片
+    if (images && !Array.isArray(images)) {
+      throw new Error('图片数据格式错误');
+    }
+
+    if (images && images.length > 5) {
+      throw new Error('最多只能上传5张图片');
     }
 
     // 获取或创建用户会话
@@ -28,7 +37,9 @@ export class MessageService {
       content: content.trim(),
       authorName: finalAuthorName,
       authorColor: finalAuthorColor,
-      sessionId
+      sessionId,
+      images,
+      imageType
     });
 
     // 更新用户最后活跃时间

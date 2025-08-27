@@ -53,7 +53,7 @@ export function useMessageBoard() {
   };
 
   // 发送留言
-  const sendMessage = async (content) => {
+  const sendMessage = async (content, images = null, imageType = null) => {
     if (!content || content.trim().length === 0) {
       throw new Error('留言内容不能为空');
     }
@@ -66,6 +66,8 @@ export function useMessageBoard() {
         content: content.trim(),
         authorName: userSettings.nickname,
         authorColor: userSettings.avatarColor,
+        images,
+        imageType,
       });
 
       if (response.code === 200) {
@@ -197,6 +199,20 @@ export function useMessageBoard() {
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
+  // 上传图片
+  const uploadImages = async (files) => {
+    try {
+      const response = await messageAPI.uploadImages(files);
+      if (response.code === 200) {
+        return response.data;
+      }
+    } catch (err) {
+      error.value = err.message || '图片上传失败';
+      console.error('Upload images error:', err);
+      throw err;
+    }
+  };
+
   // 计算属性
   const hasMessages = computed(() => messages.value.length > 0);
   const canLoadMore = computed(() => pagination.page < pagination.totalPages);
@@ -231,6 +247,7 @@ export function useMessageBoard() {
     sendMessage,
     deleteMessage,
     updateUserSettings,
+    uploadImages,
     formatTime,
     generateRandomColor,
   };

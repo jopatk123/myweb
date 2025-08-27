@@ -86,6 +86,11 @@
             <span class="message-time">{{ formatTime(message.createdAt) }}</span>
           </div>
           <div class="message-text">{{ message.content }}</div>
+          <!-- 图片预览 -->
+          <ImagePreview 
+            v-if="message.images && message.images.length > 0" 
+            :images="message.images" 
+          />
         </div>
       </div>
     </div>
@@ -93,17 +98,47 @@
     <!-- 输入区域 -->
     <div class="message-input">
       <div class="input-container">
+        <!-- 图片预览区域 -->
+        <div v-if="selectedImages.length > 0" class="selected-images">
+          <div 
+            v-for="(image, index) in selectedImages" 
+            :key="index"
+            class="selected-image-item"
+          >
+            <img :src="image.url" :alt="image.name" />
+            <button @click="removeImage(index)" class="remove-image-btn">✕</button>
+          </div>
+        </div>
+        
         <textarea
           v-model="inputMessage"
-          placeholder="输入留言内容..."
+          placeholder="输入留言内容... (Ctrl+V 粘贴图片)"
           rows="2"
           maxlength="1000"
           @keydown.enter.exact.prevent="handleSend"
           @keydown.enter.shift.exact="handleNewLine"
+          @paste="handlePaste"
           :disabled="sending"
         ></textarea>
         <div class="input-actions">
-          <span class="char-count">{{ inputMessage.length }}/1000</span>
+          <div class="input-left">
+            <input
+              ref="fileInput"
+              type="file"
+              multiple
+              accept="image/*"
+              @change="handleFileSelect"
+              style="display: none"
+            />
+            <button 
+              @click="$refs.fileInput.click()" 
+              class="add-image-btn"
+              title="添加图片"
+            >
+              📷
+            </button>
+            <span class="char-count">{{ inputMessage.length }}/1000</span>
+          </div>
           <button 
             @click="handleSend" 
             :disabled="!canSend"
@@ -120,6 +155,7 @@
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue';
 import { useMessageBoard } from '@/composables/useMessageBoard.js';
+import ImagePreview from './ImagePreview.vue';
 
 // 组件事件
 const emit = defineEmits(['close']);
@@ -135,6 +171,7 @@ const {
   hasMessages,
   fetchMessages,
   sendMessage,
+  uploadImages,
   updateUserSettings,
   formatTime,
   generateRandomColor,
@@ -144,6 +181,8 @@ const {
 const inputMessage = ref('');
 const showSettings = ref(false);
 const messageListRef = ref(null);
+const selectedImages = ref([]);
+const fileInput = ref(null);
 
 // 临时设置（用于编辑）
 const tempSettings = ref({
@@ -154,7 +193,7 @@ const tempSettings = ref({
 
 // 计算属性
 const canSend = computed(() => {
-  return inputMessage.value.trim().length > 0 && !sending.value;
+  return (inputMessage.value.trim().length > 0 || selectedImages.value.length > 0) && !sending.value;
 });
 
 // 处理发送
@@ -162,8 +201,20 @@ const handleSend = async () => {
   if (!canSend.value) return;
 
   try {
-    await sendMessage(inputMessage.value);
+    let uploadedImages = null;
+    let imageType = null;
+
+    // 如果有选择的图片，先上传
+    if (selectedImages.value.length > 0) {
+      const files = selectedImages.value.map(img => img.file);
+      const uploadResult = await uploadImages(files);
+      uploadedImages = uploadResult;
+      imageType = 'upload';
+    }
+
+    await sendMessage(inputMessage.value, uploadedImages, imageType);
     inputMessage.value = '';
+    selectedImages.value = [];
     
     // 滚动到底部
     nextTick(() => {
@@ -177,6 +228,61 @@ const handleSend = async () => {
 // 处理换行
 const handleNewLine = () => {
   inputMessage.value += '\n';
+};
+
+// 处理图片粘贴
+const handlePaste = async (event) => {
+  const items = event.clipboardData?.items;
+  if (!items) return;
+
+  for (let item of items) {
+    if (item.type.startsWith('image/')) {
+      event.preventDefault();
+      const file = item.getAsFile();
+      if (file) {
+        await addImage(file);
+      }
+    }
+  }
+};
+
+// 处理文件选择
+const handleFileSelect = async (event) => {
+  const files = Array.from(event.target.files);
+  for (const file of files) {
+    if (file.type.startsWith('image/')) {
+      await addImage(file);
+    }
+  }
+  // 清空input值，允许重复选择同一文件
+  event.target.value = '';
+};
+
+// 添加图片到选择列表
+const addImage = async (file) => {
+  if (selectedImages.value.length >= 5) {
+    alert('最多只能选择5张图片');
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert('图片大小不能超过5MB');
+    return;
+  }
+
+  const url = URL.createObjectURL(file);
+  selectedImages.value.push({
+    file,
+    url,
+    name: file.name
+  });
+};
+
+// 移除选择的图片
+const removeImage = (index) => {
+  const image = selectedImages.value[index];
+  URL.revokeObjectURL(image.url);
+  selectedImages.value.splice(index, 1);
 };
 
 // 滚动到底部
@@ -490,6 +596,69 @@ watch(messages, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.input-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-image-btn {
+  background: none;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.2s;
+}
+
+.add-image-btn:hover {
+  background: #e9ecef;
+}
+
+.selected-images {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.selected-image-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #ced4da;
+}
+
+.selected-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(220, 53, 69, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-image-btn:hover {
+  background: rgba(220, 53, 69, 1);
 }
 
 .char-count {
