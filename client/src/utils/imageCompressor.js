@@ -30,6 +30,13 @@ export async function compressImage(file, maxSize = MAX_FILE_SIZE) {
     const img = new Image();
 
     img.onload = () => {
+      // 清理临时URL（img.src 会在下面设置，onload 在运行时可访问 url）
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        // ignore
+      }
+
       // 计算新的尺寸
       let { width, height } = calculateDimensions(img.width, img.height);
       
@@ -93,14 +100,9 @@ export async function compressImage(file, maxSize = MAX_FILE_SIZE) {
       reject(new Error('图片加载失败'));
     };
 
-    // 创建文件URL
+    // 创建文件URL 并设置到 img 上（onload 中负责清理）
     const url = URL.createObjectURL(file);
     img.src = url;
-
-    // 清理URL
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-    };
   });
 }
 
