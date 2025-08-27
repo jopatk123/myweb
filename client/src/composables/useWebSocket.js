@@ -15,9 +15,28 @@ export function useWebSocket() {
   // 获取WebSocket URL
   const getWebSocketUrl = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = import.meta.env.VITE_API_BASE 
-      ? new URL(import.meta.env.VITE_API_BASE).host 
-      : window.location.host.replace(':3000', ':3002'); // 开发环境端口映射
+    
+    // 处理 VITE_API_BASE 的情况
+    let host;
+    if (import.meta.env.VITE_API_BASE) {
+      const apiBase = import.meta.env.VITE_API_BASE;
+      // 如果是相对路径（以 / 开头），使用当前域名
+      if (apiBase.startsWith('/')) {
+        host = window.location.host;
+      } else {
+        // 如果是完整URL，提取host
+        try {
+          host = new URL(apiBase).host;
+        } catch (error) {
+          console.warn('Invalid VITE_API_BASE URL:', apiBase);
+          host = window.location.host;
+        }
+      }
+    } else {
+      // 开发环境端口映射
+      host = window.location.host.replace(':3000', ':3002');
+    }
+    
     return `${protocol}//${host}/ws`;
   };
 

@@ -3,11 +3,22 @@
  */
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3002';
+// 处理API基础URL
+const getApiBase = () => {
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3002';
+  // 如果是相对路径，直接使用
+  if (apiBase.startsWith('/')) {
+    return apiBase;
+  }
+  // 如果是完整URL，添加/api路径
+  return apiBase.endsWith('/') ? `${apiBase}api` : `${apiBase}/api`;
+};
+
+const API_BASE = getApiBase();
 
 // 创建axios实例
 const messageApi = axios.create({
-  baseURL: `${API_BASE}/api/messages`,
+  baseURL: `${API_BASE}/messages`,
   timeout: 10000,
 });
 

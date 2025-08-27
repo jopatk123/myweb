@@ -22,16 +22,17 @@
     "contract-test": "spectral lint openapi.yaml --format json > contract-report.json"
   },
   "devDependencies": {
+    "@stoplight/spectral": "^6.5.0",
     "@vue/eslint-config-prettier": "^10.2.0",
     "commitizen": "^4.3.0",
+    "concurrently": "^9.2.1",
     "cz-conventional-changelog": "^3.3.0",
     "eslint": "^9.33.0",
     "eslint-plugin-vue": "^10.4.0",
     "globals": "^16.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.5",
-    "prettier": "^3.6.2",
-    "@stoplight/spectral": "^6.5.0"
+    "prettier": "^3.6.2"
   },
   "lint-staged": {
     "*.{js,vue,css,md,json,yml,yaml}": [

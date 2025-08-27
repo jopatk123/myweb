@@ -174,25 +174,6 @@ EOF
   log "等待服务就绪..."
   sleep 3
   $DC -f "$COMPOSE_FILE" ps || true
-
-    # Ensure client/.env.production contains VITE_API_BASE when building frontend inside Dockerfile.client
-    # Allow override via environment variable DEPLOY_VITE_API_BASE; default to '/api'
-    if [ -n "${DEPLOY_VITE_API_BASE:-}" ]; then
-      log "创建 client/.env.production with VITE_API_BASE=${DEPLOY_VITE_API_BASE}"
-      mkdir -p client
-      cat > client/.env.production <<EOF
-VITE_API_BASE=${DEPLOY_VITE_API_BASE}
-EOF
-    else
-      # If not explicitly provided, set to '/api' so production build uses relative API/uploads paths
-      if [ ! -f client/.env.production ]; then
-        log "创建 client/.env.production with default VITE_API_BASE=/api"
-        mkdir -p client
-        cat > client/.env.production <<EOF
-VITE_API_BASE=/api
-EOF
-      fi
-    fi
   # 健康检查
   health_check || {
     warn "健康检查未通过，正在输出关键容器日志以供排查："
