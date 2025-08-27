@@ -76,6 +76,33 @@ export const messageAPI = {
     const response = await messageApi.put('/user-settings', data);
     return response.data;
   },
+
+  /**
+   * 上传图片
+   */
+  async uploadImages(files) {
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append('images', files[i]);
+    }
+    
+    const response = await messageApi.post('/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * 清除所有留言
+   */
+  async clearAllMessages() {
+    const response = await messageApi.delete('/clear-all', {
+      data: { confirm: true }
+    });
+    return response.data;
+  },
 };
 
 export default messageAPI;

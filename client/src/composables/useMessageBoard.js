@@ -53,8 +53,11 @@ export function useMessageBoard() {
   };
 
   // 发送留言
-  const sendMessage = async (content) => {
-    if (!content || content.trim().length === 0) {
+  const sendMessage = async (content, images = null, imageType = null) => {
+    // 允许在没有文字内容的情况下发送，但必须至少有文字或图片
+    const hasText = content && content.toString().trim().length > 0;
+    const hasImages = images && Array.isArray(images) && images.length > 0;
+    if (!hasText && !hasImages) {
       throw new Error('留言内容不能为空');
     }
 
@@ -66,6 +69,8 @@ export function useMessageBoard() {
         content: content.trim(),
         authorName: userSettings.nickname,
         authorColor: userSettings.avatarColor,
+        images,
+        imageType,
       });
 
       if (response.code === 200) {
@@ -92,6 +97,22 @@ export function useMessageBoard() {
     } catch (err) {
       error.value = err.message || '删除留言失败';
       console.error('Delete message error:', err);
+      throw err;
+    }
+  };
+
+  // 清除所有留言
+  const clearAllMessages = async () => {
+    try {
+      const response = await messageAPI.clearAllMessages();
+      if (response.code === 200) {
+        // 清空本地消息列表
+        messages.value = [];
+        return response.data;
+      }
+    } catch (err) {
+      error.value = err.message || '清除留言板失败';
+      console.error('Clear all messages error:', err);
       throw err;
     }
   };
@@ -197,6 +218,20 @@ export function useMessageBoard() {
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
+  // 上传图片
+  const uploadImages = async (files) => {
+    try {
+      const response = await messageAPI.uploadImages(files);
+      if (response.code === 200) {
+        return response.data;
+      }
+    } catch (err) {
+      error.value = err.message || '图片上传失败';
+      console.error('Upload images error:', err);
+      throw err;
+    }
+  };
+
   // 计算属性
   const hasMessages = computed(() => messages.value.length > 0);
   const canLoadMore = computed(() => pagination.page < pagination.totalPages);
@@ -230,7 +265,9 @@ export function useMessageBoard() {
     fetchMessages,
     sendMessage,
     deleteMessage,
+    clearAllMessages,
     updateUserSettings,
+    uploadImages,
     formatTime,
     generateRandomColor,
   };

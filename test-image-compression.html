@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片压缩测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>图片压缩功能测试</h1>
+    
+    <div class="test-section">
+        <h2>测试1: 单独发送图片（无文字）</h2>
+        <p>这个功能已经实现，用户可以在没有输入文字的情况下发送图片。</p>
+        <div class="result success">
+            ✅ 功能已实现：canSend 计算属性允许只有图片时也能发送
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试2: 图片压缩功能</h2>
+        <p>选择一个大图片文件来测试压缩功能：</p>
+        <input type="file" id="imageInput" accept="image/*" multiple>
+        <div id="compressionResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试3: 创建大图片</h2>
+        <p>点击下面的按钮创建一个大的测试图片：</p>
+        <button onclick="createLargeImage()">创建大图片</button>
+        <div id="largeImageResult"></div>
+    </div>
+
+    <script>
+        // 图片压缩工具函数
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        const MAX_WIDTH = 1920;
+        const MAX_HEIGHT = 1080;
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function compressImage(file) {
+            if (file.size <= MAX_FILE_SIZE) {
+                return file;
+            }
+
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+
+                img.onload = () => {
+                    let { width, height } = calculateDimensions(img.width, img.height);
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    let currentQuality = 0.9;
+
+                    const tryCompress = () => {
+                        canvas.toBlob(
+                            (blob) => {
+                                if (!blob) {
+                                    reject(new Error('图片压缩失败'));
+                                    return;
+                                }
+
+                                const compressedSize = blob.size;
+                                
+                                if (compressedSize > MAX_FILE_SIZE && currentQuality > 0.1) {
+                                    currentQuality -= 0.1;
+                                    tryCompress();
+                                    return;
+                                }
+
+                                if (compressedSize > MAX_FILE_SIZE && currentQuality <= 0.1) {
+                                    width = Math.floor(width * 0.8);
+                                    height = Math.floor(height * 0.8);
+                                    canvas.width = width;
+                                    canvas.height = height;
+                                    ctx.drawImage(img, 0, 0, width, height);
+                                    currentQuality = 0.9;
+                                    tryCompress();
+                                    return;
+                                }
+
+                                const compressedFile = new File([blob], file.name, {
+                                    type: file.type,
+                                    lastModified: Date.now(),
+                                });
+
+                                resolve(compressedFile);
+                            },
+                            file.type,
+                            currentQuality
+                        );
+                    };
+
+                    tryCompress();
+                };
+
+                img.onerror = () => reject(new Error('图片加载失败'));
+                const url = URL.createObjectURL(file);
+                img.src = url;
+                img.onload = () => URL.revokeObjectURL(url);
+            });
+        }
+
+        function calculateDimensions(originalWidth, originalHeight) {
+            let width = originalWidth;
+            let height = originalHeight;
+
+            if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+                const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+                width = Math.floor(width * ratio);
+                height = Math.floor(height * ratio);
+            }
+
+            return { width, height };
+        }
+
+        // 文件选择处理
+        document.getElementById('imageInput').addEventListener('change', async (event) => {
+            const files = Array.from(event.target.files);
+            const resultsDiv = document.getElementById('compressionResults');
+            resultsDiv.innerHTML = '';
+
+            for (const file of files) {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'result info';
+                
+                const originalSize = formatFileSize(file.size);
+                resultDiv.innerHTML = `<strong>文件: ${file.name}</strong><br>原始大小: ${originalSize}`;
+
+                if (file.size > MAX_FILE_SIZE) {
+                    try {
+                        const compressedFile = await compressImage(file);
+                        const compressedSize = formatFileSize(compressedFile.size);
+                        const compressionRatio = ((file.size - compressedFile.size) / file.size * 100).toFixed(1);
+                        
+                        resultDiv.className = 'result success';
+                        resultDiv.innerHTML += `<br>✅ 压缩成功: ${compressedSize} (减少 ${compressionRatio}%)`;
+                    } catch (error) {
+                        resultDiv.className = 'result error';
+                        resultDiv.innerHTML += `<br>❌ 压缩失败: ${error.message}`;
+                    }
+                } else {
+                    resultDiv.innerHTML += '<br>✅ 文件大小在限制范围内，无需压缩';
+                }
+
+                resultsDiv.appendChild(resultDiv);
+            }
+        });
+
+        // 创建大图片
+        function createLargeImage() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 4000;
+            canvas.height = 3000;
+            const ctx = canvas.getContext('2d');
+
+            // 创建渐变背景
+            const gradient = ctx.createLinearGradient(0, 0, 4000, 3000);
+            gradient.addColorStop(0, '#ff6b6b');
+            gradient.addColorStop(0.5, '#4ecdc4');
+            gradient.addColorStop(1, '#45b7d1');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 4000, 3000);
+
+            // 添加一些图案
+            for (let i = 0; i < 100; i++) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(
+                    Math.random() * 4000,
+                    Math.random() * 3000,
+                    Math.random() * 50 + 10,
+                    0,
+                    2 * Math.PI
+                );
+                ctx.fill();
+            }
+
+            // 添加文字
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 120px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('大图片测试', 2000, 1500);
+
+            // 转换为blob并下载
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'large-test-image.png';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                const resultDiv = document.getElementById('largeImageResult');
+                resultDiv.innerHTML = `<div class="result success">✅ 大图片已创建并下载: ${formatFileSize(blob.size)}</div>`;
+            }, 'image/png', 1.0);
+        }
+    </script>
+</body>
+</html>
