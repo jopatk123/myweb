@@ -93,6 +93,16 @@ export const messageAPI = {
     });
     return response.data;
   },
+
+  /**
+   * 清除所有留言
+   */
+  async clearAllMessages() {
+    const response = await messageApi.delete('/clear-all', {
+      data: { confirm: true }
+    });
+    return response.data;
+  },
 };
 
 export default messageAPI;

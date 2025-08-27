@@ -98,6 +98,22 @@ export function useMessageBoard() {
     }
   };
 
+  // 清除所有留言
+  const clearAllMessages = async () => {
+    try {
+      const response = await messageAPI.clearAllMessages();
+      if (response.code === 200) {
+        // 清空本地消息列表
+        messages.value = [];
+        return response.data;
+      }
+    } catch (err) {
+      error.value = err.message || '清除留言板失败';
+      console.error('Clear all messages error:', err);
+      throw err;
+    }
+  };
+
   // 获取用户设置
   const fetchUserSettings = async () => {
     try {
@@ -246,6 +262,7 @@ export function useMessageBoard() {
     fetchMessages,
     sendMessage,
     deleteMessage,
+    clearAllMessages,
     updateUserSettings,
     uploadImages,
     formatTime,

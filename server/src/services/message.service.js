@@ -86,4 +86,53 @@ export class MessageService {
   static getAutoOpenSessions() {
     return UserSessionModel.getAutoOpenEnabledSessions();
   }
+
+  /**
+   * 清除所有留言
+   */
+  static async clearAllMessages() {
+    try {
+      // 获取所有带图片的留言
+      const messagesWithImages = MessageModel.findAllWithImages();
+      
+      // 删除物理图片文件
+      for (const message of messagesWithImages) {
+        if (message.images && Array.isArray(message.images)) {
+          for (const image of message.images) {
+            if (image.path) {
+              const fs = await import('fs');
+              const path = await import('path');
+              const { fileURLToPath } = await import('url');
+              
+              const __filename = fileURLToPath(import.meta.url);
+              const __dirname = path.dirname(__filename);
+              const imagePath = path.join(__dirname, '../../', image.path);
+              
+              try {
+                if (fs.existsSync(imagePath)) {
+                  fs.unlinkSync(imagePath);
+                  console.log(`删除图片文件: ${imagePath}`);
+                }
+              } catch (error) {
+                console.error(`删除图片文件失败: ${imagePath}`, error);
+              }
+            }
+          }
+        }
+      }
+
+      // 删除数据库中的所有留言
+      const result = MessageModel.deleteAll();
+      
+      return {
+        deletedMessages: result.changes || 0,
+        deletedImages: messagesWithImages.reduce((count, msg) => {
+          return count + (msg.images ? msg.images.length : 0);
+        }, 0)
+      };
+    } catch (error) {
+      console.error('清除留言板失败:', error);
+      throw new Error('清除留言板失败: ' + error.message);
+    }
+  }
 }

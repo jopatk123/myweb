@@ -204,6 +204,37 @@ export class MessageController {
       next(error);
     }
   }
+
+  /**
+   * 清除所有留言
+   */
+  static async clearAllMessages(req, res, next) {
+    try {
+      const { confirm } = req.body;
+      
+      if (!confirm) {
+        return res.status(400).json({
+          code: 400,
+          message: '需要确认才能清除所有留言'
+        });
+      }
+
+      const result = await MessageService.clearAllMessages();
+
+      // 通过WebSocket广播留言板清空
+      if (req.app.get('wsServer')) {
+        req.app.get('wsServer').broadcast('messagesCleared', {});
+      }
+
+      res.json({
+        code: 200,
+        message: '留言板已清空',
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 // 导出上传中间件供路由使用

@@ -55,6 +55,17 @@
         <button @click="saveSettings" class="save-btn">保存</button>
         <button @click="cancelSettings" class="cancel-btn">取消</button>
       </div>
+      
+      <!-- 危险操作区域 -->
+      <div class="danger-zone">
+        <h4>⚠️ 危险操作</h4>
+        <div class="danger-action">
+          <p>清除留言板将删除所有留言和图片，此操作不可恢复。</p>
+          <button @click="showClearConfirm = true" class="clear-btn">
+            🗑️ 清除留言板
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 消息列表 -->
@@ -154,6 +165,19 @@
         </div>
       </div>
     </div>
+
+    <!-- 清除确认对话框 -->
+    <div v-if="showClearConfirm" class="confirm-dialog-overlay" @click="showClearConfirm = false">
+      <div class="confirm-dialog" @click.stop>
+        <h3>⚠️ 确认清除留言板</h3>
+        <p>此操作将永久删除所有留言和图片文件，无法恢复。</p>
+        <p><strong>确定要继续吗？</strong></p>
+        <div class="confirm-actions">
+          <button @click="showClearConfirm = false" class="cancel-btn">取消</button>
+          <button @click="handleClearMessages" class="confirm-clear-btn">确认清除</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -178,6 +202,7 @@ const {
   fetchMessages,
   sendMessage,
   uploadImages,
+  clearAllMessages,
   updateUserSettings,
   formatTime,
   generateRandomColor,
@@ -189,6 +214,7 @@ const showSettings = ref(false);
 const messageListRef = ref(null);
 const selectedImages = ref([]);
 const fileInput = ref(null);
+const showClearConfirm = ref(false);
 
 // 临时设置（用于编辑）
 const tempSettings = ref({
@@ -318,6 +344,21 @@ const removeImage = (index) => {
   const image = selectedImages.value[index];
   URL.revokeObjectURL(image.url);
   selectedImages.value.splice(index, 1);
+};
+
+// 处理清除留言板
+const handleClearMessages = async () => {
+  try {
+    const result = await clearAllMessages();
+    showClearConfirm.value = false;
+    showSettings.value = false;
+    
+    // 显示清除成功提示
+    alert(`留言板已清空！\n删除了 ${result.deletedMessages} 条留言和 ${result.deletedImages} 张图片`);
+  } catch (err) {
+    console.error('清除留言板失败:', err);
+    alert('清除留言板失败: ' + err.message);
+  }
 };
 
 // 滚动到底部
@@ -514,6 +555,105 @@ watch(messages, () => {
 .cancel-btn {
   background: #6c757d;
   color: white;
+}
+
+.danger-zone {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #dc3545;
+  border-radius: 6px;
+  background: #fff5f5;
+}
+
+.danger-zone h4 {
+  margin: 0 0 12px 0;
+  color: #dc3545;
+  font-size: 14px;
+}
+
+.danger-action {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.danger-action p {
+  margin: 0;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.clear-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  align-self: flex-start;
+}
+
+.clear-btn:hover {
+  background: #c82333;
+}
+
+.confirm-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.confirm-dialog {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-dialog h3 {
+  margin: 0 0 16px 0;
+  color: #dc3545;
+  font-size: 18px;
+}
+
+.confirm-dialog p {
+  margin: 0 0 12px 0;
+  color: #495057;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.confirm-clear-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.confirm-clear-btn:hover {
+  background: #c82333;
 }
 
 .message-list {

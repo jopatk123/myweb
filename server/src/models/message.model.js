@@ -101,4 +101,35 @@ export class MessageModel {
       return message;
     });
   }
+
+  /**
+   * 获取所有带图片的留言
+   */
+  static findAllWithImages() {
+    const db = getDb();
+    const stmt = db.prepare(`
+      SELECT id, content, author_name as authorName, author_color as authorColor, 
+             session_id as sessionId, images, image_type as imageType, created_at as createdAt, updated_at as updatedAt
+      FROM messages 
+      WHERE images IS NOT NULL AND images != ''
+      ORDER BY created_at DESC
+    `);
+    
+    const messages = stmt.all();
+    return messages.map(message => {
+      if (message.images) {
+        message.images = JSON.parse(message.images);
+      }
+      return message;
+    });
+  }
+
+  /**
+   * 删除所有留言
+   */
+  static deleteAll() {
+    const db = getDb();
+    const stmt = db.prepare(`DELETE FROM messages`);
+    return stmt.run();
+  }
 }
