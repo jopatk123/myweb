@@ -3,6 +3,7 @@
  */
 import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
+import { SnakeMultiplayerService } from './snake-multiplayer.service.js';
 
 export class WebSocketService {
   constructor() {
