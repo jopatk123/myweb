@@ -107,6 +107,17 @@
               自动保存阅读进度
             </label>
           </div>
+
+          <div class="setting-item">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                :checked="settings.autoMinimize"
+                @change="updateSetting('autoMinimize', $event.target.checked)"
+              />
+              鼠标移出窗口自动最小化
+            </label>
+          </div>
         </div>
 
         <!-- 预设方案 -->
@@ -163,7 +174,7 @@
         fontSize: 16,
         lineHeight: 1.6,
         fontFamily: 'serif',
-        theme: 'light',
+        theme: 'sepia', // 默认使用护眼主题
         pageWidth: 800,
       },
     },
@@ -210,7 +221,12 @@
   }
 
   function applyPreset(preset) {
-    const newSettings = { ...props.settings, ...preset.settings };
+    // 应用预设时保留 autoMinimize 设置
+    const newSettings = { 
+      ...props.settings, 
+      ...preset.settings,
+      autoMinimize: props.settings.autoMinimize // 保持用户的自定义设置
+    };
     emit('update:settings', newSettings);
   }
 </script>

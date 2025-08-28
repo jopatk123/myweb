@@ -84,30 +84,47 @@
   const minimizeTimer = ref(null);
   const isNovelReader = computed(() => props.window.appSlug === 'novel-reader');
 
+  // 获取小说阅读器设置
+  const getNovelReaderSettings = () => {
+    try {
+      const settings = localStorage.getItem('novel-reader-settings');
+      return settings ? JSON.parse(settings) : { autoMinimize: false };
+    } catch (e) {
+      return { autoMinimize: false };
+    }
+  };
+
+  // 检查是否启用自动最小化
+  const isAutoMinimizeEnabled = computed(() => {
+    if (!isNovelReader.value) return false;
+    const settings = getNovelReaderSettings();
+    return settings.autoMinimize === true;
+  });
+
   // 鼠标进入窗口
   function onMouseEnter() {
-    if (isNovelReader.value) {
+    if (isNovelReader.value && isAutoMinimizeEnabled.value) {
       cancelMinimize();
     }
   }
 
   // 鼠标离开窗口
   function onMouseLeave() {
-    if (isNovelReader.value && props.isActive) {
+    if (isNovelReader.value && props.isActive && isAutoMinimizeEnabled.value) {
       scheduleMinimize();
     }
   }
 
   // 窗口获得焦点
   function onFocusIn() {
-    if (isNovelReader.value) {
+    if (isNovelReader.value && isAutoMinimizeEnabled.value) {
       cancelMinimize();
     }
   }
 
   // 窗口失去焦点
   function onFocusOut() {
-    if (isNovelReader.value && props.isActive) {
+    if (isNovelReader.value && props.isActive && isAutoMinimizeEnabled.value) {
       scheduleMinimize(0); // 立即最小化
     }
   }

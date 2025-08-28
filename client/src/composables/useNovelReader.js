@@ -22,9 +22,10 @@ export function useNovelReader() {
     fontSize: 16,
     lineHeight: 1.6,
     fontFamily: 'serif',
-    theme: 'light',
+    theme: 'sepia', // 默认使用护眼主题
     pageWidth: 800,
     autoSave: true,
+    autoMinimize: false, // 鼠标移出窗口自动最小化，默认关闭
   });
 
   // 使用其他 composables
