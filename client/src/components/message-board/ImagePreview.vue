@@ -108,7 +108,7 @@ const contextMenuTarget = ref(null);
 // 获取图片URL
 const getImageUrl = (image) => {
   if (image.path) {
-    const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3002';
+    const apiBase = import.meta.env.VITE_API_BASE || '';
     return apiBase.endsWith('/') ? `${apiBase}${image.path}` : `${apiBase}/${image.path}`;
   }
   return image.url || image;

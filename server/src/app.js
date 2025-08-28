@@ -80,6 +80,17 @@ app.use('/api/work-timer', createWorkTimerRoutes(db));
 app.use('/api/novel-bookmarks', createNovelBookmarkRoutes(db));
 app.use('/api/messages', messageRoutes);
 
+// 提供客户端静态文件
+app.use(express.static(path.join(__dirname, '../../client/dist')));
+
+// 对于所有非API路由，返回index.html（SPA路由支持）
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+});
+
 // 健康检查
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

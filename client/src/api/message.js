@@ -5,7 +5,7 @@ import axios from 'axios';
 
 // 处理API基础URL
 const getApiBase = () => {
-  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3002';
+  const apiBase = import.meta.env.VITE_API_BASE || '/api';
   // 如果是相对路径，直接使用
   if (apiBase.startsWith('/')) {
     return apiBase;
