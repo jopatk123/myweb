@@ -108,6 +108,11 @@ const contextMenuTarget = ref(null);
 // 获取图片URL
 const getImageUrl = (image) => {
   if (image.path) {
+    // 如果路径以 uploads/ 开头，直接使用相对路径（不添加API前缀）
+    if (image.path.startsWith('uploads/')) {
+      return `/${image.path}`;
+    }
+    // 其他路径使用API前缀
     const apiBase = import.meta.env.VITE_API_BASE || '';
     return apiBase.endsWith('/') ? `${apiBase}${image.path}` : `${apiBase}/${image.path}`;
   }
