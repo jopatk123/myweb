@@ -77,7 +77,7 @@ export class NovelBookmarkService {
 
   async deleteBookmark(id) {
     try {
-      console.log('[novel-bookmark-service] deleteBookmark called', { id });
+
       const result = this.bookmarkModel.delete(id);
       return {
         success: true,
@@ -110,16 +110,11 @@ export class NovelBookmarkService {
 
   async syncBookmarks(deviceId, localBookmarks) {
     try {
-      console.log('[novel-bookmark-service] syncBookmarks start', {
-        deviceId,
-        localCount: Array.isArray(localBookmarks) ? localBookmarks.length : 0,
-      });
+
 
       // 获取服务器上的书签（改为返回所有书签，确保跨设备可见）
       const serverBookmarks = this.bookmarkModel.findAll();
-      console.log('[novel-bookmark-service] serverBookmarks loaded', {
-        count: Array.isArray(serverBookmarks) ? serverBookmarks.length : 0,
-      });
+
 
       // 创建本地书签的映射
       const localBookmarkMap = new Map();
@@ -170,19 +165,14 @@ export class NovelBookmarkService {
         ].join('|');
         return !serverDupKeys.has(key);
       });
-      console.log('[novel-bookmark-service] bookmarksToUpload', {
-        count: bookmarksToUpload.length,
-        sampleIds: bookmarksToUpload.map(b => b.id).slice(0, 20),
-      });
+
 
       // 需要下载到本地的书签（服务器有但本地没有）
       const bookmarksToDownload = serverBookmarks.filter(
         bookmark =>
           bookmark && bookmark.id && !localBookmarkMap.has(bookmark.id)
       );
-      console.log('[novel-bookmark-service] bookmarksToDownload', {
-        count: bookmarksToDownload.length,
-      });
+
 
       // 批量上传新书签
       let uploadedBookmarks = [];
@@ -193,10 +183,7 @@ export class NovelBookmarkService {
             deviceId,
           }))
         );
-        console.log('[novel-bookmark-service] uploadedBookmarks', {
-          count: uploadedBookmarks.length,
-          ids: uploadedBookmarks.map(b => b.id).slice(0, 20),
-        });
+
       }
 
       return {

@@ -56,16 +56,13 @@ export class AppController {
 
   async create(req, res, next) {
     try {
-      console.log('[AppController.create] 接收到的请求体:', req.body);
       // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
       const { mapToSnake } = await import('../utils/field-mapper.js');
       const bodySnake = mapToSnake(req.body || {});
-      console.log('[AppController.create] 转换后的数据:', bodySnake);
       // 启用 Joi 的类型转换（例如字符串数字 -> number）以确保 group_id 被转换为 number
       const payload = await appSchema.validateAsync(bodySnake, {
         convert: true,
       });
-      console.log('[AppController.create] 验证后的数据:', payload);
 
       // 处理前端可能发送的空字符串：把空字符串归一为 null
       if (payload.group_id === '') payload.group_id = null;
@@ -98,15 +95,10 @@ export class AppController {
       const { mapToSnake } = await import('../utils/field-mapper.js');
       const bodySnake = mapToSnake(req.body || {});
 
-      console.log('AppController.update - req.body:', req.body);
-      console.log('AppController.update - bodySnake:', bodySnake);
-
       // 开启 Joi 类型转换，兼容前端字符串数字等情况
       const payload = await appSchema
         .fork(['name', 'slug'], s => s.optional())
         .validateAsync(bodySnake, { convert: true });
-
-      console.log('AppController.update - payload after validation:', payload);
 
       // 禁止将应用改为内置
       if (payload.is_builtin) delete payload.is_builtin;
@@ -181,7 +173,6 @@ export class AppController {
   async move(req, res, next) {
     try {
       const { ids, targetGroupId } = req.body;
-      console.log('[AppController.move] received', { ids, targetGroupId });
       if (!Array.isArray(ids) || ids.length === 0) {
         return res
           .status(400)
@@ -191,7 +182,6 @@ export class AppController {
         ids.map(Number),
         Number(targetGroupId)
       );
-      console.log('[AppController.move] moveApps result', result);
       res.json({ code: 200, message: '移动成功' });
     } catch (error) {
       next(error);

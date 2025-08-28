@@ -121,15 +121,13 @@ async function deleteGroup(id) {
 async function createApp(payload) {
   try {
     lastError.value = null;
-    console.log('[useApps.createApp] 发送的数据:', payload);
+    
     const resp = await fetch('/api/myapps', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    console.log('[useApps.createApp] 响应状态:', resp.status);
-    const json = await resp.json();
-    console.log('[useApps.createApp] 响应数据:', json);
+          const json = await resp.json();
     if (!resp.ok) throw new Error(json?.message || '创建失败');
     return json.data;
   } catch (e) {
@@ -238,14 +236,14 @@ async function setAutostart(id, autostart) {
 async function moveApps(ids, targetGroupId) {
   try {
     lastError.value = null;
-    console.log('useApps.moveApps request', { ids, targetGroupId });
+    
     const resp = await fetch('/api/myapps/move', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids, targetGroupId }),
     });
     const json = await resp.json();
-    console.log('useApps.moveApps response', resp.status, json);
+    
     if (!resp.ok) throw new Error(json?.message || '移动失败');
     return json?.data ?? true;
   } catch (e) {

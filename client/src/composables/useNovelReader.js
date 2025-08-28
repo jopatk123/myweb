@@ -305,7 +305,7 @@ export function useNovelReader() {
 
   function showBookInfo(book) {
     // 显示书籍详情的逻辑
-    console.log('显示书籍信息:', book);
+    
   }
 
   // 处理强制同步书签

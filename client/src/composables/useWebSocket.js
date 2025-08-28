@@ -54,7 +54,7 @@ export function useWebSocket() {
       }
 
       ws.value.onopen = () => {
-        console.log('WebSocket connected');
+  
         isConnected.value = true;
         reconnectAttempts.value = 0;
 
@@ -72,15 +72,13 @@ export function useWebSocket() {
       };
 
       ws.value.onclose = () => {
-        console.log('WebSocket disconnected');
+  
         isConnected.value = false;
 
         // 自动重连
         if (reconnectAttempts.value < maxReconnectAttempts) {
           reconnectAttempts.value++;
-          console.log(
-            `Attempting to reconnect... (${reconnectAttempts.value}/${maxReconnectAttempts})`
-          );
+
 
           reconnectInterval.value = setTimeout(() => {
             connect();

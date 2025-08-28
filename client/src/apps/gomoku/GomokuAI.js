@@ -35,7 +35,7 @@ export class GomokuAI {
 
     // 记录结束时间
     const endTime = performance.now();
-    console.log(`AI move took ${endTime - startTime}ms`);
+
 
     return result.move;
   }
