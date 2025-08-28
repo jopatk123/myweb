@@ -80,7 +80,7 @@ myweb/
 
 - **开发环境**:
   - 前端: http://localhost:3000
-  - 后端API: http://localhost:3002
+  - 后端API: http://localhost:3302
 - **生产环境**:
   - 应用: http://localhost:50001
 
@@ -107,11 +107,11 @@ myweb/
 
 ```bash
 # 前端
-VITE_API_BASE=http://localhost:3002
+VITE_API_BASE=http://localhost:3302
 VITE_APP_TITLE=MyWeb
 
 # 后端
-PORT=3002
+PORT=3302
 NODE_ENV=development
 DB_PATH=./data/myweb.db
 CORS_ORIGIN=http://localhost:3000

@@ -6,7 +6,7 @@ echo "🚀 Starting MyWeb Development Environment..."
 
 # 默认端口（如需更改，请在运行前导出 FRONTEND_PORT/BACKEND_PORT）
 FRONTEND_PORT=${FRONTEND_PORT:-3000}
-BACKEND_PORT=${BACKEND_PORT:-3002}
+BACKEND_PORT=${BACKEND_PORT:-3302}
 
 # PID 文件位置
 FRONTEND_PIDFILE="/tmp/myweb-frontend.pid"

@@ -18,7 +18,7 @@ server {
     # API代理
     location /api/ {
         # 转发到后端并保留原始请求路径（确保后端以 /api 前缀注册的路由能被匹配）
-        proxy_pass http://backend:3002;
+        proxy_pass http://backend:3302;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -32,7 +32,7 @@ server {
     
     # WebSocket代理
     location /ws {
-        proxy_pass http://backend:3002/ws;
+        proxy_pass http://backend:3302/ws;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -56,7 +56,7 @@ server {
     
     # 健康检查
     location /health {
-        proxy_pass http://backend:3002/health;
+        proxy_pass http://backend:3302/health;
     }
     
     # 安全头

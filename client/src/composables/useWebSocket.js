@@ -34,7 +34,7 @@ export function useWebSocket() {
       }
     } else {
       // 开发环境端口映射
-      host = window.location.host.replace(':3000', ':3002');
+      host = window.location.host.replace(':3000', ':3302');
     }
     
     return `${protocol}//${host}/ws`;

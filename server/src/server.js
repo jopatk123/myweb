@@ -3,7 +3,7 @@ import app from './app.js';
 import { createUploadDirs } from './utils/file-helper.js';
 import { WebSocketService } from './services/websocket.service.js';
 
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3302;
 
 // 创建上传目录
 await createUploadDirs();

@@ -5,10 +5,10 @@ services:
       dockerfile: docker/Dockerfile.server
     container_name: myweb-backend
     ports:
-      - '${BACKEND_HOST_PORT:-3002}:${BACKEND_PORT:-3002}'
+      - '${BACKEND_HOST_PORT:-3302}:${BACKEND_PORT:-3302}'
     environment:
       - NODE_ENV=production
-      - PORT=${BACKEND_PORT:-3002}
+      - PORT=${BACKEND_PORT:-3302}
       - DB_PATH=/app/data/myweb.db
       # 默认 CORS_ORIGIN 指向部署的宿主机和端口（可在环境或 .env 中覆盖）
       - CORS_ORIGIN=${CORS_ORIGIN:-http://43.163.120.212:10010}
@@ -20,7 +20,7 @@ services:
       - ../client/public/apps/icons:/app/preset-icons:ro
     restart: unless-stopped
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3002/health']
+      test: ['CMD', 'curl', '-f', 'http://localhost:3302/health']
       interval: 30s
       timeout: 10s
       retries: 3

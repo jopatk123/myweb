@@ -9,7 +9,7 @@
 | `{{project}}`    | 项目短名(kebab-case) | `awesome-app` |
 | `{{Project}}`    | 项目 Pascal 名       | `AwesomeApp`  |
 | `{{PORT_FE}}`    | 前端开发服务器端口   | `3000`        |
-| `{{PORT_BE}}`    | 后端 API 端口        | `3002`        |
+| `{{PORT_BE}}`    | 后端 API 端口        | `3302`        |
 | `{{PORT_NGINX}}` | 生产 Nginx 端口      | `50001`       |
 | `{{DB_NAME}}`    | SQLite 文件名        | `awesome.db`  |
 | `{{JWT_SECRET}}` | 随机 32 位字符串     | `xxx…`        |
