@@ -27,9 +27,9 @@ export function useNovelBookmarks() {
 
     try {
       loading.value = true;
-      
+
       const response = await bookmarksApi.getByFileId(fileId);
-      
+
       if (response && response.success && Array.isArray(response.data)) {
         const serverBookmarks = response.data;
         const bookmarksToAdd = serverBookmarks.map(serverBookmark => ({
@@ -43,7 +43,7 @@ export function useNovelBookmarks() {
           serverId: serverBookmark.id,
           fileId: serverBookmark.fileId,
         }));
-        
+
         bookmarks.value[bookId] = bookmarksToAdd;
         saveBookmarksToLocal();
       } else {
@@ -109,11 +109,11 @@ export function useNovelBookmarks() {
   async function deleteBookmark(bookId, bookmarkId) {
     try {
       loading.value = true;
-      
+
       const list = bookmarks.value[bookId] || [];
       const target = list.find(b => b.id === bookmarkId);
       const serverId = target?.serverId || target?.id;
-      
+
       if (serverId) {
         try {
           await bookmarksApi.delete(serverId);
@@ -125,7 +125,7 @@ export function useNovelBookmarks() {
           }
         }
       }
-      
+
       bookmarks.value[bookId] = list.filter(b => b.id !== bookmarkId);
       saveBookmarksToLocal();
     } catch (error) {
@@ -143,16 +143,12 @@ export function useNovelBookmarks() {
       const list = bookmarks.value[bookId] || [];
       const target = list.find(b => b.id === bookmarkId);
       if (!target) return;
-      
+
       const serverId = target.serverId || target.id;
       if (serverId) {
-        try {
-          await bookmarksApi.update(serverId, updates);
-        } catch (e) {
-          throw e;
-        }
+        await bookmarksApi.update(serverId, updates);
       }
-      
+
       Object.assign(target, updates);
       target.updatedAt = new Date().toISOString();
       saveBookmarksToLocal();
@@ -170,7 +166,10 @@ export function useNovelBookmarks() {
       loading.value = true;
       try {
         let response = await bookmarksApi.getByBookId(bookId);
-        if (!(response && response.success && Array.isArray(response.data)) && fileId) {
+        if (
+          !(response && response.success && Array.isArray(response.data)) &&
+          fileId
+        ) {
           response = await bookmarksApi.getByFileId(fileId);
         }
         if (response && response.success && Array.isArray(response.data)) {
@@ -202,7 +201,7 @@ export function useNovelBookmarks() {
   async function syncAllBookmarks() {
     try {
       loading.value = true;
-      
+
       const response = await bookmarksApi.getAll();
       if (response && response.success && Array.isArray(response.data)) {
         const serverBookmarks = response.data;
@@ -251,7 +250,7 @@ export function useNovelBookmarks() {
             fileId: sb.fileId,
           });
         });
-        
+
         bookmarks.value = grouped;
         saveBookmarksToLocal();
       }

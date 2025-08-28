@@ -136,7 +136,12 @@ export class NovelBookmarkService {
       // 用于避免重复与“删除后复活”的辅助集合（按语义去重）
       const serverDupKeys = new Set(
         serverBookmarks.map(b =>
-          [b.book_id || b.bookId, b.chapter_index || b.chapterIndex, b.scroll_position || b.scrollPosition, (b.title || '').slice(0, 120)].join('|')
+          [
+            b.book_id || b.bookId,
+            b.chapter_index || b.chapterIndex,
+            b.scroll_position || b.scrollPosition,
+            (b.title || '').slice(0, 120),
+          ].join('|')
         )
       );
 
@@ -157,7 +162,12 @@ export class NovelBookmarkService {
 
       // 进一步：按语义去重，若服务器已有同一 (bookId, chapterIndex, scrollPosition, title) 的项，则不上传
       bookmarksToUpload = bookmarksToUpload.filter(b => {
-        const key = [b.bookId, b.chapterIndex, b.scrollPosition, (b.title || '').slice(0, 120)].join('|');
+        const key = [
+          b.bookId,
+          b.chapterIndex,
+          b.scrollPosition,
+          (b.title || '').slice(0, 120),
+        ].join('|');
         return !serverDupKeys.has(key);
       });
       console.log('[novel-bookmark-service] bookmarksToUpload', {
@@ -167,7 +177,8 @@ export class NovelBookmarkService {
 
       // 需要下载到本地的书签（服务器有但本地没有）
       const bookmarksToDownload = serverBookmarks.filter(
-        bookmark => bookmark && bookmark.id && !localBookmarkMap.has(bookmark.id)
+        bookmark =>
+          bookmark && bookmark.id && !localBookmarkMap.has(bookmark.id)
       );
       console.log('[novel-bookmark-service] bookmarksToDownload', {
         count: bookmarksToDownload.length,

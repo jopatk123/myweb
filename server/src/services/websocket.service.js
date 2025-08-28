@@ -11,23 +11,25 @@ export class WebSocketService {
   }
 
   init(server) {
-    this.wss = new WebSocketServer({ 
+    this.wss = new WebSocketServer({
       server,
-      path: '/ws'
+      path: '/ws',
     });
 
     this.wss.on('connection', (ws, req) => {
       const sessionId = req.headers['x-session-id'] || uuidv4();
-      
+
       this.clients.set(sessionId, ws);
       console.log(`WebSocket client connected: ${sessionId}`);
 
-      ws.send(JSON.stringify({
-        type: 'connected',
-        sessionId
-      }));
+      ws.send(
+        JSON.stringify({
+          type: 'connected',
+          sessionId,
+        })
+      );
 
-      ws.on('message', (data) => {
+      ws.on('message', data => {
         try {
           const message = JSON.parse(data.toString());
           this.handleMessage(sessionId, message);
@@ -41,7 +43,7 @@ export class WebSocketService {
         console.log(`WebSocket client disconnected: ${sessionId}`);
       });
 
-      ws.on('error', (error) => {
+      ws.on('error', error => {
         console.error(`WebSocket error for ${sessionId}:`, error);
         this.clients.delete(sessionId);
       });
@@ -72,7 +74,7 @@ export class WebSocketService {
 
   broadcast(type, data) {
     const message = JSON.stringify({ type, data });
-    
+
     this.clients.forEach((client, sessionId) => {
       if (client.readyState === client.OPEN) {
         client.send(message);

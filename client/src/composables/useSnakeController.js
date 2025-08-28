@@ -1,4 +1,17 @@
-export default function useSnakeController({ gameStep, updateParticles, speed, snakeCanvasRef, startGame, pauseGame, restartGame, setDirection, composableHandleCanvasClick, gameStarted, paused, gameOver }) {
+export default function useSnakeController({
+  gameStep,
+  updateParticles,
+  speed,
+  snakeCanvasRef,
+  startGame,
+  pauseGame,
+  restartGame,
+  setDirection,
+  composableHandleCanvasClick,
+  gameStarted,
+  paused,
+  gameOver,
+}) {
   const timerRef = { current: null };
 
   function clearTimer() {

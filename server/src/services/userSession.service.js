@@ -7,7 +7,12 @@ export class UserSessionService {
   /**
    * 更新用户设置
    */
-  static async updateUserSettings({ sessionId, nickname, avatarColor, autoOpenEnabled }) {
+  static async updateUserSettings({
+    sessionId,
+    nickname,
+    avatarColor,
+    autoOpenEnabled,
+  }) {
     // 验证昵称
     if (nickname && nickname.length > 50) {
       throw new Error('昵称不能超过50个字符');
@@ -22,7 +27,7 @@ export class UserSessionService {
       sessionId,
       nickname: nickname || 'Anonymous',
       avatarColor: avatarColor || '#007bff',
-      autoOpenEnabled: autoOpenEnabled === undefined ? true : autoOpenEnabled
+      autoOpenEnabled: autoOpenEnabled === undefined ? true : autoOpenEnabled,
     });
 
     return userSession;
@@ -33,14 +38,14 @@ export class UserSessionService {
    */
   static async getUserSettings(sessionId) {
     let userSession = UserSessionModel.findBySessionId(sessionId);
-    
+
     if (!userSession) {
       // 如果用户会话不存在，创建默认设置
       userSession = UserSessionModel.upsert({
         sessionId,
         nickname: 'Anonymous',
         avatarColor: '#007bff',
-        autoOpenEnabled: true
+        autoOpenEnabled: true,
       });
     }
 

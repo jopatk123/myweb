@@ -90,6 +90,7 @@
   import { useMessageBoardAutoOpen } from '@/composables/useMessageBoardAutoOpen.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
   import FloatingControls from '@/components/common/FloatingControls.vue';
+  import FilePreviewWindow from '@/components/file/FilePreviewWindow.vue';
 
   const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
     useWallpaper();

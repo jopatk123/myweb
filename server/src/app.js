@@ -92,8 +92,8 @@ app.get('/api', (req, res) => {
       notebook: '/api/notebook',
       workTimer: '/api/work-timer',
       novelBookmarks: '/api/novel-bookmarks',
-      messages: '/api/messages'
-    }
+      messages: '/api/messages',
+    },
   });
 });
 

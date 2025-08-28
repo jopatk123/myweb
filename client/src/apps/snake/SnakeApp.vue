@@ -46,80 +46,80 @@
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
-import SnakeHeader from './SnakeHeader.vue';
-import SnakeControls from './SnakeControls.vue';
-import SnakeCanvas from './SnakeCanvas.vue';
-import SnakeOverlays from './SnakeOverlays.vue';
-import useSnakeGame from '../../composables/useSnakeGame';
-import useSnakeController from '../../composables/useSnakeController';
-import './SnakeApp.css';
+  import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
+  import SnakeHeader from './SnakeHeader.vue';
+  import SnakeControls from './SnakeControls.vue';
+  import SnakeCanvas from './SnakeCanvas.vue';
+  import SnakeOverlays from './SnakeOverlays.vue';
+  import useSnakeGame from '../../composables/useSnakeGame';
+  import useSnakeController from '../../composables/useSnakeController';
+  import './SnakeApp.css';
 
-const snakeCanvas = ref(null);
-const boardSize = 400;
-const cell = 20;
+  const snakeCanvas = ref(null);
+  const boardSize = 400;
+  const cell = 20;
 
-const {
-  gameStarted,
-  gameOver,
-  paused,
-  score,
-  highScore,
-  level,
-  difficulty,
-  snake,
-  dir,
-  food,
-  specialFood,
-  particles,
-  speed,
-  gridSize,
-  randomFood,
-  createSpecialFood,
-  addParticles,
-  updateParticles,
-  checkCollision,
-  step: gameStep,
-  startGame,
-  pauseGame,
-  restartGame,
-  setDirection,
-  handleCanvasClick: composableHandleCanvasClick,
-} = useSnakeGame();
+  const {
+    gameStarted,
+    gameOver,
+    paused,
+    score,
+    highScore,
+    level,
+    difficulty,
+    snake,
+    dir,
+    food,
+    specialFood,
+    particles,
+    speed,
+    gridSize,
+    randomFood,
+    createSpecialFood,
+    addParticles,
+    updateParticles,
+    checkCollision,
+    step: gameStep,
+    startGame,
+    pauseGame,
+    restartGame,
+    setDirection,
+    handleCanvasClick: composableHandleCanvasClick,
+  } = useSnakeGame();
 
-const {
-  start,
-  pause,
-  restart,
-  updateSpeed,
-  handleCanvasClick,
-  bindEvents,
-  unbindEvents,
-} = useSnakeController({
-  gameStep,
-  updateParticles,
-  speed,
-  snakeCanvasRef: snakeCanvas,
-  startGame,
-  pauseGame,
-  restartGame,
-  setDirection,
-  composableHandleCanvasClick,
-  gameStarted,
-  paused,
-  gameOver,
-});
+  const {
+    start,
+    pause,
+    restart,
+    updateSpeed,
+    handleCanvasClick,
+    bindEvents,
+    unbindEvents,
+  } = useSnakeController({
+    gameStep,
+    updateParticles,
+    speed,
+    snakeCanvasRef: snakeCanvas,
+    startGame,
+    pauseGame,
+    restartGame,
+    setDirection,
+    composableHandleCanvasClick,
+    gameStarted,
+    paused,
+    gameOver,
+  });
 
-watch(difficulty, updateSpeed);
+  watch(difficulty, updateSpeed);
 
-onMounted(() => {
-  setTimeout(() => {
-    snakeCanvas.value?.draw();
-  }, 0);
-  bindEvents();
-});
+  onMounted(() => {
+    setTimeout(() => {
+      snakeCanvas.value?.draw();
+    }, 0);
+    bindEvents();
+  });
 
-onBeforeUnmount(() => {
-  unbindEvents();
-});
+  onBeforeUnmount(() => {
+    unbindEvents();
+  });
 </script>

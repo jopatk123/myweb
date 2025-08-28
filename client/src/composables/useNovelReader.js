@@ -311,7 +311,7 @@ export function useNovelReader() {
   // 处理强制同步书签
   async function handleForceSyncBookmarks(bookId, fileId) {
     if (!currentBook.value || currentBook.value.id !== bookId) return;
-    
+
     try {
       await forceSyncBookmarks(bookId, fileId);
       currentBook.value.bookmarks = getBookmarksByBookId(bookId);
@@ -340,7 +340,9 @@ export function useNovelReader() {
     const autoSync = async () => {
       try {
         await syncAllBookmarks();
-      } catch (_) {}
+      } catch (error) {
+        console.warn('自动同步书签失败:', error);
+      }
     };
     window.addEventListener('focus', autoSync);
     window.addEventListener('online', autoSync);

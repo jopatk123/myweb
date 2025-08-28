@@ -7,16 +7,30 @@ export class MessageModel {
   /**
    * 创建留言
    */
-  static create({ content, authorName = 'Anonymous', authorColor = '#007bff', sessionId, images = null, imageType = null }) {
+  static create({
+    content,
+    authorName = 'Anonymous',
+    authorColor = '#007bff',
+    sessionId,
+    images = null,
+    imageType = null,
+  }) {
     const db = getDb();
     const stmt = db.prepare(`
       INSERT INTO messages (content, author_name, author_color, session_id, images, image_type, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
-    
+
     const imagesJson = images ? JSON.stringify(images) : null;
-    const result = stmt.run(content, authorName, authorColor, sessionId, imagesJson, imageType);
-    
+    const result = stmt.run(
+      content,
+      authorName,
+      authorColor,
+      sessionId,
+      imagesJson,
+      imageType
+    );
+
     // 返回创建的留言
     return this.findById(result.lastInsertRowid);
   }
@@ -32,7 +46,7 @@ export class MessageModel {
       FROM messages 
       WHERE id = ?
     `);
-    
+
     const message = stmt.get(id);
     if (message && message.images) {
       message.images = JSON.parse(message.images);
@@ -52,7 +66,7 @@ export class MessageModel {
       ORDER BY created_at ${order}
       LIMIT ? OFFSET ?
     `);
-    
+
     const messages = stmt.all(limit, offset);
     return messages.map(message => {
       if (message.images) {
@@ -92,7 +106,7 @@ export class MessageModel {
       WHERE datetime(created_at) >= datetime('now', '-${minutes} minutes')
       ORDER BY created_at DESC
     `);
-    
+
     const messages = stmt.all();
     return messages.map(message => {
       if (message.images) {
@@ -114,7 +128,7 @@ export class MessageModel {
       WHERE images IS NOT NULL AND images != ''
       ORDER BY created_at DESC
     `);
-    
+
     const messages = stmt.all();
     return messages.map(message => {
       if (message.images) {

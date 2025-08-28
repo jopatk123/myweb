@@ -8,7 +8,14 @@ export class MessageService {
   /**
    * 发送留言
    */
-  static async sendMessage({ content, sessionId, authorName, authorColor, images, imageType }) {
+  static async sendMessage({
+    content,
+    sessionId,
+    authorName,
+    authorColor,
+    images,
+    imageType,
+  }) {
     // 验证内容：允许没有文字但有图片的情况
     const hasText = content && content.toString().trim().length > 0;
     const hasImages = images && Array.isArray(images) && images.length > 0;
@@ -32,7 +39,8 @@ export class MessageService {
     // 获取或创建用户会话
     const userSession = UserSessionModel.findBySessionId(sessionId);
     const finalAuthorName = authorName || userSession?.nickname || 'Anonymous';
-    const finalAuthorColor = authorColor || userSession?.avatarColor || '#007bff';
+    const finalAuthorColor =
+      authorColor || userSession?.avatarColor || '#007bff';
 
     // 创建留言
     const message = MessageModel.create({
@@ -41,7 +49,7 @@ export class MessageService {
       authorColor: finalAuthorColor,
       sessionId,
       images,
-      imageType
+      imageType,
     });
 
     // 更新用户最后活跃时间
@@ -66,8 +74,8 @@ export class MessageService {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -96,7 +104,7 @@ export class MessageService {
     try {
       // 获取所有带图片的留言
       const messagesWithImages = MessageModel.findAllWithImages();
-      
+
       // 删除物理图片文件
       for (const message of messagesWithImages) {
         if (message.images && Array.isArray(message.images)) {
@@ -105,11 +113,11 @@ export class MessageService {
               const fs = await import('fs');
               const path = await import('path');
               const { fileURLToPath } = await import('url');
-              
+
               const __filename = fileURLToPath(import.meta.url);
               const __dirname = path.dirname(__filename);
               const imagePath = path.join(__dirname, '../../', image.path);
-              
+
               try {
                 if (fs.existsSync(imagePath)) {
                   fs.unlinkSync(imagePath);
@@ -125,12 +133,12 @@ export class MessageService {
 
       // 删除数据库中的所有留言
       const result = MessageModel.deleteAll();
-      
+
       return {
         deletedMessages: result.changes || 0,
         deletedImages: messagesWithImages.reduce((count, msg) => {
           return count + (msg.images ? msg.images.length : 0);
-        }, 0)
+        }, 0),
       };
     } catch (error) {
       console.error('清除留言板失败:', error);

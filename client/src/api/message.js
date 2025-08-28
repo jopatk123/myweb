@@ -23,7 +23,7 @@ const messageApi = axios.create({
 });
 
 // 请求拦截器 - 添加会话ID
-messageApi.interceptors.request.use((config) => {
+messageApi.interceptors.request.use(config => {
   const sessionId = localStorage.getItem('sessionId') || generateSessionId();
   config.headers['X-Session-Id'] = sessionId;
   return config;
@@ -31,7 +31,8 @@ messageApi.interceptors.request.use((config) => {
 
 // 生成会话ID
 function generateSessionId() {
-  const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  const sessionId =
+    'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   localStorage.setItem('sessionId', sessionId);
   return sessionId;
 }
@@ -85,7 +86,7 @@ export const messageAPI = {
     for (let i = 0; i < files.length; i++) {
       formData.append('images', files[i]);
     }
-    
+
     const response = await messageApi.post('/upload-image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -99,7 +100,7 @@ export const messageAPI = {
    */
   async clearAllMessages() {
     const response = await messageApi.delete('/clear-all', {
-      data: { confirm: true }
+      data: { confirm: true },
     });
     return response.data;
   },

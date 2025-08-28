@@ -2,7 +2,10 @@
  * 留言路由
  */
 import express from 'express';
-import { MessageController, uploadImage } from '../controllers/message.controller.js';
+import {
+  MessageController,
+  uploadImage,
+} from '../controllers/message.controller.js';
 
 const router = express.Router();
 
@@ -19,7 +22,11 @@ router.get('/user-settings', MessageController.getUserSettings);
 router.put('/user-settings', MessageController.updateUserSettings);
 
 // 上传图片
-router.post('/upload-image', uploadImage.array('images', 5), MessageController.uploadImage);
+router.post(
+  '/upload-image',
+  uploadImage.array('images', 5),
+  MessageController.uploadImage
+);
 
 // 清除所有留言
 router.delete('/clear-all', MessageController.clearAllMessages);

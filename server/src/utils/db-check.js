@@ -22,7 +22,7 @@ export function checkDatabaseTables() {
     'novel_bookmarks',
     'work_sessions',
     'work_daily_totals',
-    'work_stats'
+    'work_stats',
   ];
 
   const missingTables = [];
@@ -36,7 +36,7 @@ export function checkDatabaseTables() {
         WHERE type='table' AND name=?
       `);
       const result = stmt.get(tableName);
-      
+
       if (result) {
         existingTables.push(tableName);
       } else {
@@ -51,7 +51,7 @@ export function checkDatabaseTables() {
   return {
     existingTables,
     missingTables,
-    allTablesExist: missingTables.length === 0
+    allTablesExist: missingTables.length === 0,
   };
 }
 
@@ -77,11 +77,11 @@ export function checkDatabaseConnection() {
 export function getDatabaseStatus() {
   const connectionOk = checkDatabaseConnection();
   const tableCheck = checkDatabaseTables();
-  
+
   return {
     connection: connectionOk ? 'ok' : 'error',
     tables: tableCheck,
-    status: connectionOk && tableCheck.allTablesExist ? 'healthy' : 'unhealthy'
+    status: connectionOk && tableCheck.allTablesExist ? 'healthy' : 'unhealthy',
   };
 }
 
@@ -90,21 +90,21 @@ export function getDatabaseStatus() {
  */
 export async function performDatabaseCheck() {
   console.log('🔍 检查数据库状态...');
-  
+
   try {
     // 初始化数据库连接
     const db = await initDatabase();
     setDb(db);
-    
+
     const status = getDatabaseStatus();
-    
+
     if (status.connection === 'error') {
       console.error('❌ 数据库连接失败');
       return false;
     }
-    
+
     console.log('✅ 数据库连接正常');
-    
+
     if (status.tables.missingTables.length > 0) {
       console.warn('⚠️ 缺少以下数据库表:');
       status.tables.missingTables.forEach(table => {
@@ -113,10 +113,10 @@ export async function performDatabaseCheck() {
       console.log('💡 请运行 npm run migrate 来创建缺失的表');
       return false;
     }
-    
+
     console.log('✅ 所有必要的数据库表都存在');
     console.log(`📊 数据库状态: ${status.status}`);
-    
+
     return status.status === 'healthy';
   } catch (error) {
     console.error('❌ 数据库检查过程中发生错误:', error.message);
@@ -126,10 +126,12 @@ export async function performDatabaseCheck() {
 
 // 如果直接运行此脚本
 if (import.meta.url === `file://${process.argv[1]}`) {
-  performDatabaseCheck().then(isHealthy => {
-    process.exit(isHealthy ? 0 : 1);
-  }).catch(error => {
-    console.error('❌ 数据库检查失败:', error.message);
-    process.exit(1);
-  });
+  performDatabaseCheck()
+    .then(isHealthy => {
+      process.exit(isHealthy ? 0 : 1);
+    })
+    .catch(error => {
+      console.error('❌ 数据库检查失败:', error.message);
+      process.exit(1);
+    });
 }

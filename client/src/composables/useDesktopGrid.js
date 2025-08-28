@@ -9,7 +9,10 @@ export default function useDesktopGrid() {
   }
 
   function cellToPosition(cell) {
-    return { x: GRID.originX + cell.col * GRID.cellW, y: GRID.originY + cell.row * GRID.cellH };
+    return {
+      x: GRID.originX + cell.col * GRID.cellW,
+      y: GRID.originY + cell.row * GRID.cellH,
+    };
   }
 
   function getOccupiedCellKeys(positions, excludeId) {
@@ -48,7 +51,9 @@ export default function useDesktopGrid() {
       const desired = positionToCell(p);
       const cell = findNextFreeCell(desired, occupiedBase);
       updated[id] = cellToPosition(cell);
-      occupiedBase.add(`${positionToCell(updated[id]).col}:${positionToCell(updated[id]).row}`);
+      occupiedBase.add(
+        `${positionToCell(updated[id]).col}:${positionToCell(updated[id]).row}`
+      );
     }
     positionsRef.value = updated;
   }
@@ -58,13 +63,19 @@ export default function useDesktopGrid() {
       const validIds = new Set((items || []).map(a => a.id));
       const data = {};
       for (const [k, v] of Object.entries(positions || {})) {
-        if (validIds.has(Number(k)) && v && typeof v.x === 'number' && typeof v.y === 'number') data[k] = v;
+        if (
+          validIds.has(Number(k)) &&
+          v &&
+          typeof v.x === 'number' &&
+          typeof v.y === 'number'
+        )
+          data[k] = v;
       }
       localStorage.setItem(storageKey, JSON.stringify(data));
     } catch (e) {
       // surface errors to console to help debugging
       // do not throw to avoid breaking UI
-       
+
       console.error('useDesktopGrid.savePositionsToStorage error', e);
     }
   }
@@ -77,11 +88,16 @@ export default function useDesktopGrid() {
       const validIds = new Set((items || []).map(a => a.id));
       const filtered = {};
       for (const [k, v] of Object.entries(data || {})) {
-        if (validIds.has(Number(k)) && v && typeof v.x === 'number' && typeof v.y === 'number') filtered[k] = { x: v.x, y: v.y };
+        if (
+          validIds.has(Number(k)) &&
+          v &&
+          typeof v.x === 'number' &&
+          typeof v.y === 'number'
+        )
+          filtered[k] = { x: v.x, y: v.y };
       }
       return filtered;
     } catch (e) {
-       
       console.error('useDesktopGrid.loadPositionsFromStorage error', e);
       return {};
     }
@@ -98,5 +114,3 @@ export default function useDesktopGrid() {
     loadPositionsFromStorage,
   };
 }
-
-

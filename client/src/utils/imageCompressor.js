@@ -39,7 +39,7 @@ export async function compressImage(file, maxSize = MAX_FILE_SIZE) {
 
       // 计算新的尺寸
       let { width, height } = calculateDimensions(img.width, img.height);
-      
+
       // 设置canvas尺寸
       canvas.width = width;
       canvas.height = height;
@@ -53,14 +53,14 @@ export async function compressImage(file, maxSize = MAX_FILE_SIZE) {
 
       const tryCompress = () => {
         canvas.toBlob(
-          (blob) => {
+          blob => {
             if (!blob) {
               reject(new Error('图片压缩失败'));
               return;
             }
 
             const compressedSize = blob.size;
-            
+
             // 如果压缩后的大小仍然超过限制，尝试降低质量
             if (compressedSize > maxSize && currentQuality > 0.1) {
               currentQuality -= 0.1;
@@ -134,7 +134,7 @@ function calculateDimensions(originalWidth, originalHeight) {
  */
 export async function compressImages(files, maxSize = MAX_FILE_SIZE) {
   const compressedFiles = [];
-  
+
   for (const file of files) {
     try {
       const compressedFile = await compressImage(file, maxSize);
@@ -145,7 +145,7 @@ export async function compressImages(files, maxSize = MAX_FILE_SIZE) {
       compressedFiles.push(file);
     }
   }
-  
+
   return compressedFiles;
 }
 
@@ -156,10 +156,10 @@ export async function compressImages(files, maxSize = MAX_FILE_SIZE) {
  */
 export function formatFileSize(bytes) {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }

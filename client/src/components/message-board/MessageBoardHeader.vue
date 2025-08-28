@@ -7,76 +7,77 @@
       </span>
     </div>
     <div class="header-right">
-      <button @click="$emit('toggle-settings')" class="settings-btn" title="设置">
+      <button
+        @click="$emit('toggle-settings')"
+        class="settings-btn"
+        title="设置"
+      >
         ⚙️
       </button>
-      <button @click="$emit('close')" class="close-btn" title="关闭">
-        ✕
-      </button>
+      <button @click="$emit('close')" class="close-btn" title="关闭">✕</button>
     </div>
   </div>
 </template>
 
 <script setup>
-const props = defineProps({
-  isConnected: { type: Boolean, required: true }
-});
+  const props = defineProps({
+    isConnected: { type: Boolean, required: true },
+  });
 </script>
 
 <style scoped>
-.message-board-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
-}
+  .message-board-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+  }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
 
-.header-left h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #333;
-}
+  .header-left h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+  }
 
-.online-status {
-  font-size: 12px;
-  color: #6c757d;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: #e9ecef;
-}
+  .online-status {
+    font-size: 12px;
+    color: #6c757d;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #e9ecef;
+  }
 
-.online-status.connected {
-  color: #28a745;
-  background: #d4edda;
-}
+  .online-status.connected {
+    color: #28a745;
+    background: #d4edda;
+  }
 
-.header-right {
-  display: flex;
-  gap: 8px;
-}
+  .header-right {
+    display: flex;
+    gap: 8px;
+  }
 
-.settings-btn,
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
+  .settings-btn,
+  .close-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+  }
 
-.settings-btn:hover,
-.close-btn:hover {
-  background: #e9ecef;
-}
+  .settings-btn:hover,
+  .close-btn:hover {
+    background: #e9ecef;
+  }
 </style>
-

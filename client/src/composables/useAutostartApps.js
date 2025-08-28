@@ -41,7 +41,10 @@ export default function useAutostartApps() {
           const comp = getAppComponentBySlug(app.slug);
           const meta = getAppMetaBySlug(app.slug);
           if (comp) {
-            const preferred = meta?.preferredSize || { width: 520, height: 400 };
+            const preferred = meta?.preferredSize || {
+              width: 520,
+              height: 400,
+            };
             createWindow({
               component: comp,
               title: meta?.name || app.name || '',
@@ -67,5 +70,3 @@ export default function useAutostartApps() {
     startAutostartApps,
   };
 }
-
-

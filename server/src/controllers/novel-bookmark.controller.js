@@ -201,9 +201,12 @@ export class NovelBookmarkController {
       console.log('[novel-bookmark] syncBookmarks request', {
         deviceId,
         bookmarksLength: Array.isArray(bookmarks) ? bookmarks.length : 0,
-        sample: Array.isArray(bookmarks) && bookmarks.length > 0 ? {
-          first: bookmarks[0],
-        } : undefined,
+        sample:
+          Array.isArray(bookmarks) && bookmarks.length > 0
+            ? {
+                first: bookmarks[0],
+              }
+            : undefined,
       });
 
       if (!deviceId) {
@@ -223,7 +226,9 @@ export class NovelBookmarkController {
         uploaded: result?.data?.uploaded?.length,
         toDownload: result?.data?.toDownload?.length,
         serverBookmarks: result?.data?.serverBookmarks?.length,
-        uploadedIds: Array.isArray(result?.data?.uploaded) ? result.data.uploaded.map(b => b.id).slice(0, 20) : undefined,
+        uploadedIds: Array.isArray(result?.data?.uploaded)
+          ? result.data.uploaded.map(b => b.id).slice(0, 20)
+          : undefined,
       });
 
       if (result.success) {

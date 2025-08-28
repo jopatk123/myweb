@@ -20,5 +20,3 @@ export function openFilePreviewWindow(f) {
     return null;
   }
 }
-
-

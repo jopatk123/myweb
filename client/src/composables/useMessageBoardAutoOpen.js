@@ -17,18 +17,20 @@ export function useMessageBoardAutoOpen() {
   };
 
   // 检查是否应该自动打开
-  const shouldAutoOpen = (autoOpenSessions) => {
+  const shouldAutoOpen = autoOpenSessions => {
     const sessionId = getSessionId();
-    return isAutoOpenEnabled.value && 
-           sessionId && 
-           autoOpenSessions.includes(sessionId);
+    return (
+      isAutoOpenEnabled.value &&
+      sessionId &&
+      autoOpenSessions.includes(sessionId)
+    );
   };
 
   // 打开或激活留言板窗口
   const openMessageBoard = () => {
     // 检查是否已经有留言板窗口
     const existingWindow = findWindowByApp('messageBoard');
-    
+
     if (existingWindow) {
       // 如果已存在，激活窗口
       setActiveWindow(existingWindow.id);
@@ -47,9 +49,9 @@ export function useMessageBoardAutoOpen() {
   };
 
   // 处理新消息事件
-  const handleNewMessage = (data) => {
+  const handleNewMessage = data => {
     const { autoOpenSessions } = data;
-    
+
     if (shouldAutoOpen(autoOpenSessions)) {
       openMessageBoard();
     }
@@ -61,7 +63,7 @@ export function useMessageBoardAutoOpen() {
   };
 
   // 设置自动打开状态
-  const setAutoOpenEnabled = (enabled) => {
+  const setAutoOpenEnabled = enabled => {
     isAutoOpenEnabled.value = enabled;
     localStorage.setItem('messageBoardAutoOpen', enabled ? 'true' : 'false');
   };

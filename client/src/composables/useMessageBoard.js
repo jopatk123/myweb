@@ -10,7 +10,7 @@ export function useMessageBoard() {
   const loading = ref(false);
   const sending = ref(false);
   const error = ref(null);
-  
+
   // 用户设置
   const userSettings = reactive({
     nickname: 'Anonymous',
@@ -34,7 +34,7 @@ export function useMessageBoard() {
     try {
       loading.value = true;
       error.value = null;
-      
+
       const response = await messageAPI.getMessages({
         page,
         limit: pagination.limit,
@@ -87,7 +87,7 @@ export function useMessageBoard() {
   };
 
   // 删除留言
-  const deleteMessage = async (messageId) => {
+  const deleteMessage = async messageId => {
     try {
       const response = await messageAPI.deleteMessage(messageId);
       if (response.code === 200) {
@@ -134,7 +134,7 @@ export function useMessageBoard() {
   };
 
   // 更新用户设置
-  const updateUserSettings = async (settings) => {
+  const updateUserSettings = async settings => {
     try {
       const response = await messageAPI.updateUserSettings(settings);
       if (response.code === 200) {
@@ -153,7 +153,7 @@ export function useMessageBoard() {
   };
 
   // 处理新留言
-  const handleNewMessage = (data) => {
+  const handleNewMessage = data => {
     const { message } = data;
     if (message) {
       // 检查是否已存在（避免重复）
@@ -169,7 +169,7 @@ export function useMessageBoard() {
   };
 
   // 处理留言删除
-  const handleMessageDeleted = (data) => {
+  const handleMessageDeleted = data => {
     const { messageId } = data;
     if (messageId) {
       const index = messages.value.findIndex(m => m.id === messageId);
@@ -180,26 +180,26 @@ export function useMessageBoard() {
   };
 
   // 格式化时间
-  const formatTime = (timestamp) => {
+  const formatTime = timestamp => {
     const date = new Date(timestamp);
     const now = new Date();
     const diff = now - date;
-    
+
     // 小于1分钟
     if (diff < 60000) {
       return '刚刚';
     }
-    
+
     // 小于1小时
     if (diff < 3600000) {
       return `${Math.floor(diff / 60000)}分钟前`;
     }
-    
+
     // 小于24小时
     if (diff < 86400000) {
       return `${Math.floor(diff / 3600000)}小时前`;
     }
-    
+
     // 超过24小时显示具体时间
     return date.toLocaleString('zh-CN', {
       month: '2-digit',
@@ -212,14 +212,22 @@ export function useMessageBoard() {
   // 生成随机头像颜色
   const generateRandomColor = () => {
     const colors = [
-      '#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8',
-      '#6f42c1', '#e83e8c', '#fd7e14', '#20c997', '#6c757d'
+      '#007bff',
+      '#28a745',
+      '#dc3545',
+      '#ffc107',
+      '#17a2b8',
+      '#6f42c1',
+      '#e83e8c',
+      '#fd7e14',
+      '#20c997',
+      '#6c757d',
     ];
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
   // 上传图片
-  const uploadImages = async (files) => {
+  const uploadImages = async files => {
     try {
       const response = await messageAPI.uploadImages(files);
       if (response.code === 200) {
@@ -256,11 +264,11 @@ export function useMessageBoard() {
     userSettings,
     pagination,
     isConnected,
-    
+
     // 计算属性
     hasMessages,
     canLoadMore,
-    
+
     // 方法
     fetchMessages,
     sendMessage,

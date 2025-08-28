@@ -45,9 +45,9 @@ const imageFilter = (req, file, cb) => {
 const uploadImage = multer({
   storage: imageStorage,
   fileFilter: imageFilter,
-  limits: { 
+  limits: {
     fileSize: 5 * 1024 * 1024, // 5MB
-    files: 5 // 最多5张图片
+    files: 5, // 最多5张图片
   },
 });
 
@@ -58,7 +58,8 @@ export class MessageController {
   static async sendMessage(req, res, next) {
     try {
       const { content, authorName, authorColor, images, imageType } = req.body;
-      const sessionId = req.headers['x-session-id'] || req.sessionID || 'anonymous';
+      const sessionId =
+        req.headers['x-session-id'] || req.sessionID || 'anonymous';
 
       const message = await MessageService.sendMessage({
         content,
@@ -66,7 +67,7 @@ export class MessageController {
         authorName,
         authorColor,
         images,
-        imageType
+        imageType,
       });
 
       // 通过WebSocket广播新留言
@@ -74,14 +75,14 @@ export class MessageController {
         const autoOpenSessions = MessageService.getAutoOpenSessions();
         req.app.get('wsServer').broadcast('newMessage', {
           message,
-          autoOpenSessions
+          autoOpenSessions,
         });
       }
 
       res.json({
         code: 200,
         message: '留言发送成功',
-        data: message
+        data: message,
       });
     } catch (error) {
       next(error);
@@ -96,13 +97,13 @@ export class MessageController {
       const { page, limit } = req.query;
       const result = await MessageService.getMessages({
         page: parseInt(page) || 1,
-        limit: parseInt(limit) || 50
+        limit: parseInt(limit) || 50,
       });
 
       res.json({
         code: 200,
         message: '获取留言列表成功',
-        data: result
+        data: result,
       });
     } catch (error) {
       next(error);
@@ -119,12 +120,14 @@ export class MessageController {
 
       // 通过WebSocket广播留言删除
       if (req.app.get('wsServer')) {
-        req.app.get('wsServer').broadcast('messageDeleted', { messageId: parseInt(id) });
+        req.app
+          .get('wsServer')
+          .broadcast('messageDeleted', { messageId: parseInt(id) });
       }
 
       res.json({
         code: 200,
-        message: '留言删除成功'
+        message: '留言删除成功',
       });
     } catch (error) {
       next(error);
@@ -137,19 +140,20 @@ export class MessageController {
   static async updateUserSettings(req, res, next) {
     try {
       const { nickname, avatarColor, autoOpenEnabled } = req.body;
-      const sessionId = req.headers['x-session-id'] || req.sessionID || 'anonymous';
+      const sessionId =
+        req.headers['x-session-id'] || req.sessionID || 'anonymous';
 
       const userSession = await UserSessionService.updateUserSettings({
         sessionId,
         nickname,
         avatarColor,
-        autoOpenEnabled
+        autoOpenEnabled,
       });
 
       res.json({
         code: 200,
         message: '用户设置更新成功',
-        data: userSession
+        data: userSession,
       });
     } catch (error) {
       next(error);
@@ -161,13 +165,14 @@ export class MessageController {
    */
   static async getUserSettings(req, res, next) {
     try {
-      const sessionId = req.headers['x-session-id'] || req.sessionID || 'anonymous';
+      const sessionId =
+        req.headers['x-session-id'] || req.sessionID || 'anonymous';
       const userSession = await UserSessionService.getUserSettings(sessionId);
 
       res.json({
         code: 200,
         message: '获取用户设置成功',
-        data: userSession
+        data: userSession,
       });
     } catch (error) {
       next(error);
@@ -183,7 +188,7 @@ export class MessageController {
       if (!files.length) {
         return res.status(400).json({
           code: 400,
-          message: '请选择图片文件'
+          message: '请选择图片文件',
         });
       }
 
@@ -192,13 +197,13 @@ export class MessageController {
         originalName: file.originalname,
         mimeType: file.mimetype,
         size: file.size,
-        path: `uploads/message-images/${file.filename}`
+        path: `uploads/message-images/${file.filename}`,
       }));
 
       res.json({
         code: 200,
         message: '图片上传成功',
-        data: images
+        data: images,
       });
     } catch (error) {
       next(error);
@@ -211,11 +216,11 @@ export class MessageController {
   static async clearAllMessages(req, res, next) {
     try {
       const { confirm } = req.body;
-      
+
       if (!confirm) {
         return res.status(400).json({
           code: 400,
-          message: '需要确认才能清除所有留言'
+          message: '需要确认才能清除所有留言',
         });
       }
 
@@ -229,7 +234,7 @@ export class MessageController {
       res.json({
         code: 200,
         message: '留言板已清空',
-        data: result
+        data: result,
       });
     } catch (error) {
       next(error);
