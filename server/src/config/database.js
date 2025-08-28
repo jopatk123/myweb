@@ -9,6 +9,7 @@ import {
   initNovelTables,
   initNotebookTables,
   initNovelBookmarkTables,
+  initMessageTables,
 } from '../db/schema.js';
 import { ensureWallpaperColumns, ensureAppsColumns } from '../db/migration.js';
 import { ensureFilesTypeCategoryIncludesNovel } from '../db/migration.js';
@@ -57,6 +58,13 @@ export async function initDatabase() {
     initWorkTimerTables(db);
   } catch (e) {
     console.warn('无法初始化 work-timer 表（非致命）:', e.message || e);
+  }
+
+  // 新增 message board 表初始化
+  try {
+    initMessageTables(db);
+  } catch (e) {
+    console.warn('无法初始化 message board 表（非致命）:', e.message || e);
   }
 
   // 迁移: 确保缺失列存在
