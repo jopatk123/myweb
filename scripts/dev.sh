@@ -136,6 +136,24 @@ fi
 
 echo "✅ Dependencies installed successfully!"
 
+# 数据库迁移和检查
+echo "🗄️ Checking database..."
+if [ -f server/package.json ]; then
+    echo "📊 Running database migrations..."
+    (cd server && npm run migrate) || {
+        echo "❌ Database migration failed!"
+        exit 1
+    }
+    echo "✅ Database migrations completed"
+    
+    echo "🔍 Checking database status..."
+    (cd server && npm run db:check) || {
+        echo "❌ Database check failed!"
+        exit 1
+    }
+    echo "✅ Database check passed"
+fi
+
 echo "🔥 Starting development servers..."
 
 # 确保本地上传目录存在且可写（当前用户）

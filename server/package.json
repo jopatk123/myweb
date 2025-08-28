@@ -9,7 +9,9 @@
     "test:cov": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage",
     "migrate": "knex migrate:latest --knexfile ./knexfile.cjs",
     "migrate:rollback": "knex migrate:rollback --knexfile ./knexfile.cjs",
-    "seed": "knex seed:run --knexfile ./knexfile.cjs"
+    "seed": "knex seed:run --knexfile ./knexfile.cjs",
+    "db:check": "node src/utils/db-check.js",
+    "db:setup": "npm run migrate && npm run db:check"
   },
   "dependencies": {
     "better-sqlite3": "^9.2.0",
