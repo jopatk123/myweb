@@ -35,23 +35,7 @@
     />
 
     <!-- 浮动控制按钮 -->
-    <div class="floating-controls">
-      <button @click="onRandom()" class="control-btn" title="随机切换壁纸">
-        🎲
-      </button>
-      <button @click="openMessageBoard()" class="control-btn" title="留言板">
-        💬
-      </button>
-      <a
-        href="/wallpapers"
-        target="_blank"
-        rel="noopener"
-        class="control-btn"
-        title="管理后台"
-      >
-        🛠️
-      </a>
-    </div>
+    <FloatingControls @random="onRandom" @message="openMessageBoard" />
     <ConfirmDownloadModal
       v-model="showConfirm"
       :filename="selectedFileName"
@@ -99,12 +83,13 @@
   import FileUploadProgress from '@/components/file/FileUploadProgress.vue';
   import ConfirmDownloadModal from '@/components/file/ConfirmDownloadModal.vue';
   import FilePreviewModal from '@/components/file/FilePreviewModal.vue';
-  import FilePreviewWindow from '@/components/file/FilePreviewWindow.vue';
+  import { openFilePreviewWindow } from '@/composables/filePreview.js';
+  import useDesktopSelection from '@/composables/useDesktopSelection.js';
   import { useWindowManager } from '@/composables/useWindowManager.js';
-  import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
-  import { useApps } from '@/composables/useApps.js';
+  import useAutostartApps from '@/composables/useAutostartApps.js';
   import { useMessageBoardAutoOpen } from '@/composables/useMessageBoardAutoOpen.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
+  import FloatingControls from '@/components/common/FloatingControls.vue';
 
   const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
     useWallpaper();
@@ -154,17 +139,14 @@
       : [];
   });
 
-  // 矩形选框状态
-  const selectionRect = ref({
-    visible: false,
-    x: 0,
-    y: 0,
-    w: 0,
-    h: 0,
-    startX: 0,
-    startY: 0,
-  });
-  let isSelecting = false;
+  // 矩形选框（使用 composable 管理）
+  const {
+    selectionRect,
+    onMouseDown: selOnMouseDown,
+    onMouseMove: selOnMouseMove,
+    onMouseUp: selOnMouseUp,
+    getSelectedIconIds,
+  } = useDesktopSelection();
 
   // 页面挂载时触发预加载（保持 2 张缓存）
   fetchCurrentGroup().then(() => {
@@ -173,58 +155,9 @@
   });
   // 初始加载文件列表（用于在桌面显示图标）
   fetchFiles().catch(() => {});
-  // 通用：根据配置自启动可见的应用
-  try {
-    const { fetchApps, apps } = useApps();
-    // 拉取可见应用（无需分页），后续筛选 is_autostart
-    fetchApps({ visible: true }, false)
-      .then(() => {
-        const list = Array.isArray(apps.value) ? apps.value : [];
-        const autostartApps = list.filter(
-          a =>
-            (a.isAutostart ?? a.is_autostart) === 1 ||
-            (a.isAutostart ?? a.is_autostart) === true
-        );
-        setTimeout(() => {
-          for (const app of autostartApps) {
-            // 第三方应用：与双击行为一致，在新窗口打开 URL
-            const url = app.targetUrl || app.target_url;
-            if (url) {
-              try {
-                window.open(url, '_blank');
-              } catch {}
-              continue;
-            }
 
-            // 内置应用：若已存在则激活，否则创建窗口
-            const existing = findWindowByApp(app.slug);
-            if (existing) {
-              existing.props = existing.props || {};
-              if (app.slug === 'work-timer') existing.props.autoStart = true;
-              setActiveWindow(existing.id);
-              continue;
-            }
-            const comp = getAppComponentBySlug(app.slug);
-            const meta = getAppMetaBySlug(app.slug);
-            if (comp) {
-              const preferred = meta?.preferredSize || {
-                width: 520,
-                height: 400,
-              };
-              createWindow({
-                component: comp,
-                title: meta?.name || app.name || '',
-                appSlug: app.slug,
-                width: preferred.width,
-                height: preferred.height,
-                props: app.slug === 'work-timer' ? { autoStart: true } : {},
-              });
-            }
-          }
-        }, 120);
-      })
-      .catch(() => {});
-  } catch (e) {}
+  // autostart: 使用 composable 管理自动启动应用
+  useAutostartApps();
 
   const onRandom = async () => {
     const w = await randomWallpaper();
@@ -253,19 +186,11 @@
   // 供未来在桌面展示文件图标时使用的打开回调
   function onOpenFile(f) {
     if (f && f.__preview) {
-      // 允许多开文件预览窗口：每次都创建新窗口并传入文件作为 props
-      createWindow({
-        component: FilePreviewWindow,
-        title: f.originalName || f.original_name || '文件预览',
-        appSlug: 'filePreview',
-        width: Math.min(1200, window.innerWidth * 0.9),
-        height: Math.min(800, window.innerHeight * 0.9),
-        props: { file: f },
-        storageKey: `previewPos:${f.id}`,
-      });
-
+      // 使用封装好的 helper 打开预览窗口
+      openFilePreviewWindow(f);
       return;
     }
+
     selectedFile.value = f;
     selectedFileName.value = f.originalName || f.original_name;
     selectedDownloadUrl.value = getDownloadUrl(f.id);
@@ -350,44 +275,17 @@
 
   // 桌面矩形选框逻辑
   function onDesktopMouseDown(e) {
-    // 只在点击空白区域时开始选框（不是图标项）
-    if (e.target.closest('.icon-item')) return;
-
-    isSelecting = true;
-    selectionRect.value.startX = e.clientX;
-    selectionRect.value.startY = e.clientY;
-    selectionRect.value.x = e.clientX;
-    selectionRect.value.y = e.clientY;
-    selectionRect.value.w = 0;
-    selectionRect.value.h = 0;
-    selectionRect.value.visible = true;
+    selOnMouseDown(e);
   }
 
   function onDesktopMouseMove(e) {
-    if (!isSelecting || !selectionRect.value.visible) return;
-
-    const currentX = e.clientX;
-    const currentY = e.clientY;
-    const startX = selectionRect.value.startX;
-    const startY = selectionRect.value.startY;
-
-    // 计算矩形位置和大小
-    selectionRect.value.x = Math.min(startX, currentX);
-    selectionRect.value.y = Math.min(startY, currentY);
-    selectionRect.value.w = Math.abs(currentX - startX);
-    selectionRect.value.h = Math.abs(currentY - startY);
+    selOnMouseMove(e);
   }
 
-  function onDesktopMouseUp(e) {
-    if (!isSelecting) return;
-
-    isSelecting = false;
-
+  function onDesktopMouseUp(/* e */) {
+    // 在 composable 隐藏选框之前先计算选中项
     if (selectionRect.value.visible) {
-      // 计算选中的图标
       const selectedIds = getSelectedIconIds();
-
-      // 分发选中状态到子组件
       if (appIconsRef.value?.setSelectedIds) {
         appIconsRef.value.setSelectedIds(selectedIds.apps);
       }
@@ -396,48 +294,10 @@
       }
     }
 
-    // 隐藏选框
-    selectionRect.value.visible = false;
+    selOnMouseUp();
   }
 
-  // 计算与选框相交的图标
-  function getSelectedIconIds() {
-    const rect = selectionRect.value;
-    const selectedApps = [];
-    const selectedFiles = [];
-
-    // 检查所有图标项
-    const iconItems = document.querySelectorAll('.icon-item[data-id]');
-
-    iconItems.forEach(item => {
-      const itemRect = item.getBoundingClientRect();
-      const id = parseInt(item.getAttribute('data-id'));
-
-      // 检查矩形相交
-      if (rectIntersect(rect, itemRect)) {
-        // 根据父容器 data-group 判断是应用图标还是文件图标
-        const group = item.closest('.desktop-icons')?.dataset?.group;
-        const isAppIcon = group === 'apps';
-        if (isAppIcon) {
-          selectedApps.push(id);
-        } else {
-          selectedFiles.push(id);
-        }
-      }
-    });
-
-    return { apps: selectedApps, files: selectedFiles };
-  }
-
-  // 矩形相交检测
-  function rectIntersect(rect1, rect2) {
-    return !(
-      rect1.x + rect1.w < rect2.left ||
-      rect2.left + rect2.width < rect1.x ||
-      rect1.y + rect1.h < rect2.top ||
-      rect2.top + rect2.height < rect1.y
-    );
-  }
+  // 矩形选框的具体实现已移到 composable：getSelectedIconIds / rectIntersect 在 composable 中定义
 </script>
 
 <style scoped>
