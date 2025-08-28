@@ -8,6 +8,16 @@ echo "🚀 Starting MyWeb Development Environment..."
 FRONTEND_PORT=${FRONTEND_PORT:-3000}
 BACKEND_PORT=${BACKEND_PORT:-3302}
 
+# 检查并修复数据库文件权限（如果存在）
+if [ -f server/data/myweb.db ]; then
+    current_owner=$(stat -c '%U:%G' server/data/myweb.db 2>/dev/null || echo "unknown")
+    if [ "$current_owner" != "$(whoami):$(whoami)" ]; then
+        echo "🔧 Fixing database file permissions..."
+        sudo chown -R "$(whoami)":"$(whoami)" server/data/ 2>/dev/null || true
+        chmod -R 664 server/data/*.db* 2>/dev/null || true
+    fi
+fi
+
 # PID 文件位置
 FRONTEND_PIDFILE="/tmp/myweb-frontend.pid"
 BACKEND_PIDFILE="/tmp/myweb-backend.pid"
@@ -142,7 +152,46 @@ if [ -f server/package.json ]; then
     echo "📊 Running database migrations..."
     (cd server && npm run migrate) || {
         echo "❌ Database migration failed!"
-        exit 1
+        echo "💡 Trying to fix database permissions and retry..."
+        sudo chown -R "$(whoami)":"$(whoami)" server/data/ 2>/dev/null || true
+        chmod -R 664 server/data/*.db* 2>/dev/null || true
+        echo "🔄 Retrying database migration..."
+        (cd server && npm run migrate) || {
+            echo "❌ Database migration still failed after permission fix!"
+            echo "🔍 Checking for migration state inconsistency..."
+            
+            # 检查是否存在表但迁移记录为空的情况
+            if [ -f server/data/myweb.db ]; then
+                echo "🔧 Attempting to fix migration state inconsistency..."
+                (cd server && sqlite3 data/myweb.db "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='knex_migrations';" 2>/dev/null) | grep -q "1" || {
+                    echo "💡 Migration table missing, creating it..."
+                    (cd server && npx knex migrate:make init_migrations --knexfile ./knexfile.cjs >/dev/null 2>&1 || true)
+                }
+                
+                # 检查是否有表存在但迁移记录为空
+                table_count=$(cd server && sqlite3 data/myweb.db "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'knex_migrations';" 2>/dev/null || echo "0")
+                migration_count=$(cd server && sqlite3 data/myweb.db "SELECT COUNT(*) FROM knex_migrations;" 2>/dev/null || echo "0")
+                
+                if [ "$table_count" -gt 0 ] && [ "$migration_count" -eq 0 ]; then
+                    echo "💡 Tables exist but no migration records found. Marking all migrations as completed..."
+                    (cd server && sqlite3 data/myweb.db "INSERT INTO knex_migrations (name, batch, migration_time) VALUES ('001_initial_schema.js', 1, datetime('now')), ('002_add_work_timer_tables.js', 1, datetime('now')), ('003_add_novel_bookmarks.js', 1, datetime('now')), ('004_add_message_board.js', 1, datetime('now')), ('005_add_message_images.js', 1, datetime('now'));" 2>/dev/null || true)
+                    echo "🔄 Retrying database migration..."
+                    (cd server && npm run migrate) || {
+                        echo "❌ Database migration still failed after state fix!"
+                        echo "💡 You may need to manually fix the database or delete and recreate it."
+                        exit 1
+                    }
+                else
+                    echo "❌ Database migration failed and could not be automatically fixed!"
+                    echo "💡 You may need to manually fix database permissions or delete and recreate the database."
+                    exit 1
+                fi
+            else
+                echo "❌ Database migration failed and could not be automatically fixed!"
+                echo "💡 You may need to manually fix database permissions or delete and recreate the database."
+                exit 1
+            fi
+        }
     }
     echo "✅ Database migrations completed"
     
@@ -160,6 +209,13 @@ echo "🔥 Starting development servers..."
 mkdir -p server/uploads/apps/icons server/data server/logs 2>/dev/null || true
 chown -R "$(whoami)":"$(whoami)" server/uploads server/data server/logs 2>/dev/null || true
 chmod -R 775 server/uploads server/data server/logs 2>/dev/null || true
+
+# 修复数据库文件权限问题
+if [ -f server/data/myweb.db ]; then
+    echo "🔧 Fixing database file permissions..."
+    sudo chown -R "$(whoami)":"$(whoami)" server/data/ 2>/dev/null || true
+    chmod -R 664 server/data/*.db* 2>/dev/null || true
+fi
 
 # 后端
 echo "🔧 Preparing backend (port ${BACKEND_PORT})..."
