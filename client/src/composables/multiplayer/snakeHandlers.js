@@ -9,22 +9,43 @@ export function createSnakeHandlers(ctx) {
   } = ctx;
 
   function handleRoomCreated(data) {
+  console.debug('[WS][client] room_created', data);
+    // 双向兼容字段 (room_code <-> roomCode)
+    if (data?.room) {
+      if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
+      if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
+    }
     currentRoom.value = data.room;
     currentPlayer.value = data.player;
     players.value = [data.player];
     state.isInRoom.value = true;
     gameStatus.value = 'waiting';
     state.loading.value = false;
+    const code = data.room?.room_code || data.room?.roomCode;
+    if (code) {
+      localStorage.setItem('snakeCurrentRoomCode', code);
+      // 立即再次获取房间信息，确保所有字段齐全（防止早期导航时缺字段）
+      try { ctx.api.getRoomInfo(code); } catch (e) { /* ignore */ }
+    }
   }
 
   function handleRoomJoined(data) {
+  console.debug('[WS][client] room_joined', data);
+    if (data?.room) {
+      if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
+      if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
+    }
     currentRoom.value = data.room;
     currentPlayer.value = data.player;
     state.isInRoom.value = true;
     gameStatus.value = 'waiting';
     state.loading.value = false;
     // 请求完整信息
-    ctx.api.getRoomInfo(data.room.room_code);
+    const code = data.room?.room_code || data.room?.roomCode;
+    if (code) {
+      ctx.api.getRoomInfo(code);
+      localStorage.setItem('snakeCurrentRoomCode', code);
+    }
   }
 
   function handleRoomLeft() {
@@ -34,17 +55,28 @@ export function createSnakeHandlers(ctx) {
 
   function handleRoomInfo(data) {
     if (!data) return;
+  console.debug('[WS][client] room_info', data);
+    if (data?.room) {
+      if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
+      if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
+    }
     currentRoom.value = data.room;
     players.value = data.players || [];
     gameState.value = data.game_state;
     gameStatus.value = data.room?.status === 'playing' ? 'playing' : 'waiting';
+    const code = data.room?.room_code || data.room?.roomCode;
+    if (code) localStorage.setItem('snakeCurrentRoomCode', code);
   }
 
   function handlePlayerJoined(data) {
     if (data.player && !players.value.find(p => p.session_id === data.player.session_id)) {
       players.value.push(data.player);
     }
-    if (data.room) currentRoom.value = data.room;
+    if (data.room) {
+      if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
+      if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
+      currentRoom.value = data.room;
+    }
     events.emitPlayerJoin(data);
   }
 

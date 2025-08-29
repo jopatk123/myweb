@@ -11,6 +11,8 @@ export class WebSocketService {
     this.clients = new Map();
     this.wss = null;
   this.snakeMultiplayer = new SnakeMultiplayerAdapter(this);
+  // 维护会话所在房间码映射，用于断线自动离开
+  this.sessionRoomMap = new Map(); // sessionId -> roomCode
   }
 
   init(server) {
@@ -89,6 +91,10 @@ export class WebSocketService {
       case 'snake_get_room_info':
         this.handleSnakeGetRoomInfo(sessionId, message.data);
         break;
+      case 'snake_start_game':
+        // 目前适配器没有 start_game 入口（可后续实现），这里只广播更新占位
+        this.broadcast('snake_room_list_updated');
+        break;
     }
   }
 
@@ -111,6 +117,9 @@ export class WebSocketService {
         this.clients.delete(sessionId);
       }
     });
+    if (type === 'snake_room_list_updated') {
+      console.log('[WS] 广播房间列表更新');
+    }
   }
 
   getOnlineCount() {
@@ -148,6 +157,9 @@ export class WebSocketService {
         type: 'snake_room_created',
         data: result
       });
+      if (result?.room?.room_code) {
+        this.sessionRoomMap.set(sessionId, result.room.room_code);
+      }
       
       // 广播房间列表已更新
       this.broadcast('snake_room_list_updated');
@@ -168,6 +180,9 @@ export class WebSocketService {
         type: 'snake_room_joined',
         data: result
       });
+      if (result?.room?.room_code) {
+        this.sessionRoomMap.set(sessionId, result.room.room_code);
+      }
     } catch (error) {
       this.sendToClient(sessionId, {
         type: 'snake_error',
@@ -215,11 +230,17 @@ export class WebSocketService {
     try {
       const { roomCode } = data;
       await this.snakeMultiplayer.leaveRoom(sessionId, roomCode);
+      // 移除映射
+      if (this.sessionRoomMap.get(sessionId) === roomCode) {
+        this.sessionRoomMap.delete(sessionId);
+      }
       
       this.sendToClient(sessionId, {
         type: 'snake_room_left',
         data: { success: true }
       });
+  // 离开房间后更新房间列表（可能房间被删除）
+  this.broadcast('snake_room_list_updated');
     } catch (error) {
       console.error('离开房间失败:', error);
     }
@@ -244,8 +265,13 @@ export class WebSocketService {
 
   async handleSnakePlayerDisconnect(sessionId) {
     try {
-      // 这里可能需要查询玩家当前所在的房间，暂时留空
-      // 在实际实现中，应该维护一个 sessionId -> roomCode 的映射
+      const roomCode = this.sessionRoomMap.get(sessionId);
+      if (roomCode) {
+        // 调用离开逻辑（复用已有路径）
+        await this.snakeMultiplayer.leaveRoom(sessionId, roomCode);
+        this.sessionRoomMap.delete(sessionId);
+        this.broadcast('snake_room_list_updated');
+      }
     } catch (error) {
       console.error('处理玩家断线失败:', error);
     }

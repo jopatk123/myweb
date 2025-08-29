@@ -9,6 +9,17 @@ export class RoomManagerService extends BaseMultiplayerService {
     super(wsService);
     this.RoomModel = RoomModel;
     this.PlayerModel = PlayerModel;
+    // 定时清理（每5分钟一次）
+    if (!RoomManagerService._cleanupStarted) {
+      RoomManagerService._cleanupStarted = true;
+      setInterval(() => {
+        try {
+          this.cleanupEmptyRooms();
+        } catch (e) {
+          console.error('定时清理房间失败', e);
+        }
+      }, 5 * 60 * 1000);
+    }
   }
 
   /**
@@ -18,11 +29,12 @@ export class RoomManagerService extends BaseMultiplayerService {
     try {
       const roomCode = this.RoomModel.generateRoomCode();
       
-      // 创建房间
+      // 创建房间，设置初始玩家数量为1
       const room = this.RoomModel.create({
         room_code: roomCode,
         created_by: sessionId,
         game_settings: gameConfig,
+        current_players: 1, // 明确设置初始玩家数量
         ...roomData
       });
 
@@ -36,13 +48,13 @@ export class RoomManagerService extends BaseMultiplayerService {
         is_ready: false
       });
 
-      // 更新房间玩家数量
-      this.RoomModel.update(room.id, { current_players: 1 });
-
       // 初始化游戏状态
       this.initGameState(room.id, roomData.mode);
 
-      return { room, player };
+      // 获取最新的房间信息（包含更新后的数据）
+      const updatedRoom = this.RoomModel.findById(room.id);
+
+      return { room: updatedRoom, player };
     } catch (error) {
       console.error('创建房间失败:', error);
       throw new Error('创建房间失败');
@@ -205,19 +217,21 @@ export class RoomManagerService extends BaseMultiplayerService {
    */
   cleanupRoom(roomId) {
     try {
-      // 删除所有玩家
+      // 1. 删除玩家记录（或标记离线）
       this.PlayerModel.deleteByRoomId(roomId);
-      
-      // 标记房间为已完成
-      this.RoomModel.update(roomId, { 
-        status: 'finished',
-        ended_at: new Date().toISOString()
-      });
 
-      // 清理游戏资源
+      // 2. 直接删除房间，释放房间码（满足需求：房间结束/无人后可再次使用房间号）
+      this.RoomModel.delete(roomId);
+
+      // 3. 清理游戏状态/定时器
       this.cleanupGameResources(roomId);
 
-      console.log(`房间 ${roomId} 已清理`);
+      // 4. 广播房间列表更新，通知前端刷新
+      if (this.wsService?.broadcast) {
+        this.wsService.broadcast('snake_room_list_updated');
+      }
+
+      console.log(`房间 ${roomId} 已删除并释放房间码`);
     } catch (error) {
       console.error('清理房间失败:', error);
     }
@@ -241,6 +255,33 @@ export class RoomManagerService extends BaseMultiplayerService {
     } catch (error) {
       console.error('检查玩家准备状态失败:', error);
       return { allReady: false, readyCount: 0, totalPlayers: 0, players: [] };
+    }
+  }
+
+  /**
+   * 扫描并删除空房间（无在线玩家但状态仍在 waiting/playing 或计数不一致）
+   */
+  cleanupEmptyRooms() {
+    try {
+      const rooms = this.RoomModel.getActiveRooms();
+      let removed = 0;
+      rooms.forEach(r => {
+        const online = this.PlayerModel.getPlayerCount(r.id);
+        if (online === 0 || online !== r.current_players) {
+          // 强制更新 current_players 以避免前端显示 1
+          if (online === 0) {
+            this.cleanupRoom(r.id);
+            removed++;
+          } else if (online !== r.current_players) {
+            this.RoomModel.update(r.id, { current_players: online });
+          }
+        }
+      });
+      if (removed > 0 && this.wsService?.broadcast) {
+        this.wsService.broadcast('snake_room_list_updated');
+      }
+    } catch (e) {
+      console.error('扫描空房间失败', e);
     }
   }
 }

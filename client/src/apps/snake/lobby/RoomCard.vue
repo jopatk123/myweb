@@ -7,7 +7,7 @@
     }"
   >
     <div class="room-header">
-      <span class="room-code">{{ room.room_code }}</span>
+  <span class="room-code">{{ room.room_code || room.roomCode || '未知房间' }}</span>
       <span class="room-mode" :class="`mode-${room.mode}`">
         {{ room.mode === 'shared' ? '🤝 共享' : '⚔️ 竞技' }}
       </span>
@@ -29,19 +29,19 @@
       <button 
         v-if="room.status === 'waiting' && room.current_players < room.max_players"
         class="btn-join" 
-        @click="$emit('join', room.room_code)"
+  @click="$emit('join', room.room_code || room.roomCode)"
       >
         🚀 加入游戏
       </button>
       <button 
         v-else-if="room.status === 'playing'"
         class="btn-spectate" 
-        @click="$emit('spectate', room.room_code)"
+  @click="$emit('spectate', room.room_code || room.roomCode)"
       >
         👁️ 观战
       </button>
-      <span v-else class="room-unavailable">
-        {{ room.current_players >= room.max_players ? '房间已满' : '游戏已结束' }}
+      <span v-else-if="room.current_players >= room.max_players" class="room-unavailable">
+        房间已满
       </span>
     </div>
   </div>

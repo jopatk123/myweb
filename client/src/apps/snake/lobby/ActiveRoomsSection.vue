@@ -21,7 +21,7 @@
     <div v-else class="rooms-grid">
       <RoomCard
         v-for="room in rooms" 
-        :key="room.id"
+        :key="room.id || room.room_code || room.roomCode"
         :room="room"
         @join="$emit('join-room', $event)"
         @spectate="$emit('spectate', $event)"

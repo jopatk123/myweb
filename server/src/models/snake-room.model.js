@@ -16,7 +16,7 @@ export const SnakeRoomModel = {
     
     const stmt = db.prepare(`
       INSERT INTO snake_rooms (
-        room_code, mode, max_players, current_players, status, 
+        room_code, mode, status, max_players, current_players, 
         created_by, game_settings, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `);
@@ -24,9 +24,9 @@ export const SnakeRoomModel = {
     const result = stmt.run(
       roomData.room_code,
       roomData.mode,
+      roomData.status || 'waiting',
       roomData.max_players || 8,
       roomData.current_players || 1,
-      roomData.status || 'waiting',
       roomData.created_by,
       gameSettings
     );

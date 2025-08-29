@@ -96,9 +96,22 @@ export class SnakeRoomManager {
     await this.service.broadcastToRoom(room.id, 'player_left', { player, online_count: onlineCount }, sessionId);
 
     if (onlineCount === 0) {
+      // 游戏结束原因：空房，直接删除房间（释放房间码）
       await this.service.gameManager.endGame(room.id, 'empty');
+      // 结束后把房间删除（gameManager.endGame 只标记 finished）
+      await SnakeRoomModel.delete(room.id);
+      this.service.gameStates.delete(room.id);
+      if (this.wsService?.broadcast) {
+        this.wsService.broadcast('snake_room_list_updated');
+      }
     } else if (room.status === 'playing' && onlineCount < 2) {
+      // 玩家不足导致游戏结束，结束后删除
       await this.service.gameManager.endGame(room.id, 'insufficient_players');
+      await SnakeRoomModel.delete(room.id);
+      this.service.gameStates.delete(room.id);
+      if (this.wsService?.broadcast) {
+        this.wsService.broadcast('snake_room_list_updated');
+      }
     }
   }
 

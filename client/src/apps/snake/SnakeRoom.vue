@@ -1,5 +1,6 @@
 <template>
   <div class="snake-room">
+    <div v-if="copied" class="copy-toast">房间码已复制</div>
     <!-- 房间头部 -->
     <RoomHeader
       :room="currentRoom"
@@ -94,12 +95,14 @@ const canStartGame = computed(() =>
 )
 
 // 方法
+const copied = ref(false)
 const copyRoomCode = () => {
-  if (!currentRoom.value?.room_code) return
-  
-  navigator.clipboard.writeText(currentRoom.value.room_code).then(() => {
-    // TODO: 显示复制成功提示
-    console.log('房间码已复制')
+  const code = currentRoom.value?.room_code || currentRoom.value?.roomCode
+  if (!code) return
+  navigator.clipboard.writeText(code).then(() => {
+    copied.value = true
+    console.log('房间码已复制', code)
+    setTimeout(() => { copied.value = false }, 1800)
   }).catch(err => {
     console.error('复制失败:', err)
   })
@@ -152,4 +155,22 @@ onUnmounted(() => {
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+</style>
+<style scoped>
+/* 复制提示，可后续替换成全局通知组件 */
+.copy-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.75);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  animation: fade 1.8s ease forwards;
+  pointer-events: none;
+  z-index: 9999;
+}
+@keyframes fade { 0% { opacity:0; transform:translate(-50%,-4px);} 10%,90% { opacity:1; transform:translate(-50%,0);} 100% { opacity:0; transform:translate(-50%,-4px);} }
 </style>

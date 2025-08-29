@@ -3,14 +3,33 @@
  */
 import { ref, onMounted, onUnmounted } from 'vue';
 
-export function useWebSocket() {
-  const ws = ref(null);
-  const isConnected = ref(false);
-  const reconnectAttempts = ref(0);
-  const maxReconnectAttempts = 5;
-  const reconnectInterval = ref(null);
+// --- 单例状态（模块级） ---
+let _wsRef;          // WebSocket 实例 ref
+let _isConnected;    // 连接状态 ref
+let _reconnectAttempts;
+let _reconnectTimerRef;
+let _messageHandlers; // Map
+let _initialized = false;
+let _maxReconnectAttempts = 5;
+let _messageQueue = []; // 在未连接时暂存要发送的消息
 
-  const messageHandlers = new Map();
+function initSingleton() {
+  if (_initialized) return;
+  _wsRef = ref(null);
+  _isConnected = ref(false);
+  _reconnectAttempts = ref(0);
+  _reconnectTimerRef = ref(null);
+  _messageHandlers = new Map();
+  _initialized = true;
+}
+
+export function useWebSocket() {
+  initSingleton();
+  const ws = _wsRef;
+  const isConnected = _isConnected;
+  const reconnectAttempts = _reconnectAttempts;
+  const reconnectInterval = _reconnectTimerRef;
+  const messageHandlers = _messageHandlers;
 
   // 获取WebSocket URL
   const getWebSocketUrl = () => {
@@ -41,11 +60,20 @@ export function useWebSocket() {
   };
 
   // 连接WebSocket
+  const flushQueue = () => {
+    if (!ws.value || ws.value.readyState !== WebSocket.OPEN) return;
+    if (_messageQueue.length) console.debug('[WS][client] flush queued messages:', _messageQueue.length);
+    while (_messageQueue.length) {
+      const msg = _messageQueue.shift();
+      try { ws.value.send(JSON.stringify(msg)); } catch(e) { console.warn('Queued msg send failed', e); }
+    }
+  };
+
   const connect = () => {
     try {
       const sessionId = localStorage.getItem('sessionId');
       const wsUrl = getWebSocketUrl();
-
+      if (ws.value && ws.value.readyState === WebSocket.OPEN) return; // 已连接
       ws.value = new WebSocket(wsUrl);
 
       // 设置会话ID头部（如果支持）
@@ -54,17 +82,18 @@ export function useWebSocket() {
       }
 
       ws.value.onopen = () => {
-  
+        console.debug('[WS][client] connected');
         isConnected.value = true;
         reconnectAttempts.value = 0;
-
-        // 发送加入消息
         send({ type: 'join', sessionId });
+        flushQueue();
       };
 
-      ws.value.onmessage = event => {
+    ws.value.onmessage = event => {
         try {
           const data = JSON.parse(event.data);
+      // 原始日志（可注释）
+      // console.debug('[WS][raw]', data);
           handleMessage(data);
         } catch (error) {
           console.error('WebSocket message parse error:', error);
@@ -72,17 +101,11 @@ export function useWebSocket() {
       };
 
       ws.value.onclose = () => {
-  
+        console.debug('[WS][client] closed');
         isConnected.value = false;
-
-        // 自动重连
         if (reconnectAttempts.value < maxReconnectAttempts) {
           reconnectAttempts.value++;
-
-
-          reconnectInterval.value = setTimeout(() => {
-            connect();
-          }, 3000 * reconnectAttempts.value); // 递增延迟
+          reconnectInterval.value = setTimeout(() => { connect(); }, 3000 * reconnectAttempts.value);
         }
       };
 
@@ -110,6 +133,9 @@ export function useWebSocket() {
       ws.value.send(JSON.stringify(message));
       return true;
     }
+    // 未连接时加入队列
+    _messageQueue.push(message);
+    console.debug('[WS][client] queue message (socket not open):', message.type || message);
     return false;
   };
 
@@ -140,14 +166,11 @@ export function useWebSocket() {
   };
 
   // 组件挂载时连接
-  onMounted(() => {
-    connect();
-  });
+  onMounted(() => { connect(); });
 
   // 组件卸载时断开连接
-  onUnmounted(() => {
-    disconnect();
-  });
+  // 不在卸载时主动断开，让单例长存，除非显式调用 disconnect()
+  onUnmounted(() => {});
 
   return {
     ws,

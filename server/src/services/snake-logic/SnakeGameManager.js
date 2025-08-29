@@ -88,6 +88,10 @@ export class SnakeGameManager {
       game_state: gameState
     });
     this.service.gameStates.delete(roomId);
+    // 通知大厅刷新（房间变为 finished 或随后被删除）
+    if (this.wsService?.broadcast) {
+      this.wsService.broadcast('snake_room_list_updated');
+    }
   }
 
   async recordGame(gameState, reason, winner) {

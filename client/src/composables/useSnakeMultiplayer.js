@@ -84,7 +84,8 @@ export function useSnakeMultiplayer() {
       }, 8000);
 
       const stop = watch(currentRoom, (val) => {
-        if (val) {
+          if (val && (val.room_code || val.roomCode)) {
+            console.debug('[client] createRoom success, room_code=', val.room_code || val.roomCode)
           clearTimeout(timer);
           stop();
           loading.value = false;
@@ -106,7 +107,8 @@ export function useSnakeMultiplayer() {
       }, 8000);
 
       const stop = watch(currentRoom, (val) => {
-        if (val && val.room_code && val.room_code.toUpperCase() === roomCode.toUpperCase()) {
+          if (val && (val.room_code || val.roomCode) && (val.room_code || val.roomCode).toUpperCase() === roomCode.toUpperCase()) {
+            console.debug('[client] joinRoom success, room_code=', val.room_code || val.roomCode)
           clearTimeout(timer);
           stop();
           loading.value = false;
@@ -115,19 +117,25 @@ export function useSnakeMultiplayer() {
       });
     });
   };
-  const toggleReady = () => currentRoom.value && send({ type: 'snake_toggle_ready', data: { roomCode: currentRoom.value.room_code } });
-  const vote = (direction) => currentRoom.value?.mode === 'shared' && (myVote.value = direction, send({ type: 'snake_vote', data: { roomCode: currentRoom.value.room_code, direction } }));
-  const move = (direction) => currentRoom.value?.mode === 'competitive' && send({ type: 'snake_move', data: { roomCode: currentRoom.value.room_code, direction } });
+  const toggleReady = () => {
+    if (!currentRoom.value) return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; send({ type: 'snake_toggle_ready', data: { roomCode: code } });
+  };
+  const vote = (direction) => {
+    if (currentRoom.value?.mode !== 'shared') return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; myVote.value = direction; send({ type: 'snake_vote', data: { roomCode: code, direction } });
+  };
+  const move = (direction) => {
+    if (currentRoom.value?.mode !== 'competitive') return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; send({ type: 'snake_move', data: { roomCode: code, direction } });
+  };
   const leaveRoom = () => {
-    if (!currentRoom.value) return;
-    send({ type: 'snake_leave_room', data: { roomCode: currentRoom.value.room_code } });
+    if (!currentRoom.value) return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (code) send({ type: 'snake_leave_room', data: { roomCode: code } });
     resetRoomState();
+  localStorage.removeItem('snakeCurrentRoomCode');
   };
   const getRoomInfo = (roomCode) => send({ type: 'snake_get_room_info', data: { roomCode: roomCode.toUpperCase() } });
-  const startGame = () => currentRoom.value && send({ type: 'snake_start_game', data: { roomCode: currentRoom.value.room_code } });
+  const startGame = () => { if (!currentRoom.value) return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; send({ type: 'snake_start_game', data: { roomCode: code } }); };
   const handleVote = vote; // 语义别名
   const handleMove = move; // 语义别名
-  const kickPlayer = (playerId) => currentRoom.value?.created_by === currentPlayer.value?.session_id && send({ type: 'snake_kick_player', data: { roomCode: currentRoom.value.room_code, playerId } });
+  const kickPlayer = (playerId) => { if (currentRoom.value?.created_by !== currentPlayer.value?.session_id) return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; send({ type: 'snake_kick_player', data: { roomCode: code, playerId } }); };
 
   // 供 handlers 注入的上下文
   const handlerCtx = {
@@ -160,6 +168,12 @@ export function useSnakeMultiplayer() {
       loading.value = true; error.value = null;
       if (!isConnected.value) await connect();
       registerHandlers();
+      // 恢复房间（如果页面刷新过且房间仍然存在）
+      const cachedCode = localStorage.getItem('snakeCurrentRoomCode');
+      if (cachedCode) {
+        // 请求房间信息，如果不存在会返回 null
+        getRoomInfo(cachedCode);
+      }
     } catch (e) {
       error.value = e.message || '初始化失败';
     } finally {

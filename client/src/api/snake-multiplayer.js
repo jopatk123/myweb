@@ -12,7 +12,17 @@ export const snakeMultiplayerApi = {
   async getActiveRooms() {
     try {
       const response = await axios.get(`${API_BASE}/snake-multiplayer/rooms`);
-      return response.data.data || [];
+      console.log('API 响应:', response.data) // 调试信息
+      const raw = response.data.data || [];
+      // 兼容：如果服务端（或某层拦截器）把 snake_case 转成了 camelCase，则这里统一补齐 snake_case，前端其它组件仍可使用 room.room_code
+      return raw.map(r => ({
+        ...r,
+        room_code: r.room_code || r.roomCode,
+        max_players: r.max_players || r.maxPlayers,
+        current_players: r.current_players || r.currentPlayers,
+        created_by: r.created_by || r.createdBy,
+        game_settings: r.game_settings || r.gameSettings,
+      }));
     } catch (error) {
       console.error('获取房间列表失败:', error);
       throw new Error(error.response?.data?.message || '获取房间列表失败');

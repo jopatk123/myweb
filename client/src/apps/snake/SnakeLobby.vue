@@ -114,7 +114,9 @@ const refreshRooms = async () => {
   if (loading.value) return;
   loading.value = true;
   try {
-    activeRooms.value = await snakeMultiplayerApi.getActiveRooms()
+    const rooms = await snakeMultiplayerApi.getActiveRooms()
+    console.log('获取到的房间数据:', rooms) // 调试信息
+    activeRooms.value = rooms
   } catch (err) {
     console.error('刷新房间失败:', err)
     error.value = '无法加载房间列表，请稍后重试。';
@@ -146,14 +148,14 @@ const quickJoin = async () => {
   
   await refreshRooms(); // 先刷新一次列表
 
-  const suitableRoom = activeRooms.value.find(room => 
-    room.status === 'waiting' && 
-    room.mode === selectedMode.value &&
-    room.current_players < room.max_players
-  )
-  
+  const suitableRoom = activeRooms.value.find(room => {
+    const currentPlayers = room.current_players ?? room.currentPlayers;
+    const maxPlayers = room.max_players ?? room.maxPlayers;
+    return room.status === 'waiting' && room.mode === selectedMode.value && currentPlayers < maxPlayers;
+  });
+
   if (suitableRoom) {
-    await joinRoomById(suitableRoom.room_code)
+    await joinRoomById(suitableRoom.room_code || suitableRoom.roomCode)
   } else {
     await createNewRoom()
   }
@@ -235,7 +237,10 @@ onMounted(async () => {
   
   // 监听 WebSocket 事件来刷新房间列表
   if (typeof onMessage === 'function') {
-    onMessage('snake_room_list_updated', refreshRooms);
+    onMessage('snake_room_list_updated', () => {
+      console.debug('[WS][client] 收到 snake_room_list_updated at', new Date().toISOString())
+      if (!loading.value) refreshRooms()
+    });
   } else {
     console.warn('useSnakeMultiplayer: onMessage 不可用，房间列表将使用轮询刷新');
   }

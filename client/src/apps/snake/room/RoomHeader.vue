@@ -1,7 +1,7 @@
 <template>
   <div class="room-header">
     <div class="room-info">
-      <h2>🏠 房间 {{ room?.room_code }}</h2>
+  <h2>🏠 房间 {{ room?.room_code || room?.roomCode || '——' }}</h2>
       <div class="room-details">
         <span class="mode-badge" :class="`mode-${room?.mode}`">
           {{ room?.mode === 'shared' ? '🤝 共享模式' : '⚔️ 竞技模式' }}
@@ -14,6 +14,7 @@
     <div class="room-actions">
       <button class="btn-secondary" @click="$emit('copy-room-code')">
         📋 复制房间码
+        <span class="copy-hint">{{ (room?.room_code || room?.roomCode) ? (room?.room_code || room?.roomCode) : '' }}</span>
       </button>
       <button class="btn-danger" @click="$emit('leave-room')">
         🚪 离开房间
