@@ -26,8 +26,6 @@
 </template>
 
 <script setup>
-  import { defineProps } from 'vue';
-
   const props = defineProps({
     gameStarted: { type: Boolean, required: true },
     gameOver: { type: Boolean, required: true },

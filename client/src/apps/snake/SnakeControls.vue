@@ -18,6 +18,9 @@
       <button class="btn btn-secondary" @click="$emit('restart')">
         重新开始
       </button>
+      <button class="btn btn-tertiary" @click="$emit('backToMenu')">
+        返回菜单
+      </button>
     </div>
 
     <div class="difficulty-controls">
@@ -33,8 +36,6 @@
 </template>
 
 <script setup>
-  import { defineProps, defineEmits } from 'vue';
-
   const props = defineProps({
     gameStarted: { type: Boolean, required: true },
     paused: { type: Boolean, required: true },
@@ -42,7 +43,7 @@
     difficulty: { type: String, required: true },
   });
 
-  const emit = defineEmits(['start', 'pause', 'restart', 'update:difficulty']);
+  const emit = defineEmits(['start', 'pause', 'restart', 'backToMenu', 'update:difficulty']);
 
   function onChange(e) {
     emit('update:difficulty', e.target.value);

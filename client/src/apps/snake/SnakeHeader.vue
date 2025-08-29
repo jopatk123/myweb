@@ -23,8 +23,6 @@
 </template>
 
 <script setup>
-  import { defineProps } from 'vue';
-
   const props = defineProps({
     score: { type: Number, required: true },
     snakeLength: { type: Number, required: true },
