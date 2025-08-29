@@ -10,6 +10,7 @@ import {
   initNotebookTables,
   initNovelBookmarkTables,
   initMessageTables,
+  initSnakeMultiplayerTables,
 } from '../db/schema.js';
 import { ensureWallpaperColumns, ensureAppsColumns } from '../db/migration.js';
 import { ensureFilesTypeCategoryIncludesNovel } from '../db/migration.js';
@@ -65,6 +66,13 @@ export async function initDatabase() {
     initMessageTables(db);
   } catch (e) {
     console.warn('无法初始化 message board 表（非致命）:', e.message || e);
+  }
+
+  // 新增 snake multiplayer 表初始化
+  try {
+    initSnakeMultiplayerTables(db);
+  } catch (e) {
+    console.warn('无法初始化 snake multiplayer 表（非致命）:', e.message || e);
   }
 
   // 迁移: 确保缺失列存在

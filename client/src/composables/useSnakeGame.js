@@ -226,7 +226,7 @@ export default function useSnakeGame() {
     if (newDir.x !== undefined && newDir.y !== undefined) {
       if (!(dir.value.x === -newDir.x && dir.value.y === -newDir.y)) {
         dir.value = { x: newDir.x, y: newDir.y };
-        if (!gameStarted.value) startGame();
+        if (!gameStarted.value && !gameOver.value) startGame();
       }
     }
   }

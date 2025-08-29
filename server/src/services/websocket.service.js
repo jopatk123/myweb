@@ -117,6 +117,27 @@ export class WebSocketService {
     return this.clients.size;
   }
 
+  // 向房间广播消息
+  async broadcastToRoom(roomId, eventType, data) {
+    try {
+      // 这里需要从数据库获取房间内的玩家
+      // 暂时使用简单的实现
+      this.clients.forEach((client, sessionId) => {
+        if (client.readyState === client.OPEN) {
+          this.sendToClient(sessionId, {
+            type: `snake_${eventType}`,
+            data: {
+              room_id: roomId,
+              ...data
+            }
+          });
+        }
+      });
+    } catch (error) {
+      console.error('房间广播失败:', error);
+    }
+  }
+
   // 贪吃蛇多人游戏处理方法
   async handleSnakeCreateRoom(sessionId, data) {
     try {

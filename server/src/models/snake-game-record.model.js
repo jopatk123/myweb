@@ -7,102 +7,140 @@ export const SnakeGameRecordModel = {
   /**
    * 创建游戏记录
    */
-  async create(recordData) {
+  create(recordData) {
     const db = getDb();
-    const [record] = await db('snake_game_records')
-      .insert(recordData)
-      .returning('*');
+    const stmt = db.prepare(`
+      INSERT INTO snake_game_records (
+        room_id, mode, winner_session_id, winner_score, 
+        game_duration, end_reason, player_count, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `);
     
-    return record;
+    const result = stmt.run(
+      recordData.room_id,
+      recordData.mode,
+      recordData.winner_session_id,
+      recordData.winner_score || 0,
+      recordData.game_duration || 0,
+      recordData.end_reason || 'finished',
+      recordData.player_count || 1
+    );
+    
+    return this.findById(result.lastInsertRowid);
+  },
+
+  /**
+   * 根据ID获取记录
+   */
+  findById(id) {
+    const db = getDb();
+    const stmt = db.prepare('SELECT * FROM snake_game_records WHERE id = ?');
+    return stmt.get(id);
   },
 
   /**
    * 根据房间ID获取游戏记录
    */
-  async findByRoomId(roomId) {
+  findByRoomId(roomId) {
     const db = getDb();
-    return await db('snake_game_records')
-      .where({ room_id: roomId })
-      .orderBy('created_at', 'desc');
+    const stmt = db.prepare(`
+      SELECT * FROM snake_game_records 
+      WHERE room_id = ? 
+      ORDER BY created_at DESC
+    `);
+    return stmt.all(roomId);
   },
 
   /**
    * 获取玩家的游戏记录
    */
-  async findByPlayer(sessionId, limit = 20) {
+  findByPlayer(sessionId, limit = 10) {
     const db = getDb();
-    return await db('snake_game_records')
-      .where({ winner_session_id: sessionId })
-      .orderBy('created_at', 'desc')
-      .limit(limit);
+    const stmt = db.prepare(`
+      SELECT * FROM snake_game_records 
+      WHERE winner_session_id = ? 
+      ORDER BY created_at DESC 
+      LIMIT ?
+    `);
+    return stmt.all(sessionId, limit);
   },
 
   /**
    * 获取玩家统计信息
    */
-  async getPlayerStats(sessionId) {
+  getPlayerStats(sessionId) {
     const db = getDb();
-    const stats = await db('snake_game_records')
-      .where({ winner_session_id: sessionId })
-      .select(
-        db.raw('COUNT(*) as total_games'),
-        db.raw('COUNT(CASE WHEN winner_session_id = ? THEN 1 END) as wins', [sessionId]),
-        db.raw('AVG(winner_score) as avg_score'),
-        db.raw('MAX(winner_score) as best_score'),
-        db.raw('AVG(game_duration) as avg_duration')
-      )
-      .first();
+    
+    // 获取总游戏数
+    const totalGamesStmt = db.prepare(`
+      SELECT COUNT(*) as total_games 
+      FROM snake_game_records 
+      WHERE winner_session_id = ?
+    `);
+    const totalGames = totalGamesStmt.get(sessionId);
+    
+    // 获取胜利数（在共享模式中，所有玩家都是获胜者）
+    const winsStmt = db.prepare(`
+      SELECT COUNT(*) as wins 
+      FROM snake_game_records 
+      WHERE winner_session_id = ?
+    `);
+    const wins = winsStmt.get(sessionId);
+    
+    // 获取最高分
+    const highScoreStmt = db.prepare(`
+      SELECT MAX(winner_score) as high_score 
+      FROM snake_game_records 
+      WHERE winner_session_id = ?
+    `);
+    const highScore = highScoreStmt.get(sessionId);
+    
+    // 获取平均分
+    const avgScoreStmt = db.prepare(`
+      SELECT AVG(winner_score) as avg_score 
+      FROM snake_game_records 
+      WHERE winner_session_id = ?
+    `);
+    const avgScore = avgScoreStmt.get(sessionId);
     
     return {
-      total_games: parseInt(stats.total_games) || 0,
-      wins: parseInt(stats.wins) || 0,
-      win_rate: stats.total_games > 0 ? (stats.wins / stats.total_games) : 0,
-      avg_score: Math.round(stats.avg_score) || 0,
-      best_score: parseInt(stats.best_score) || 0,
-      avg_duration: Math.round(stats.avg_duration) || 0
+      total_games: totalGames.total_games || 0,
+      wins: wins.wins || 0,
+      high_score: highScore.high_score || 0,
+      avg_score: Math.round(avgScore.avg_score || 0)
     };
   },
 
   /**
    * 获取排行榜
    */
-  async getLeaderboard(mode = null, limit = 10) {
+  getLeaderboard(mode = null, limit = 10) {
     const db = getDb();
-    let query = db('snake_game_records')
-      .join('snake_players', 'snake_game_records.winner_session_id', '=', 'snake_players.session_id')
-      .select(
-        'snake_players.player_name',
-        'snake_players.session_id',
-        db.raw('COUNT(*) as wins'),
-        db.raw('MAX(winner_score) as best_score'),
-        db.raw('AVG(winner_score) as avg_score')
-      )
-      .groupBy('snake_players.session_id', 'snake_players.player_name')
-      .orderBy('wins', 'desc')
-      .orderBy('best_score', 'desc')
-      .limit(limit);
+    
+    let query = `
+      SELECT 
+        winner_session_id,
+        MAX(winner_score) as best_score,
+        COUNT(*) as games_played,
+        AVG(winner_score) as avg_score
+      FROM snake_game_records 
+    `;
+    
+    const params = [];
     
     if (mode) {
-      query = query.where('snake_game_records.mode', mode);
+      query += ' WHERE mode = ?';
+      params.push(mode);
     }
     
-    const results = await query;
+    query += `
+      GROUP BY winner_session_id 
+      ORDER BY best_score DESC 
+      LIMIT ?
+    `;
+    params.push(limit);
     
-    return results.map(result => ({
-      ...result,
-      wins: parseInt(result.wins),
-      best_score: parseInt(result.best_score),
-      avg_score: Math.round(result.avg_score)
-    }));
-  },
-
-  /**
-   * 删除房间相关的游戏记录
-   */
-  async deleteByRoomId(roomId) {
-    const db = getDb();
-    return await db('snake_game_records')
-      .where({ room_id: roomId })
-      .del();
+    const stmt = db.prepare(query);
+    return stmt.all(...params);
   }
 };

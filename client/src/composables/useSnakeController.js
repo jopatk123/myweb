@@ -52,7 +52,7 @@ export default function useSnakeController({
   }
 
   function updateSpeed() {
-    if (timerRef.current && gameStarted.value && !paused.value) {
+    if (timerRef.current && gameStarted.value && !paused.value && !gameOver.value) {
       clearTimer();
       timerRef.current = setInterval(() => {
         gameStep();

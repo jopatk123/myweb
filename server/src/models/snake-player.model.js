@@ -7,172 +7,195 @@ export const SnakePlayerModel = {
   /**
    * 创建玩家
    */
-  async create(playerData) {
+  create(playerData) {
     const db = getDb();
-    const [player] = await db('snake_players')
-      .insert(playerData)
-      .returning('*');
+    const stmt = db.prepare(`
+      INSERT INTO snake_players (
+        room_id, session_id, player_name, player_color, 
+        is_ready, is_online, joined_at
+      ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    `);
     
-    return player;
+    const result = stmt.run(
+      playerData.room_id,
+      playerData.session_id,
+      playerData.player_name,
+      playerData.player_color,
+      playerData.is_ready ? 1 : 0,
+      playerData.is_online !== false ? 1 : 0 // 默认为true
+    );
+    
+    return this.findById(result.lastInsertRowid);
+  },
+
+  /**
+   * 根据ID获取玩家
+   */
+  findById(id) {
+    const db = getDb();
+    const stmt = db.prepare('SELECT * FROM snake_players WHERE id = ?');
+    return stmt.get(id);
   },
 
   /**
    * 根据房间ID和会话ID获取玩家
    */
-  async findByRoomAndSession(roomId, sessionId) {
+  findByRoomAndSession(roomId, sessionId) {
     const db = getDb();
-    return await db('snake_players')
-      .where({ 
-        room_id: roomId, 
-        session_id: sessionId 
-      })
-      .first();
+    const stmt = db.prepare(`
+      SELECT * FROM snake_players 
+      WHERE room_id = ? AND session_id = ?
+    `);
+    return stmt.get(roomId, sessionId);
   },
 
   /**
    * 获取房间内的所有玩家
    */
-  async findByRoomId(roomId) {
+  findByRoomId(roomId) {
     const db = getDb();
-    return await db('snake_players')
-      .where({ room_id: roomId })
-      .orderBy('joined_at', 'asc');
+    const stmt = db.prepare(`
+      SELECT * FROM snake_players 
+      WHERE room_id = ? 
+      ORDER BY joined_at ASC
+    `);
+    return stmt.all(roomId);
   },
 
   /**
    * 获取房间内的在线玩家
    */
-  async findOnlineByRoomId(roomId) {
+  findOnlineByRoomId(roomId) {
     const db = getDb();
-    return await db('snake_players')
-      .where({ 
-        room_id: roomId,
-        is_online: true 
-      })
-      .orderBy('joined_at', 'asc');
+    const stmt = db.prepare(`
+      SELECT * FROM snake_players 
+      WHERE room_id = ? AND is_online = 1 
+      ORDER BY joined_at ASC
+    `);
+    return stmt.all(roomId);
   },
 
   /**
-   * 更新玩家
+   * 更新玩家信息
    */
-  async update(id, updateData) {
+  update(id, updateData) {
     const db = getDb();
-    const [player] = await db('snake_players')
-      .where({ id })
-      .update({
-        ...updateData,
-        last_active: db.fn.now()
-      })
-      .returning('*');
     
-    return player;
-  },
-
-  /**
-   * 更新玩家在线状态
-   */
-  async updateOnlineStatus(sessionId, isOnline) {
-    const db = getDb();
-    return await db('snake_players')
-      .where({ session_id: sessionId })
-      .update({ 
-        is_online: isOnline,
-        last_active: db.fn.now()
-      });
-  },
-
-  /**
-   * 根据会话ID和房间ID更新玩家
-   */
-  async updateByRoomAndSession(roomId, sessionId, updateData) {
-    const db = getDb();
-    const [player] = await db('snake_players')
-      .where({ 
-        room_id: roomId, 
-        session_id: sessionId 
-      })
-      .update({
-        ...updateData,
-        last_active: db.fn.now()
-      })
-      .returning('*');
+    const fields = [];
+    const values = [];
     
-    return player;
-  },
-
-  /**
-   * 删除玩家
-   */
-  async delete(id) {
-    const db = getDb();
-    return await db('snake_players')
-      .where({ id })
-      .del();
-  },
-
-  /**
-   * 根据会话ID删除玩家
-   */
-  async deleteBySession(sessionId) {
-    const db = getDb();
-    return await db('snake_players')
-      .where({ session_id: sessionId })
-      .del();
-  },
-
-  /**
-   * 根据房间ID删除所有玩家
-   */
-  async deleteByRoomId(roomId) {
-    const db = getDb();
-    return await db('snake_players')
-      .where({ room_id: roomId })
-      .del();
-  },
-
-  /**
-   * 获取准备状态的玩家数量
-   */
-  async getReadyCount(roomId) {
-    const db = getDb();
-    const result = await db('snake_players')
-      .where({ 
-        room_id: roomId,
-        is_ready: true,
-        is_online: true
-      })
-      .count('id as count')
-      .first();
+    Object.entries(updateData).forEach(([key, value]) => {
+      fields.push(`${key} = ?`);
+      // 转换布尔值为数字
+      if (typeof value === 'boolean') {
+        values.push(value ? 1 : 0);
+      } else {
+        values.push(value);
+      }
+    });
     
-    return parseInt(result.count);
+    fields.push('updated_at = datetime(\'now\')');
+    values.push(id);
+    
+    const stmt = db.prepare(`
+      UPDATE snake_players 
+      SET ${fields.join(', ')} 
+      WHERE id = ?
+    `);
+    
+    stmt.run(...values);
+    return this.findById(id);
+  },
+
+  /**
+   * 根据房间ID和会话ID更新玩家
+   */
+  updateByRoomAndSession(roomId, sessionId, updateData) {
+    const db = getDb();
+    
+    const fields = [];
+    const values = [];
+    
+    Object.entries(updateData).forEach(([key, value]) => {
+      fields.push(`${key} = ?`);
+      // 转换布尔值为数字
+      if (typeof value === 'boolean') {
+        values.push(value ? 1 : 0);
+      } else {
+        values.push(value);
+      }
+    });
+    
+    fields.push('updated_at = datetime(\'now\')');
+    values.push(roomId, sessionId);
+    
+    const stmt = db.prepare(`
+      UPDATE snake_players 
+      SET ${fields.join(', ')} 
+      WHERE room_id = ? AND session_id = ?
+    `);
+    
+    stmt.run(...values);
+    return this.findByRoomAndSession(roomId, sessionId);
   },
 
   /**
    * 获取房间内玩家数量
    */
-  async getPlayerCount(roomId) {
+  getPlayerCount(roomId) {
     const db = getDb();
-    const result = await db('snake_players')
-      .where({ 
-        room_id: roomId,
-        is_online: true
-      })
-      .count('id as count')
-      .first();
-    
-    return parseInt(result.count);
+    const stmt = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM snake_players 
+      WHERE room_id = ? AND is_online = 1
+    `);
+    const result = stmt.get(roomId);
+    return result.count;
   },
 
   /**
-   * 清理离线时间过长的玩家
+   * 获取房间内准备的玩家数量
    */
-  async cleanupOfflinePlayers(timeoutMinutes = 10) {
+  getReadyCount(roomId) {
     const db = getDb();
-    const cutoffTime = new Date(Date.now() - timeoutMinutes * 60 * 1000);
-    
-    return await db('snake_players')
-      .where('is_online', false)
-      .where('last_active', '<', cutoffTime)
-      .del();
+    const stmt = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM snake_players 
+      WHERE room_id = ? AND is_ready = 1 AND is_online = 1
+    `);
+    const result = stmt.get(roomId);
+    return result.count;
+  },
+
+  /**
+   * 删除玩家（根据会话ID）
+   */
+  deleteBySession(sessionId) {
+    const db = getDb();
+    const stmt = db.prepare('DELETE FROM snake_players WHERE session_id = ?');
+    return stmt.run(sessionId);
+  },
+
+  /**
+   * 删除房间内所有玩家
+   */
+  deleteByRoomId(roomId) {
+    const db = getDb();
+    const stmt = db.prepare('DELETE FROM snake_players WHERE room_id = ?');
+    return stmt.run(roomId);
+  },
+
+  /**
+   * 清理离线玩家
+   */
+  cleanupOfflinePlayers(timeoutMinutes = 10) {
+    const db = getDb();
+    const stmt = db.prepare(`
+      DELETE FROM snake_players 
+      WHERE is_online = 0 
+      AND updated_at < datetime('now', '-${timeoutMinutes} minutes')
+    `);
+    const result = stmt.run();
+    return result.changes;
   }
 };

@@ -39,7 +39,7 @@ export class SnakeGameService extends RoomManagerService {
       ...gameSettings
     };
 
-    return await this.createRoom(sessionId, playerName, roomData, gameConfig);
+    return this.createRoom(sessionId, playerName, roomData, gameConfig);
   }
 
   /**
@@ -94,7 +94,7 @@ export class SnakeGameService extends RoomManagerService {
   /**
    * 开始游戏
    */
-  async startGame(roomId) {
+  startGame(roomId) {
     try {
       const gameState = this.getGameState(roomId);
       if (!gameState) {
@@ -102,7 +102,7 @@ export class SnakeGameService extends RoomManagerService {
       }
 
       // 更新房间状态
-      await SnakeRoomModel.update(roomId, { status: 'playing' });
+      SnakeRoomModel.update(roomId, { status: 'playing' });
       
       // 更新游戏状态
       this.updateGameState(roomId, { 
@@ -116,7 +116,7 @@ export class SnakeGameService extends RoomManagerService {
         this.startSharedGameLoop(roomId);
       } else if (gameState.mode === 'competitive') {
         // 初始化玩家蛇
-        const players = await SnakePlayerModel.findOnlineByRoomId(roomId);
+        const players = SnakePlayerModel.findOnlineByRoomId(roomId);
         this.initCompetitivePlayers(roomId, players);
         this.startCompetitiveGameLoop(roomId);
       }
@@ -136,14 +136,14 @@ export class SnakeGameService extends RoomManagerService {
   /**
    * 处理投票（共享模式）
    */
-  async handleVote(roomId, sessionId, direction) {
+  handleVote(roomId, sessionId, direction) {
     try {
       const gameState = this.getGameState(roomId);
       if (!gameState || gameState.mode !== 'shared' || gameState.status !== 'playing') {
         return;
       }
 
-      const player = await SnakePlayerModel.findByRoomAndSession(roomId, sessionId);
+      const player = SnakePlayerModel.findByRoomAndSession(roomId, sessionId);
       if (!player) {
         return;
       }
@@ -317,7 +317,7 @@ export class SnakeGameService extends RoomManagerService {
   /**
    * 结束游戏
    */
-  async endGame(roomId, reason = 'finished') {
+  endGame(roomId, reason = 'finished') {
     try {
       const gameState = this.getGameState(roomId);
       if (!gameState) return;
@@ -342,10 +342,10 @@ export class SnakeGameService extends RoomManagerService {
       });
 
       // 更新房间状态
-      await SnakeRoomModel.update(roomId, { status: 'finished' });
+      SnakeRoomModel.update(roomId, { status: 'finished' });
 
       // 保存游戏记录
-      await this.saveGameRecord(roomId, gameState, reason);
+      this.saveGameRecord(roomId, gameState, reason);
 
       // 广播游戏结束
       this.broadcastToRoom(roomId, 'game_ended', {
@@ -363,19 +363,19 @@ export class SnakeGameService extends RoomManagerService {
   /**
    * 保存游戏记录
    */
-  async saveGameRecord(roomId, gameState, endReason) {
+  saveGameRecord(roomId, gameState, endReason) {
     try {
-      const room = await SnakeRoomModel.findById(roomId);
+      const room = SnakeRoomModel.findById(roomId);
       if (!room) return;
 
-      const players = await SnakePlayerModel.findByRoomId(roomId);
+      const players = SnakePlayerModel.findByRoomId(roomId);
       const finalScore = gameState.sharedSnake?.score || 0;
       const duration = Date.now() - gameState.startTime;
 
       // 在共享模式中，所有玩家都是"获胜者"
       if (gameState.mode === 'shared') {
         for (const player of players) {
-          await SnakeGameRecordModel.create({
+          SnakeGameRecordModel.create({
             room_id: roomId,
             mode: gameState.mode,
             winner_session_id: player.session_id,

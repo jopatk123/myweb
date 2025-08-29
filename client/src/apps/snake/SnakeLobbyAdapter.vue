@@ -21,8 +21,8 @@
 </template>
 <script setup>
 import { ref, onMounted } from 'vue';
-import { GameLobby, StatsModal, LeaderboardModal, useMultiplayerRoom } from '@/components/multiplayer';
-import { snakeMultiplayerApi } from '@/api/snake-multiplayer.js';
+import { GameLobby, StatsModal, LeaderboardModal, useMultiplayerRoom } from '../../components/multiplayer/index.js';
+import { snakeMultiplayerApi } from '../../api/snake-multiplayer.js';
 
 // 本地状态
 const playerName = ref(localStorage.getItem('snakePlayerName') || '');

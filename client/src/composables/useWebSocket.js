@@ -59,7 +59,7 @@ export function useWebSocket() {
         reconnectAttempts.value = 0;
 
         // 发送加入消息
-        send('join', { sessionId });
+        send({ type: 'join', sessionId });
       };
 
       ws.value.onmessage = event => {
@@ -105,9 +105,9 @@ export function useWebSocket() {
   };
 
   // 发送消息
-  const send = (type, data = {}) => {
+  const send = (message) => {
     if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-      ws.value.send(JSON.stringify({ type, ...data }));
+      ws.value.send(JSON.stringify(message));
       return true;
     }
     return false;
