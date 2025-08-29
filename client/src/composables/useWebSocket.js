@@ -150,6 +150,7 @@ export function useWebSocket() {
   });
 
   return {
+    ws,
     isConnected,
     connect,
     disconnect,
