@@ -25,8 +25,6 @@ export class WebSocketService {
       const sessionId = req.headers['x-session-id'] || uuidv4();
 
       this.clients.set(sessionId, ws);
-      console.log(`WebSocket client connected: ${sessionId}`);
-
       ws.send(
         JSON.stringify({
           type: 'connected',
@@ -117,9 +115,6 @@ export class WebSocketService {
         this.clients.delete(sessionId);
       }
     });
-    if (type === 'snake_room_list_updated') {
-      console.log('[WS] 广播房间列表更新');
-    }
   }
 
   getOnlineCount() {

@@ -110,12 +110,11 @@ watch(playerName, (newName) => {
 })
 
 // 业务逻辑函数
-const refreshRooms = async () => {
+  const refreshRooms = async () => {
   if (loading.value) return;
   loading.value = true;
   try {
     const rooms = await snakeMultiplayerApi.getActiveRooms()
-    console.log('获取到的房间数据:', rooms) // 调试信息
     activeRooms.value = rooms
   } catch (err) {
     console.error('刷新房间失败:', err)
@@ -192,8 +191,7 @@ const joinRoomById = async (roomCode) => {
 }
 
 const spectateRoom = (roomCode) => {
-  console.log('观战房间:', roomCode)
-  // 可以在这里实现观战逻辑
+  console.log('观战功能尚未开放。');
   error.value = '观战功能尚未开放。';
 }
 
@@ -238,7 +236,6 @@ onMounted(async () => {
   // 监听 WebSocket 事件来刷新房间列表
   if (typeof onMessage === 'function') {
     onMessage('snake_room_list_updated', () => {
-      console.debug('[WS][client] 收到 snake_room_list_updated at', new Date().toISOString())
       if (!loading.value) refreshRooms()
     });
   } else {

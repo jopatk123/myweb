@@ -62,7 +62,6 @@ export function useWebSocket() {
   // 连接WebSocket
   const flushQueue = () => {
     if (!ws.value || ws.value.readyState !== WebSocket.OPEN) return;
-    if (_messageQueue.length) console.debug('[WS][client] flush queued messages:', _messageQueue.length);
     while (_messageQueue.length) {
       const msg = _messageQueue.shift();
       try { ws.value.send(JSON.stringify(msg)); } catch(e) { console.warn('Queued msg send failed', e); }
@@ -82,7 +81,6 @@ export function useWebSocket() {
       }
 
       ws.value.onopen = () => {
-        console.debug('[WS][client] connected');
         isConnected.value = true;
         reconnectAttempts.value = 0;
         send({ type: 'join', sessionId });
@@ -101,7 +99,6 @@ export function useWebSocket() {
       };
 
       ws.value.onclose = () => {
-        console.debug('[WS][client] closed');
         isConnected.value = false;
         if (reconnectAttempts.value < maxReconnectAttempts) {
           reconnectAttempts.value++;
@@ -135,7 +132,6 @@ export function useWebSocket() {
     }
     // 未连接时加入队列
     _messageQueue.push(message);
-    console.debug('[WS][client] queue message (socket not open):', message.type || message);
     return false;
   };
 

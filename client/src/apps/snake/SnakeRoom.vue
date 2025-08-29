@@ -127,19 +127,15 @@ onMounted(() => {
   })
   
   onPlayerJoin((player) => {
-    console.log('玩家加入:', player.player_name)
   })
   
   onPlayerLeave((player) => {
-    console.log('玩家离开:', player.player_name)
   })
   
   onPlayerReady((data) => {
-    console.log('玩家准备状态:', data)
   })
   
   onVoteUpdate((data) => {
-    console.log('投票更新:', data)
   })
 })
 

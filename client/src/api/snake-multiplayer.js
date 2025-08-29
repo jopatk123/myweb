@@ -12,7 +12,6 @@ export const snakeMultiplayerApi = {
   async getActiveRooms() {
     try {
       const response = await axios.get(`${API_BASE}/snake-multiplayer/rooms`);
-      console.log('API 响应:', response.data) // 调试信息
       const raw = response.data.data || [];
       // 兼容：如果服务端（或某层拦截器）把 snake_case 转成了 camelCase，则这里统一补齐 snake_case，前端其它组件仍可使用 room.room_code
       return raw.map(r => ({

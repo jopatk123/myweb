@@ -9,7 +9,6 @@ export function createSnakeHandlers(ctx) {
   } = ctx;
 
   function handleRoomCreated(data) {
-  console.debug('[WS][client] room_created', data);
     // 双向兼容字段 (room_code <-> roomCode)
     if (data?.room) {
       if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
@@ -30,7 +29,6 @@ export function createSnakeHandlers(ctx) {
   }
 
   function handleRoomJoined(data) {
-  console.debug('[WS][client] room_joined', data);
     if (data?.room) {
       if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
       if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
@@ -55,7 +53,6 @@ export function createSnakeHandlers(ctx) {
 
   function handleRoomInfo(data) {
     if (!data) return;
-  console.debug('[WS][client] room_info', data);
     if (data?.room) {
       if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
       if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;

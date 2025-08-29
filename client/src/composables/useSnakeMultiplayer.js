@@ -85,7 +85,6 @@ export function useSnakeMultiplayer() {
 
       const stop = watch(currentRoom, (val) => {
           if (val && (val.room_code || val.roomCode)) {
-            console.debug('[client] createRoom success, room_code=', val.room_code || val.roomCode)
           clearTimeout(timer);
           stop();
           loading.value = false;
@@ -108,7 +107,6 @@ export function useSnakeMultiplayer() {
 
       const stop = watch(currentRoom, (val) => {
           if (val && (val.room_code || val.roomCode) && (val.room_code || val.roomCode).toUpperCase() === roomCode.toUpperCase()) {
-            console.debug('[client] joinRoom success, room_code=', val.room_code || val.roomCode)
           clearTimeout(timer);
           stop();
           loading.value = false;
@@ -150,7 +148,6 @@ export function useSnakeMultiplayer() {
   // 新增：处理房间列表更新
   const handleRoomListUpdated = () => {
     // 这是一个从Lobby发出的事件，所以这里不需要做什么，但可以留作调试
-    console.log('房间列表更新事件收到，大厅将刷新');
   };
 
   // 初始化 & 清理
