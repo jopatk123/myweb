@@ -1,155 +1,101 @@
-# 多人贪吃蛇游戏功能需求文档
-用户原始需求：我有个想发不知道是否可以实现，就是比如有两个人同时打开了桌面，在一个人打开贪吃蛇游戏的时候，另外一个人的桌面贪吃蛇也会自动打开，就像留言板一样，有内容的时候会自动弹出。现在的贪吃蛇只能单人玩，我想要给贪吃蛇游戏增加一些模式，共享模式：只要打开桌面了的人都可以同时控制贪吃蛇一起同步玩，竞技模式：打开两个一样的贪吃蛇游戏并排一起一个人控制一个游戏窗口，开始后同时运行；
+# 多人贪吃蛇游戏功能需求与当前进度
+本文档记录多人贪吃蛇（multiplayer snake）的需求、已完成改动、当前进度与下一步的明确任务清单，便于继续拆分与集成工作。
 
-## 🎯 AI功能分析
+## 任务接收与计划（简短）
+我要把仓库当前实现状态写回文档：先列出从代码库能确认“已完成”的工作，再列出仍需完成的具体任务与验证步骤（含可运行命令）。随后给出下一步优先级与短期计划。
 
-### 1.1 功能背景
-基于现有的单机版贪吃蛇游戏，扩展多人协作和竞技功能，提升桌面应用的社交性和用户粘性。
+下面先给出核对清单（requirements）并在文档中逐项映射状态。
 
-### 1.2 核心功能
-- **共享模式**: 多人同时控制一条蛇，通过投票机制决定移动方向
-- **竞技模式**: 双人并排游戏，同步开始，实时对比分数
-- **自动弹出**: 当有人开始游戏时，其他在线用户自动弹出游戏窗口
+## 核对清单（从原需求提取）
+- 支持共享模式（多人控制一条蛇）与竞技模式（双人对战）。
+- 使用 WebSocket 做实时同步，提供房间管理（创建/加入/离开/准备/开始/房间列表）。
+- 自动弹窗/自动打开逻辑（受浏览器权限限制）。
+- 将大型文件拆分（前端：`SnakeLobby.vue`、`SnakeMultiplayerGame.vue`、`SnakeRoom.vue`；后端：`snake-multiplayer.service.js`）。
+- 抽离通用模块（房间系统、玩家列表、通用 WebSocket/房间管理逻辑、可复用 UI 组件、组合式 hooks/composables）。
 
-### 1.3 业务价值
-- 增强用户社交互动体验
-- 提升产品差异化竞争力
-- 展示实时协作技术能力
-- 提高用户留存率和活跃度
+## 当前可确认的已完成工作（仓库现状快照）
+以下为从代码库实际检查后能确认已经存在或已创建的工作项：
 
-## 🎮 功能详细需求
+- 环境与数据库
+	- 开发环境可以启动（client & server）。
+	- 数据库迁移已应用，存在表：`snake_rooms`, `snake_players`, `snake_game_records`。
 
-### 2.1 共享模式 (Shared Mode)
+- 后端（已存在/拆分）
+	- `server/src/services/multiplayer/base-multiplayer.service.js`（通用基础服务）已存在。
+	- `server/src/services/multiplayer/room-manager.service.js`（通用房间管理）已存在。
+	- `server/src/services/snake-game.service.js`（贪吃蛇专属 service）已存在。
+	- 备注：`server/src/services/snake-multiplayer.service.js` 仍在仓库中（兼容/历史），路由/控制器尚未全部切换到新 service。
 
-#### 2.1.1 功能描述
-多个用户同时控制一条贪吃蛇，通过投票机制决定蛇的移动方向。
+- 前端（已创建或抽离的组件/组合）
+	- 新建通用大厅组件：`client/src/components/multiplayer/lobby/GameLobby.vue`（已存在）。
+	- 新建并提交以下可复用组件：
+		- `client/src/components/multiplayer/RoomCard.vue`
+		- `client/src/components/multiplayer/CreateRoomModal.vue`
+		- `client/src/components/multiplayer/PlayerList.vue`
+		- `client/src/components/multiplayer/ReadyControls.vue`
+	- 新建导出点：`client/src/components/multiplayer/index.js`（已创建，注意：文件内部对 `useMultiplayerRoom` 的 import 路径需要校验/修正，见“问题/待修复”）。
+	- 通用组合式函数：`client/src/composables/multiplayer/useMultiplayerRoom.js` 已存在（封装了 connect/create/join/leave/toggleReady/startGame 等）。
 
-#### 2.1.2 核心特性
-- **实时多人控制**: 支持多人同时参与
-- **投票机制**: 每个玩家可选择方向，系统选择票数最多的方向
-- **玩家标识**: 每个玩家有独特的颜色和昵称标识
-- **实时同步**: 游戏状态实时同步到所有参与者
-- **断线重连**: 支持玩家断线后重新加入
+- 其它
+	- `client/src/apps/snake/SnakeLobby.vue` 文件仍然存在并且体量很大（尚未完全替换为 `GameLobby` + 小组件适配层）。
 
-#### 2.1.3 用户界面要求
-- 显示当前参与玩家列表
-- 实时显示每个玩家的投票状态
-- 游戏画面上显示投票结果
-- 玩家操作指示器（显示谁在控制）
+## 已完成但需注意或小幅修复的问题
+- `client/src/components/multiplayer/index.js` 中导出 `useMultiplayerRoom` 的相对路径目前写为 `../composables/multiplayer/useMultiplayerRoom.js`，从 `client/src/components/multiplayer` 相对到 `client/src/composables/...` 应该是 `../../composables/multiplayer/useMultiplayerRoom.js`，需要修正一个相对路径（属于低风险小改动）。
 
-#### 2.1.4 游戏规则
-- 所有玩家共享同一条蛇的生命
-- 投票时间限制：3秒内必须投票
-- 平票处理：随机选择一个方向
-- 游戏结束条件：撞到自己或边界
+## 尚未完成 / 待继续实现（优先级排序）
 
-### 2.2 竞技模式 (Competitive Mode)
+高优先级
+- (进行中) 将 `SnakeLobby.vue` 拆分：已创建 `SnakeLobbyAdapter.vue` 复用 `GameLobby`，旧大厅保留等待进一步抽离统计/排行弹窗。
+- (已完成核心) 后端通过 `snake-multiplayer.adapter.js` 适配到 `SnakeGameService`，WebSocket 已切换，旧 service 暂留。
+- (新增完成) 竞技模式核心循环与移动指令在 `SnakeGameService` 中实现，适配器已接通 `handleMove`。
 
-#### 2.2.1 功能描述
-两个玩家同时进行独立的贪吃蛇游戏，实时对比分数和进度。
+中优先级
+- (已完成) `useMultiplayerRoom` 重构使用 `useWebSocket` 的 on/offMessage，加入 `registerHandler/unregisterHandler` 扩展 API。
+- (已完成) 新增通用组件：`VoteButtons.vue`、`SharedGamePanel.vue`、`CompetitiveGamePanel.vue`。`VotersDisplay.vue` / `GameCanvasWrapper.vue` 尚未实现。
+- (待办) 将统计/排行榜抽离为独立可复用弹窗组件；补充 `VotersDisplay.vue` 显示实时投票详情。
 
-#### 2.2.2 核心特性
-- **双窗口显示**: 自动创建两个并排的游戏窗口
-- **同步开始**: 双方同时开始游戏
-- **实时对比**: 实时显示双方分数和蛇的长度
-- **胜负判定**: 游戏结束后显示胜负结果
-- **观战模式**: 支持其他用户观战
+低优先级
+- 编写前端单元/集成测试（happy path：创建房间、加入、切换 ready、开始、结束）。
+- 实现自动弹窗/通知逻辑（限于浏览器能力：可实现桌面通知或引导自动打开，但无法跨设备强制打开窗口，若需跨设备自动打开需额外方案）。
+- 整理并发布 `client/src/components/multiplayer` 组件库导出点与示例 README，便于其它小游戏复用。
 
-#### 2.2.3 用户界面要求
-- 并排显示两个游戏窗口
-- 中间显示分数对比面板
-- 游戏结束后显示详细统计
-- 支持窗口大小调整
+## 问题与风险清单（需要确认）
+- 是否允许一次性删除旧的 `snake-multiplayer.service.js`，还是保留兼容层并逐步迁移？（建议逐步迁移并保留兼容层以降低回滚风险）
+- 浏览器端“自动打开另一个人的游戏窗口”受限于权限/浏览器策略——只能做通知/引导，不能强制跨终端打开。
 
-#### 2.2.4 游戏规则
-- 双方使用相同的游戏设置
-- 同时开始和结束
-- 胜负判定：分数高者获胜，分数相同则蛇长者获胜
-- 支持三局两胜制
+## 验证步骤（如何本地快速复现当前状态并继续开发）
+1) 启动后端（示例，项目根的 server 目录）：
 
-### 2.3 自动弹出机制
-
-#### 2.3.1 功能描述
-当有用户开始多人游戏时，其他在线用户自动弹出游戏窗口。
-
-#### 2.3.2 触发条件
-- 用户创建新的多人游戏房间
-- 用户加入现有的多人游戏
-- 游戏状态发生变化（开始、结束等）
-
-#### 2.3.3 用户控制
-- 用户可设置是否启用自动弹出（默认状态使用）
-- 记住用户的偏好设置
-
-## 🏗️ 技术架构设计
-
-### 3.1 系统架构
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   前端客户端    │    │   WebSocket服务  │    │   数据库服务    │
-│                 │    │                 │    │                 │
-│ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │
-│ │ 贪吃蛇游戏  │ │◄──►│ │ 消息路由    │ │◄──►│ │ 游戏房间    │ │
-│ │ 组件        │ │    │ │ 服务        │ │    │ │ 数据        │ │
-│ └─────────────┘ │    │ └─────────────┘ │    │ └─────────────┘ │
-│ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │
-│ │ 窗口管理    │ │    │ │ 房间管理    │ │    │ │ 玩家数据    │ │
-│ │ 系统        │ │    │ │ 服务        │ │    │ │             │ │
-│ └─────────────┘ │    │ └─────────────┘ │    │ └─────────────┘ │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+```bash
+cd /home/ubuntu22/code/myweb/server
+npm start
 ```
 
-### 3.2 数据库设计
+2) 启动前端开发模式（在项目根）：
 
-#### 3.2.1 贪吃蛇房间表 (snake_rooms)
-```sql
-CREATE TABLE snake_rooms (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  room_code VARCHAR(10) UNIQUE NOT NULL,
-  mode VARCHAR(20) NOT NULL, -- 'shared' | 'competitive'
-  status VARCHAR(20) NOT NULL, -- 'waiting' | 'playing' | 'finished'
-  max_players INTEGER DEFAULT 8,
-  current_players INTEGER DEFAULT 0,
-  created_by VARCHAR(36) NOT NULL,
-  game_settings TEXT, -- JSON格式存储游戏设置
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+```bash
+cd /home/ubuntu22/code/myweb
+npm run dev
 ```
 
-#### 3.2.2 贪吃蛇玩家表 (snake_players)
-```sql
-CREATE TABLE snake_players (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  room_id INTEGER NOT NULL,
-  session_id VARCHAR(36) NOT NULL,
-  player_name VARCHAR(100) NOT NULL,
-  player_color VARCHAR(7) DEFAULT '#007bff',
-  is_ready BOOLEAN DEFAULT 0,
-  is_online BOOLEAN DEFAULT 1,
-  score INTEGER DEFAULT 0,
-  snake_length INTEGER DEFAULT 3,
-  last_vote VARCHAR(10), -- 最后投票的方向
-  joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (room_id) REFERENCES snake_rooms(id)
-);
+3) 用 sqlite 检查迁移表是否存在：
+
+```bash
+cd /home/ubuntu22/code/myweb/server
+sqlite3 data/myweb.db ".tables"
 ```
 
-#### 3.2.3 游戏记录表 (snake_game_records)
-```sql
-CREATE TABLE snake_game_records (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  room_id INTEGER NOT NULL,
-  winner_session_id VARCHAR(36),
-  winner_score INTEGER,
-  game_duration INTEGER, -- 游戏时长（秒）
-  player_count INTEGER,
-  mode VARCHAR(20),
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (room_id) REFERENCES snake_rooms(id)
-);
-```
+5) 快速检查已新增的前端组件文件是否存在并能被编译（在 dev 模式中观察控制台错误，特别注意 `client/src/components/multiplayer/index.js` 的导入路径错误）。
 
-### 3.3 WebSocket消息协议
+- 修复 `client/src/components/multiplayer/index.js` 的相对 import 路径（低风险）。
+- 把 `SnakeLobby.vue` 逐步替换为 `GameLobby` 的适配层：先替换房间列表区的渲染为 `RoomCard`，并把创建房间弹窗替换为 `CreateRoomModal`（这会显著减少 `SnakeLobby.vue` 的体量，便于后续拆分）。
+- 在完成前端替换后，执行一轮 smoke test（启动 dev，创建房间、加入房间、切换 ready、开始游戏的基本流程）。
+
+
+要删除/替换原始 snake-multiplayer.service.js
+自动弹窗“自动打开另一个人的贪吃蛇窗口”的行为在浏览器中有权限与 UX 限制（只能做通知或引导用户打开页面，无法跨设备强制打开窗口）——若需要跨终端自动弹出，需要额外的客户端/桌面 Agent 方案（超出当前实现，需确认需求边界）。
+复用组件的 API 设计（props / events / slots 细节）以便其它小游戏能方便复用（我可以按照目前抽象做一套推荐 API，如果你同意我会直接实现）。
+
+
+接下来将把 SnakeLobby.vue、SnakeRoom.vue、SnakeMultiplayerGame.vue 三个文件中已抽出的部分继续拆成上面列出的具体小组件（RoomCard.vue、PlayerCard.vue、CreateRoomModal.vue、VoteButtons.vue、SharedGamePanel.vue 等），并在 snake 中创建适配层组件将这些小组件组合回原来的功能。
+同时把后端控制器路由切换到 snake-game.service.js，并在 WebSocket 处理处注入/调用新 Service。
