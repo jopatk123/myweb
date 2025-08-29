@@ -65,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useSnakeMultiplayer } from '../../composables/useSnakeMultiplayer.js'
 import { snakeMultiplayerApi } from '../../api/snake-multiplayer.js'
 
@@ -88,7 +88,9 @@ const {
   loading,
   createRoom,
   joinRoom,
-  init
+  init,
+  onMessage,
+  offMessage
 } = useSnakeMultiplayer()
 
 // 本地状态
@@ -109,27 +111,41 @@ watch(playerName, (newName) => {
 
 // 业务逻辑函数
 const refreshRooms = async () => {
+  if (loading.value) return;
+  loading.value = true;
   try {
     activeRooms.value = await snakeMultiplayerApi.getActiveRooms()
   } catch (err) {
     console.error('刷新房间失败:', err)
+    error.value = '无法加载房间列表，请稍后重试。';
+  } finally {
+    loading.value = false;
   }
 }
 
 const createNewRoom = async () => {
-  if (!playerName.value.trim()) return
+  if (!playerName.value.trim()) {
+    error.value = '请输入您的玩家名称！';
+    return;
+  }
   
   try {
     await createRoom(playerName.value.trim(), selectedMode.value)
     emit('createRoom')
   } catch (err) {
     console.error('创建房间失败:', err)
+    error.value = err.message || '创建房间失败';
   }
 }
 
 const quickJoin = async () => {
-  if (!playerName.value.trim()) return
+  if (!playerName.value.trim()) {
+    error.value = '请输入您的玩家名称！';
+    return;
+  }
   
+  await refreshRooms(); // 先刷新一次列表
+
   const suitableRoom = activeRooms.value.find(room => 
     room.status === 'waiting' && 
     room.mode === selectedMode.value &&
@@ -144,29 +160,39 @@ const quickJoin = async () => {
 }
 
 const joinSpecificRoom = async () => {
-  if (!playerName.value.trim() || !roomCodeInput.value.trim()) return
+  if (!playerName.value.trim() || !roomCodeInput.value.trim()) {
+    error.value = '请输入玩家名称和房间码！';
+    return;
+  }
   
   try {
     await joinRoom(playerName.value.trim(), roomCodeInput.value.trim())
     emit('joinRoom')
   } catch (err) {
     console.error('加入房间失败:', err)
+    error.value = err.message || '加入房间失败';
   }
 }
 
 const joinRoomById = async (roomCode) => {
-  if (!playerName.value.trim()) return
+  if (!playerName.value.trim()) {
+    error.value = '请输入您的玩家名称！';
+    return;
+  }
   
   try {
     await joinRoom(playerName.value.trim(), roomCode)
     emit('joinRoom')
   } catch (err) {
     console.error('加入房间失败:', err)
+    error.value = err.message || '加入房间失败';
   }
 }
 
 const spectateRoom = (roomCode) => {
   console.log('观战房间:', roomCode)
+  // 可以在这里实现观战逻辑
+  error.value = '观战功能尚未开放。';
 }
 
 const loadPlayerStats = async () => {
@@ -207,9 +233,19 @@ onMounted(async () => {
   await init()
   await refreshRooms()
   
-  // 定期刷新房间列表
-  setInterval(refreshRooms, 10000)
+  // 监听 WebSocket 事件来刷新房间列表
+  if (typeof onMessage === 'function') {
+    onMessage('snake_room_list_updated', refreshRooms);
+  } else {
+    console.warn('useSnakeMultiplayer: onMessage 不可用，房间列表将使用轮询刷新');
+  }
 })
+
+onBeforeUnmount(() => {
+  if (typeof offMessage === 'function') {
+    offMessage('snake_room_list_updated');
+  }
+});
 </script>
 
 <style scoped>

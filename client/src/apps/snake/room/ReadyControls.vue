@@ -19,7 +19,7 @@
     </button>
     
     <div v-if="isHost && !canStartGame" class="start-game-hint">
-      {{ players.length < 2 ? '至少需要2名玩家才能开始游戏' : '等待所有玩家准备就绪' }}
+      {{ (players?.length || 0) < 2 ? '至少需要2名玩家才能开始游戏' : '等待所有玩家准备就绪' }}
     </div>
   </div>
 </template>
@@ -28,7 +28,8 @@
 defineProps({
   isReady: { type: Boolean, default: false },
   canStartGame: { type: Boolean, default: false },
-  isHost: { type: Boolean, default: false }
+  isHost: { type: Boolean, default: false },
+  players: { type: Array, default: () => [] }
 })
 
 defineEmits(['toggle-ready', 'start-game'])

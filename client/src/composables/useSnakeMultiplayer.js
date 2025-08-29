@@ -2,7 +2,7 @@
  * 贪吃蛇多人游戏主组合式函数（重构版）
  * 拆分：事件系统 / 消息处理器 / 主逻辑
  */
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useWebSocket } from './useWebSocket.js';
 import { createSnakeEvents } from './multiplayer/snakeEvents.js';
 import { createSnakeHandlers } from './multiplayer/snakeHandlers.js';
@@ -73,11 +73,47 @@ export function useSnakeMultiplayer() {
   // API 封装
   const createRoom = (playerName, mode, gameSettings = {}) => {
     loading.value = true; error.value = null;
+
+    // 发送创建请求，并等待 currentRoom 被 handlers 填充后再 resolve，改善 UX（避免切换到房间后房间码为空）
     send({ type: 'snake_create_room', data: { playerName, mode, gameSettings } });
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('创建房间超时'));
+        loading.value = false;
+      }, 8000);
+
+      const stop = watch(currentRoom, (val) => {
+        if (val) {
+          clearTimeout(timer);
+          stop();
+          loading.value = false;
+          resolve(val);
+        }
+      });
+    });
   };
+
   const joinRoom = (playerName, roomCode) => {
     loading.value = true; error.value = null;
+
     send({ type: 'snake_join_room', data: { playerName, roomCode: roomCode.toUpperCase() } });
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('加入房间超时'));
+        loading.value = false;
+      }, 8000);
+
+      const stop = watch(currentRoom, (val) => {
+        if (val && val.room_code && val.room_code.toUpperCase() === roomCode.toUpperCase()) {
+          clearTimeout(timer);
+          stop();
+          loading.value = false;
+          resolve(val);
+        }
+      });
+    });
   };
   const toggleReady = () => currentRoom.value && send({ type: 'snake_toggle_ready', data: { roomCode: currentRoom.value.room_code } });
   const vote = (direction) => currentRoom.value?.mode === 'shared' && (myVote.value = direction, send({ type: 'snake_vote', data: { roomCode: currentRoom.value.room_code, direction } }));
@@ -103,9 +139,21 @@ export function useSnakeMultiplayer() {
   };
   const messageHandlers = createSnakeHandlers(handlerCtx);
 
+  // 新增：处理房间列表更新
+  const handleRoomListUpdated = () => {
+    // 这是一个从Lobby发出的事件，所以这里不需要做什么，但可以留作调试
+    console.log('房间列表更新事件收到，大厅将刷新');
+  };
+
   // 初始化 & 清理
-  const registerHandlers = () => { Object.entries(messageHandlers).forEach(([type, h]) => onMessage(type, h)); };
-  const unregisterHandlers = () => { Object.keys(messageHandlers).forEach(type => offMessage(type)); };
+  const registerHandlers = () => {
+    Object.entries(messageHandlers).forEach(([type, h]) => onMessage(type, h));
+    onMessage('snake_room_list_updated', handleRoomListUpdated); // 监听列表更新
+  };
+  const unregisterHandlers = () => {
+    Object.keys(messageHandlers).forEach(type => offMessage(type));
+    offMessage('snake_room_list_updated');
+  };
 
   const init = async () => {
     try {
@@ -135,7 +183,7 @@ export function useSnakeMultiplayer() {
     // 计算属性
     canStart, isReady, isGameHost,
     // 行为
-    init, createRoom, joinRoom, toggleReady, vote, move, leaveRoom, getRoomInfo, resetRoomState, startVoteCountdown, cleanup, startGame, handleVote, handleMove, kickPlayer,
+  init, createRoom, joinRoom, toggleReady, vote, move, leaveRoom, getRoomInfo, resetRoomState, startVoteCountdown, cleanup, startGame, handleVote, handleMove, kickPlayer,
     // 事件订阅
     onGameUpdate: events.onGameUpdate,
     onPlayerJoin: events.onPlayerJoin,
@@ -143,5 +191,8 @@ export function useSnakeMultiplayer() {
     onPlayerReady: events.onPlayerReady,
     onVoteUpdate: events.onVoteUpdate,
     onAutoPopup: events.onAutoPopup,
+  // 直接暴露底层 WebSocket 事件注册方法，供界面注册自定义事件（例如房间列表更新）
+  onMessage,
+  offMessage,
   };
 }

@@ -21,6 +21,7 @@
         :isReady="isReady"
         :canStartGame="canStartGame"
         :isHost="room?.created_by === currentPlayer?.session_id"
+        :players="players"
         @toggle-ready="$emit('toggle-ready')"
         @start-game="$emit('start-game')"
       />

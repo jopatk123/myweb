@@ -520,4 +520,23 @@ export class SnakeGameService extends RoomManagerService {
     if (opposites[snake.direction] === direction) return; // 禁止反向
     snake.nextDirection = direction;
   }
+
+  /**
+   * 玩家离开房间
+   * @override
+   */
+  async leaveRoom(sessionId, roomId) {
+    const result = await super.leaveRoom(sessionId, roomId);
+    
+    // 检查房间是否为空，如果为空则删除
+    const remainingPlayers = await this.PlayerModel.getPlayerCount(roomId);
+    if (remainingPlayers === 0) {
+      console.log(`房间 ${roomId} 已空，正在删除...`);
+      await this.RoomModel.delete(roomId);
+      // 广播房间列表已更新
+      this.wsService.broadcast('snake_room_list_updated');
+    }
+    
+    return result;
+  }
 }

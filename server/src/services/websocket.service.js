@@ -148,6 +148,9 @@ export class WebSocketService {
         type: 'snake_room_created',
         data: result
       });
+      
+      // 广播房间列表已更新
+      this.broadcast('snake_room_list_updated');
     } catch (error) {
       this.sendToClient(sessionId, {
         type: 'snake_error',
