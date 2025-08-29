@@ -1,0 +1,90 @@
+<template>
+  <div class="competitive-game-panel">
+    <h4>⚔️ 竞技模式游戏</h4>
+    
+    <!-- 游戏画布区域 -->
+    <div class="canvas-placeholder">
+      <p>竞技游戏画布区域</p>
+      <p>多人对战进行中...</p>
+    </div>
+
+    <!-- 控制提示 -->
+    <div class="control-hints">
+      <h5>🎮 控制方式</h5>
+      <div class="controls">
+        <span class="control-key">WASD</span>
+        <span class="control-or">或</span>
+        <span class="control-key">方向键</span>
+        <span class="control-desc">控制蛇的移动</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+defineProps({
+  gameState: { type: Object, required: true }
+})
+
+defineEmits(['move'])
+</script>
+
+<style scoped>
+.competitive-game-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.competitive-game-panel h4 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.canvas-placeholder {
+  background: #f8f9fa;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 60px 40px;
+  text-align: center;
+  color: #666;
+}
+
+.control-hints {
+  background: #f0f8ff;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #e1e8ed;
+}
+
+.control-hints h5 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+
+.control-key {
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: monospace;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.control-or {
+  color: #666;
+  font-style: italic;
+}
+
+.control-desc {
+  color: #666;
+}
+</style>
