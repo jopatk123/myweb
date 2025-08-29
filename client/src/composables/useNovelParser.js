@@ -1,3 +1,5 @@
+import { generateId } from '../utils/idGenerator.js';
+
 export function useNovelParser() {
   function parseChapters(content) {
     // 简单的章节分割逻辑：支持中文数字（零 一 二 两 三 四 五 六 七 八 九 十 百 千 万 亿）和阿拉伯数字
@@ -61,13 +63,8 @@ export function useNovelParser() {
     });
   }
 
-  function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  }
-
   return {
     parseChapters,
     parseBookFile,
-    generateId,
   };
 }

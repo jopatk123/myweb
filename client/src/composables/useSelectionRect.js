@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { rectIntersect } from '../utils/geometry.js';
 
 // Composable to manage a desktop-like rectangular selection.
 // Provides reactive rect state and event handlers that can be
@@ -56,15 +57,6 @@ export function useSelectionRect({ hitTestItems } = {}) {
     }
 
     return null;
-  }
-
-  function rectIntersect(rect1, rect2) {
-    return !(
-      rect1.x + rect1.w < rect2.left ||
-      rect2.left + rect2.width < rect1.x ||
-      rect1.y + rect1.h < rect2.top ||
-      rect2.top + rect2.height < rect1.y
-    );
   }
 
   return {

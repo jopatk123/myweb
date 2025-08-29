@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { bookmarksApi } from '@/api/bookmarks.js';
+import { generateId } from '../utils/idGenerator.js';
 
 export function useNovelBookmarks() {
   const bookmarks = ref({}); // 按书籍ID分组存储书签
@@ -304,11 +305,6 @@ export function useNovelBookmarks() {
     } finally {
       loading.value = false;
     }
-  }
-
-  // 生成ID
-  function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
   // 计算属性：所有书签数量

@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { rectIntersect } from '../utils/geometry.js';
 
 export default function useDesktopSelection() {
   const selectionRect = ref({
@@ -47,15 +48,6 @@ export default function useDesktopSelection() {
     isSelecting = false;
     // 隐藏选框（注意：调用方可能需要在调用 onMouseUp 之前获取选中项）
     selectionRect.value.visible = false;
-  }
-
-  function rectIntersect(rect1, rect2) {
-    return !(
-      rect1.x + rect1.w < rect2.left ||
-      rect2.left + rect2.width < rect1.x ||
-      rect1.y + rect1.h < rect2.top ||
-      rect2.top + rect2.height < rect1.y
-    );
   }
 
   function getSelectedIconIds() {

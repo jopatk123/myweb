@@ -1,5 +1,6 @@
 import { ref, computed, watch } from 'vue';
 import { notebookApi } from '../api/notebook.js';
+import { generateId } from '../utils/idGenerator.js';
 
 export function useNotebook() {
   // 响应式数据
@@ -17,11 +18,6 @@ export function useNotebook() {
   const pendingCount = computed(
     () => notes.value.filter(note => !note.completed).length
   );
-
-  // 方法
-  function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  }
 
   function normalizeNote(row) {
     // 确保和前端使用的字段对齐
