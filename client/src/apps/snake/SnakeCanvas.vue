@@ -14,7 +14,10 @@
   const props = defineProps({
     boardSize: { type: Number, required: true },
     cell: { type: Number, required: true },
-    snake: { type: Array, required: true },
+  // 单蛇模式（共享）
+  snake: { type: Array, required: false, default: () => [] },
+  // 多蛇模式（竞技），可传对象 { sessionId: { body: [...], player: {...}, ... } }
+  snakes: { type: Object, required: false, default: () => null },
     food: { type: Object, required: true },
     specialFood: { type: Object, required: false },
     particles: { type: Array, required: true },
@@ -58,22 +61,34 @@
     }
   }
 
-  function drawSnake() {
-    props.snake.forEach((segment, index) => {
+  function drawSingleSnake(body, colorBase = '#4ade80') {
+    body.forEach((segment, index) => {
       const x = segment.x * props.cell;
       const y = segment.y * props.cell;
       if (index === 0) {
-        ctx.fillStyle = '#4ade80';
+        ctx.fillStyle = colorBase;
         ctx.fillRect(x + 2, y + 2, props.cell - 4, props.cell - 4);
         ctx.fillStyle = '#000';
         ctx.fillRect(x + 5, y + 5, 3, 3);
         ctx.fillRect(x + 12, y + 5, 3, 3);
       } else {
-        const greenValue = Math.max(50, 255 - index * 10);
-        ctx.fillStyle = `rgb(74, ${greenValue}, 128)`;
+        ctx.fillStyle = colorBase;
+        ctx.globalAlpha = Math.max(0.35, 1 - index * 0.06);
         ctx.fillRect(x + 1, y + 1, props.cell - 2, props.cell - 2);
+        ctx.globalAlpha = 1;
       }
     });
+  }
+
+  function drawSnakes() {
+    if (props.snakes && Object.keys(props.snakes).length) {
+      Object.values(props.snakes).forEach((s, idx) => {
+        const color = s.player?.player_color || ['#4ade80','#60a5fa','#f472b6','#facc15'][idx % 4];
+        drawSingleSnake(s.body || [], color);
+      });
+    } else if (props.snake && props.snake.length) {
+      drawSingleSnake(props.snake, '#4ade80');
+    }
   }
 
   function drawFood() {
@@ -115,7 +130,7 @@
     drawGrid();
     drawFood();
     drawSpecialFood();
-    drawSnake();
+  drawSnakes();
     drawParticles();
   }
 

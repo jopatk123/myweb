@@ -3,9 +3,19 @@
     <h4>⚔️ 竞技模式游戏</h4>
     
     <!-- 游戏画布区域 -->
-    <div class="canvas-placeholder">
-      <p>竞技游戏画布区域</p>
-      <p>多人对战进行中...</p>
+    <div class="canvas-container">
+      <SnakeCanvas
+        ref="canvasRef"
+        :boardSize="boardPx"
+        :cell="cell"
+        :gridSize="gridSize"
+        :snakes="gameState?.snakes || {}"
+        :snake="[]"
+        :food="primaryFood"
+        :specialFood="null"
+        :particles="[]"
+        :gameOver="false"
+      />
     </div>
 
     <!-- 控制提示 -->
@@ -22,7 +32,21 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue'
+import SnakeCanvas from '../SnakeCanvas.vue'
+const boardPx = 400;
+const gridSize = 20;
+const cell = boardPx / gridSize;
+const canvasRef = ref(null);
+const primaryFood = computed(() => {
+  // 取第一枚食物（可扩展为多食物绘制）
+  if (Array.isArray(props.gameState?.foods) && props.gameState.foods.length > 0) return props.gameState.foods[0];
+  return { x: 0, y: 0 };
+});
+
+watch(() => props.gameState, () => {
+  nextTick(() => { canvasRef.value?.draw?.(); });
+}, { deep: true });
 defineProps({
   gameState: { type: Object, required: true }
 })
