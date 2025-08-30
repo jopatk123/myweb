@@ -76,12 +76,12 @@ client/
 
 ### 3.3 变量与参数命名
 
-- **通用约定**：变量和函数参数应使用有语义的驼峰式命名（camelCase），避免在业务逻辑中使用无意义或单字母变量（如 `f`, `g`, `k`），除非在极短的数学循环或临时上下文中（例如 `for (let i = 0; i < n; i++)`）。
+- **通用约定**：鼓励使用有语义的驼峰式命名（camelCase），避免滥用无意义或单字母变量，但在数学或算法的局部上下文中，短变量名是允许的（例如 `i`, `j`, `x`）。
 - **实体与集合命名**：集合使用复数（`files`、`users`），单个实体使用有意义的单数名（`file`、`user`）。
-- **几何/坐标缩写**：表示坐标或向量时允许使用 `x`/`y`/`z`，但宽高建议使用 `width`/`height`（仅在非常局部上下文允许 `w`/`h`）。
-- **位置/状态变量**：使用明确命名如 `position`、`pos`、`isLoading`、`isVisible`，避免 `p`、`t` 等模糊缩写。
-- **常量命名**：常量请在文件顶部声明并使用大写下划线（SCREAMING_SNAKE），例如 `const BYTES_BASE = 1024;`，不要在函数体内用 `k` 替代。
-- **DB 与边界转换**：JS 层内部统一使用 camelCase（例如 `originalName`）；仅在与数据库或外部 API 交互时在边界处转换为 snake_case（例如 `original_name`）。
+- **几何/坐标缩写**：表示坐标或向量时允许使用 `x`/`y`/`z`，宽高建议使用 `width`/`height`，局部上下文可使用 `w`/`h`。
+- **位置/状态变量**：使用明确命名如 `position`、`isLoading`、`isVisible`，避免模糊缩写除非在充分注释的局部代码中可读性良好。
+- **常量命名**：推荐在文件顶部声明常量并使用大写下划线（SCREAMING_SNAKE），如 `const BYTES_BASE = 1024;`。
+- **DB 与边界转换**：JS 层内部统一使用 camelCase；仅在与数据库或外部 API 交互时在边界处转换为 snake_case。
 
 ---
 
@@ -227,19 +227,13 @@ services:
 
 ## 6.1 数据库迁移、备份与 seed（新增建议）
 
-- **迁移工具推荐**：在项目中使用 `knex`（带 migrations）或 `umzug`（配合 Sequelize / sqlite）来管理 schema 变更。不要直接依赖 AI 自动写入 `CREATE TABLE` 到数据文件，迁移应由可控脚本管理并记录版本。
-- **迁移规范**：所有 schema 变更需提供向前与向后迁移脚本（up / down）。迁移文件按时间戳命名并存放 `server/src/migrations/`。
-- **备份策略**：定期备份 `data/{{DB_NAME}}`（生产环境应使用托管 DB 并配置自动备份）。在部署前执行备份并保留至少 7 天的备份快照。
-- **seed 数据**：在 `server/src/seeds/` 保持必要的初始数据（管理员账户、基础字典）。CI 在集成测试阶段可使用 seed 脚本来初始化内存 sqlite 数据库。
-- **本地开发**：提供 `npm run migrate` / `npm run migrate:rollback` 和 `npm run seed` 脚本以便开发者重置数据库状态。
+- **迁移工具建议**：推荐使用 `knex` 或 `umzug` 等成熟迁移工具来管理 schema 变更，避免直接修改数据文件。迁移应由可控脚本管理并记录版本。
+- **迁移规范**：建议为主要 schema 变更提供向前/向后迁移脚本（up / down），并按时间戳存放于 `server/src/migrations/`。
+- **备份策略**：建议在生产环境采用托管 DB 并配置自动备份；本地/临时环境可保留短期快照以便回滚。
+- **seed 数据**：在 `server/src/seeds/` 保持必要的初始数据（管理员账户、基础字典），CI 可选用 seed 初始化测试 DB。
+- **本地开发**：推荐提供 `npm run migrate` / `npm run migrate:rollback` 和 `npm run seed` 脚本以便开发者重置数据库状态。
 
-## 6.2 日志与可观测性（新增建议）
 
-- **结构化日志**：使用 `pino` 或 `winston` 输出 JSON 格式日志，字段至少包含 `timestamp`, `level`, `service`, `requestId`, `msg`, `err`（如有）。
-- **请求追踪 ID**：在入口中间件注入 `X-Request-Id`（若请求未提供则生成 UUID），并在日志上下文中包含该 ID，便于串联请求链路。
-- **性能/指标**：暴露 `/healthz`（Liveness）和 `/ready`（Readiness）端点；采集业务/基础指标（请求量、错误率、平均响应时间）并导出到 Prometheus。
-- **集中采集**：建议把日志集中化（ELK / Loki）并把指标推送到 Prometheus，再用 Grafana 建立常用仪表盘与告警规则。
-- **错误上下文**：在捕获异常时记录上下文信息（userId, route, payload size 等），但切勿把敏感信息（密码、token）写入日志。
 
 ## 7. 环境变量模板（.env.example）
 
@@ -357,7 +351,7 @@ app.use(express.json({ limit: '10kb' })); // 请求体大小限制
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000, // 15分钟
-    max: process.env.RATE_LIMIT || 100, // 环境变量控制
+    max: process.env.RATE_LIMIT || 1000, // 环境变量控制
   })
 );
 ```
@@ -367,50 +361,15 @@ app.use(
 - 所有数据库查询必须使用参数化查询
 - 禁止直接拼接SQL语句
 
-```js
-// 正确示例
-db.get('SELECT * FROM users WHERE email = ?', [email]);
-
-// 错误示例
-db.get(`SELECT * FROM users WHERE email = '${email}'`);
-```
-
 ---
 
 ## 11. 前后端字段命名与请求归一化
 
-- **约定（推荐 A）**：
+- **约定**：
   - 客户端请求与接收 JSON 载荷使用 **camelCase**（例如 `groupId`, `userId`）。
   - 后端控制器/服务内部使用 **camelCase**（与 JS 生态一致）。
   - 数据库层使用 **snake_case**（例如 `group_id`、`file_path`），通过 service/model 层的映射进行转换。
 
-- **实现要点**：
-  - 在请求进入路由控制器前，使用入口中间件把所有请求键（query/body/form）**统一转换为 camelCase**（仓库中实现为 `server/src/utils/case-helper.js` 的 `normalizeRequestKeys`）。
-  - Controller/Service 使用 camelCase 字段，Service 负责把业务字段映射为 DB 列名（snake_case）并调用 Model；Model 保持对数据库列的操作，Service 在必要时把 DB 结果转换为 camelCase 后返回给 Controller。
-  - 使用 `normalizeResponseMiddleware` 确保对外返回的 `data` 字段为 camelCase，避免直接泄露 snake_case 列名。
-
-- **兼容性策略**：
-  - 本项目为全新启动，建议立即强制客户端使用 camelCase；短期内可在 Service 层对 snake_case 做被动兼容（fallback），但应在文档中声明兼容期并计划逐步移除。
-  - multipart/form-data（`multer`）场景需在 controller 局部对 `req.body` 做 snake→camel 转换（可复用 `normalizeKeys`），并确保传入 Service 的字段为 camelCase。
-
-- **中间件顺序建议**（位于 `server/src/app.js`）：
-  1. `express.json()` / `express.urlencoded()`（解析请求体）
-  2. `normalizeRequestKeys`（将请求键转换为 camelCase）
-  3. 认证/校验/路由
-  4. `normalizeResponseMiddleware`（确保对外返回 camelCase）
-
-- **文档与契约**：
-  - 使用 OpenAPI/Swagger 把所有公共接口字段声明为 camelCase，并在 CI 中校验生成的文档与实现的一致性。
-
-示例工具函数位于 `server/src/utils/case-helper.js`，包含 `snakeToCamel`、`camelToSnake`、`normalizeRequestKeys`、`normalizeResponseMiddleware` 等实用函数，负责键名互转与中间件包装。
-
-中间件加载顺序建议（在 `server/src/app.js`）：
-
-```js
-app.use(express.json());
-app.use(normalizeRequestToCamel); // 先归一化请求键
-// 其它中间件（鉴权、校验、路由）
-```
 
 ---
 
@@ -419,42 +378,10 @@ app.use(normalizeRequestToCamel); // 先归一化请求键
 - **DTO 与校验**：后端必须为外部可调用的每个路由维护 DTO（`server/src/dto/*.dto.js`），并使用 Joi / class-validator / Zod 等库做入参校验。
 - **优先级**：在路由层或控制器入口处进行校验，失败时返回规范错误，不让控制器内部处理低级别校验细节。
 
-错误响应统一格式（示例）：
-
-```json
-{
-  "code": 400,
-  "message": "请求参数校验失败",
-  "errors": [{ "field": "groupId", "message": "必须为整数" }]
-}
-```
-
-示例：使用 Joi 在 DTO 中声明并在路由中校验
-
-```js
-// server/src/dto/wallpaper.dto.js
-import Joi from 'joi';
-
-export const moveWallpapersSchema = Joi.object({
-  ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
-  groupId: Joi.alternatives()
-    .try(Joi.number().integer().allow(null), Joi.string().allow(''))
-    .required(),
-});
-
-// 在路由或控制器入口处使用
-const { error, value } = moveWallpapersSchema.validate(req.body, {
-  convert: true,
-});
-if (error)
-  return res
-    .status(400)
-    .json({ code: 400, message: '请求参数错误', errors: error.details });
-```
 
 ---
 
-## 13. API 契约与文档化（强制建议）
+## 13. API 契约与文档化
 
 - **描述文件**：使用 OpenAPI / Swagger 描述所有公共接口（尤其是关键路径如上传、批量操作），并在 CI 中校验生成的文档。
 - **示例**：对 `PUT /api/wallpapers/move` 指明 `ids: integer[]` 与 `groupId: integer|null`，并标注错误响应体格式。
@@ -463,69 +390,14 @@ if (error)
 
 ## 14. CI / 开发工具与工程化建议
 
-- **静态检查**：项目应启用 `ESLint` + `Prettier`（前端与后端分别配置），并在 CI 中运行 `lint` 阶段阻止不合格提交。
-- **提交检查**：使用 `husky` + `commitlint` 强制提交信息格式（`<type>(<scope>): <desc>`）。
-- **类型/契约**：如果可能，优先考虑在后端或共享代码中引入 TypeScript 或至少在关键模块使用类型注释，减少运行时错误。
-- **测试覆盖**：关键接口（上传、批量移动、批量删除）必须有自动化集成测试（可以使用 sqlite 的内存模式）。
+- **静态检查**：推荐启用 `ESLint` + `Prettier`（前端与后端分别配置），并在 CI 中运行 `lint` 阶段作为质量门槛。
+- **提交检查**：建议使用 `husky` + `commitlint` 规范提交信息格式（`<type>(<scope>): <desc>`），但可根据团队偏好选择是否强制。
+- **类型/契约**：鼓励在关键模块引入 TypeScript 或使用类型注释，以减少运行时错误，视项目规模逐步迁移。
+- **测试覆盖**：推荐对关键接口进行自动化测试（上传、批量操作等），但覆盖率目标应根据项目阶段与资源灵活设定。
 
 ### 14.1 CI/CD 示例流程与质量门槛
 
-- **示例流水线步骤（顺序）**：
-  1. checkout
-  2. install
-  3. lint（前端/后端分别运行 ESLint/Prettier，lint 失败阻止合并）
-  4. test（运行单元与集成测试，若能区分则并行执行）
-  5. contract-test（校验 OpenAPI 文档与实现的一致性）
-  6. build
-  7. deploy（仅主分支或带 tag 的构建）
 
 - **质量门槛建议**：
-  - 覆盖率阈值：项目整体最低 70%，关键模块（上传、批量操作）建议 85%+。
-  - Lint 阈值：所有 new code 必须通过 lint；禁用过多规则前需在 PR 中说明理由。
-  - PR 检查：必须包含至少一位代码审阅者批准、CI 通过、并且没有未解决的安全扫描告警（依赖漏洞）。
 
-- **工具建议**：使用 GitHub Actions / GitLab CI / CircleCI，测试阶段可使用 sqlite 内存模式或临时容器化 DB；使用 `swagger-cli` / `openapi-core` 在 CI 中做 contract 校验。
-
-  注意：历史上有工具如 `speccy` 用于 OpenAPI lint，但已不再维护或版本不可用。**推荐使用 Stoplight Spectral（`@stoplight/spectral`）作为现代的 OpenAPI linter**，它维护活跃、规则丰富并支持自定义配置（通过 `.spectral.yml`）。
-
-  简单用法示例（根 package.json 的 `scripts` 中）：
-
-  ```json
-  "scripts": {
-    "contract-test": "spectral lint server/openapi.yaml --format json > contract-report.json"
-  }
-  ```
-
-  CI 中可直接调用 `npm run contract-test --if-present` 或使用 `npx`：
-
-  ```bash
-  npx @stoplight/spectral lint server/openapi.yaml --format json > contract-report.json || true
-  ```
-
-  建议把 `.spectral.yml` 加入仓库以统一规则，并把 `contract-report.json` 上传为 CI artifact 以便审查。
-
-#### 示例：GitHub Actions（简易 CI 模板）
-
-```yaml
-name: CI
-on: [push, pull_request]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Install dependencies
-        run: npm ci
-      - name: Lint
-        run: npm run lint --if-present
-      - name: Test
-        run: npm run test --if-present -- --coverage
-      - name: Contract check
-        run: npm run contract-test --if-present
-      - name: Build
-        run: npm run build --if-present
-```
+- **工具建议**：使用 GitHub Actions / GitLab CI / CircleCI 等；测试阶段可使用 sqlite 内存模式或临时容器化 DB，使用 `@stoplight/spectral` 等工具进行 OpenAPI lint。
