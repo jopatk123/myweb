@@ -34,22 +34,22 @@
 <script setup>
 import { onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue'
 import SnakeCanvas from '../SnakeCanvas.vue'
+const props = defineProps({
+  gameState: { type: Object, required: true }
+});
 const boardPx = 400;
 const gridSize = 20;
 const cell = boardPx / gridSize;
 const canvasRef = ref(null);
 const primaryFood = computed(() => {
-  // 取第一枚食物（可扩展为多食物绘制）
-  if (Array.isArray(props.gameState?.foods) && props.gameState.foods.length > 0) return props.gameState.foods[0];
-  return { x: 0, y: 0 };
+  const foods = props.gameState?.foods;
+  if (Array.isArray(foods) && foods.length > 0) return foods[0];
+  return props.gameState?.food || { x: 0, y: 0 };
 });
 
 watch(() => props.gameState, () => {
   nextTick(() => { canvasRef.value?.draw?.(); });
-}, { deep: true });
-defineProps({
-  gameState: { type: Object, required: true }
-})
+}, { deep: true, immediate: true });
 
 const emit = defineEmits(['move'])
 
