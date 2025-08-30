@@ -2,7 +2,7 @@
  * 过渡适配层：将旧的 SnakeMultiplayerService 接口映射到新的 SnakeGameService / RoomManagerService
  * 目的：在不一次性重写前端消息协议的情况下，逐步迁移到新的抽象。
  */
-import { SnakeGameService } from './snake-game.service.js';
+import { SnakeGameService } from './snake/snake-game.service.js';
 import { SnakeRoomModel } from '../models/snake-room.model.js';
 
 export class SnakeMultiplayerAdapter {
