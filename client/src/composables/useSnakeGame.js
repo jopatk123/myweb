@@ -1,4 +1,13 @@
 import { ref, computed } from 'vue';
+import { GAME_CONFIG, INITIAL_GAME_STATE } from '../apps/snake/constants/gameConstants.js';
+import { 
+  GameUtils, 
+  SnakeMovement, 
+  FoodManager, 
+  ParticleManager, 
+  GameStateManager, 
+  CollisionDetector 
+} from '../apps/snake/utils/gameLogic.js';
 
 export default function useSnakeGame() {
   // 游戏状态
@@ -11,34 +20,22 @@ export default function useSnakeGame() {
   const difficulty = ref('medium');
 
   // 蛇和食物
-  const snake = ref([
-    { x: 10, y: 10 },
-    { x: 9, y: 10 },
-    { x: 8, y: 10 },
-  ]);
-  const dir = ref({ x: 1, y: 0 });
+  // 初始蛇与方向取自 INITIAL_GAME_STATE
+  const snake = ref([...INITIAL_GAME_STATE.SNAKE]);
+  const dir = ref({ ...INITIAL_GAME_STATE.DIRECTION });
   const food = ref({ x: 15, y: 15 });
   const specialFood = ref(null);
   const specialFoodTimer = ref(null);
 
-  // 视觉效果（粒子数据由渲染端使用）
+  // 视觉效果
   const particles = ref([]);
   const lastMoveTime = ref(0);
 
-  const boardSize = 400;
-  const cell = 20;
-
   const speed = computed(() => {
-    const speeds = {
-      easy: 150,
-      medium: 120,
-      hard: 90,
-      extreme: 60,
-    };
-    return Math.max(speeds[difficulty.value] - (level.value - 1) * 5, 30);
+    return GameStateManager.calculateSpeed(difficulty.value, level.value);
   });
 
-  const gridSize = computed(() => boardSize / cell);
+  const gridSize = computed(() => GameUtils.getGridSize());
 
   // 初始化最高分
   const savedHighScore = localStorage.getItem('snakeHighScore');
@@ -47,113 +44,75 @@ export default function useSnakeGame() {
   }
 
   // 工具函数
-  function randomPosition() {
-    return {
-      x: Math.floor(Math.random() * gridSize.value),
-      y: Math.floor(Math.random() * gridSize.value),
-    };
-  }
-
-  function isPositionOccupied(pos) {
-    return snake.value.some(
-      segment => segment.x === pos.x && segment.y === pos.y
-    );
-  }
-
   function randomFood() {
-    let newFood;
-    do {
-      newFood = randomPosition();
-    } while (isPositionOccupied(newFood));
-    food.value = newFood;
+    const excludePositions = [...snake.value, food.value];
+    food.value = FoodManager.generateFood(excludePositions, gridSize.value);
   }
 
   function createSpecialFood() {
-    if (Math.random() < 0.1 && !specialFood.value) {
-      // 10% 概率生成特殊食物
-      let newSpecialFood;
-      do {
-        newSpecialFood = randomPosition();
-      } while (
-        isPositionOccupied(newSpecialFood) ||
-        (newSpecialFood.x === food.value.x && newSpecialFood.y === food.value.y)
-      );
-
-      specialFood.value = newSpecialFood;
-
-      // 特殊食物5秒后消失
-      specialFoodTimer.value = setTimeout(() => {
-        specialFood.value = null;
-        specialFoodTimer.value = null;
-      }, 5000);
+    if (!specialFood.value) {
+      const excludePositions = [...snake.value, food.value];
+      const newSpecialFood = FoodManager.createSpecialFood(excludePositions, gridSize.value);
+      
+      if (newSpecialFood) {
+        specialFood.value = newSpecialFood;
+        
+        // 特殊食物定时消失
+        specialFoodTimer.value = setTimeout(() => {
+          specialFood.value = null;
+          specialFoodTimer.value = null;
+        }, GAME_CONFIG.SPECIAL_FOOD_TIMEOUT);
+      }
     }
   }
 
   function addParticles(x, y, color, count = 5) {
-    for (let i = 0; i < count; i++) {
-      particles.value.push({
-        x: x * cell + cell / 2,
-        y: y * cell + cell / 2,
-        vx: (Math.random() - 0.5) * 4,
-        vy: (Math.random() - 0.5) * 4,
-        life: 1,
-        color: color,
-      });
-    }
+    const newParticles = ParticleManager.createParticles(x, y, color, count);
+    particles.value.push(...newParticles);
   }
 
   function updateParticles() {
-    particles.value = particles.value.filter(particle => {
-      particle.x += particle.vx;
-      particle.y += particle.vy;
-      particle.life -= 0.02;
-      return particle.life > 0;
-    });
+    particles.value = ParticleManager.updateParticles(particles.value);
   }
 
   function checkCollision(head) {
-    return snake.value.some(
-      segment => segment.x === head.x && segment.y === head.y
-    );
+    return GameUtils.checkSelfCollision(head, snake.value);
   }
 
   function step() {
     if (gameOver.value || paused.value) return;
 
-    const head = {
-      x: snake.value[0].x + dir.value.x,
-      y: snake.value[0].y + dir.value.y,
-    };
+    const nextHead = SnakeMovement.getNextHead(snake.value[0], dir.value);
+    const wrappedHead = GameUtils.wrapPosition(nextHead, gridSize.value);
 
-    // 边界处理 - 穿墙
-    head.x = (head.x + gridSize.value) % gridSize.value;
-    head.y = (head.y + gridSize.value) % gridSize.value;
-
-    // 检查碰撞
-    if (checkCollision(head)) {
+    // 检查自身碰撞
+    if (checkCollision(wrappedHead)) {
       gameOver.value = true;
       gameStarted.value = false;
-      addParticles(head.x, head.y, '#ff4757', 10);
+      addParticles(wrappedHead.x, wrappedHead.y, '#ff4757', 10);
       return;
     }
 
-    // 检查是否吃到食物
-    let ateFood = false;
-    let ateSpecialFood = false;
+    // 检查食物碰撞
+    const collisionResult = CollisionDetector.processCollisions(
+      wrappedHead, 
+      food.value, 
+      specialFood.value
+    );
 
-    if (head.x === food.value.x && head.y === food.value.y) {
-      ateFood = true;
-      score.value += 10;
+    // 更新蛇的位置
+    const ateAnyFood = collisionResult.ateFood || collisionResult.ateSpecialFood;
+    snake.value = SnakeMovement.moveSnake(snake.value, dir.value, gridSize.value, ateAnyFood);
+
+    // 处理食物碰撞结果
+    if (collisionResult.ateFood) {
+      score.value += collisionResult.scoreIncrease;
       addParticles(food.value.x, food.value.y, '#ff6b6b', 8);
       randomFood();
       createSpecialFood();
-    } else if (
-      specialFood.value &&
-      head.x === specialFood.value.x &&
-      head.y === specialFood.value.y
-    ) {
-      ateSpecialFood = true;
-      score.value += 50;
+    }
+
+    if (collisionResult.ateSpecialFood) {
       addParticles(specialFood.value.x, specialFood.value.y, '#ffd700', 12);
       specialFood.value = null;
       if (specialFoodTimer.value) {
@@ -162,17 +121,11 @@ export default function useSnakeGame() {
       }
     }
 
-    // 更新蛇的位置
-    snake.value.unshift(head);
-    if (!ateFood && !ateSpecialFood) {
-      snake.value.pop();
-    }
-
     // 更新等级
-    const newLevel = Math.floor(score.value / 100) + 1;
+    const newLevel = GameStateManager.calculateLevel(score.value);
     if (newLevel > level.value) {
       level.value = newLevel;
-      addParticles(head.x, head.y, '#4ade80', 6);
+      addParticles(wrappedHead.x, wrappedHead.y, '#4ade80', 6);
     }
 
     // 更新最高分
@@ -203,28 +156,26 @@ export default function useSnakeGame() {
       specialFoodTimer.value = null;
     }
 
-    gameStarted.value = false;
-    gameOver.value = false;
-    paused.value = false;
-    score.value = 0;
-    level.value = 1;
+    // 重置游戏状态
+    const initialState = GameStateManager.getInitialGameState();
+    gameStarted.value = initialState.gameStarted;
+    gameOver.value = initialState.gameOver;
+    paused.value = initialState.paused;
+    score.value = initialState.score;
+    level.value = initialState.level;
+    
+    // 重置游戏对象
+    snake.value = [...initialState.snake];
+    dir.value = { ...initialState.direction };
     particles.value = [];
-
-    snake.value = [
-      { x: 10, y: 10 },
-      { x: 9, y: 10 },
-      { x: 8, y: 10 },
-    ];
-    dir.value = { x: 1, y: 0 };
+    specialFood.value = null;
 
     randomFood();
-    specialFood.value = null;
   }
 
   function setDirection(newDir) {
-    // 防止直接反向
     if (newDir.x !== undefined && newDir.y !== undefined) {
-      if (!(dir.value.x === -newDir.x && dir.value.y === -newDir.y)) {
+      if (GameUtils.isValidDirectionChange(dir.value, newDir)) {
         dir.value = { x: newDir.x, y: newDir.y };
         if (!gameStarted.value && !gameOver.value) startGame();
       }

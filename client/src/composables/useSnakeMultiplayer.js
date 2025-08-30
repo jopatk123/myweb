@@ -6,6 +6,8 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useWebSocket } from './useWebSocket.js';
 import { createSnakeEvents } from './multiplayer/snakeEvents.js';
 import { createSnakeHandlers } from './multiplayer/snakeHandlers.js';
+import { SnakeApiClient } from './multiplayer/snakeApiClient.js';
+import { SnakeStateManager } from './multiplayer/snakeStateManager.js';
 
 export function useSnakeMultiplayer() {
   // WebSocket
@@ -52,47 +54,37 @@ export function useSnakeMultiplayer() {
     if (voteTimer.value) { clearInterval(voteTimer.value); voteTimer.value = null; }
   };
 
-  const resetRoomState = () => {
-    isInRoom.value = false;
-    currentRoom.value = null;
-    currentPlayer.value = null;
-    players.value = [];
-    gameState.value = null;
-    gameStatus.value = 'lobby';
-    votes.value = {}; myVote.value = null; voteTimeout.value = 0; clearVoteTimer();
+  // 初始化管理器
+  const refs = {
+    isInRoom, currentRoom, currentPlayer, players, gameState, gameStatus,
+    error, loading, votes, voteTimeout, voteTimer, myVote
   };
+  
+  const utils = { clearVoteTimer };
+  const stateManager = new SnakeStateManager(refs, utils);
+  const apiClient = new SnakeApiClient({ send });
 
-  const startVoteCountdown = (seconds) => {
-    clearVoteTimer();
-    voteTimeout.value = seconds;
-    voteTimer.value = setInterval(() => {
-      if (voteTimeout.value > 0) {
-        voteTimeout.value -= 1;
-      }
-      if (voteTimeout.value <= 0) {
-        clearVoteTimer();
-      }
-    }, 1000);
-  };
+  const resetRoomState = () => stateManager.resetRoomState();
+  const startVoteCountdown = (seconds) => stateManager.startVoteCountdown(seconds);
 
   // API 封装
   const createRoom = (playerName, mode, gameSettings = {}) => {
-    loading.value = true; error.value = null;
+    stateManager.setLoading(true);
+    stateManager.clearError();
 
-    // 发送创建请求，并等待 currentRoom 被 handlers 填充后再 resolve，改善 UX（避免切换到房间后房间码为空）
-    send({ type: 'snake_create_room', data: { playerName, mode, gameSettings } });
+    apiClient.createRoom(playerName, mode, gameSettings);
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error('创建房间超时'));
-        loading.value = false;
+        stateManager.setLoading(false);
       }, 8000);
 
       const stop = watch(currentRoom, (val) => {
-          if (val && (val.room_code || val.roomCode)) {
+        if (val && (val.room_code || val.roomCode)) {
           clearTimeout(timer);
           stop();
-          loading.value = false;
+          stateManager.setLoading(false);
           resolve(val);
         }
       });
@@ -100,45 +92,81 @@ export function useSnakeMultiplayer() {
   };
 
   const joinRoom = (playerName, roomCode) => {
-    loading.value = true; error.value = null;
+    stateManager.setLoading(true);
+    stateManager.clearError();
 
-    send({ type: 'snake_join_room', data: { playerName, roomCode: roomCode.toUpperCase() } });
+    apiClient.joinRoom(playerName, roomCode);
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error('加入房间超时'));
-        loading.value = false;
+        stateManager.setLoading(false);
       }, 8000);
 
       const stop = watch(currentRoom, (val) => {
-          if (val && (val.room_code || val.roomCode) && (val.room_code || val.roomCode).toUpperCase() === roomCode.toUpperCase()) {
+        if (val && (val.room_code || val.roomCode) && 
+            (val.room_code || val.roomCode).toUpperCase() === roomCode.toUpperCase()) {
           clearTimeout(timer);
           stop();
-          loading.value = false;
+          stateManager.setLoading(false);
           resolve(val);
         }
       });
     });
   };
+
   const toggleReady = () => {
-    if (!currentRoom.value) return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; send({ type: 'snake_toggle_ready', data: { roomCode: code } });
+    const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
+    if (code) {
+      apiClient.toggleReady(code);
+    }
   };
+
   const vote = (direction) => {
-    if (currentRoom.value?.mode !== 'shared') return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; myVote.value = direction; send({ type: 'snake_vote', data: { roomCode: code, direction } });
+    if (currentRoom.value?.mode !== 'shared') return;
+    const code = currentRoom.value.room_code || currentRoom.value.roomCode;
+    if (code) {
+      stateManager.setMyVote(direction);
+      apiClient.vote(code, direction);
+    }
   };
+
   const move = (direction) => {
-    if (currentRoom.value?.mode !== 'competitive') return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; send({ type: 'snake_move', data: { roomCode: code, direction } });
+    if (currentRoom.value?.mode !== 'competitive') return;
+    const code = currentRoom.value.room_code || currentRoom.value.roomCode;
+    if (code) {
+      apiClient.move(code, direction);
+    }
   };
+
   const leaveRoom = () => {
-    if (!currentRoom.value) return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (code) send({ type: 'snake_leave_room', data: { roomCode: code } });
+    const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
+    if (code) {
+      apiClient.leaveRoom(code);
+    }
     resetRoomState();
-  localStorage.removeItem('snakeCurrentRoomCode');
+    localStorage.removeItem('snakeCurrentRoomCode');
   };
-  const getRoomInfo = (roomCode) => send({ type: 'snake_get_room_info', data: { roomCode: roomCode.toUpperCase() } });
-  const startGame = () => { if (!currentRoom.value) return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; send({ type: 'snake_start_game', data: { roomCode: code } }); };
+
+  const getRoomInfo = (roomCode) => apiClient.getRoomInfo(roomCode);
+  
+  const startGame = () => {
+    const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
+    if (code) {
+      apiClient.startGame(code);
+    }
+  };
+
   const handleVote = vote; // 语义别名
   const handleMove = move; // 语义别名
-  const kickPlayer = (playerId) => { if (currentRoom.value?.created_by !== currentPlayer.value?.session_id) return; const code = currentRoom.value.room_code || currentRoom.value.roomCode; if (!code) return; send({ type: 'snake_kick_player', data: { roomCode: code, playerId } }); };
+  
+  const kickPlayer = (playerId) => {
+    if (currentRoom.value?.created_by !== currentPlayer.value?.session_id) return;
+    const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
+    if (code) {
+      apiClient.kickPlayer(code, playerId);
+    }
+  };
 
   // 供 handlers 注入的上下文
   const handlerCtx = {

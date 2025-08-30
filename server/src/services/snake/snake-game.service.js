@@ -5,16 +5,42 @@ import { SnakePlayerModel } from '../../models/snake-player.model.js';
 import { SnakeGameRecordModel } from '../../models/snake-game-record.model.js';
 import { createInitialSnake, updateSharedGameTick } from './shared-mode.logic.js';
 import { initCompetitivePlayers, updateCompetitiveGameTick, generateCompetitiveFoods } from './competitive-mode.logic.js';
+import { VoteManager } from './vote-manager.js';
+import { GameLifecycleManager } from './game-lifecycle.js';
 
 export class SnakeGameService extends RoomManagerService {
   constructor(wsService){
-    super(wsService, SnakeRoomModel, SnakePlayerModel, { gameType:'snake', defaultGameConfig:{ maxPlayers:999, minPlayers:1, gameSpeed:150, timeout:3000 }});
-    this.voteTimers = new Map();
-    this.SNAKE_CONFIG = { VOTE_TIMEOUT:80, GAME_SPEED:100, BOARD_SIZE:20, INITIAL_SNAKE_LENGTH:3 };
+    super(wsService, SnakeRoomModel, SnakePlayerModel, { 
+      gameType: 'snake', 
+      defaultGameConfig: { 
+        maxPlayers: 999, 
+        minPlayers: 1, 
+        gameSpeed: 150, 
+        timeout: 3000 
+      }
+    });
+    
+    this.SNAKE_CONFIG = { 
+      VOTE_TIMEOUT: 80, 
+      GAME_SPEED: 100, 
+      BOARD_SIZE: 20, 
+      INITIAL_SNAKE_LENGTH: 3 
+    };
+    
+    // 初始化管理器
+    this.voteManager = new VoteManager(this);
+    this.lifecycleManager = new GameLifecycleManager(this);
+    
     // 自动清理：周期扫描并清理长时间无活动或无玩家的房间（间隔 1 分钟）
     if(!SnakeGameService._autoCleanup){
       SnakeGameService._autoCleanup = true;
-      setInterval(()=>{ try { this.autoCleanupStaleRooms(); } catch(e){ console.error('蛇房间自动清理失败', e); } }, 60*1000);
+      setInterval(()=>{ 
+        try { 
+          this.autoCleanupStaleRooms(); 
+        } catch(e){ 
+          console.error('蛇房间自动清理失败', e); 
+        } 
+      }, 60*1000);
     }
   }
 
@@ -39,33 +65,21 @@ export class SnakeGameService extends RoomManagerService {
   checkSelfCollision(head, body){ return body.some(seg=>seg.x===head.x && seg.y===head.y); }
 
   // ---- 投票（共享模式） ----
-  handleVote(roomId, sessionId, direction){
-    const gs = this.getGameState(roomId); if(!gs || gs.mode!=='shared' || gs.status!=='playing') return;
-    const player = SnakePlayerModel.findByRoomAndSession(roomId, sessionId); if(!player) return;
-    gs.votes[sessionId] = { direction, player_name: player.player_name, player_color: player.player_color, timestamp: Date.now() };
-    const onlinePlayers = SnakePlayerModel.findOnlineByRoomId(roomId) || []; const single = onlinePlayers.length===1;
-    if(single && gs.sharedSnake){ if(this.isValidDirectionChange(gs.sharedSnake.direction, direction)){ gs.sharedSnake.nextDirection = direction; gs.sharedSnake.isWaitingForFirstVote=false; } gs.votes={}; gs.voteStartTime=null; if(this.voteTimers.has(roomId)){ clearTimeout(this.voteTimers.get(roomId)); this.voteTimers.delete(roomId);} this.broadcastToRoom(roomId,'game_update',{room_id:roomId,game_state:gs,shared_snake:gs.sharedSnake,food:gs.food}); return; }
-    if(gs.sharedSnake && gs.sharedSnake.isWaitingForFirstVote){ if(this.isValidDirectionChange(gs.sharedSnake.direction, direction)){ gs.sharedSnake.nextDirection=direction; } }
-    this.broadcastToRoom(roomId,'vote_updated',{room_id:roomId,votes:gs.votes});
-    if(!gs.voteStartTime) this.startVoteTimer(roomId);
-    try { const totalOnline = onlinePlayers.length; const voteCount = Object.keys(gs.votes).length; if(totalOnline>1 && voteCount===totalOnline){ if(this.voteTimers.has(roomId)){ clearTimeout(this.voteTimers.get(roomId)); this.voteTimers.delete(roomId);} this.processVotes(roomId); } } catch(e){ }
+  handleVote(roomId, sessionId, direction) {
+    return this.voteManager.handleVote(roomId, sessionId, direction);
   }
-  startVoteTimer(roomId){ const gs=this.getGameState(roomId); if(!gs) return; gs.voteStartTime=Date.now(); const timeout=gs.config?.vote_timeout??this.SNAKE_CONFIG.VOTE_TIMEOUT; const t=setTimeout(()=>this.processVotes(roomId), timeout); this.voteTimers.set(roomId,t); }
-  processVotes(roomId){ const gs=this.getGameState(roomId); if(!gs||!gs.sharedSnake) return; const counts={}; Object.values(gs.votes).forEach(v=>{ counts[v.direction]=(counts[v.direction]||0)+1; }); let win=gs.sharedSnake.direction, max=0; Object.entries(counts).forEach(([d,c])=>{ if(c>max){ max=c; win=d; } }); if(this.isValidDirectionChange(gs.sharedSnake.direction, win)) gs.sharedSnake.nextDirection=win; gs.votes={}; gs.voteStartTime=null; if(this.voteTimers.has(roomId)){ clearTimeout(this.voteTimers.get(roomId)); this.voteTimers.delete(roomId);} this.broadcastToRoom(roomId,'game_update',{room_id:roomId,game_state:gs,shared_snake:gs.sharedSnake,food:gs.food}); }
+
+  startVoteTimer(roomId) {
+    return this.voteManager.startVoteTimer(roomId);
+  }
+
+  processVotes(roomId) {
+    return this.voteManager.processVotes(roomId);
+  }
 
   // ---- 游戏主流程 ----
-  startGame(roomId, hostSessionId=null){
-    const room = SnakeRoomModel.findById(roomId); if(!room) throw new Error('房间不存在'); if(room.status==='playing') return {success:true, players: SnakePlayerModel.findOnlineByRoomId(roomId)};
-    if(hostSessionId && room.created_by !== hostSessionId) throw new Error('只有房主可以开始游戏');
-    const players = SnakePlayerModel.findOnlineByRoomId(roomId); if(players.length===0) throw new Error('房间内没有玩家');
-    if(room.mode==='competitive'){ const ready=players.filter(p=>p.is_ready); if(ready.length!==players.length || players.length<2) throw new Error('竞技模式需要至少2名玩家且所有玩家都准备就绪'); }
-    let gs = this.getGameState(roomId); if(!gs) throw new Error('游戏状态不存在'); if(gs.status==='finished'){ this.initGameState(roomId, room.mode); gs=this.getGameState(roomId); }
-    if(this.gameTimers.has(roomId)) return {success:true, players};
-    SnakeRoomModel.update(roomId,{ status:'playing' }); this.updateGameState(roomId,{ status:'playing', startTime: Date.now() }); gs.playerCount=players.length;
-    if(gs.mode==='shared'){ if(players.length===1 && gs.sharedSnake){ gs.sharedSnake.isWaitingForFirstVote=false; gs.votes={}; gs.voteStartTime=null; } this.startSharedLoop(roomId); }
-    else if(gs.mode==='competitive'){ initCompetitivePlayers(this, roomId, players); this.startCompetitiveLoop(roomId); }
-    this.broadcastToRoom(roomId,'game_started',{ room_id:roomId, game_state:this.getGameState(roomId), players });
-    return { success:true, players };
+  startGame(roomId, hostSessionId = null) {
+    return this.lifecycleManager.startGame(roomId, hostSessionId);
   }
 
   startSharedLoop(roomId){ if(this.gameTimers.has(roomId)) return; setTimeout(()=>{ if(this.gameTimers.has(roomId)) return; const loop=setInterval(()=>updateSharedGameTick(this, roomId), this.SNAKE_CONFIG.GAME_SPEED); this.gameTimers.set(roomId, loop); },1000); }
@@ -73,13 +87,14 @@ export class SnakeGameService extends RoomManagerService {
 
   handleCompetitiveMove(roomId, sessionId, direction){ const gs=this.getGameState(roomId); if(!gs||gs.mode!=='competitive') return; const snake=gs.snakes?.[sessionId]; if(!snake||snake.gameOver) return; const opp={up:'down',down:'up',left:'right',right:'left'}; if(opp[snake.direction]===direction) return; snake.nextDirection=direction; }
 
-  endGame(roomId, reason='finished'){
-    const gs=this.getGameState(roomId); if(!gs) return; if(this.gameTimers.has(roomId)){ clearInterval(this.gameTimers.get(roomId)); this.gameTimers.delete(roomId);} if(this.voteTimers.has(roomId)){ clearTimeout(this.voteTimers.get(roomId)); this.voteTimers.delete(roomId);} this.updateGameState(roomId,{ status:'finished', endTime: Date.now(), endReason: reason }); SnakeRoomModel.update(roomId,{ status:'waiting' }); this.saveGameRecord(roomId, gs, reason); this.broadcastToRoom(roomId,'game_ended',{ room_id:roomId, reason, final_score: gs.sharedSnake?.score||0, game_state: gs, winner: gs.winner||null });
+  endGame(roomId, reason = 'finished') {
+    return this.lifecycleManager.endGame(roomId, reason);
   }
 
-  saveGameRecord(roomId, gs, reason){ try { const room=SnakeRoomModel.findById(roomId); if(!room) return; const players=SnakePlayerModel.findByRoomId(roomId); const finalScore=gs.sharedSnake?.score||0; const duration=gs.startTime? (Date.now()-gs.startTime):0; if(gs.mode==='shared'){ players.forEach(p=>{ SnakeGameRecordModel.create({ room_id:roomId, mode:gs.mode, winner_session_id:p.session_id, winner_score:finalScore, game_duration:duration, end_reason:reason, player_count:players.length }); }); } } catch(e){ console.error('保存游戏记录失败', e); } }
-
-  cleanupGameResources(roomId){ super.cleanupGameResources(roomId); if(this.voteTimers.has(roomId)){ clearTimeout(this.voteTimers.get(roomId)); this.voteTimers.delete(roomId);} }
+  cleanupGameResources(roomId) {
+    super.cleanupGameResources(roomId);
+    this.voteManager.cleanup(roomId);
+  }
 
   // ---- 自动清理逻辑 ----
   autoCleanupStaleRooms(){

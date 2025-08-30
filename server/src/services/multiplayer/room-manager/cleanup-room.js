@@ -5,6 +5,39 @@ export function cleanupRoomFactory(Service){
   };
 
   Service.prototype.cleanupEmptyRooms = function(){
-    try { const rooms = this.RoomModel.getActiveRooms(); let removed = 0; rooms.forEach(room => { if (room.game_type && room.game_type !== this.getGameType()) return; const online = this.PlayerModel.getPlayerCount(room.id); if (online === 0 || online !== room.current_players) { if (online === 0) { this.cleanupRoom(room.id); removed++; } else if (online !== room.current_players) { this.RoomModel.update(room.id, { current_players: online }); } } }); if (removed > 0) { const broadcastEvent = `${this.getGameType()}_room_list_updated`; if (this.wsService?.broadcast) { this.wsService.broadcast(broadcastEvent); } console.log(`已清理 ${removed} 个空的 ${this.getGameType()} 房间`); } } catch (e) { console.error(`扫描 ${this.getGameType()} 空房间失败`, e); }
+    try {
+      const rooms = this.RoomModel.getActiveRooms();
+      let removed = 0;
+      const now = Date.now();
+      const MAX_LIFETIME_MS = 8 * 60 * 60 * 1000; // 8小时
+      rooms.forEach(room => {
+        if (room.game_type && room.game_type !== this.getGameType()) return;
+        // 判断房间是否超时
+        const createdAt = new Date(room.created_at).getTime();
+        if (now - createdAt > MAX_LIFETIME_MS) {
+          this.cleanupRoom(room.id);
+          removed++;
+          return;
+        }
+        const online = this.PlayerModel.getPlayerCount(room.id);
+        if (online === 0 || online !== room.current_players) {
+          if (online === 0) {
+            this.cleanupRoom(room.id);
+            removed++;
+          } else if (online !== room.current_players) {
+            this.RoomModel.update(room.id, { current_players: online });
+          }
+        }
+      });
+      if (removed > 0) {
+        const broadcastEvent = `${this.getGameType()}_room_list_updated`;
+        if (this.wsService?.broadcast) {
+          this.wsService.broadcast(broadcastEvent);
+        }
+        console.log(`已清理 ${removed} 个空或超时的 ${this.getGameType()} 房间`);
+      }
+    } catch (e) {
+      console.error(`扫描 ${this.getGameType()} 空房间失败`, e);
+    }
   };
 }

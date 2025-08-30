@@ -1,110 +1,59 @@
 <template>
   <div class="snake-app">
     <!-- 游戏模式选择 -->
-    <div v-if="gameMode === 'menu'" class="mode-selector">
-      <h3>🎮 选择游戏模式</h3>
-      <div class="mode-buttons">
-        <button 
-          class="mode-btn single-mode"
-          @click="startSinglePlayer"
-        >
-          🐍 单人模式
-          <small>经典贪吃蛇游戏</small>
-        </button>
-        <button 
-          class="mode-btn multiplayer-mode"
-          @click="startMultiplayer"
-        >
-          👥 多人模式
-          <small>与朋友一起玩</small>
-        </button>
-      </div>
-    </div>
+    <GameModeSelector 
+      v-if="gameMode === 'menu'"
+      @select-mode="handleModeSelect"
+    />
 
     <!-- 多人模式 -->
-    <div v-else-if="gameMode === 'multiplayer'" class="multiplayer-mode">
-      <!-- 大厅界面 -->
-      <SnakeLobby 
-        v-if="multiplayerView === 'lobby'"
-        @join-room="multiplayerView = 'room'"
-        @create-room="multiplayerView = 'room'"
-      />
-      
-      <!-- 房间界面 -->
-      <SnakeRoom
-        v-else-if="multiplayerView === 'room'"
-        @leave-room="multiplayerView = 'lobby'"
-        @game-update="handleMultiplayerGameUpdate"
-      />
-      
-      <!-- 返回按钮 -->
-      <div class="multiplayer-back">
-        <button class="btn btn-secondary" @click="backToMenu">
-          返回主菜单
-        </button>
-      </div>
-    </div>
+    <MultiplayerGame
+      v-else-if="gameMode === 'multiplayer'"
+      :multiplayer-view="multiplayerView"
+      @back-to-menu="backToMenu"
+      @join-room="multiplayerView = 'room'"
+      @create-room="multiplayerView = 'room'"
+      @leave-room="multiplayerView = 'lobby'"
+      @game-update="handleMultiplayerGameUpdate"
+    />
 
     <!-- 单人模式游戏 -->
-    <div v-else-if="gameMode === 'single'" class="single-player-game">
-      <SnakeHeader
-        :score="score"
-        :snake-length="snake.length"
-        :level="level"
-        :high-score="highScore"
-      />
-
-      <div class="game-container">
-        <SnakeCanvas
-          ref="snakeCanvas"
-          :boardSize="boardSize"
-          :cell="cell"
-          :snake="snake"
-          :food="food"
-          :specialFood="specialFood"
-          :particles="particles"
-          :gridSize="gridSize"
-          :gameOver="gameOver"
-          @canvas-click="handleCanvasClick"
-        />
-
-        <SnakeOverlays
-          :gameStarted="gameStarted"
-          :gameOver="gameOver"
-          :score="score"
-          :snakeLength="snake.length"
-          @start="start"
-          @restart="restart"
-        />
-      </div>
-
-      <SnakeControls
-        :game-started="gameStarted"
-        :paused="paused"
-        :game-over="gameOver"
-        v-model:difficulty="difficulty"
-        @start="start"
-        @pause="pause"
-        @restart="restart"
-        @back-to-menu="backToMenu"
-      />
-    </div>
+    <SinglePlayerGame
+      v-else-if="gameMode === 'single'"
+      ref="singlePlayerGame"
+      :board-size="boardSize"
+      :cell="cell"
+      :game-started="gameStarted"
+      :game-over="gameOver"
+      :paused="paused"
+      :score="score"
+      :high-score="highScore"
+      :level="level"
+      v-model:difficulty="difficulty"
+      :snake="snake"
+      :food="food"
+      :special-food="specialFood"
+      :particles="particles"
+      :grid-size="gridSize"
+      @back-to-menu="backToMenu"
+      @start="start"
+      @pause="pause"
+      @restart="restart"
+      @canvas-click="handleCanvasClick"
+    />
   </div>
 </template>
 
 <script setup>
   import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
-  import SnakeHeader from './SnakeHeader.vue';
-  import SnakeControls from './SnakeControls.vue';
-  import SnakeCanvas from './SnakeCanvas.vue';
-  import SnakeOverlays from './SnakeOverlays.vue';
-  import SnakeLobby from './SnakeLobby.vue';
-  import SnakeRoom from './SnakeRoom.vue';
+  import GameModeSelector from './components/GameModeSelector.vue';
+  import SinglePlayerGame from './components/SinglePlayerGame.vue';
+  import MultiplayerGame from './components/MultiplayerGame.vue';
   import useSnakeGame from '../../composables/useSnakeGame.js';
   import useSnakeController from '../../composables/useSnakeController.js';
   import './SnakeApp.css';
 
-  const snakeCanvas = ref(null);
+  const singlePlayerGame = ref(null);
   const boardSize = 400;
   const cell = 20;
 
@@ -140,6 +89,11 @@
     handleCanvasClick: composableHandleCanvasClick,
   } = useSnakeGame();
 
+  // 获取单人游戏组件的 canvas 引用
+  const getSnakeCanvasRef = () => {
+    return singlePlayerGame.value?.snakeCanvas;
+  };
+
   const {
     start,
     pause,
@@ -152,7 +106,7 @@
     gameStep,
     updateParticles,
     speed,
-    snakeCanvasRef: snakeCanvas,
+    snakeCanvasRef: getSnakeCanvasRef,
     startGame,
     pauseGame,
     restartGame,
@@ -163,14 +117,13 @@
     gameOver,
   });
 
-  // 开始单人游戏
-  const startSinglePlayer = () => {
-    gameMode.value = 'single';
-  };
-
-  // 开始多人游戏
-  const startMultiplayer = () => {
-    gameMode.value = 'multiplayer';
+  // 处理模式选择
+  const handleModeSelect = (mode) => {
+    if (mode === 'single') {
+      gameMode.value = 'single';
+    } else if (mode === 'multiplayer') {
+      gameMode.value = 'multiplayer';
+    }
   };
 
   // 返回主菜单
@@ -186,15 +139,15 @@
 
   // 处理多人游戏更新
   const handleMultiplayerGameUpdate = (data) => {
-  // multiplayer game update received
+  // multiplayer game update received — debug log removed
   };
 
   watch(difficulty, updateSpeed);
 
   onMounted(() => {
     setTimeout(() => {
-      snakeCanvas.value?.draw();
-    }, 0);
+      getSnakeCanvasRef()?.draw();
+    }, 100);
     bindEvents();
   });
 

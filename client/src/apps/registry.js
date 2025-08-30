@@ -15,7 +15,7 @@ export const internalApps = [
   {
     slug: 'calculator',
     name: '计算器',
-    preferredSize: { width: 450, height: 670 },
+    preferredSize: { width: 450, height: 680 },
     // 异步加载，避免初次加载体积增长
     component: defineAsyncComponent(
       () => import('./calculator/CalculatorApp.vue')
