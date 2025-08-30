@@ -72,14 +72,14 @@ export class GameModeService {
     return this.aiServices.get(playerNumber);
   }
 
-  // 获取AI移动
-  async getAIMove(playerNumber, board, gameHistory) {
+  // 获取AI移动 - 支持思考过程回调
+  async getAIMove(playerNumber, board, gameHistory, onThinkingUpdate = null) {
     const aiService = this.getAIService(playerNumber);
     if (!aiService) {
       throw new Error(`玩家${playerNumber}未配置AI服务`);
     }
 
-    return await aiService.getNextMove(board, gameHistory, playerNumber);
+    return await aiService.getNextMove(board, gameHistory, playerNumber, onThinkingUpdate);
   }
 
   // 验证游戏配置

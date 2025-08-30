@@ -1,6 +1,6 @@
 <template>
   <div class="gomoku-app">
-    <!-- 简化的AI配置面板 -->
+    <!-- AI配置面板 -->
     <SimpleAIConfig
       v-if="showAIConfig"
       @close="showAIConfig = false"
@@ -17,69 +17,77 @@
       :game-over="gameOver"
     />
 
-    <!-- 游戏区域 -->
-    <div class="game-container">
-      <GomokuBoard
-        ref="gomokuBoard"
-        :board="board"
-        :current-player="currentPlayer"
-        :game-over="gameOver"
-        :last-move="lastMove"
-        @move="handlePlayerMove"
-      />
-
-      <GomokuOverlays
-        :game-started="gameStarted"
-        :game-over="gameOver"
-        :winner="winner"
-        :current-player="currentPlayer"
-        :move-count="moveCount"
-        :show-hint="showHint"
-        :hint-position="hintPosition"
-        :is-ai-thinking="isAIThinking"
-        :ai-thinking-text="getAIThinkingText()"
-        @start="handleStartGame"
-        @restart="handleRestartGame"
-        @analyze="handleAnalyzeGame"
-        @close-hint="closeHint"
-        @config-ai="showAIConfig = true"
-      />
-    </div>
-
-    <!-- 游戏控制 -->
-    <GomokuControls
-      :game-started="gameStarted"
-      :game-over="gameOver"
-      :current-player="currentPlayer"
-      :can-undo="canUndo"
-      @start="handleStartGame"
-      @restart="handleRestartGame"
-      @undo="handleUndoMove"
-      @hint="handleShowHint"
-      @config-ai="showAIConfig = true"
-    />
-
-    <!-- AI思考指示器 -->
-    <div v-if="isAIThinking" class="ai-thinking-overlay">
-      <div class="thinking-indicator">
-        <div class="spinner"></div>
-        <p>{{ getAIThinkingText() }}</p>
+    <!-- 主游戏区域 -->
+    <div class="main-game-area">
+      <!-- 左侧：AI思考面板 -->
+      <div class="left-panel">
+        <AIThinkingPanel
+          :current-thinking="currentThinking"
+          :thinking-history="thinkingHistory"
+          @clear-history="clearThinkingHistory"
+        />
       </div>
-    </div>
 
-    <!-- 游戏状态面板 -->
-    <div class="status-panel">
-      <div class="status-item">
-        <span class="status-label">模式:</span>
-        <span class="status-value">{{ getModeText() }}</span>
+      <!-- 中间：游戏棋盘 -->
+      <div class="center-panel">
+        <div class="game-container">
+          <GomokuBoard
+            ref="gomokuBoard"
+            :board="board"
+            :current-player="currentPlayer"
+            :game-over="gameOver"
+            :last-move="lastMove"
+            @move="handlePlayerMove"
+          />
+
+          <GomokuOverlays
+            :game-started="gameStarted"
+            :game-over="gameOver"
+            :winner="winner"
+            :current-player="currentPlayer"
+            :move-count="moveCount"
+            :show-hint="showHint"
+            :hint-position="hintPosition"
+            :is-ai-thinking="isAIThinking"
+            :ai-thinking-text="getAIThinkingText()"
+            @start="handleStartGame"
+            @restart="handleRestartGame"
+            @analyze="handleAnalyzeGame"
+            @close-hint="closeHint"
+            @config-ai="showAIConfig = true"
+          />
+        </div>
+
+        <!-- 游戏控制 -->
+        <GomokuControls
+          :game-started="gameStarted"
+          :game-over="gameOver"
+          :current-player="currentPlayer"
+          :can-undo="canUndo"
+          @start="handleStartGame"
+          @restart="handleRestartGame"
+          @undo="handleUndoMove"
+          @hint="handleShowHint"
+          @config-ai="showAIConfig = true"
+        />
       </div>
-      <div v-if="aiConfig" class="status-item">
-        <span class="status-label">AI:</span>
-        <span class="status-value">{{ aiConfig.playerName || 'AI助手' }}</span>
-      </div>
-      <div v-if="lastAIReasoning" class="ai-reasoning">
-        <h5>💭 AI思路:</h5>
-        <p>{{ lastAIReasoning }}</p>
+
+      <!-- 右侧：游戏状态面板 -->
+      <div class="right-panel">
+        <GameStatusPanel
+          :game-mode="gameMode"
+          :current-player="currentPlayer"
+          :game-over="gameOver"
+          :is-ai-thinking="isAIThinking"
+          :current-ai-player="currentAIPlayer"
+          :player1-name="getPlayerName(1)"
+          :player2-name="getPlayerName(2)"
+          :move-count="moveCount"
+          :player-wins="playerWins"
+          :total-games="totalGames"
+          :last-move="lastMoveWithReasoning"
+          :game-mode-info="gameModeInfo"
+        />
       </div>
     </div>
   </div>
@@ -92,9 +100,13 @@ import GomokuBoard from './GomokuBoard.vue';
 import GomokuControls from './GomokuControls.vue';
 import GomokuOverlays from './GomokuOverlays.vue';
 import SimpleAIConfig from './components/SimpleAIConfig.vue';
+import AIThinkingPanel from './components/AIThinkingPanel.vue';
+import GameStatusPanel from './components/GameStatusPanel.vue';
 import { useGomokuGame } from './composables/useGomokuGame.js';
 import { useGomokuStats } from './composables/useGomokuStats.js';
 import { useGomokuHint } from './composables/useGomokuHint.js';
+import { useGomokuAIThinking } from './composables/useGomokuAIThinking.js';
+import { GameModeService } from './services/GameModeService.js';
 
 // 游戏状态管理
 const {
@@ -126,13 +138,39 @@ const {
   closeHint
 } = useGomokuHint();
 
+// 游戏模式服务
+const gameModeService = new GameModeService();
+
 // 本地状态
 const gomokuBoard = ref(null);
 const showAIConfig = ref(false);
-const isAIThinking = ref(false);
 const gameMode = ref('human_vs_ai');
 const aiConfig = ref(null);
-const lastAIReasoning = ref('');
+// 引入 AI 思考逻辑组合
+const {
+  isAIThinking,
+  currentAIPlayer,
+  currentThinking,
+  thinkingHistory,
+  lastMoveWithReasoning,
+  handleAITurn,
+  clearThinkingHistory,
+  getAIThinkingText
+} = useGomokuAIThinking({
+  gameModeService,
+  gameMode,
+  board,
+  moveCount,
+  gameOver,
+  winner,
+  makePlayerMove,
+  recordGameResult,
+  gomokuBoard,
+  currentPlayer
+});
+
+// 计算属性
+const gameModeInfo = computed(() => gameModeService.getGameModeInfo());
 
 // 事件处理器
 function handleStartGame() {
@@ -142,32 +180,61 @@ function handleStartGame() {
   }
 
   startGame();
-  nextTick(() => {
-    gomokuBoard.value?.drawBoard();
-  });
+  
+  // 如果是AI对AI模式，开始AI对战
+  if (gameMode.value === 'ai_vs_ai') {
+    nextTick(() => {
+      gomokuBoard.value?.drawBoard();
+      handleAITurn();
+    });
+  } else {
+    nextTick(() => {
+      gomokuBoard.value?.drawBoard();
+    });
+  }
 }
 
-function handleConfiguredStart() {
-  handleStartGame();
-}
+function handleConfiguredStart() { handleStartGame(); }
 
 function handleConfigSaved(config) {
   gameMode.value = config.mode;
   aiConfig.value = config.aiConfig;
+  
+  // 配置游戏模式服务
+  gameModeService.setGameMode(config.mode);
+  
+  if (config.mode === 'human_vs_ai') {
+    gameModeService.configurePlayerAI(2, config.aiConfig);
+  } else if (config.mode === 'ai_vs_ai') {
+    // AI对AI模式需要配置两个AI
+    gameModeService.configurePlayerAI(1, config.ai1Config || config.aiConfig);
+    gameModeService.configurePlayerAI(2, config.ai2Config || config.aiConfig);
+  }
 }
 
 function handleRestartGame() {
   restartGame();
   closeHint();
-  lastAIReasoning.value = '';
+  currentThinking.value = null; currentAIPlayer.value = null; lastMoveWithReasoning.value = null; thinkingHistory.value = [];
   
   nextTick(() => {
     gomokuBoard.value?.drawBoard();
+    
+    // 如果是AI对AI模式，重新开始AI对战
+    if (gameMode.value === 'ai_vs_ai') {
+      handleAITurn();
+    }
   });
 }
 
 async function handlePlayerMove(row, col) {
-  if (isAIThinking.value || currentPlayer.value !== 1) {
+  // 在AI思考时或者不是人类玩家回合时不允许下棋
+  if (isAIThinking.value) {
+    return;
+  }
+  
+  // 检查当前玩家是否为人类
+  if (gameModeService.isAIPlayer(currentPlayer.value)) {
     return;
   }
 
@@ -182,62 +249,25 @@ async function handlePlayerMove(row, col) {
       return;
     }
 
-    // AI回合
-    if (gameMode.value === 'human_vs_ai' && aiConfig.value) {
-      await handleAIMove();
-    }
+    // 处理AI回合
+    await handleAITurn();
   }
 }
 
-async function handleAIMove() {
-  if (gameOver.value || currentPlayer.value !== 2) {
-    return;
-  }
-
-  isAIThinking.value = true;
-  
-  try {
-    // 模拟AI思考
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // 简单AI逻辑：随机选择空位
-    const emptyPositions = [];
-    for (let row = 0; row < 15; row++) {
-      for (let col = 0; col < 15; col++) {
-        if (board.value[row][col] === 0) {
-          emptyPositions.push({ row, col });
-        }
-      }
-    }
-    
-    if (emptyPositions.length > 0) {
-      const randomIndex = Math.floor(Math.random() * emptyPositions.length);
-      const aiMove = emptyPositions[randomIndex];
-      
-      if (makePlayerMove(aiMove.row, aiMove.col)) {
-        lastAIReasoning.value = `选择位置(${aiMove.row + 1}, ${aiMove.col + 1})，这是一个不错的位置`;
-        
-        nextTick(() => {
-          gomokuBoard.value?.drawBoard();
-        });
-
-        if (gameOver.value) {
-          recordGameResult(winner.value);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('AI下棋失败:', error);
-  } finally {
-    isAIThinking.value = false;
-  }
-}
+// AI 逻辑已抽取至 useGomokuAIThinking
 
 function handleUndoMove() {
   if (undoMove()) {
     // 如果是人机对战，需要撤销两步
     if (gameMode.value === 'human_vs_ai') {
       undoMove();
+    }
+    
+    // 清理思考历史中对应的记录
+    if (gameMode.value === 'human_vs_ai') {
+      thinkingHistory.value = thinkingHistory.value.slice(0, -1);
+    } else {
+      thinkingHistory.value = thinkingHistory.value.slice(0, -2);
     }
     
     nextTick(() => {
@@ -247,7 +277,6 @@ function handleUndoMove() {
 }
 
 function handleShowHint() {
-  // 简单提示：建议中心位置
   if (!gameStarted.value || gameOver.value) return;
   
   const centerRow = 7;
@@ -263,22 +292,13 @@ function handleAnalyzeGame() {
   handleRestartGame();
 }
 
-function getAIThinkingText() {
-  if (aiConfig.value) {
-    return `${aiConfig.value.playerName} 正在思考...`;
-  }
-  return 'AI正在思考...';
-}
+// clearThinkingHistory 已在组合函数中提供
 
-function getModeText() {
-  switch (gameMode.value) {
-    case 'ai_vs_ai':
-      return 'AI对AI';
-    case 'human_vs_ai':
-      return '人机对战';
-    default:
-      return '演示模式';
-  }
+// getAIThinkingText 已在组合函数中提供
+
+function getPlayerName(playerNumber) {
+  const player = gameModeService.getPlayer(playerNumber);
+  return player ? player.name : `玩家${playerNumber}`;
 }
 
 // 生命周期
@@ -308,125 +328,104 @@ onMounted(() => {
 
 <style scoped>
 .gomoku-app {
-  display: inline-block;
-  vertical-align: top;
+  display: flex;
+  flex-direction: column;
   padding: 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 15px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  max-width: 600px;
+  min-height: 600px;
   position: relative;
+}
+
+.main-game-area {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 20px;
+  align-items: start;
+  flex: 1;
+}
+
+.left-panel,
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.center-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
 }
 
 .game-container {
   position: relative;
   display: flex;
   justify-content: center;
-  margin: 20px 0;
 }
 
-.ai-thinking-overlay {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 15px 20px;
-  border-radius: 10px;
-  color: white;
-  z-index: 100;
+/* 响应式布局 */
+@media (max-width: 1200px) {
+  .main-game-area {
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 15px;
+  }
 }
 
-.thinking-indicator {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid #4ade80;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.thinking-indicator p {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.status-panel {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 15px;
-  margin-top: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.status-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.status-label {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.9rem;
-}
-
-.status-value {
-  font-weight: 500;
-  color: #4ade80;
-}
-
-.ai-reasoning {
-  margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.ai-reasoning h5 {
-  margin: 0 0 8px 0;
-  font-size: 0.9rem;
-  color: #a78bfa;
-}
-
-.ai-reasoning p {
-  margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.9);
+@media (max-width: 992px) {
+  .main-game-area {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .left-panel,
+  .right-panel {
+    order: 2;
+  }
+  
+  .center-panel {
+    order: 1;
+  }
 }
 
 @media (max-width: 768px) {
   .gomoku-app {
     padding: 15px;
-    max-width: 95vw;
+    min-height: auto;
   }
   
-  .ai-thinking-overlay {
-    top: 10px;
-    right: 10px;
-    left: 10px;
-    padding: 12px 16px;
+  .main-game-area {
+    gap: 15px;
   }
   
-  .thinking-indicator {
-    justify-content: center;
+  .left-panel,
+  .right-panel {
+    gap: 15px;
   }
   
-  .spinner {
-    width: 16px;
-    height: 16px;
+  .center-panel {
+    gap: 15px;
+  }
+}
+
+@media (max-width: 576px) {
+  .gomoku-app {
+    padding: 10px;
+  }
+  
+  .main-game-area {
+    gap: 10px;
+  }
+}
+
+/* 确保面板在小屏幕上的可读性 */
+@media (max-width: 480px) {
+  .left-panel,
+  .right-panel {
+    font-size: 0.9rem;
   }
 }
 </style>

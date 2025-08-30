@@ -6,30 +6,38 @@
     </div>
 
     <div class="config-content">
-  <GameModeSelector v-model="gameMode" />
+      <GameModeSelector v-model="gameMode" />
 
-      <div class="ai-config-section">
-        <h4>AI配置</h4>
-        <SimpleAISettingsForm v-model="config" @preset="onPreset" />
+      <!-- 拆分后的子块 -->
+      <HumanVsAISection
+        v-if="gameMode === 'human_vs_ai'"
+        v-model:config="config"
+        :can-test="canTest"
+        :testing="testing"
+        :test-result="testResult"
+        @preset="onPreset"
+        @test="testConnection"
+      />
 
-        <div class="test-section">
-          <button 
-            @click="testConnection" 
-            :disabled="!canTest || testing"
-            class="btn btn-info btn-sm"
-          >
-            {{ testing ? '测试中...' : '测试连接' }}
-          </button>
-          
-          <div v-if="testResult" class="test-result" :class="testResult.type">
-            {{ testResult.message }}
-          </div>
-        </div>
-      </div>
+      <AIVsAISection
+        v-else-if="gameMode === 'ai_vs_ai'"
+        v-model:ai1-config="ai1Config"
+        v-model:ai2-config="ai2Config"
+        :can-test-ai1="canTestAI1"
+        :can-test-ai2="canTestAI2"
+        :testing-ai1="testingAI1"
+        :testing-ai2="testingAI2"
+        :ai1-test-result="ai1TestResult"
+        :ai2-test-result="ai2TestResult"
+        @preset-ai1="onPreset1"
+        @preset-ai2="onPreset2"
+        @test-ai1="testAI1Connection"
+        @test-ai2="testAI2Connection"
+      />
 
       <div class="config-actions">
-  <button @click="saveAndStart" class="btn btn-success btn-md start-btn">开始游戏</button>
-  <button @click="resetConfig" class="btn btn-muted btn-md reset-btn">重置</button>
+        <button @click="saveAndStart" class="btn btn-success btn-md start-btn">开始游戏</button>
+        <button @click="resetConfig" class="btn btn-muted btn-md reset-btn">重置</button>
       </div>
     </div>
   </div>
@@ -38,141 +46,79 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import GameModeSelector from './common/GameModeSelector.vue';
-import SimpleAISettingsForm from './common/SimpleAISettingsForm.vue';
+import HumanVsAISection from './simple-config/HumanVsAISection.vue';
+import AIVsAISection from './simple-config/AIVsAISection.vue';
 
 const emit = defineEmits(['close', 'start-game', 'config-saved']);
 
-// 状态
+// 基础状态
 const gameMode = ref('human_vs_ai');
-const selectedPreset = ref('');
-const testing = ref(false);
-const testResult = ref(null);
+const config = ref({ apiUrl: '', apiKey: '', modelName: 'gpt-3.5-turbo', playerName: 'AI大师' });
+const ai1Config = ref({ apiUrl: '', apiKey: '', modelName: 'gpt-3.5-turbo', playerName: 'AI黑子' });
+const ai2Config = ref({ apiUrl: '', apiKey: '', modelName: 'gpt-3.5-turbo', playerName: 'AI白子' });
 
-const config = ref({
-  apiUrl: '',
-  apiKey: '',
-  modelName: 'gpt-3.5-turbo',
-  playerName: 'AI大师'
-});
+// 测试状态
+const testing = ref(false); const testResult = ref(null);
+const testingAI1 = ref(false); const testingAI2 = ref(false);
+const ai1TestResult = ref(null); const ai2TestResult = ref(null);
 
-// 预设配置
+// 预设
 const presets = {
-  openai: {
-    apiUrl: 'https://api.openai.com/v1/chat/completions',
-    modelName: 'gpt-3.5-turbo',
-    playerName: 'GPT助手'
-  },
-  claude: {
-    apiUrl: 'https://api.anthropic.com/v1/messages',
-    modelName: 'claude-3-sonnet-20240229',
-    playerName: 'Claude助手'
-  }
+  openai: { apiUrl: 'https://api.openai.com/v1/chat/completions', modelName: 'gpt-3.5-turbo', playerName: 'GPT助手' },
+  claude: { apiUrl: 'https://api.anthropic.com/v1/messages', modelName: 'claude-3-sonnet-20240229', playerName: 'Claude助手' }
 };
 
 // 计算属性
-const canTest = computed(() => {
-  return config.value.apiUrl && config.value.apiKey;
-});
+const canTest = computed(() => config.value.apiUrl && config.value.apiKey);
+const canTestAI1 = computed(() => ai1Config.value.apiUrl && ai1Config.value.apiKey);
+const canTestAI2 = computed(() => ai2Config.value.apiUrl && ai2Config.value.apiKey);
 
-// 方法
-function onPreset(presetKey) {
-  selectedPreset.value = presetKey;
-  if (presetKey && presets[presetKey]) {
-    const preset = presets[presetKey];
-    config.value.apiUrl = preset.apiUrl;
-    config.value.modelName = preset.modelName;
-    config.value.playerName = preset.playerName;
-  }
+// 预设应用
+function onPreset(k){ if(presets[k]) Object.assign(config.value,{ apiUrl:presets[k].apiUrl, modelName:presets[k].modelName, playerName:presets[k].playerName }); }
+function onPreset1(k){ if(presets[k]) Object.assign(ai1Config.value,{ apiUrl:presets[k].apiUrl, modelName:presets[k].modelName, playerName:presets[k].playerName+'(黑子)' }); }
+function onPreset2(k){ if(presets[k]) Object.assign(ai2Config.value,{ apiUrl:presets[k].apiUrl, modelName:presets[k].modelName, playerName:presets[k].playerName+'(白子)' }); }
+
+// 抽取的测试函数
+async function genericTest(targetRef, testingRef, resultRef){
+  if(!targetRef.value.apiUrl || !targetRef.value.apiKey){ return; }
+  testingRef.value = true; resultRef.value = null;
+  try { await new Promise(r=>setTimeout(r,1500)); if(!targetRef.value.apiUrl.startsWith('http')) throw new Error('API URL格式不正确'); resultRef.value={ type:'success', message:'连接测试成功！'}; }
+  catch(e){ resultRef.value={ type:'error', message:e.message||'连接测试失败'}; }
+  finally { testingRef.value=false; }
 }
+const testConnection = ()=>genericTest(config, testing, testResult);
+const testAI1Connection = ()=>genericTest(ai1Config, testingAI1, ai1TestResult);
+const testAI2Connection = ()=>genericTest(ai2Config, testingAI2, ai2TestResult);
 
-async function testConnection() {
-  if (!canTest.value) return;
-  
-  testing.value = true;
-  testResult.value = null;
-  
-  try {
-    // 模拟测试连接
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // 简单验证URL格式
-    if (!config.value.apiUrl.startsWith('http')) {
-      throw new Error('API URL格式不正确');
+function saveAndStart(){
+  if(gameMode.value==='human_vs_ai'){
+    if(!canTest.value){ testResult.value={ type:'error', message:'请填写完整的AI配置'}; return; }
+    localStorage.setItem('gomoku_simple_config', JSON.stringify({ gameMode:gameMode.value, config:config.value }));
+    emit('config-saved',{ mode:gameMode.value, aiConfig:config.value });
+  } else if(gameMode.value==='ai_vs_ai') {
+    if(!canTestAI1.value || !canTestAI2.value){
+      if(!canTestAI1.value) ai1TestResult.value={ type:'error', message:'请填写完整的AI1配置'};
+      if(!canTestAI2.value) ai2TestResult.value={ type:'error', message:'请填写完整的AI2配置'};
+      return;
     }
-    
-    testResult.value = {
-      type: 'success',
-      message: '连接测试成功！'
-    };
-  } catch (error) {
-    testResult.value = {
-      type: 'error',
-      message: error.message || '连接测试失败'
-    };
-  } finally {
-    testing.value = false;
+    localStorage.setItem('gomoku_simple_config', JSON.stringify({ gameMode:gameMode.value, ai1Config:ai1Config.value, ai2Config:ai2Config.value }));
+    emit('config-saved',{ mode:gameMode.value, ai1Config:ai1Config.value, ai2Config:ai2Config.value });
   }
+  emit('start-game'); emit('close');
 }
 
-function saveAndStart() {
-  if (!canTest.value) {
-    testResult.value = {
-      type: 'error',
-      message: '请填写完整的API配置'
-    };
-    return;
-  }
-  
-  // 保存配置到localStorage
-  const configData = {
-    gameMode: gameMode.value,
-    config: config.value
-  };
-  localStorage.setItem('gomoku_simple_config', JSON.stringify(configData));
-  
-  // 发送配置给父组件
-  emit('config-saved', {
-    mode: gameMode.value,
-    aiConfig: config.value
-  });
-  
-  emit('start-game');
-  emit('close');
+function resetConfig(){
+  Object.assign(config.value,{ apiUrl:'', apiKey:'', modelName:'gpt-3.5-turbo', playerName:'AI大师' });
+  Object.assign(ai1Config.value,{ apiUrl:'', apiKey:'', modelName:'gpt-3.5-turbo', playerName:'AI黑子' });
+  Object.assign(ai2Config.value,{ apiUrl:'', apiKey:'', modelName:'gpt-3.5-turbo', playerName:'AI白子' });
+  testResult.value=ai1TestResult.value=ai2TestResult.value=null;
 }
 
-function resetConfig() {
-  config.value = {
-    apiUrl: '',
-    apiKey: '',
-    modelName: 'gpt-3.5-turbo',
-    playerName: 'AI大师'
-  };
-  selectedPreset.value = '';
-  testResult.value = null;
+function loadConfig(){
+  try { const saved=localStorage.getItem('gomoku_simple_config'); if(saved){ const data=JSON.parse(saved); gameMode.value=data.gameMode||'human_vs_ai'; if(data.config){ Object.assign(config.value,{ ...data.config, apiKey:'' }); } }}
+  catch(e){ console.error('加载配置失败:',e); }
 }
-
-function loadConfig() {
-  try {
-    const saved = localStorage.getItem('gomoku_simple_config');
-    if (saved) {
-      const data = JSON.parse(saved);
-      gameMode.value = data.gameMode || 'human_vs_ai';
-      if (data.config) {
-        // 不加载API Key，保持安全
-        config.value = {
-          ...data.config,
-          apiKey: ''
-        };
-      }
-    }
-  } catch (error) {
-    console.error('加载配置失败:', error);
-  }
-}
-
-onMounted(() => {
-  loadConfig();
-});
+onMounted(loadConfig);
 </script>
 
 <style scoped>
@@ -314,9 +260,39 @@ onMounted(() => {
   border: 1px solid #f5c6cb;
 }
 
- .config-actions { display:flex; gap:15px; justify-content:center; padding-top:20px; border-top:1px solid #eee; }
+ .ai-vs-ai-config {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
 
-/* start/reset 使用全局按钮工具类 */
+.ai-vs-ai-config .ai-config-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  border: 2px solid #e9ecef;
+}
+
+.ai-vs-ai-config .ai-config-section h4 {
+  margin-top: 0;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+  padding-bottom: 10px;
+}
+
+.test-buttons {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.config-actions { 
+  display: flex; 
+  gap: 15px; 
+  justify-content: center; 
+  padding-top: 20px; 
+  border-top: 1px solid #eee; 
+}
 
 @media (max-width: 768px) {
   .simple-ai-config {
@@ -328,7 +304,15 @@ onMounted(() => {
     padding: 15px;
   }
   
-  .mode-options {
+  .ai-vs-ai-config {
+    gap: 20px;
+  }
+  
+  .ai-vs-ai-config .ai-config-section {
+    padding: 15px;
+  }
+  
+  .test-buttons {
     flex-direction: column;
     gap: 10px;
   }

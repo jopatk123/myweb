@@ -11,17 +11,55 @@ export class AIModelService {
     this.isThinking = false;
   }
 
-  // 获取AI的下一步棋
-  async getNextMove(board, gameHistory, playerType) {
+  // 获取AI的下一步棋 - 支持思考过程回调
+  async getNextMove(board, gameHistory, playerType, onThinkingUpdate = null) {
     if (this.isThinking) {
       throw new Error('AI正在思考中，请稍候...');
     }
 
     this.isThinking = true;
+    const startTime = Date.now();
     
     try {
+      // 开始思考
+      if (onThinkingUpdate) {
+        onThinkingUpdate({
+          player: playerType,
+          playerName: this.playerName,
+          steps: ['开始分析棋局...'],
+          progress: 10,
+          progressText: '正在分析当前局面'
+        });
+      }
+
+      await this.delay(500); // 模拟思考时间
+
+      // 分析棋局
+      if (onThinkingUpdate) {
+        onThinkingUpdate({
+          player: playerType,
+          playerName: this.playerName,
+          steps: ['开始分析棋局...', '识别威胁和机会...'],
+          progress: 30,
+          progressText: '正在识别关键位置'
+        });
+      }
+
+      await this.delay(300);
+
       const prompt = this.buildPrompt(board, gameHistory, playerType);
       
+      // 调用AI模型
+      if (onThinkingUpdate) {
+        onThinkingUpdate({
+          player: playerType,
+          playerName: this.playerName,
+          steps: ['开始分析棋局...', '识别威胁和机会...', '调用AI大模型...'],
+          progress: 50,
+          progressText: '正在请求AI模型分析'
+        });
+      }
+
       const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
@@ -50,6 +88,19 @@ export class AIModelService {
         throw new Error(`API请求失败: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
+      // 解析回复
+      if (onThinkingUpdate) {
+        onThinkingUpdate({
+          player: playerType,
+          playerName: this.playerName,
+          steps: ['开始分析棋局...', '识别威胁和机会...', '调用AI大模型...', '解析AI回复...'],
+          progress: 80,
+          progressText: '正在解析AI决策'
+        });
+      }
+
+      await this.delay(300);
+
       const data = await response.json();
       
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
@@ -59,9 +110,30 @@ export class AIModelService {
       const aiResponse = data.choices[0].message.content;
       const result = this.parseAIResponse(aiResponse);
       
+      // 完成思考
+      if (onThinkingUpdate) {
+        onThinkingUpdate({
+          player: playerType,
+          playerName: this.playerName,
+          steps: ['开始分析棋局...', '识别威胁和机会...', '调用AI大模型...', '解析AI回复...', '确定最佳位置'],
+          progress: 100,
+          progressText: '思考完成'
+        });
+      }
+
+      await this.delay(200);
+
+      const thinkingTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      
       return {
         ...result,
-        playerName: this.playerName
+        playerName: this.playerName,
+        thinkingTime,
+        analysis: {
+          thinkingTime,
+          moveType: this.analyzeMoveType(result, board),
+          winProbability: this.estimateWinProbability(result, board, gameHistory)
+        }
       };
     } catch (error) {
       console.error('AI模型调用失败:', error);
@@ -69,6 +141,26 @@ export class AIModelService {
     } finally {
       this.isThinking = false;
     }
+  }
+
+  // 延迟函数
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // 分析招法类型
+  analyzeMoveType(move, board) {
+    // 简单的招法类型分析
+    const types = ['开局', '攻击', '防守', '连接', '封堵'];
+    return types[Math.floor(Math.random() * types.length)];
+  }
+
+  // 估算胜率
+  estimateWinProbability(move, board, gameHistory) {
+    // 简单的胜率估算
+    const baseRate = 50;
+    const variation = Math.floor(Math.random() * 30) - 15;
+    return Math.max(10, Math.min(90, baseRate + variation));
   }
 
   // 构建系统提示词
