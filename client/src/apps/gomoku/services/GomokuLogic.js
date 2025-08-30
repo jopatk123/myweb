@@ -1,10 +1,12 @@
-// 五子棋游戏逻辑模块
+// 五子棋游戏逻辑服务
+import { BOARD_SIZE, PLAYER_TYPES, DIRECTIONS } from '../constants/gameConstants.js';
+
 export class GomokuLogic {
   constructor() {
-    this.BOARD_SIZE = 15;
-    this.EMPTY = 0;
-    this.PLAYER = 1;
-    this.AI = 2;
+    this.BOARD_SIZE = BOARD_SIZE;
+    this.EMPTY = PLAYER_TYPES.EMPTY;
+    this.PLAYER = PLAYER_TYPES.PLAYER;
+    this.AI = PLAYER_TYPES.AI;
     this.board = this.createEmptyBoard();
     this.currentPlayer = this.PLAYER;
     this.gameOver = false;

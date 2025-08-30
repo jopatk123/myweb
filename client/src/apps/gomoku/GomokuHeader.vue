@@ -47,15 +47,41 @@
       type: Boolean,
       default: false,
     },
+    isAiThinking: {
+      type: Boolean,
+      default: false,
+    },
+    currentAIPlayerName: {
+      type: String,
+      default: '',
+    },
+    player1Name: {
+      type: String,
+      default: '黑子',
+    },
+    player2Name: {
+      type: String,
+      default: '白子',
+    },
+    gameMode: {
+      type: String,
+      default: 'human_vs_ai',
+    },
   });
 
   const currentPlayerText = computed(() => {
     if (props.gameOver) return '游戏结束';
-    return props.currentPlayer === 1 ? '玩家' : 'AI思考中...';
+    if (props.isAiThinking) {
+      return props.currentAIPlayerName ? `${props.currentAIPlayerName}思考中...` : 'AI思考中...';
+    }
+    return props.currentPlayer === 1 ? 
+      (props.player1Name || '黑子') : 
+      (props.player2Name || '白子');
   });
 
   const currentPlayerClass = computed(() => {
     if (props.gameOver) return 'game-over';
+  if (props.isAiThinking) return 'ai-thinking';
     return props.currentPlayer === 1 ? 'player-turn' : 'ai-turn';
   });
 
@@ -125,6 +151,11 @@
 
   .game-over {
     color: #ef4444;
+  }
+
+  .ai-thinking {
+    color: #8b5cf6;
+    animation: thinking 2s infinite;
   }
 
   @keyframes pulse {

@@ -30,12 +30,16 @@
       >
         提示
       </button>
+
+      <button @click="$emit('config-ai')" class="btn btn-config">
+        AI配置
+      </button>
     </div>
 
-    <div class="difficulty-info">
-      <div class="difficulty-badge">
-        <span class="difficulty-label">难度</span>
-        <span class="difficulty-value">最高</span>
+    <div class="game-mode-info">
+      <div class="mode-badge">
+        <span class="mode-label">模式</span>
+        <span class="mode-value">AI大模型对战</span>
       </div>
     </div>
   </div>
@@ -61,7 +65,7 @@
     },
   });
 
-  defineEmits(['start', 'restart', 'undo', 'hint']);
+  defineEmits(['start', 'restart', 'undo', 'hint', 'config-ai']);
 </script>
 
 <style scoped>
@@ -131,12 +135,21 @@
     background: linear-gradient(45deg, #d97706, #b45309);
   }
 
-  .difficulty-info {
+  .btn-config {
+    background: linear-gradient(45deg, #8b5cf6, #7c3aed);
+    color: white;
+  }
+
+  .btn-config:hover:not(:disabled) {
+    background: linear-gradient(45deg, #7c3aed, #6d28d9);
+  }
+
+  .game-mode-info {
     display: flex;
     justify-content: center;
   }
 
-  .difficulty-badge {
+  .mode-badge {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -147,13 +160,13 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
-  .difficulty-label {
+  .mode-label {
     color: rgba(255, 255, 255, 0.8);
     font-size: 0.9rem;
   }
 
-  .difficulty-value {
-    color: #ff6b6b;
+  .mode-value {
+    color: #8b5cf6;
     font-weight: bold;
     font-size: 1rem;
   }

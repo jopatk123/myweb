@@ -2,10 +2,13 @@
   <!-- 游戏开始覆盖层 -->
   <div v-if="!gameStarted" class="game-overlay">
     <div class="start-modal">
-      <h3>五子棋对战</h3>
-      <p>挑战最高难度AI</p>
+      <h3>AI大模型五子棋</h3>
+      <p>体验AI大模型的智慧对战</p>
       <p>黑子先行，连成五子获胜</p>
-      <button @click="$emit('start')" class="btn btn-primary">开始游戏</button>
+      <div class="start-buttons">
+        <button @click="$emit('start')" class="btn btn-primary">开始游戏</button>
+        <button @click="$emit('config-ai')" class="btn btn-secondary">AI配置</button>
+      </div>
     </div>
   </div>
 
@@ -39,7 +42,7 @@
 
   <!-- AI思考提示 -->
   <div
-    v-if="gameStarted && !gameOver && currentPlayer === 2"
+    v-if="isAiThinking"
     class="thinking-overlay"
   >
     <div class="thinking-indicator">
@@ -48,7 +51,7 @@
         <span></span>
         <span></span>
       </div>
-      <p>AI正在思考...</p>
+      <p>{{ aiThinkingText }}</p>
     </div>
   </div>
 
@@ -68,7 +71,7 @@
 </template>
 
 <script setup>
-  defineProps({
+  const props = defineProps({
     gameStarted: {
       type: Boolean,
       default: false,
@@ -97,9 +100,17 @@
       type: Object,
       default: null,
     },
+    isAiThinking: {
+      type: Boolean,
+      default: false,
+    },
+    aiThinkingText: {
+      type: String,
+      default: 'AI正在思考...',
+    },
   });
 
-  defineEmits(['start', 'restart', 'analyze', 'close-hint']);
+  defineEmits(['start', 'restart', 'analyze', 'close-hint', 'config-ai']);
 </script>
 
 <style scoped>
@@ -132,6 +143,13 @@
   .game-over-modal h3 {
     margin: 0 0 15px 0;
     font-size: 1.8rem;
+  }
+
+  .start-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
   }
 
   .win-title {
