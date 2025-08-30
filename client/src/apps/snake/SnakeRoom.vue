@@ -88,11 +88,20 @@ const readyCount = computed(() =>
   players.value.filter(p => p.is_ready).length
 )
 
-const canStartGame = computed(() => 
-  players.value.length >= 1 && 
-  readyCount.value === players.value.length &&
-  currentRoom.value?.created_by === currentPlayer.value?.session_id
-)
+const canStartGame = computed(() => {
+  const isHost = currentRoom.value?.created_by === currentPlayer.value?.session_id;
+  const hasPlayers = players.value.length >= 1;
+  const isSharedMode = currentRoom.value?.mode === 'shared';
+  
+  if (!isHost || !hasPlayers) return false;
+  
+  // 共享模式允许单人开始，其他模式需要所有人准备
+  if (isSharedMode) {
+    return true; // 共享模式房主可以随时开始
+  } else {
+    return readyCount.value === players.value.length; // 其他模式需要所有人准备
+  }
+})
 
 // 方法
 const copied = ref(false)

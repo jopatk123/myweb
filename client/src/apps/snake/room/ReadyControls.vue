@@ -8,9 +8,18 @@
       {{ isReady ? '✅ 已准备' : '⏳ 点击准备' }}
     </button>
 
-    <!-- 房主开始游戏按钮 -->
+    <!-- 共享模式：房主可以随时开始 -->
     <button 
-      v-if="isHost"
+      v-if="isHost && isSharedMode && (players?.length || 0) >= 1"
+      class="start-shared-btn"
+      @click="$emit('start-game')"
+    >
+      🐍 开始游戏 (无需等待准备)
+    </button>
+    
+    <!-- 其他模式：需要所有人准备 -->
+    <button 
+      v-if="isHost && !isSharedMode"
       class="start-game-btn"
       :disabled="!canStartGame"
       @click="$emit('start-game')"
@@ -18,19 +27,34 @@
       🚀 开始游戏
     </button>
     
-    <div v-if="isHost && !canStartGame" class="start-game-hint">
+    <!-- 共享模式提示 -->
+    <div v-if="isHost && isSharedMode && (players?.length || 0) < 1" class="start-game-hint">
+      至少需要1名玩家才能开始游戏
+    </div>
+    
+    <div v-if="isHost && isSharedMode && (players?.length || 0) >= 1" class="shared-mode-info">
+      💡 共享模式：房主可以随时开始，其他玩家可以中途加入
+    </div>
+    
+    <!-- 其他模式提示 -->
+    <div v-if="isHost && !isSharedMode && !canStartGame" class="start-game-hint">
       {{ (players?.length || 0) < 1 ? '至少需要1名玩家才能开始游戏' : '等待所有玩家准备就绪' }}
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   isReady: { type: Boolean, default: false },
   canStartGame: { type: Boolean, default: false },
   isHost: { type: Boolean, default: false },
-  players: { type: Array, default: () => [] }
+  players: { type: Array, default: () => [] },
+  room: { type: Object, default: null }
 })
+
+const isSharedMode = computed(() => props.room?.mode === 'shared')
 
 defineEmits(['toggle-ready', 'start-game'])
 </script>
@@ -97,6 +121,34 @@ defineEmits(['toggle-ready', 'start-game'])
   background: #ccc;
   cursor: not-allowed;
   transform: none;
+}
+
+.start-shared-btn {
+  padding: 16px 24px;
+  border: none;
+  border-radius: 12px;
+  background: #2ed573;
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.start-shared-btn:hover {
+  background: #26d669;
+  transform: translateY(-2px);
+}
+
+.shared-mode-info {
+  text-align: center;
+  color: #2ed573;
+  font-size: 14px;
+  padding: 10px;
+  background: #f0fff4;
+  border-radius: 8px;
+  border: 1px solid #2ed573;
+  font-weight: 500;
 }
 
 .start-game-hint {

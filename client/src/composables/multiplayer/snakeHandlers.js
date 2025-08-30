@@ -73,6 +73,11 @@ export function createSnakeHandlers(ctx) {
       if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
       if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
       currentRoom.value = data.room;
+      
+      // 如果房间正在游戏中，更新游戏状态
+      if (data.room.status === 'playing') {
+        gameStatus.value = 'playing';
+      }
     }
     events.emitPlayerJoin(data);
   }
@@ -124,8 +129,16 @@ export function createSnakeHandlers(ctx) {
   }
 
   function handleGameUpdate(data) {
+    // 兼容：可能服务端直接给 game_state 对象或分散字段
+    if (!gameState.value && data.game_state) {
+      gameState.value = data.game_state;
+    }
     if (gameState.value) {
-      Object.assign(gameState.value, { sharedSnake: data.shared_snake, food: data.food });
+      if (data.game_state) {
+        Object.assign(gameState.value, data.game_state);
+      }
+      if (data.shared_snake) gameState.value.sharedSnake = data.shared_snake;
+      if (data.food) gameState.value.food = data.food;
     }
     votes.value = {}; myVote.value = null; clearVoteTimer();
     events.emitGameUpdate(data);
@@ -143,6 +156,13 @@ export function createSnakeHandlers(ctx) {
     clearVoteTimer();
   }
 
+  function handleGameReset(data) {
+    gameStatus.value = 'waiting';
+    gameState.value = data.game_state;
+    votes.value = {}; myVote.value = null; clearVoteTimer();
+    console.log('游戏已重置，可以重新开始');
+  }
+
   function handleVoteUpdated(data) {
     votes.value = data.votes || {};
     events.emitVoteUpdate(data);
@@ -156,6 +176,7 @@ export function createSnakeHandlers(ctx) {
 
   function handleError(data) { error.value = data.message; state.loading.value = false; }
 
+  // WebSocket 服务端 broadcastToRoom 会自动加前缀 snake_，我们监听的键需要与其一致
   return {
     snake_room_created: handleRoomCreated,
     snake_room_joined: handleRoomJoined,
@@ -165,11 +186,12 @@ export function createSnakeHandlers(ctx) {
     snake_player_left: handlePlayerLeft,
     snake_player_ready_changed: handlePlayerReadyChanged,
     snake_ready_toggled: handleReadyToggled,
-    snake_game_started: handleGameStarted,
-    snake_game_update: handleGameUpdate,
-    snake_competitive_update: handleCompetitiveUpdate,
-    snake_game_ended: handleGameEnded,
-    snake_vote_updated: handleVoteUpdated,
+    snake_game_started: handleGameStarted, // game_started
+    snake_game_update: handleGameUpdate,   // game_update
+    snake_competitive_update: handleCompetitiveUpdate, // competitive_update
+    snake_game_ended: handleGameEnded,     // game_ended
+    snake_game_reset: handleGameReset,     // game_reset
+    snake_vote_updated: handleVoteUpdated, // vote_updated
     snake_vote_timeout: handleVoteTimeout,
     snake_auto_popup: handleAutoPopup,
     snake_error: handleError,

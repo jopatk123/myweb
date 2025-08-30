@@ -33,8 +33,13 @@ export function useSnakeMultiplayer() {
 
   // 计算属性
   const canStart = computed(() => {
+    // 共享模式：只要房间存在且至少1人（自己）即可开始
+    if (currentRoom.value?.mode === 'shared') {
+      return players.value.length >= 1;
+    }
+    // 竞技模式：所有在线玩家都准备且至少2人
     const readyPlayers = players.value.filter(p => p.is_ready);
-    return readyPlayers.length >= 1 && readyPlayers.length === players.value.length;
+    return readyPlayers.length >= 2 && readyPlayers.length === players.value.length;
   });
   const isReady = computed(() => currentPlayer.value?.is_ready || false);
   const isGameHost = computed(() => currentRoom.value?.created_by === currentPlayer.value?.session_id);

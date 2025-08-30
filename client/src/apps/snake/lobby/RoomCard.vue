@@ -27,16 +27,16 @@
 
     <div class="room-actions">
       <button 
-        v-if="(room.status === 'waiting' || room.status === 'playing') && room.current_players < room.max_players"
+        v-if="canJoinRoom"
         class="btn-join" 
-  @click="$emit('join', room.room_code || room.roomCode)"
+        @click="$emit('join', room.room_code || room.roomCode)"
       >
-        {{ room.status === 'playing' ? '🎮 加入游戏' : '🚀 加入游戏' }}
+        {{ getJoinButtonText() }}
       </button>
       <button 
-        v-else-if="room.status === 'playing' && room.current_players >= room.max_players"
+        v-else-if="room.status === 'playing' && room.current_players >= room.max_players && room.mode !== 'shared'"
         class="btn-spectate" 
-  @click="$emit('spectate', room.room_code || room.roomCode)"
+        @click="$emit('spectate', room.room_code || room.roomCode)"
         disabled
       >
         👁️房间已满
@@ -44,12 +44,17 @@
       <span v-else-if="room.current_players >= room.max_players" class="room-unavailable">
         房间已满
       </span>
+      <span v-else-if="room.status === 'playing' && room.mode === 'competitive'" class="room-unavailable">
+        竞技模式游戏中
+      </span>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   room: { type: Object, required: true }
 })
 
@@ -62,6 +67,39 @@ const getStatusText = (status) => {
     'finished': '已结束'
   }
   return statusMap[status] || status
+}
+
+const canJoinRoom = computed(() => {
+  const room = props.room
+  
+  // 房间已满则不能加入
+  if (room.current_players >= room.max_players) {
+    return false
+  }
+  
+  // 等待中的房间都可以加入
+  if (room.status === 'waiting') {
+    return true
+  }
+  
+  // 游戏中的房间：只有共享模式可以加入
+  if (room.status === 'playing') {
+    return room.mode === 'shared'
+  }
+  
+  return false
+})
+
+const getJoinButtonText = () => {
+  const room = props.room
+  
+  if (room.status === 'waiting') {
+    return '🚀 加入游戏'
+  } else if (room.status === 'playing' && room.mode === 'shared') {
+    return '🐍 中途加入'
+  }
+  
+  return '🎮 加入游戏'
 }
 </script>
 

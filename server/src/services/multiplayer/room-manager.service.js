@@ -98,6 +98,12 @@ export class RoomManagerService extends BaseMultiplayerService {
         throw new Error('游戏已结束');
       }
 
+      // 对于贪吃蛇共享模式，允许在游戏进行中加入
+      const isSnakeSharedMode = this.getGameType() === 'snake' && room.mode === 'shared';
+      if (room.status === 'playing' && !isSnakeSharedMode) {
+        throw new Error('游戏正在进行中，无法加入');
+      }
+
       // 检查是否已经在房间中
       const existingPlayer = this.PlayerModel.findByRoomAndSession(room.id, sessionId);
       if (existingPlayer) {
@@ -145,10 +151,11 @@ export class RoomManagerService extends BaseMultiplayerService {
       this.broadcastToRoom(room.id, 'player_joined', {
         player,
         room_id: room.id,
-        players
+        players,
+        room
       });
 
-      console.log(`玩家 ${playerName} 加入 ${this.getGameType()} 房间: ${roomCode}`);
+      console.log(`玩家 ${playerName} 加入 ${this.getGameType()} 房间: ${roomCode} (状态: ${room.status})`);
       return { room, player, players };
     } catch (error) {
       console.error('加入房间失败:', error);
@@ -425,9 +432,23 @@ export class RoomManagerService extends BaseMultiplayerService {
         throw new Error('只有房主可以开始游戏');
       }
 
-      const readyCheck = this.checkAllPlayersReady(roomId);
-      if (!readyCheck.allReady) {
-        throw new Error(`还有玩家未准备就绪 (${readyCheck.readyCount}/${readyCheck.totalPlayers})`);
+      const players = this.PlayerModel.findOnlineByRoomId(roomId);
+      
+      // 对于贪吃蛇共享模式，允许房主随时开始游戏，不需要其他人准备
+      const isSnakeSharedMode = this.getGameType() === 'snake' && room.mode === 'shared';
+      
+      if (isSnakeSharedMode) {
+        // 共享模式只需要至少1名玩家，不要求准备状态
+        if (players.length < 1) {
+          throw new Error('至少需要1名玩家才能开始游戏');
+        }
+        console.log(`贪吃蛇共享模式开始: 房间 ${roomId}, 玩家数: ${players.length}, 无需等待准备`);
+      } else {
+        // 其他模式需要检查准备状态
+        const readyCheck = this.checkAllPlayersReady(roomId);
+        if (!readyCheck.allReady) {
+          throw new Error(`还有玩家未准备就绪 (${readyCheck.readyCount}/${readyCheck.totalPlayers})`);
+        }
       }
 
       // 更新房间状态
@@ -442,12 +463,12 @@ export class RoomManagerService extends BaseMultiplayerService {
       // 广播游戏开始
       this.broadcastToRoom(roomId, 'game_started', {
         room_id: roomId,
-        players: readyCheck.players,
+        players: players,
         start_time: Date.now()
       });
 
       console.log(`${this.getGameType()} 游戏开始: 房间 ${roomId}`);
-      return { success: true, players: readyCheck.players };
+      return { success: true, players: players };
     } catch (error) {
       console.error('开始游戏失败:', error);
       throw error;

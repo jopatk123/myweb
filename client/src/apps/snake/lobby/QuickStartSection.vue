@@ -23,7 +23,7 @@
           />
           <span class="mode-option">
             🤝 共享模式
-            <small>多人控制一条蛇</small>
+            <small>多人控制一条蛇，支持中途加入</small>
           </span>
         </label>
         <label>
