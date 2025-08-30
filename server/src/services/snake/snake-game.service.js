@@ -89,18 +89,45 @@ export class SnakeGameService extends RoomManagerService {
     rooms.forEach(r=>{
       const gs=this.getGameState(r.id);
       const online = SnakePlayerModel.getPlayerCount(r.id);
-      const updatedAt = r.updated_at ? new Date(r.updated_at).getTime() : now;
+      // 兼容 SQLite datetime('now') 返回的无时区字符串 (UTC) -> 解析为 UTC
+      const parseDbTime=(ts)=>{ if(!ts) return now; let s=ts.trim(); if(/T/.test(s)===false) s=s.replace(' ', 'T'); if(!/Z$/i.test(s)) s+= 'Z'; const t=Date.parse(s); return isNaN(t)? now : t; };
+      const updatedAt = r.updated_at ? parseDbTime(r.updated_at) : now;
       const idleMs = now - updatedAt;
       const empty = online===0;
       const longFinished = gs && gs.status==='finished' && idleMs>5*60*1000; // 结束5分钟后仍未重开
       const idleTooLong = idleMs > 30*60*1000; // 30分钟无更新
-      if(empty || longFinished || idleTooLong){
+
+      let willRemove = (empty || longFinished || idleTooLong);
+      // 新增保护：正在进行中的房间且有人在线，不执行清理
+      if(gs && gs.status==='playing' && !empty){ willRemove=false; }
+      let reason = [];
+      if(empty) reason.push('empty');
+      if(longFinished) reason.push('longFinished');
+      if(idleTooLong) reason.push('idleTooLong');
+
+      // 调试：如果房间状态仍是 playing 但判定 empty，记录可疑情况
+      if(process.env.SNAKE_CLEANUP_DEBUG && empty && gs && gs.status==='playing'){
+        console.warn('[SnakeCleanup][SUSPECT] playing 房间被视为空', {room_id:r.id, mode:r.mode, gsStatus:gs.status, online, idleMs, updated_at:r.updated_at});
+      }
+
+      if(process.env.SNAKE_CLEANUP_DEBUG && idleMs>4*60*60*1000 && idleMs<10*60*60*1000){
+        console.warn('[SnakeCleanup][TZ?] 发现可能的时区偏差导致的巨大 idleMs', {room_id:r.id, idleMs, updated_at:r.updated_at, parsedUpdatedAt:new Date(updatedAt).toISOString(), nowISO:new Date(now).toISOString()});
+      }
+
+      if(process.env.SNAKE_CLEANUP_DEBUG){
+        console.debug('[SnakeCleanup][CHECK]', {room_id:r.id, status:r.status, gsStatus:gs?.status, online, idleMs, updated_at:r.updated_at, willRemove, reason});
+      }
+
+      if(willRemove){
         this.cleanupGameResources(r.id);
         SnakeRoomModel.delete(r.id);
-        removed++; stale.push({id:r.id, empty, longFinished, idleMs});
+        removed++; stale.push({id:r.id, status:r.status, gsStatus:gs?.status, reason, empty, longFinished, idleMs, online});
       }
     });
-  if(removed>0){ this.wsService.broadcast('snake_room_list_updated'); console.debug && console.debug(`自动清理 ${removed} 个蛇房间`, stale); }
+    if(removed>0){
+      this.wsService.broadcast('snake_room_list_updated');
+      console.debug && console.debug(`自动清理 ${removed} 个蛇房间`, stale);
+    }
   }
 
   async leaveRoom(sessionId, roomId){
