@@ -118,6 +118,7 @@ const {
   winner,
   board,
   moveCount,
+  gameHistory,
   startGame,
   restartGame,
   makePlayerMove,
@@ -161,6 +162,8 @@ const {
   gameMode,
   board,
   moveCount,
+  gameHistory,
+  gameHistory,
   gameOver,
   winner,
   makePlayerMove,
@@ -197,19 +200,24 @@ function handleStartGame() {
 function handleConfiguredStart() { handleStartGame(); }
 
 function handleConfigSaved(config) {
+  console.log('[DEBUG GomokuApp] handleConfigSaved called with:', config);
   gameMode.value = config.mode;
   aiConfig.value = config.aiConfig;
   
   // 配置游戏模式服务
+  console.log('[DEBUG GomokuApp] Setting game mode to:', config.mode);
   gameModeService.setGameMode(config.mode);
   
   if (config.mode === 'human_vs_ai') {
+    console.log('[DEBUG GomokuApp] Configuring player 2 AI with config:', config.aiConfig);
     gameModeService.configurePlayerAI(2, config.aiConfig);
   } else if (config.mode === 'ai_vs_ai') {
     // AI对AI模式需要配置两个AI
+    console.log('[DEBUG GomokuApp] Configuring AI vs AI mode');
     gameModeService.configurePlayerAI(1, config.ai1Config || config.aiConfig);
     gameModeService.configurePlayerAI(2, config.ai2Config || config.aiConfig);
   }
+  console.log('[DEBUG GomokuApp] Game mode service configured');
 }
 
 function handleRestartGame() {
@@ -228,29 +236,39 @@ function handleRestartGame() {
 }
 
 async function handlePlayerMove(row, col) {
+  console.log('[DEBUG GomokuApp] handlePlayerMove called:', row, col);
   // 在AI思考时或者不是人类玩家回合时不允许下棋
   if (isAIThinking.value) {
+    console.log('[DEBUG GomokuApp] AI is thinking, player move blocked');
     return;
   }
   
   // 检查当前玩家是否为人类
+  console.log('[DEBUG GomokuApp] Current player:', currentPlayer.value, 'is AI:', gameModeService.isAIPlayer(currentPlayer.value));
   if (gameModeService.isAIPlayer(currentPlayer.value)) {
+    console.log('[DEBUG GomokuApp] Current player is AI, move blocked');
     return;
   }
 
+  console.log('[DEBUG GomokuApp] Making player move');
   if (makePlayerMove(row, col)) {
+    console.log('[DEBUG GomokuApp] Player move successful, redrawing board');
     nextTick(() => {
       gomokuBoard.value?.drawBoard();
     });
 
     // 检查游戏是否结束
     if (gameOver.value) {
+      console.log('[DEBUG GomokuApp] Game over, winner:', winner.value);
       recordGameResult(winner.value);
       return;
     }
 
     // 处理AI回合
+    console.log('[DEBUG GomokuApp] Calling handleAITurn');
     await handleAITurn();
+  } else {
+    console.log('[DEBUG GomokuApp] Player move failed');
   }
 }
 

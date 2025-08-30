@@ -18,6 +18,7 @@ export function useGomokuGame() {
   const winner = computed(() => gameLogic.value.winner);
   const board = computed(() => gameLogic.value.board);
   const moveCount = computed(() => gameLogic.value.moveHistory.length);
+  const gameHistory = computed(() => gameLogic.value.moveHistory);
 
   // 游戏控制方法
   function startGame() {
@@ -36,14 +37,21 @@ export function useGomokuGame() {
   }
 
   function makePlayerMove(row, col) {
-    if (gameLogic.value.gameOver || gameLogic.value.currentPlayer !== 1) {
+    console.log('[DEBUG makePlayerMove] Called with:', row, col, 'currentPlayer:', gameLogic.value.currentPlayer, 'gameOver:', gameLogic.value.gameOver);
+    
+    if (gameLogic.value.gameOver) {
+      console.log('[DEBUG makePlayerMove] Game is over, move rejected');
       return false;
     }
 
+    // 移除玩家限制检查，允许AI调用此函数
+    console.log('[DEBUG makePlayerMove] Attempting to make move');
     if (gameLogic.value.makeMove(row, col)) {
+      console.log('[DEBUG makePlayerMove] Move successful! New current player:', gameLogic.value.currentPlayer);
       lastMove.value = { row, col };
       return true;
     }
+    console.log('[DEBUG makePlayerMove] Move failed - position may be occupied or invalid');
     return false;
   }
 
@@ -105,6 +113,7 @@ export function useGomokuGame() {
     winner,
     board,
     moveCount,
+  gameHistory,
     
     // 方法
     startGame,

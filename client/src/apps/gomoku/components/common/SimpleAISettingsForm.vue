@@ -5,10 +5,7 @@
       <label>快速配置</label>
       <select v-model="selectedPreset" @change="applyPreset" class="preset-select">
         <option value="">选择预设配置...</option>
-        <option value="openai-gpt4">OpenAI GPT-4</option>
-        <option value="openai-gpt35">OpenAI GPT-3.5</option>
-        <option value="claude-3">Claude-3</option>
-        <option value="local-ollama">本地 Ollama</option>
+        <option value="moonshot-8k">Moonshot 8K</option>
       </select>
     </div>
 
@@ -84,15 +81,15 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, nextTick } from 'vue';
 
 const props = defineProps({
   modelValue: {
     type: Object,
     default: () => ({
       apiUrl: '',
-      apiKey: '',
-      modelName: 'gpt-3.5-turbo',
+  apiKey: '',
+  modelName: 'kimi-k2-turbo-preview',
       playerName: 'AI大师',
       maxTokens: 1000,
       temperature: 0.1
@@ -105,36 +102,17 @@ const emit = defineEmits(['update:modelValue', 'preset']);
 const selectedPreset = ref('');
 const showAdvanced = ref(false);
 const localConfig = ref({ ...props.modelValue });
+// 防止父 -> 子 -> 父的递归回流
+const updatingFromParent = ref(false);
 
-// 预设配置
+// 预设配置（仅保留 Moonshot）
 const presets = {
-  'openai-gpt4': {
-    apiUrl: 'https://api.openai.com/v1/chat/completions',
-    modelName: 'gpt-4',
-    playerName: 'GPT-4大师',
-    maxTokens: 1500,
-    temperature: 0.1
-  },
-  'openai-gpt35': {
-    apiUrl: 'https://api.openai.com/v1/chat/completions',
-    modelName: 'gpt-3.5-turbo',
-    playerName: 'GPT-3.5助手',
+  'moonshot-8k': {
+    apiUrl: 'https://api.moonshot.cn/v1',
+    modelName: 'kimi-k2-turbo-preview',
+    playerName: 'Moonshot',
     maxTokens: 1000,
     temperature: 0.1
-  },
-  'claude-3': {
-    apiUrl: 'https://api.anthropic.com/v1/messages',
-    modelName: 'claude-3-sonnet-20240229',
-    playerName: 'Claude助手',
-    maxTokens: 1200,
-    temperature: 0.1
-  },
-  'local-ollama': {
-    apiUrl: 'http://localhost:11434/v1/chat/completions',
-    modelName: 'llama2',
-    playerName: '本地AI',
-    maxTokens: 800,
-    temperature: 0.2
   }
 };
 
@@ -152,13 +130,18 @@ function applyPreset() {
 
 // 监听本地配置变化
 watch(localConfig, (newConfig) => {
+  if (updatingFromParent.value) return; // 忽略由父级触发的同步
   emit('update:modelValue', { ...newConfig });
 }, { deep: true });
 
 // 监听外部配置变化
 watch(() => props.modelValue, (newValue) => {
+  // 仅在引用变化时才需要同步；并设置标志避免再次向上 emit
+  updatingFromParent.value = true;
   localConfig.value = { ...newValue };
-}, { deep: true });
+  // 下一轮微任务后允许本地修改再次向上冒泡
+  nextTick(() => { updatingFromParent.value = false; });
+});
 
 onMounted(() => {
   localConfig.value = { ...props.modelValue };

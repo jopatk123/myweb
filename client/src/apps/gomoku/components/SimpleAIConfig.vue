@@ -68,10 +68,10 @@ const presets = {
   claude: { apiUrl: 'https://api.anthropic.com/v1/messages', modelName: 'claude-3-sonnet-20240229', playerName: 'Claude助手' }
 };
 
-// 计算属性
-const canTest = computed(() => config.value.apiUrl && config.value.apiKey);
-const canTestAI1 = computed(() => ai1Config.value.apiUrl && ai1Config.value.apiKey);
-const canTestAI2 = computed(() => ai2Config.value.apiUrl && ai2Config.value.apiKey);
+// 计算属性（确保返回布尔值，否则会把最后一个真值字符串传下去触发类型警告）
+const canTest = computed(() => !!(config.value.apiUrl && config.value.apiKey));
+const canTestAI1 = computed(() => !!(ai1Config.value.apiUrl && ai1Config.value.apiKey));
+const canTestAI2 = computed(() => !!(ai2Config.value.apiUrl && ai2Config.value.apiKey));
 
 // 预设应用
 function onPreset(k){ if(presets[k]) Object.assign(config.value,{ apiUrl:presets[k].apiUrl, modelName:presets[k].modelName, playerName:presets[k].playerName }); }
@@ -82,8 +82,25 @@ function onPreset2(k){ if(presets[k]) Object.assign(ai2Config.value,{ apiUrl:pre
 async function genericTest(targetRef, testingRef, resultRef){
   if(!targetRef.value.apiUrl || !targetRef.value.apiKey){ return; }
   testingRef.value = true; resultRef.value = null;
-  try { await new Promise(r=>setTimeout(r,1500)); if(!targetRef.value.apiUrl.startsWith('http')) throw new Error('API URL格式不正确'); resultRef.value={ type:'success', message:'连接测试成功！'}; }
-  catch(e){ resultRef.value={ type:'error', message:e.message||'连接测试失败'}; }
+  try {
+    if(!targetRef.value.apiUrl.startsWith('http')) throw new Error('API URL格式不正确');
+    const url = targetRef.value.apiUrl.replace(/\s+/g,'');
+    // 做一个最小 POST 调用（不会真正消耗大量 tokens）
+    const payload = {
+      model: targetRef.value.modelName || 'gpt-3.5-turbo',
+      messages:[{ role:'user', content:'ping' }],
+      max_tokens:1
+    };
+    const headers = { 'Content-Type':'application/json', 'Authorization':`Bearer ${targetRef.value.apiKey.trim()}` };
+    // moonshot 允许 openai 兼容 chat/completions，需要补全
+    let endpoint = url;
+    if(/\/v1\/?$/.test(endpoint)) endpoint = endpoint.replace(/\/v1\/?$/, '/v1/chat/completions');
+    const resp = await fetch(endpoint,{ method:'POST', headers, body:JSON.stringify(payload) });
+    if(resp.status === 401){ throw new Error('认证失败(401)，请检查API Key是否正确/未过期'); }
+    if(resp.status === 404){ throw new Error('接口404，请确认是否缺少 /chat/completions 路径'); }
+    if(!resp.ok){ const t = await resp.text(); throw new Error(`测试失败: ${resp.status} ${t.substring(0,120)}`); }
+    resultRef.value={ type:'success', message:'连接测试成功，可开始游戏' };
+  } catch(e){ resultRef.value={ type:'error', message:e.message||'连接测试失败'}; }
   finally { testingRef.value=false; }
 }
 const testConnection = ()=>genericTest(config, testing, testResult);

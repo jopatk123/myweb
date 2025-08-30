@@ -9,17 +9,18 @@
     
     <div v-show="isExpanded" class="panel-content">
       <!-- 当前思考状态 -->
-      <CurrentThinking 
+      <CurrentThinking
         :current-thinking="currentThinking"
         :is-thinking="isThinking"
       />
       
       <!-- 分割线 -->
-      <div v-if="(currentThinking || isThinking) && thinkingHistory.length > 0" class="section-divider"></div>
+      <div v-if="currentThinking || thinkingHistory.length > 0" class="section-divider"></div>
       
       <!-- 思考历史 -->
       <ThinkingHistory
         :thinking-history="thinkingHistory"
+        :current-thinking="currentThinking"
         @clear-history="$emit('clear-history')"
       />
     </div>
@@ -28,8 +29,8 @@
 
 <script setup>
 import { ref } from 'vue';
-import CurrentThinking from './thinking/CurrentThinking.vue';
-import ThinkingHistory from './thinking/ThinkingHistory.vue';
+import CurrentThinking from './CurrentThinking.vue';
+import ThinkingHistory from './ThinkingHistory.vue';
 
 const props = defineProps({
   currentThinking: Object,
@@ -122,7 +123,7 @@ function togglePanel() {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: 200px;
+  min-height: 300px;
   max-height: 600px;
   overflow-y: auto;
 }

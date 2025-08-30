@@ -1,14 +1,5 @@
 <template>
   <div class="game-status-panel">
-    <!-- 游戏模式显示 -->
-    <div class="mode-display">
-      <div class="mode-icon">🤖</div>
-      <div class="mode-info">
-        <h4>{{ getModeTitle() }}</h4>
-        <p>{{ getModeDescription() }}</p>
-      </div>
-    </div>
-
     <!-- 玩家信息 -->
     <div class="players-info">
       <div 
@@ -124,20 +115,6 @@ const winRate = computed(() => {
   if (props.totalGames === 0) return 0;
   return Math.round((props.playerWins / props.totalGames) * 100);
 });
-
-function getModeTitle() {
-  if (props.gameMode === 'ai_vs_ai') {
-    return 'AI对AI对战';
-  }
-  return '人机对战';
-}
-
-function getModeDescription() {
-  if (props.gameMode === 'ai_vs_ai') {
-    return '观看两个AI大模型的智慧对决';
-  }
-  return '挑战AI大模型的智慧';
-}
 
 function getPlayerType(playerNumber) {
   if (props.gameModeInfo.players && props.gameModeInfo.players[playerNumber]) {
