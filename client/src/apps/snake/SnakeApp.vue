@@ -186,7 +186,7 @@
 
   // 处理多人游戏更新
   const handleMultiplayerGameUpdate = (data) => {
-    console.log('多人游戏更新:', data);
+  // multiplayer game update received
   };
 
   watch(difficulty, updateSpeed);

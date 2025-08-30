@@ -113,7 +113,6 @@ const copyRoomCode = () => {
   if (!code) return
   navigator.clipboard.writeText(code).then(() => {
     copied.value = true
-    console.log('房间码已复制', code)
     setTimeout(() => { copied.value = false }, 1800)
   }).catch(err => {
     console.error('复制失败:', err)

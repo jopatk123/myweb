@@ -117,7 +117,7 @@ watch(playerName, (newName) => {
     const rooms = await snakeMultiplayerApi.getActiveRooms()
     activeRooms.value = rooms
   } catch (err) {
-    console.error('刷新房间失败:', err)
+  console.error('刷新房间失败:', err)
     error.value = '无法加载房间列表，请稍后重试。';
   } finally {
     loading.value = false;

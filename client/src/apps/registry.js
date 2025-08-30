@@ -8,7 +8,7 @@ export const internalApps = [
     slug: 'snake',
     name: '贪吃蛇',
     // 推荐窗口尺寸（宽 x 高），可被窗口管理器用于初始大小
-    preferredSize: { width: 480, height: 800 },
+    preferredSize: { width: 850, height: 1200 },
     // 异步加载，避免初次加载体积增长
     component: defineAsyncComponent(() => import('./snake/SnakeApp.vue')),
   },

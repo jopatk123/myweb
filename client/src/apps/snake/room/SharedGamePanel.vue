@@ -114,7 +114,6 @@ const emit = defineEmits(['vote','restart'])
 
 // 处理投票点击
 const handleVote = (direction) => {
-  console.log('投票点击:', direction)
   emit('vote', direction)
 }
 

@@ -23,15 +23,13 @@ export async function updateSharedGame(roomId, service) {
   }
 
   const boardSize = gameState.config.BOARD_SIZE;
-  console.log(`[shared-game] room ${roomId} move head start=`, head, 'dir=', gameState.sharedSnake.direction, 'boardSize=', boardSize);
   if (head.x < 0 || head.x >= boardSize || head.y < 0 || head.y >= boardSize) {
-    console.warn(`[shared-game] room ${roomId} wall collision detected head=`, head);
     return await service.endGame(roomId, 'wall_collision');
   }
 
   for (const segment of gameState.sharedSnake.body) {
     if (head.x === segment.x && head.y === segment.y) {
-      console.warn(`[shared-game] room ${roomId} self collision detected head=`, head, 'segment=', segment);
+    return await service.endGame(roomId, 'self_collision');
       return await service.endGame(roomId, 'self_collision');
     }
   }

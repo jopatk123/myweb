@@ -24,8 +24,7 @@ export class SnakeGameManager {
     await SnakeRoomModel.update(roomId, { status: 'playing' });
     const gameState = this.service.gameStates.get(roomId);
 
-    console.log(`[SnakeGameManager] startGame room=${roomId} mode=${room.mode} players=${players.map(p=>p.session_id).join(',')}`);
-    console.log('[SnakeGameManager] initial gameState (pre-init):', JSON.stringify(gameState, null, 2));
+  // start game for room
     
     if (room.mode === 'shared') {
       initSharedGame(gameState, players);
@@ -33,7 +32,7 @@ export class SnakeGameManager {
       initCompetitiveGame(gameState, players);
     }
 
-    console.log('[SnakeGameManager] gameState after init:', JSON.stringify(gameState, null, 2));
+  // game state initialized
 
     await this.service.broadcastToRoom(roomId, 'game_started', { game_state: gameState, players });
     this.startGameLoop(roomId);
@@ -48,7 +47,7 @@ export class SnakeGameManager {
     const gameState = this.service.gameStates.get(roomId);
     if (!gameState) return;
 
-    console.log(`[SnakeGameManager] startGameLoop for room ${roomId} mode=${gameState.mode} GAME_SPEED=${gameState.config?.GAME_SPEED}`);
+  // starting game loop
 
     const gameLoop = async () => {
       const currentGameState = this.service.gameStates.get(roomId);
@@ -76,7 +75,7 @@ export class SnakeGameManager {
     const gameState = this.service.gameStates.get(roomId);
     if (!gameState || gameState.gameOver) return;
 
-    console.log(`[SnakeGameManager] endGame room=${roomId} reason=${reason} winner=${winner?.session_id || winner}`);
+  // end game
 
     gameState.gameOver = true;
     gameState.winner = winner;

@@ -100,7 +100,7 @@ export class SnakeGameService extends RoomManagerService {
         removed++; stale.push({id:r.id, empty, longFinished, idleMs});
       }
     });
-    if(removed>0){ this.wsService.broadcast('snake_room_list_updated'); console.log(`自动清理 ${removed} 个蛇房间`, stale); }
+  if(removed>0){ this.wsService.broadcast('snake_room_list_updated'); console.debug && console.debug(`自动清理 ${removed} 个蛇房间`, stale); }
   }
 
   async leaveRoom(sessionId, roomId){
