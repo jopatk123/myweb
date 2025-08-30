@@ -9,10 +9,27 @@
         @vote="$emit('vote', $event)" 
         @restart="$emit('restart')"
       />
-      <VotersDisplay 
-        :votes="votes" 
-        class="mt-12" 
-      />
+      <div class="shared-hud">
+        <h5 class="hud-title">当前状态</h5>
+        <div class="shared-stats">
+          <div class="stat-line">
+            <span class="label">分数</span>
+            <span class="value">{{ sharedScore }}</span>
+          </div>
+            <div class="stat-line">
+            <span class="label">长度</span>
+            <span class="value">{{ sharedLength }}</span>
+          </div>
+          <div class="stat-line">
+            <span class="label">食物</span>
+            <span class="value">{{ sharedFood }}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="stat-mini" v-if="gameState?.sharedSnake?.isWaitingForFirstVote">等待第一票开始…</div>
+          <div class="stat-mini" v-else-if="gameState?.status==='playing'">进行中</div>
+          <div class="stat-mini" v-else>{{ gameState?.status || '等待中' }}</div>
+        </div>
+      </div>
     </div>
     <div v-else class="competitive-wrapper">
       <div class="competitive-layout">
@@ -46,7 +63,6 @@
 
 <script setup>
 import SharedGamePanel from './SharedGamePanel.vue'
-import VotersDisplay from './VotersDisplay.vue'
 import CompetitiveGamePanel from './CompetitiveGamePanel.vue'
 import { computed } from 'vue'
 
@@ -56,7 +72,7 @@ const props = defineProps({
   players: { type: Array, default: () => [] },
   voteTimeout: { type: Number, default: 0 },
   myVote: { type: String, default: null },
-  votes: { type: Object, default: () => ({}) },
+  votes: { type: Object, default: () => ({}) }, // 兼容旧参数（已不再用于共享模式显示）
   currentPlayerId: { type: String, default: null }
 })
 
@@ -69,6 +85,12 @@ const snakeArray = computed(() => {
 function fallbackColor(i){ return ['#4ade80','#60a5fa','#f472b6','#facc15'][i % 4]; }
 const totalScore = computed(()=> snakeArray.value.reduce((a,b)=> a + (b.score||0),0));
 const totalFood = computed(()=> totalScore.value / 10);
+
+// 共享模式实时数据
+const sharedSnake = computed(()=> props.gameState?.sharedSnake || {});
+const sharedScore = computed(()=> sharedSnake.value.score || 0);
+const sharedFood = computed(()=> Math.floor(sharedScore.value / 10));
+const sharedLength = computed(()=> sharedSnake.value.body?.length || sharedSnake.value.length || 0);
 </script>
 
 <style scoped>
@@ -85,6 +107,15 @@ const totalFood = computed(()=> totalScore.value / 10);
   gap: 20px;
   padding: 25px;
 }
+/* 共享模式 HUD */
+.shared-hud { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; box-shadow:0 2px 4px rgba(0,0,0,0.04); align-self:start; }
+.shared-hud .hud-title { margin:0 0 12px; font-size:14px; color:#334155; letter-spacing:.5px; }
+.shared-stats { display:flex; flex-direction:column; gap:8px; }
+.stat-line { display:flex; justify-content:space-between; font-size:13px; background:#fff; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0; }
+.stat-line .label { color:#64748b; }
+.stat-line .value { font-weight:600; color:#1e293b; }
+.divider { height:1px; background:#e2e8f0; margin:6px 0 2px; }
+.stat-mini { font-size:11px; color:#475569; text-align:center; opacity:.85; }
 
 .competitive-wrapper {
   padding: 25px;
@@ -112,5 +143,6 @@ const totalFood = computed(()=> totalScore.value / 10);
   .shared-wrapper {
     grid-template-columns: 1fr;
   }
+  .shared-hud { order:2; }
 }
 </style>
