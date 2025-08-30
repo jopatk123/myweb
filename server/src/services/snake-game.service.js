@@ -149,9 +149,15 @@ export class SnakeGameService extends RoomManagerService {
         }
       }
 
-      const gameState = this.getGameState(roomId);
+      let gameState = this.getGameState(roomId);
       if (!gameState) {
         throw new Error('游戏状态不存在');
+      }
+
+      // 如果上一局已经结束且未被重新初始化（因为取消了自动重置），此处重新初始化
+      if (gameState.status === 'finished') {
+        this.initGameState(roomId, room.mode);
+        gameState = this.getGameState(roomId);
       }
 
       // 检查游戏循环是否已经在运行，避免重复启动
@@ -557,24 +563,11 @@ export class SnakeGameService extends RoomManagerService {
         room_id: roomId,
         reason,
         final_score: gameState.sharedSnake?.score || 0,
-        game_state: gameState
+  game_state: gameState,
+  winner: gameState.winner || null
       });
 
-      // 重新初始化游戏状态，准备下一轮游戏
-      setTimeout(() => {
-        const room = SnakeRoomModel.findById(roomId);
-        if (room) {
-          this.initGameState(roomId, room.mode);
-          
-          // 广播游戏重置完成
-          this.broadcastToRoom(roomId, 'game_reset', {
-            room_id: roomId,
-            game_state: this.getGameState(roomId)
-          });
-          
-          console.log(`游戏状态已重置: 房间 ${roomId}`);
-        }
-      }, 2000);
+  // 不再自动重置，等待客户端手动重新开始
 
     } catch (error) {
       console.error('结束游戏失败:', error);
@@ -632,10 +625,27 @@ export class SnakeGameService extends RoomManagerService {
   startCompetitiveGameLoop(roomId) {
     const tick = () => {
       const gameState = this.getGameState(roomId);
-      if (!gameState || gameState.status !== 'playing' || gameState.mode !== 'competitive') return;
+      if (!gameState || gameState.mode !== 'competitive') return;
+      if (gameState.status !== 'playing') {
+        // 结束后不再继续调度
+        this.gameTimers.delete(roomId);
+        return;
+      }
       this.updateCompetitiveGame(roomId);
-      this.gameTimers.set(roomId, setTimeout(tick, this.SNAKE_CONFIG.GAME_SPEED));
+      // 再次获取状态，避免在 updateCompetitiveGame 中 endGame 后仍继续循环
+      const latest = this.getGameState(roomId);
+      if (latest && latest.status === 'playing') {
+        this.gameTimers.set(roomId, setTimeout(tick, this.SNAKE_CONFIG.GAME_SPEED));
+      } else {
+        this.gameTimers.delete(roomId);
+      }
     };
+    // 启动前先清理旧的
+    if (this.gameTimers.has(roomId)) {
+      const old = this.gameTimers.get(roomId);
+      clearTimeout(old);
+      this.gameTimers.delete(roomId);
+    }
     this.gameTimers.set(roomId, setTimeout(tick, this.SNAKE_CONFIG.GAME_SPEED));
   }
 
@@ -732,6 +742,9 @@ export class SnakeGameService extends RoomManagerService {
       foods: gameState.foods
     });
     if (alive <= 1) {
+      if (survivor) {
+        gameState.winner = survivor; // 记录胜者，广播时带出
+      }
       this.endGame(roomId, 'competitive_finished');
     }
   }

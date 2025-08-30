@@ -74,6 +74,28 @@
         </div>
       </div>
     </div>
+    <!-- 结束总结面板 -->
+    <div v-if="showSummary" class="summary-overlay">
+      <div class="summary-card">
+        <button class="close-btn" @click="showSummary=false">✕</button>
+        <h3>🎉 本局结束</h3>
+        <div class="stats-grid">
+          <div class="stat-item"><span class="label">最终分数</span><span class="val">{{ finalScore }}</span></div>
+          <div class="stat-item"><span class="label">吃到食物</span><span class="val">{{ finalFood }}</span></div>
+          <div class="stat-item"><span class="label">长度</span><span class="val">{{ finalLength }}</span></div>
+          <div class="stat-item"><span class="label">耗时</span><span class="val">{{ durationSec }}s</span></div>
+        </div>
+        <div class="players-box" v-if="playerCount > 0">
+          <div class="players-title">参与玩家 ({{ playerCount }})</div>
+          <ul class="players-list">
+            <li v-for="p in players" :key="p.session_id">{{ p.player_name || p.playerName || '玩家' }}</li>
+          </ul>
+        </div>
+        <div class="actions">
+          <button class="btn" @click="handleRestart">重新开始</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -83,11 +105,12 @@ import SnakeCanvas from '../SnakeCanvas.vue'
 
 const props = defineProps({
   gameState: { type: Object, required: true },
+  players: { type: Array, default: () => [] },
   voteCountdown: { type: Number, default: 0 },
   myVote: { type: String, default: null }
 })
 
-const emit = defineEmits(['vote'])
+const emit = defineEmits(['vote','restart'])
 
 // 处理投票点击
 const handleVote = (direction) => {
@@ -96,6 +119,29 @@ const handleVote = (direction) => {
 }
 
 const snakeCanvas = ref(null)
+const showSummary = ref(false)
+const finishedAt = ref(null)
+
+// 汇总字段
+const finalScore = computed(()=> props.gameState?.sharedSnake?.score || 0)
+const finalFood = computed(()=> Math.floor(finalScore.value / 10))
+const finalLength = computed(()=> props.gameState?.sharedSnake?.body?.length || props.gameState?.sharedSnake?.length || 0)
+const durationSec = computed(()=> {
+  const start = props.gameState?.startTime; const end = props.gameState?.endTime;
+  if (!start) return 0; return Math.round(((end || Date.now()) - start)/1000)
+})
+const playerCount = computed(()=> props.players?.length || 0)
+
+watch(()=> props.gameState?.status, (val, old)=>{
+  if (val === 'finished') { showSummary.value = true; finishedAt.value = Date.now(); }
+  if (val === 'playing') { showSummary.value = false; }
+})
+
+function handleRestart(){
+  emit('restart');
+  // 重开后等待新状态刷新隐藏面板
+  showSummary.value = false;
+}
 
 // 计算蛇的位置数据
 const snake = computed(() => {
@@ -284,4 +330,22 @@ onUnmounted(() => {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
+</style>
+
+<style scoped>
+.summary-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; z-index:2000; }
+.summary-card { background:#ffffff; width:360px; padding:28px 26px 24px; border-radius:20px; position:relative; box-shadow:0 10px 32px rgba(0,0,0,0.25); }
+.summary-card h3 { margin:0 0 18px; text-align:center; font-size:20px; }
+.close-btn { position:absolute; top:10px; right:10px; border:none; background:transparent; font-size:16px; cursor:pointer; }
+.stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; margin-bottom:18px; }
+.stat-item { background:#f8fafc; padding:10px 12px; border-radius:10px; display:flex; flex-direction:column; gap:4px; }
+.stat-item .label { font-size:12px; color:#64748b; }
+.stat-item .val { font-weight:600; font-size:16px; color:#1e293b; }
+.actions { display:flex; justify-content:center; }
+.btn { background:linear-gradient(135deg,#10b981,#059669); color:#fff; border:none; padding:10px 24px; border-radius:24px; cursor:pointer; font-weight:600; letter-spacing:.5px; }
+.btn:hover { filter:brightness(1.08); }
+.btn:active { transform:translateY(1px); }
+.players-box { background:#f1f5f9; padding:12px 14px; border-radius:12px; margin:4px 0 18px; }
+.players-title { font-size:13px; font-weight:600; color:#334155; margin-bottom:6px; }
+.players-list { list-style:none; padding:0; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:12px; }
 </style>

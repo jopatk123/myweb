@@ -18,14 +18,17 @@
 
     <!-- 游戏进行中 -->
     <GamePanel
-      v-if="gameStatus === 'playing'"
+      v-if="gameStatus === 'playing' || gameStatus === 'finished'"
       :room="currentRoom"
       :gameState="gameState"
+  :players="players"
       :voteTimeout="voteTimeout"
       :myVote="myVote"
       :votes="votes"
+  :current-player-id="currentPlayer?.session_id"
       @vote="handleVote"
       @move="handleMove"
+  @restart="startGame"
     />
 
     <!-- 等待室 -->

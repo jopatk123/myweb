@@ -145,14 +145,26 @@ export function createSnakeHandlers(ctx) {
   }
 
   function handleCompetitiveUpdate(data) {
-    if (gameState.value) {
-      Object.assign(gameState.value, { snakes: data.snakes, food: data.food });
+    if (!gameState.value) {
+      gameState.value = data.game_state || { mode: 'competitive' };
     }
+    if (data.game_state) Object.assign(gameState.value, data.game_state);
+    if (data.snakes) gameState.value.snakes = data.snakes;
+    if (data.foods) gameState.value.foods = data.foods;
   }
 
   function handleGameEnded(data) {
     gameStatus.value = 'finished';
-    if (gameState.value) { gameState.value.gameOver = true; gameState.value.winner = data.winner; }
+    if (gameState.value) {
+      if (data.game_state) {
+        Object.assign(gameState.value, data.game_state);
+      }
+      gameState.value.status = 'finished';
+      gameState.value.gameOver = true;
+      gameState.value.winner = data.winner || data.game_state?.winner || gameState.value.winner || null;
+      gameState.value.endReason = data.reason;
+      if (!gameState.value.endTime) gameState.value.endTime = Date.now();
+    }
     clearVoteTimer();
   }
 
