@@ -34,7 +34,11 @@ export const SnakePlayerModel = {
   findById(id) {
     const db = getDb();
     const stmt = db.prepare('SELECT * FROM snake_players WHERE id = ?');
-    return stmt.get(id);
+    const row = stmt.get(id);
+    if (!row) return null;
+    row.is_ready = !!row.is_ready;
+    row.is_online = !!row.is_online;
+    return row;
   },
 
   /**
@@ -46,7 +50,11 @@ export const SnakePlayerModel = {
       SELECT * FROM snake_players 
       WHERE room_id = ? AND session_id = ?
     `);
-    return stmt.get(roomId, sessionId);
+    const row = stmt.get(roomId, sessionId);
+    if (!row) return null;
+    row.is_ready = !!row.is_ready;
+    row.is_online = !!row.is_online;
+    return row;
   },
 
   /**
@@ -59,7 +67,12 @@ export const SnakePlayerModel = {
       WHERE room_id = ? 
       ORDER BY joined_at ASC
     `);
-    return stmt.all(roomId);
+    const rows = stmt.all(roomId);
+    return rows.map(r => ({
+      ...r,
+      is_ready: !!r.is_ready,
+      is_online: !!r.is_online
+    }));
   },
 
   /**
@@ -72,7 +85,12 @@ export const SnakePlayerModel = {
       WHERE room_id = ? AND is_online = 1 
       ORDER BY joined_at ASC
     `);
-    return stmt.all(roomId);
+    const rows = stmt.all(roomId);
+    return rows.map(r => ({
+      ...r,
+      is_ready: !!r.is_ready,
+      is_online: !!r.is_online
+    }));
   },
 
   /**
@@ -103,7 +121,12 @@ export const SnakePlayerModel = {
       WHERE id = ?
     `);
     
-    stmt.run(...values);
+    try {
+      stmt.run(...values);
+    } catch (e) {
+      console.error('Failed to update snake_player id=', id, 'fields=', fields.join(', '), 'error=', e && e.message);
+      throw e;
+    }
     return this.findById(id);
   },
 
@@ -135,7 +158,12 @@ export const SnakePlayerModel = {
       WHERE room_id = ? AND session_id = ?
     `);
     
-    stmt.run(...values);
+    try {
+      stmt.run(...values);
+    } catch (e) {
+      console.error('Failed to update snake_player by room/session', { roomId, sessionId, fields: fields.join(', '), error: e && e.message });
+      throw e;
+    }
     return this.findByRoomAndSession(roomId, sessionId);
   },
 

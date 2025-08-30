@@ -58,7 +58,7 @@ export class WebSocketService {
     return this.wss;
   }
 
-  handleMessage(sessionId, message) {
+  async handleMessage(sessionId, message) {
     switch (message.type) {
       case 'ping':
         this.sendToClient(sessionId, { type: 'pong' });
@@ -90,8 +90,16 @@ export class WebSocketService {
         this.handleSnakeGetRoomInfo(sessionId, message.data);
         break;
       case 'snake_start_game':
-        // 目前适配器没有 start_game 入口（可后续实现），这里只广播更新占位
-        this.broadcast('snake_room_list_updated');
+        // 适配器实现了 startGame，调用并返回结果
+        try {
+          const { roomCode } = message.data || {};
+          await this.snakeMultiplayer.startGame(sessionId, roomCode);
+          // 广播房间列表更新（具体的 game_started 会由底层服务通过 room 广播发送完整 payload）
+          this.broadcast('snake_room_list_updated');
+        } catch (e) {
+          console.error('处理 snake_start_game 失败:', e && e.message);
+          this.sendToClient(sessionId, { type: 'snake_error', data: { message: e.message } });
+        }
         break;
     }
   }

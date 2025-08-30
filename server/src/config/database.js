@@ -92,6 +92,13 @@ export async function initDatabase() {
   } catch (e) {
     console.warn('文件类型分类迁移检查失败（非致命）:', e.message || e);
   }
+  // 迁移: 确保贪吃蛇多人游戏表包含必要列
+  try {
+    const { ensureSnakeMultiplayerColumns } = await import('../db/migration.js');
+    ensureSnakeMultiplayerColumns(db);
+  } catch (e) {
+    console.warn('snake multiplayer 列迁移检查失败（非致命）:', e.message || e);
+  }
   // 确保内置应用存在（用于恢复误删或旧库缺失）
   ensureBuiltinApps(db);
   // 数据种子：仅当 apps 表为空时插入示例应用（兼容旧逻辑）

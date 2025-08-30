@@ -95,9 +95,29 @@ export function createSnakeHandlers(ctx) {
 
   function handleReadyToggled(data) { currentPlayer.value = data; }
 
-  function handleGameStarted(data) {
-    gameState.value = data.game_state;
-    players.value = data.players || players.value;
+  async function handleGameStarted(data) {
+    // 某些情况下服务器可能只广播了事件类型而没有包含完整 payload，做容错处理
+    if (!data || !data.game_state) {
+      try {
+        const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
+        if (code && ctx.api && ctx.api.getRoomInfo) {
+          const info = await ctx.api.getRoomInfo(code);
+          gameState.value = info?.game_state || null;
+          players.value = info?.players || players.value;
+        } else {
+          // 无法获取 room 信息，则保持现有状态并返回
+          console.warn('handleGameStarted: missing game_state and cannot fetch room info');
+          return;
+        }
+      } catch (e) {
+        console.error('handleGameStarted: fallback getRoomInfo failed', e && e.message);
+        return;
+      }
+    } else {
+      gameState.value = data.game_state;
+      players.value = data.players || players.value;
+    }
+
     gameStatus.value = 'playing';
     votes.value = {}; myVote.value = null; clearVoteTimer();
     events.emitGameUpdate(data);

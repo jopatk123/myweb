@@ -73,4 +73,12 @@ export class SnakeMultiplayerAdapter {
     }
     return payload;
   }
+
+  // 旧接口: startGame(roomCode)
+  async startGame(sessionId, roomCode) {
+    const room = await SnakeRoomModel.findByRoomCode(roomCode);
+    if (!room) throw new Error('房间不存在');
+    // 委托给底层游戏服务启动游戏（roomId）
+    return await this.snakeGame.startGame(room.id);
+  }
 }

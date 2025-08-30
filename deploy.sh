@@ -169,24 +169,11 @@ EOF
     exit 1
   }
   
-  # 数据库迁移和检查
-  log "执行数据库迁移..."
+  # 启动服务（构建镜像并启动容器）
+  log "启动容器与服务（首次启动会自动进行 schema 初始化与 ensure 兜底）..."
   $DC -f "$COMPOSE_FILE" up -d --build --remove-orphans
-  
-  # 等待数据库服务启动
-  log "等待数据库服务就绪..."
-  sleep 5
-  
-  # 执行数据库迁移
-  log "运行数据库迁移..."
-  $DC -f "$COMPOSE_FILE" exec -T backend npm run migrate || {
-    err "数据库迁移失败"
-    $DC -f "$COMPOSE_FILE" logs --tail 50 backend || true
-    exit 1
-  }
-  ok "数据库迁移完成"
-  
-  # 检查数据库状态
+
+  # 检查数据库状态（由后端 initDatabase 执行 schema+ensure 初始化）
   log "检查数据库状态..."
   $DC -f "$COMPOSE_FILE" exec -T backend npm run db:check || {
     err "数据库检查失败"

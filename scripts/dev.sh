@@ -146,56 +146,10 @@ fi
 
 echo "✅ Dependencies installed successfully!"
 
-# 数据库迁移和检查
+# 数据库初始化与检查（通过 schema.js + ensure 列兜底，不再运行 Knex 迁移）
 echo "🗄️ Checking database..."
 if [ -f server/package.json ]; then
-    echo "📊 Running database migrations..."
-    (cd server && npm run migrate) || {
-        echo "❌ Database migration failed!"
-        echo "💡 Trying to fix database permissions and retry..."
-        sudo chown -R "$(whoami)":"$(whoami)" server/data/ 2>/dev/null || true
-        chmod -R 664 server/data/*.db* 2>/dev/null || true
-        echo "🔄 Retrying database migration..."
-        (cd server && npm run migrate) || {
-            echo "❌ Database migration still failed after permission fix!"
-            echo "🔍 Checking for migration state inconsistency..."
-            
-            # 检查是否存在表但迁移记录为空的情况
-            if [ -f server/data/myweb.db ]; then
-                echo "🔧 Attempting to fix migration state inconsistency..."
-                (cd server && sqlite3 data/myweb.db "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='knex_migrations';" 2>/dev/null) | grep -q "1" || {
-                    echo "💡 Migration table missing, creating it..."
-                    (cd server && npx knex migrate:make init_migrations --knexfile ./knexfile.cjs >/dev/null 2>&1 || true)
-                }
-                
-                # 检查是否有表存在但迁移记录为空
-                table_count=$(cd server && sqlite3 data/myweb.db "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'knex_migrations';" 2>/dev/null || echo "0")
-                migration_count=$(cd server && sqlite3 data/myweb.db "SELECT COUNT(*) FROM knex_migrations;" 2>/dev/null || echo "0")
-                
-                if [ "$table_count" -gt 0 ] && [ "$migration_count" -eq 0 ]; then
-                    echo "💡 Tables exist but no migration records found. Marking all migrations as completed..."
-                    (cd server && sqlite3 data/myweb.db "INSERT INTO knex_migrations (name, batch, migration_time) VALUES ('001_initial_schema.js', 1, datetime('now')), ('002_add_work_timer_tables.js', 1, datetime('now')), ('003_add_novel_bookmarks.js', 1, datetime('now')), ('004_add_message_board.js', 1, datetime('now')), ('005_add_message_images.js', 1, datetime('now'));" 2>/dev/null || true)
-                    echo "🔄 Retrying database migration..."
-                    (cd server && npm run migrate) || {
-                        echo "❌ Database migration still failed after state fix!"
-                        echo "💡 You may need to manually fix the database or delete and recreate it."
-                        exit 1
-                    }
-                else
-                    echo "❌ Database migration failed and could not be automatically fixed!"
-                    echo "💡 You may need to manually fix database permissions or delete and recreate the database."
-                    exit 1
-                fi
-            else
-                echo "❌ Database migration failed and could not be automatically fixed!"
-                echo "💡 You may need to manually fix database permissions or delete and recreate the database."
-                exit 1
-            fi
-        }
-    }
-    echo "✅ Database migrations completed"
-    
-    echo "🔍 Checking database status..."
+    echo "🔍 Checking database status (init via schema + ensure)..."
     (cd server && npm run db:check) || {
         echo "❌ Database check failed!"
         exit 1
