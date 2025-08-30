@@ -22,11 +22,29 @@
 </template>
 
 <script setup>
+import { onMounted, onUnmounted } from 'vue'
 defineProps({
   gameState: { type: Object, required: true }
 })
 
-defineEmits(['move'])
+const emit = defineEmits(['move'])
+
+const keyMap = {
+  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+  w: 'up', W: 'up', s: 'down', S: 'down', a: 'left', A: 'left', d: 'right', D: 'right'
+}
+let lastMoveTs = 0;
+function handleKey(e) {
+  const dir = keyMap[e.key];
+  if (!dir) return;
+  if ([ 'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  const now = Date.now();
+  if (now - lastMoveTs < 40) return; // 简单节流
+  lastMoveTs = now;
+  emit('move', dir);
+}
+onMounted(() => window.addEventListener('keydown', handleKey, { passive: false }));
+onUnmounted(() => window.removeEventListener('keydown', handleKey));
 </script>
 
 <style scoped>

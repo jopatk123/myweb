@@ -695,8 +695,11 @@ export class SnakeGameService extends RoomManagerService {
         case 'left': head.x -= 1; break;
         case 'right': head.x += 1; break;
       }
-      // 碰墙/自撞
-      if (head.x < 0 || head.x >= size || head.y < 0 || head.y >= size || snake.body.some(seg => seg.x === head.x && seg.y === head.y)) {
+      // 墙体穿越
+      if (head.x < 0) head.x = size - 1; else if (head.x >= size) head.x = 0;
+      if (head.y < 0) head.y = size - 1; else if (head.y >= size) head.y = 0;
+      // 自撞
+      if (snake.body.some(seg => seg.x === head.x && seg.y === head.y)) {
         snake.gameOver = true; return;
       }
       // 互撞检测
@@ -722,8 +725,12 @@ export class SnakeGameService extends RoomManagerService {
       if (!ate) snake.body.pop();
       if (!snake.gameOver) { alive++; survivor = snake.player; }
     });
-    // 广播状态
-  this.broadcastToRoom(roomId, 'competitive_update', { game_state: gameState });
+    // 广播状态（附带兼容字段）
+    this.broadcastToRoom(roomId, 'competitive_update', {
+      game_state: gameState,
+      snakes: gameState.snakes,
+      foods: gameState.foods
+    });
     if (alive <= 1) {
       this.endGame(roomId, 'competitive_finished');
     }
