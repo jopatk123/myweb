@@ -34,7 +34,7 @@ export function useSnakeMultiplayer() {
   // 计算属性
   const canStart = computed(() => {
     const readyPlayers = players.value.filter(p => p.is_ready);
-    return readyPlayers.length >= 2 && readyPlayers.length === players.value.length;
+    return readyPlayers.length >= 1 && readyPlayers.length === players.value.length;
   });
   const isReady = computed(() => currentPlayer.value?.is_ready || false);
   const isGameHost = computed(() => currentRoom.value?.created_by === currentPlayer.value?.session_id);

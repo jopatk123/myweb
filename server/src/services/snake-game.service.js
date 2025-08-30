@@ -28,7 +28,7 @@ export class SnakeGameService extends RoomManagerService {
   async createSnakeRoom(sessionId, playerName, mode, gameSettings = {}) {
     const roomData = {
       mode,
-      max_players: mode === 'shared' ? 8 : 2,
+      max_players: mode === 'shared' ? 999 : 2, // 共享模式支持更多玩家
       status: 'waiting'
     };
 
@@ -79,6 +79,7 @@ export class SnakeGameService extends RoomManagerService {
         { x: centerX, y: centerY + 2 }
       ],
       direction: 'up',
+      nextDirection: 'up',
       score: 0,
       length: this.SNAKE_CONFIG.INITIAL_SNAKE_LENGTH
     };
@@ -122,7 +123,7 @@ export class SnakeGameService extends RoomManagerService {
       }
 
       // 广播游戏开始
-      this.broadcastToRoom(roomId, 'game_started', {
+      this.broadcastToRoom(roomId, 'snake_game_started', {
         room_id: roomId,
         game_state: this.getGameState(roomId)
       });
@@ -157,7 +158,7 @@ export class SnakeGameService extends RoomManagerService {
       };
 
       // 广播投票更新
-      this.broadcastToRoom(roomId, 'vote_updated', {
+      this.broadcastToRoom(roomId, 'snake_vote_updated', {
         room_id: roomId,
         votes: gameState.votes
       });
@@ -214,9 +215,9 @@ export class SnakeGameService extends RoomManagerService {
       }
     });
 
-    // 更新蛇的方向
+    // 更新蛇的下一步方向
     if (this.isValidDirectionChange(gameState.sharedSnake.direction, winningDirection)) {
-      gameState.sharedSnake.direction = winningDirection;
+      gameState.sharedSnake.nextDirection = winningDirection;
     }
 
     // 清理投票
@@ -264,6 +265,9 @@ export class SnakeGameService extends RoomManagerService {
 
     const snake = gameState.sharedSnake;
     
+    // 更新方向
+    snake.direction = snake.nextDirection;
+    
     // 移动蛇头
     const head = { ...snake.body[0] };
     switch (snake.direction) {
@@ -293,7 +297,7 @@ export class SnakeGameService extends RoomManagerService {
     }
 
     // 广播游戏状态更新
-    this.broadcastToRoom(roomId, 'game_updated', {
+    this.broadcastToRoom(roomId, 'snake_game_update', {
       room_id: roomId,
       game_state: gameState
     });
@@ -348,7 +352,7 @@ export class SnakeGameService extends RoomManagerService {
       this.saveGameRecord(roomId, gameState, reason);
 
       // 广播游戏结束
-      this.broadcastToRoom(roomId, 'game_ended', {
+      this.broadcastToRoom(roomId, 'snake_game_ended', {
         room_id: roomId,
         reason,
         final_score: gameState.sharedSnake?.score || 0,

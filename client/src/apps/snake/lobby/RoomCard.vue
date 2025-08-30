@@ -27,18 +27,19 @@
 
     <div class="room-actions">
       <button 
-        v-if="room.status === 'waiting' && room.current_players < room.max_players"
+        v-if="(room.status === 'waiting' || room.status === 'playing') && room.current_players < room.max_players"
         class="btn-join" 
   @click="$emit('join', room.room_code || room.roomCode)"
       >
-        🚀 加入游戏
+        {{ room.status === 'playing' ? '🎮 加入游戏' : '🚀 加入游戏' }}
       </button>
       <button 
-        v-else-if="room.status === 'playing'"
+        v-else-if="room.status === 'playing' && room.current_players >= room.max_players"
         class="btn-spectate" 
   @click="$emit('spectate', room.room_code || room.roomCode)"
+        disabled
       >
-        👁️ 观战
+        👁️房间已满
       </button>
       <span v-else-if="room.current_players >= room.max_players" class="room-unavailable">
         房间已满

@@ -89,7 +89,7 @@ const readyCount = computed(() =>
 )
 
 const canStartGame = computed(() => 
-  players.value.length >= 2 && 
+  players.value.length >= 1 && 
   readyCount.value === players.value.length &&
   currentRoom.value?.created_by === currentPlayer.value?.session_id
 )

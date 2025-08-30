@@ -19,7 +19,7 @@ export class SnakeGameManager {
     if (!room || room.status === 'playing') return;
 
     const players = await SnakePlayerModel.findOnlineByRoomId(roomId);
-    if (players.length < 2) throw new Error('至少需要2个玩家才能开始游戏');
+    if (players.length < 1) throw new Error('至少需要1个玩家才能开始游戏');
 
     await SnakeRoomModel.update(roomId, { status: 'playing' });
     const gameState = this.service.gameStates.get(roomId);

@@ -128,6 +128,7 @@ export function createSnakeHandlers(ctx) {
       Object.assign(gameState.value, { sharedSnake: data.shared_snake, food: data.food });
     }
     votes.value = {}; myVote.value = null; clearVoteTimer();
+    events.emitGameUpdate(data);
   }
 
   function handleCompetitiveUpdate(data) {
