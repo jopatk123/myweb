@@ -11,7 +11,7 @@ export class AIPresetService {
         id: 'kimi',
         name: 'Kimi',
         apiUrl: 'https://api.moonshot.cn/v1',
-        modelName: 'kimi-latest-8k',
+        modelName: 'moonshot-v1-8k',
         playerName: 'Kimi',
         maxTokens: 5000,
         temperature: 0.5,

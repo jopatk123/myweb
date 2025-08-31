@@ -15,17 +15,23 @@
   <!-- 游戏结束覆盖层 -->
   <div v-if="gameOver" class="game-overlay">
     <div class="game-over-modal">
-      <h3 v-if="winner === 1" class="win-title">🎉 恭喜获胜！</h3>
-      <h3 v-else-if="winner === 2" class="lose-title">😔 AI获胜</h3>
-      <h3 v-else class="draw-title">🤝 平局</h3>
+      <h3 :class="{
+        'win-title': gameMode === 'human_vs_ai' && winner === 1,
+        'lose-title': gameMode === 'human_vs_ai' && winner === 2,
+        'ai-win-title': gameMode === 'ai_vs_ai' && winner,
+        'draw-title': !winner
+      }">
+        {{ winTitle }}
+      </h3>
 
       <div class="game-result">
-        <p v-if="winner === 1">你成功击败了最高难度AI！</p>
-        <p v-else-if="winner === 2">AI技高一筹，再接再厉！</p>
-        <p v-else>棋盘已满，不分胜负！</p>
+        <p>{{ winDescription }}</p>
 
         <div class="result-stats">
           <span>本局步数: {{ moveCount }}</span>
+          <span v-if="gameMode === 'ai_vs_ai' && winner" class="winner-info">
+            获胜方: {{ winnerName }} ({{ winner === 1 ? '黑子' : '白子' }})
+          </span>
         </div>
       </div>
 
@@ -71,6 +77,8 @@
 </template>
 
 <script setup>
+  import { computed } from 'vue';
+
   const props = defineProps({
     gameStarted: {
       type: Boolean,
@@ -108,9 +116,54 @@
       type: String,
       default: 'AI正在思考...',
     },
+    // 新增：游戏模式相关props
+    gameMode: {
+      type: String,
+      default: 'human_vs_ai'
+    },
+    player1Name: {
+      type: String,
+      default: '人类玩家'
+    },
+    player2Name: {
+      type: String,
+      default: 'AI玩家'
+    }
   });
 
   defineEmits(['start', 'restart', 'analyze', 'close-hint', 'config-ai']);
+
+  // 计算获胜者名称
+  const winnerName = computed(() => {
+    if (!props.winner) return null;
+    return props.winner === 1 ? props.player1Name : props.player2Name;
+  });
+
+  // 计算获胜标题
+  const winTitle = computed(() => {
+    if (!props.winner) return '🤝 平局';
+    
+    if (props.gameMode === 'human_vs_ai') {
+      // 人机对战模式
+      return props.winner === 1 ? '🎉 恭喜获胜！' : '😔 AI获胜';
+    } else {
+      // AI对AI模式  
+      return `🏆 ${winnerName.value} 获胜！`;
+    }
+  });
+
+  // 计算获胜描述
+  const winDescription = computed(() => {
+    if (!props.winner) return '棋盘已满，不分胜负！';
+    
+    if (props.gameMode === 'human_vs_ai') {
+      // 人机对战模式
+      return props.winner === 1 ? '你成功击败了最高难度AI！' : 'AI技高一筹，再接再厉！';
+    } else {
+      // AI对AI模式
+      return `经过激烈对战，${winnerName.value} 技高一筹！`;
+    }
+  });
 </script>
 
 <style scoped>
@@ -160,6 +213,10 @@
     color: #ef4444;
   }
 
+  .ai-win-title {
+    color: #3b82f6;
+  }
+
   .draw-title {
     color: #f59e0b;
   }
@@ -182,6 +239,14 @@
     border-radius: 8px;
     font-size: 0.9rem;
     color: #666;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .winner-info {
+    font-weight: 600;
+    color: #3b82f6;
   }
 
   .modal-buttons {
