@@ -39,8 +39,8 @@
         <button @click="$emit('restart')" class="btn btn-primary">
           再来一局
         </button>
-        <button @click="$emit('analyze')" class="btn btn-secondary">
-          复盘分析
+        <button @click="$emit('close-gameover')" class="btn btn-secondary">
+          确定
         </button>
       </div>
     </div>
@@ -131,7 +131,7 @@
     }
   });
 
-  defineEmits(['start', 'restart', 'analyze', 'close-hint', 'config-ai']);
+  defineEmits(['start', 'restart', 'close-gameover', 'close-hint', 'config-ai']);
 
   // 计算获胜者名称
   const winnerName = computed(() => {

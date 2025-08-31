@@ -35,6 +35,9 @@ export function useGomokuAIThinking(deps) {
   const currentThinking = ref(null);
   const thinkingHistory = ref([]);
   const lastMoveWithReasoning = ref(null);
+  // AI vs AI 自动播放控制
+  const isAIAutoPlaying = ref(true);
+  let nextAITimer = null;
 
   // 规则违反处理
   const {
@@ -47,6 +50,8 @@ export function useGomokuAIThinking(deps) {
   if (gameOver.value) return;
   const playerNumber = deps.currentPlayer.value;
   if (!gameModeService.isAIPlayer(playerNumber)) return;
+  // 停止后不再继续
+  if (gameMode.value === 'ai_vs_ai' && !isAIAutoPlaying.value) return;
     isAIThinking.value = true;
     currentAIPlayer.value = playerNumber;
   const debug = window.location.search.includes('gomokuDebug=1');
@@ -118,8 +123,9 @@ export function useGomokuAIThinking(deps) {
           return;
         }
 
-        if (gameMode.value === 'ai_vs_ai') {
-          setTimeout(() => { handleAITurn(); }, 1000);
+        if (gameMode.value === 'ai_vs_ai' && isAIAutoPlaying.value) {
+          if (nextAITimer) clearTimeout(nextAITimer);
+          nextAITimer = setTimeout(() => { handleAITurn(); }, 1000);
         }
       } else {
         // AI移动失败，可能是位置已被占用等原因，这种情况也视为违规
@@ -227,6 +233,23 @@ export function useGomokuAIThinking(deps) {
     return 'AI正在思考...';
   }
 
+  function stopAIAutoPlay() {
+    isAIAutoPlaying.value = false;
+    if (nextAITimer) {
+      clearTimeout(nextAITimer);
+      nextAITimer = null;
+    }
+  }
+
+  function resumeAIAutoPlay() {
+    if (gameMode.value !== 'ai_vs_ai') return;
+    if (gameOver.value) return;
+    if (isAIAutoPlaying.value) return; // already playing
+    isAIAutoPlaying.value = true;
+    // 立即触发下一步
+    handleAITurn();
+  }
+
   return {
     // 状态
     isAIThinking,
@@ -237,6 +260,10 @@ export function useGomokuAIThinking(deps) {
     // 方法
     handleAITurn,
     clearThinkingHistory,
-    getAIThinkingText
+  getAIThinkingText,
+  // 自动播放控制
+  isAIAutoPlaying,
+  stopAIAutoPlay,
+  resumeAIAutoPlay
   };
 }

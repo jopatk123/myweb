@@ -14,7 +14,7 @@ export class AIPresetService {
         modelName: 'moonshot-v1-8k',
         playerName: 'Kimi',
         maxTokens: 5000,
-        temperature: 0.5,
+        temperature: 1,
         description: 'Kimi 模型'
       },
 
@@ -26,7 +26,7 @@ export class AIPresetService {
         modelName: 'deepseek-chat',
         playerName: 'Deepseek AI',
         maxTokens: 5000,
-        temperature: 0.5,
+        temperature: 1,
         description: 'Deepseek 聊天模型 (deepseek-chat)'
       },
 
@@ -37,7 +37,7 @@ export class AIPresetService {
         modelName: 'gpt-5-chat-latest',
         playerName: 'gpt-5',
         maxTokens: 5000,
-        temperature: 0.5,
+        temperature: 1,
         description: 'GPT-5预设 (chatanywhere)'
       },
 

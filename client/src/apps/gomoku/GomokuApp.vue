@@ -50,7 +50,7 @@
 
           <GomokuOverlays
             :game-started="gameStarted"
-            :game-over="gameOver"
+            :game-over="gameOver && !hideGameOverOverlay"
             :winner="winner"
             :current-player="currentPlayer"
             :move-count="moveCount"
@@ -63,9 +63,9 @@
             :player2-name="getPlayerName(2)"
             @start="handleStartGame"
             @restart="handleRestartGame"
-            @analyze="handleAnalyzeGame"
             @close-hint="closeHint"
             @config-ai="showAIConfig = true"
+            @close-gameover="hideGameOverOverlay = true"
           />
         </div>
 
@@ -75,11 +75,15 @@
           :game-over="gameOver"
           :current-player="currentPlayer"
           :can-undo="canUndo"
+          :game-mode="gameMode"
+          :is-a-i-auto-playing="isAIAutoPlaying"
           @start="handleStartGame"
           @restart="handleRestartGame"
           @undo="handleUndoMove"
           @hint="handleShowHint"
           @config-ai="showAIConfig = true"
+          @stop-ai="stopAIAutoPlay()"
+          @resume-ai="resumeAIAutoPlay()"
         />
       </div>
 
@@ -159,6 +163,7 @@ const gomokuBoard = ref(null);
 const showAIConfig = ref(false);
 const gameMode = ref('human_vs_ai');
 const aiConfig = ref(null);
+const hideGameOverOverlay = ref(false);
 
 // 违规处理状态
 const showViolation = ref(false);
@@ -172,7 +177,10 @@ const {
   lastMoveWithReasoning,
   handleAITurn,
   clearThinkingHistory,
-  getAIThinkingText
+  getAIThinkingText,
+  isAIAutoPlaying,
+  stopAIAutoPlay,
+  resumeAIAutoPlay
 } = useGomokuAIThinking({
   gameModeService,
   gameMode,
@@ -190,19 +198,18 @@ const {
     showViolation.value = true;
   }
 });
-
 // 计算属性
 const gameModeInfo = computed(() => gameModeService.getGameModeInfo());
 
 // 事件处理器
 function handleStartGame() {
+  hideGameOverOverlay.value = false;
   // 检查游戏模式是否需要AI配置
   if (gameMode.value === 'human_vs_ai') {
     if (!aiConfig.value) {
       showAIConfig.value = true;
       return;
     }
-    
     // 验证AI配置是否完整
     if (!aiConfig.value.apiUrl || !aiConfig.value.apiKey) {
       showAIConfig.value = true;
@@ -213,7 +220,6 @@ function handleStartGame() {
       showAIConfig.value = true;
       return;
     }
-    
     // 验证两个AI配置是否完整
     const ai1 = aiConfig.value.ai1Config;
     const ai2 = aiConfig.value.ai2Config;
@@ -224,7 +230,6 @@ function handleStartGame() {
   }
 
   startGame();
-  
   // 如果是AI对AI模式，开始AI对战
   if (gameMode.value === 'ai_vs_ai') {
     nextTick(() => {
@@ -234,8 +239,7 @@ function handleStartGame() {
       } catch (error) {
         const debug = window.location.search.includes('gomokuDebug=1');
         if (debug) console.error('[GomokuApp] AI vs AI start failed:', error);
-  // 用非阻塞的控制台警告替代弹窗，避免中断游戏流程
-  console.warn('[GomokuApp] AI connection failed (start):', error);
+        console.warn('[GomokuApp] AI connection failed (start):', error);
       }
     });
   } else {
@@ -272,6 +276,7 @@ function handleConfigSaved(config) {
 }
 
 function handleRestartGame() {
+  hideGameOverOverlay.value = false;
   restartGame();
   closeHint();
   currentThinking.value = null; currentAIPlayer.value = null; lastMoveWithReasoning.value = null; thinkingHistory.value = [];

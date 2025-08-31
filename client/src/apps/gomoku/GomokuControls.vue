@@ -31,6 +31,21 @@
         提示
       </button>
 
+      <button
+        v-if="gameStarted && !gameOver && gameMode==='ai_vs_ai' && isAIAutoPlaying"
+        @click="$emit('stop-ai')"
+        class="btn btn-stop"
+      >
+        停止
+      </button>
+      <button
+        v-if="gameStarted && !gameOver && gameMode==='ai_vs_ai' && !isAIAutoPlaying"
+        @click="$emit('resume-ai')"
+        class="btn btn-primary"
+      >
+        继续
+      </button>
+
       <button @click="$emit('config-ai')" class="btn btn-config">
         AI配置
       </button>
@@ -63,9 +78,17 @@
       type: Boolean,
       default: false,
     },
+    gameMode: {
+      type: String,
+      default: 'human_vs_ai'
+    },
+    isAIAutoPlaying: {
+      type: Boolean,
+      default: true
+    }
   });
 
-  defineEmits(['start', 'restart', 'undo', 'hint', 'config-ai']);
+  defineEmits(['start', 'restart', 'undo', 'hint', 'config-ai', 'stop-ai', 'resume-ai']);
 </script>
 
 <style scoped>
@@ -142,6 +165,14 @@
 
   .btn-config:hover:not(:disabled) {
     background: linear-gradient(45deg, #7c3aed, #6d28d9);
+  }
+
+  .btn-stop {
+    background: linear-gradient(45deg, #ef4444, #dc2626);
+    color: #fff;
+  }
+  .btn-stop:hover:not(:disabled) {
+    background: linear-gradient(45deg, #dc2626, #b91c1c);
   }
 
   .game-mode-info {
