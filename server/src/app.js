@@ -13,6 +13,7 @@ import { createWorkTimerRoutes } from './routes/worktimer.routes.js';
 import { createNovelBookmarkRoutes } from './routes/novel-bookmarks.routes.js';
 import { createSnakeMultiplayerRoutes } from './routes/snake-multiplayer.routes.js';
 import messageRoutes from './routes/messages.routes.js';
+import { createInternalLogsRoutes } from './routes/internal.logs.routes.js';
 import errorHandler from './middleware/error.middleware.js';
 import {
   normalizeRequestKeys,
@@ -81,6 +82,11 @@ app.use('/api/work-timer', createWorkTimerRoutes(db));
 app.use('/api/novel-bookmarks', createNovelBookmarkRoutes(db));
 app.use('/api/snake-multiplayer', createSnakeMultiplayerRoutes());
 app.use('/api/messages', messageRoutes);
+
+// 内部调试路由（仅在非生产环境启用）
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/internal/logs', createInternalLogsRoutes());
+}
 
 // API根路径处理
 app.get('/api', (req, res) => {

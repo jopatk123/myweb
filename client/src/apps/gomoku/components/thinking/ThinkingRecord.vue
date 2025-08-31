@@ -37,7 +37,8 @@ defineProps({
 
 function formatPosition(position) {
   if (!position || (!position.row && position.row !== 0) || (!position.col && position.col !== 0)) return '-';
-  return `(${position.row + 1}, ${position.col + 1})`;
+  // 显示内部真实 0 基坐标，避免与 AI 推理文本不一致
+  return `(${position.row}, ${position.col})`;
 }
 
 function formatTime(timestamp) {

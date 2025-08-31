@@ -3,9 +3,11 @@
     <!-- 预设选择 -->
     <div class="preset-section">
       <label>快速配置</label>
-      <select v-model="selectedPreset" @change="applyPreset" class="preset-select">
+      <select v-model="selectedPreset" @change="handlePresetApply" class="preset-select">
         <option value="">选择预设配置...</option>
-        <option value="moonshot-8k">Moonshot 8K</option>
+        <option v-for="preset in presets" :key="preset.id" :value="preset.id">
+          {{ preset.name }}
+        </option>
       </select>
     </div>
 
@@ -43,7 +45,7 @@
         <input 
           v-model="localConfig.modelName" 
           type="text" 
-          placeholder="gpt-3.5-turbo"
+          placeholder="deepseek-chat"
         />
       </div>
 
@@ -82,14 +84,15 @@
 
 <script setup>
 import { ref, watch, onMounted, nextTick } from 'vue';
+import { useAIPresets } from '../../composables/useAIPresets.js';
 
 const props = defineProps({
-  modelValue: {
+    modelValue: {
     type: Object,
     default: () => ({
       apiUrl: '',
   apiKey: '',
-  modelName: 'kimi-k2-turbo-preview',
+  modelName: 'deepseek-chat',
       playerName: 'AI大师',
       maxTokens: 1000,
       temperature: 0.1
@@ -99,32 +102,22 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'preset']);
 
-const selectedPreset = ref('');
+const { selectedPreset, presets, applyPreset } = useAIPresets();
 const showAdvanced = ref(false);
 const localConfig = ref({ ...props.modelValue });
 // 防止父 -> 子 -> 父的递归回流
 const updatingFromParent = ref(false);
 
-// 预设配置（仅保留 Moonshot）
-const presets = {
-  'moonshot-8k': {
-    apiUrl: 'https://api.moonshot.cn/v1',
-    modelName: 'kimi-k2-turbo-preview',
-    playerName: 'Moonshot',
-    maxTokens: 1000,
-    temperature: 0.1
-  }
-};
-
-function applyPreset() {
-  if (selectedPreset.value && presets[selectedPreset.value]) {
-    const preset = presets[selectedPreset.value];
-    localConfig.value = {
-      ...localConfig.value,
-      ...preset,
-      apiKey: localConfig.value.apiKey // 保留已输入的API Key
-    };
-    emit('preset', selectedPreset.value);
+function handlePresetApply() {
+  if (selectedPreset.value) {
+    const result = applyPreset(selectedPreset.value, localConfig.value);
+    if (result.success) {
+      localConfig.value = {
+        ...result.config,
+        apiKey: localConfig.value.apiKey // 保留已输入的API Key
+      };
+      emit('preset', selectedPreset.value);
+    }
   }
 }
 

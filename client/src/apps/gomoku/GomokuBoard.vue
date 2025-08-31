@@ -102,6 +102,9 @@
       ctx.stroke();
     }
 
+  // 绘制坐标标注 (0~14) - 放在网格之上、棋子之下
+  drawCoordinates();
+
     // 绘制天元和星位
     const starPoints = [
       [4, 4],
@@ -138,6 +141,31 @@
     if (hoverPosition.value && !props.gameOver && props.currentPlayer === 1) {
       drawHoverStone(hoverPosition.value.row, hoverPosition.value.col);
     }
+  }
+
+  // 绘制坐标标注 (0~14)
+  function drawCoordinates() {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.font = `${Math.max(10, cellSize * 0.35)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // 列号（顶部）
+    for (let c = 0; c < boardSize; c++) {
+      const x = (c + 1) * cellSize;
+      const y = cellSize * 0.4; // 上方留白
+      ctx.fillText(String(c), x, y);
+    }
+
+    // 行号（左侧）
+    ctx.textAlign = 'right';
+    for (let r = 0; r < boardSize; r++) {
+      const x = cellSize * 0.55; // 左侧留白
+      const y = (r + 1) * cellSize;
+      ctx.fillText(String(r), x, y);
+    }
+    ctx.restore();
   }
 
   function drawStone(row, col, player) {

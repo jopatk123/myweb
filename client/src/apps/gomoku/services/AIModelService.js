@@ -6,7 +6,7 @@ export class AIModelService {
     this.apiUrl = this.normalizeApiUrl(config.apiUrl);
   // 去掉可能复制时带入的前后空白
   this.apiKey = (config.apiKey || '').trim();
-    this.modelName = config.modelName || 'gpt-3.5-turbo';
+  this.modelName = config.modelName || 'deepseek-chat';
     this.maxTokens = config.maxTokens || 1000;
     this.temperature = config.temperature || 0.1;
     this.playerName = config.playerName || 'AI玩家';
@@ -82,17 +82,13 @@ export class AIModelService {
 
   // 获取AI的下一步棋 - 支持思考过程回调
   async getNextMove(board, gameHistory, playerType, onThinkingUpdate = null) {
-    console.log('[DEBUG AIModelService] getNextMove called for playerType:', playerType);
-    console.log('[DEBUG AIModelService] isThinking:', this.isThinking);
     if (this.isThinking) {
-      console.error('[DEBUG AIModelService] AI is already thinking');
       throw new Error('AI正在思考中，请稍候...');
     }
 
     this.isThinking = true;
     const startTime = Date.now();
-    console.log('[DEBUG AIModelService] Starting AI thinking process');
-    
+
     try {
       // 开始思考
       if (onThinkingUpdate) {
@@ -105,9 +101,8 @@ export class AIModelService {
         });
       }
 
-      await this.delay(500); // 模拟思考时间
+      await this.delay(500);
 
-      // 分析棋局
       if (onThinkingUpdate) {
         onThinkingUpdate({
           player: playerType,
@@ -121,15 +116,7 @@ export class AIModelService {
       await this.delay(300);
 
       const prompt = this.buildPrompt(board, gameHistory, playerType);
-      console.log('[DEBUG AIModelService] Built prompt for AI:', prompt.substring(0, 200) + '...');
-      console.log('[DEBUG AIModelService] 完整AI提示词:');
-      console.log('='.repeat(50));
-      console.log(this.getSystemPrompt());
-      console.log('-'.repeat(50));
-      console.log(prompt);
-      console.log('='.repeat(50));
-      
-      // 调用AI模型
+
       if (onThinkingUpdate) {
         onThinkingUpdate({
           player: playerType,
@@ -140,43 +127,54 @@ export class AIModelService {
         });
       }
 
-      console.log('[DEBUG AIModelService] Making API request to:', this.apiUrl);
-      console.log('[DEBUG AIModelService] Request headers:', this.buildRequestHeaders());
-      const response = await fetch(this.apiUrl, {
+      // 生成请求载荷（纯文本），准备发送给 AI
+      const payloadString = this.buildRequestPayload(prompt);
+
+      let response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: this.buildRequestHeaders(),
-        body: this.buildRequestPayload(prompt)
+        body: payloadString
       });
-      console.log('[DEBUG AIModelService] API response status:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[DEBUG AIModelService] API request failed:', response.status, errorText);
-        // 针对用户只填了基址 /v1 的场景再做一次自动补全重试
+        // 尝试自动纠正基础路径后重试
         if (response.status === 404 && /\/v1\/?$/.test(this.originalApiUrl)) {
-          console.log('[DEBUG AIModelService] Attempting to fix URL and retry');
           const fixedUrl = this.normalizeApiUrl(this.originalApiUrl);
           if (fixedUrl !== this.apiUrl) {
-            this.apiUrl = fixedUrl; // 更新并重试一次
-            console.log('[DEBUG AIModelService] Retrying with fixed URL:', this.apiUrl);
+            this.apiUrl = fixedUrl;
             const retry = await fetch(this.apiUrl, {
               method: 'POST',
               headers: this.buildRequestHeaders(),
-              body: this.buildRequestPayload(prompt)
+              body: payloadString
             });
             if (retry.ok) {
+              const rawRetry = await retry.clone().text();
+              console.log('[Gomoku][AI][RawResponse][retry]', rawRetry);
               return await this.processResponse(retry, playerType, onThinkingUpdate, startTime, board, gameHistory);
             }
           }
         }
         if (response.status === 401) {
-          // 尝试给出更可操作的提示
-            throw new Error(`认证失败(401)，请检查: 1) API Key 是否正确且未过期 2) 是否包含多余空格/换行 3) Endpoint 与提供商是否匹配。原始响应: ${errorText}`);
+          throw new Error(`认证失败(401)，请检查: 1) API Key 是否正确且未过期 2) 是否包含多余空格/换行 3) Endpoint 与提供商是否匹配。原始响应: ${errorText}`);
         }
         throw new Error(`API请求失败: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      // 解析回复
+      // 记录成功响应的原始文本并发送到服务器内部日志（仅发送 requestText & responseText）
+      try {
+        const rawText = await response.clone().text();
+        // 在浏览器控制台输出：只显示请求文本与回复文本
+        try {
+          console.log('[Gomoku][AI][RequestText]', prompt);
+          console.log('[Gomoku][AI][ResponseText]', rawText);
+        } catch (e) {
+          // 忽略控制台写入错误
+        }
+      } catch (e) {
+        // 忽略读取失败
+      }
+
       if (onThinkingUpdate) {
         onThinkingUpdate({
           player: playerType,
@@ -189,9 +187,8 @@ export class AIModelService {
 
       await this.delay(300);
 
-  const result = await this.processResponse(response, playerType, onThinkingUpdate, startTime, board, gameHistory);
-      
-      // 完成思考
+      const result = await this.processResponse(response, playerType, onThinkingUpdate, startTime, board, gameHistory);
+
       if (onThinkingUpdate) {
         onThinkingUpdate({
           player: playerType,
@@ -203,14 +200,10 @@ export class AIModelService {
       }
 
       await this.delay(200);
-
       return result;
     } catch (error) {
-      console.error('[DEBUG AIModelService] AI模型调用失败:', error);
-      console.error('[DEBUG AIModelService] Error stack:', error.stack);
       throw error;
     } finally {
-      console.log('[DEBUG AIModelService] AI thinking completed, resetting isThinking flag');
       this.isThinking = false;
     }
   }
@@ -278,136 +271,23 @@ export class AIModelService {
     return Math.max(10, Math.min(90, baseRate + variation));
   }
 
-  // 构建系统提示词
+  // 获取系统提示词（使用统一服务）
   getSystemPrompt() {
-    return `你是一个专业的五子棋AI选手。你的目标是用最容易获胜的方式进行下棋。
-
-规则说明：
-- 棋盘大小：15x15
-- 目标：连成5子获胜（横、竖、斜均可）
-- 坐标系：行列都从0开始，到14结束
-- 棋子表示：· = 空位，● = 黑子，○ = 白子
-
-请你自由发挥，不要拘泥于任何术语或固定套路，只需根据当前棋盘和历史走棋记录，选择最容易获胜的落子。
-
-回复格式：
-请严格按照以下JSON格式回复，不要包含其他内容：
-{
-  "row": 数字,
-  "col": 数字,
-  "reasoning": "详细的分析和下棋理由"
-}
-
-示例：
-{
-  "row": 7,
-  "col": 8,
-  "reasoning": "此位置有助于我快速连成五子，或阻止对手获胜。"
-}`;
+    return aiPromptService.getSystemPrompt('gomoku-system');
   }
 
-  // 构建游戏状态提示词
+  // 构建游戏状态提示词（使用统一服务）
   buildPrompt(board, gameHistory, playerType) {
-    const boardStr = this.boardToString(board);
-    const historyStr = this.historyToString(gameHistory);
-    const playerStr = playerType === 1 ? '黑子' : '白子';
-    
-    return `当前棋局状态：
-棋盘（0=空位，1=黑子，2=白子）：
-${boardStr}
-
-历史走棋记录：
-${historyStr}
-
-你现在执${playerStr}，请分析当前局面并给出最佳下棋位置。`;
-  }
-
-  // 将棋盘转换为字符串
-  boardToString(board) {
-    let result = '   ';
-    // 添加列号
-    for (let i = 0; i < 15; i++) {
-      result += i.toString().padStart(2, ' ') + ' ';
-    }
-    result += '\n';
-    
-    // 添加棋盘内容
-    for (let i = 0; i < 15; i++) {
-      result += i.toString().padStart(2, ' ') + ' ';
-      for (let j = 0; j < 15; j++) {
-        let cell = board[i][j];
-        if (cell === 0) {
-          result += ' · '; // 空位用点表示，更直观
-        } else if (cell === 1) {
-          result += ' ● '; // 黑子
-        } else if (cell === 2) {
-          result += ' ○ '; // 白子
-        } else {
-          result += board[i][j].toString().padStart(2, ' ') + ' ';
-        }
-      }
-      result += '\n';
-    }
-    return result;
-  }
-
-  // 将历史记录转换为字符串
-  historyToString(gameHistory) {
-    if (!gameHistory || gameHistory.length === 0) {
-      return '暂无走棋记录';
-    }
-    
-    let result = '';
-    gameHistory.forEach((move, index) => {
-      const playerStr = move.player === 1 ? '黑子' : '白子';
-      result += `第${index + 1}步: ${playerStr} 下在 (${move.row}, ${move.col})\n`;
+    return aiPromptService.buildGamePrompt('gomoku-system', {
+      board,
+      gameHistory,
+      playerType
     });
-    return result;
   }
 
-  // 解析AI回复
+  // 解析AI回复（使用统一服务）
   parseAIResponse(response) {
-    try {
-      // 尝试提取JSON
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        
-        // 验证坐标有效性
-        if (this.isValidCoordinate(parsed.row, parsed.col)) {
-          return {
-            row: parsed.row,
-            col: parsed.col,
-            reasoning: parsed.reasoning || '无说明'
-          };
-        }
-      }
-      
-      // 如果JSON解析失败，尝试正则表达式提取坐标
-      const coordMatch = response.match(/(?:行|row)[\s:：]*(\d+)[\s,，]*(?:列|col)[\s:：]*(\d+)/i);
-      if (coordMatch) {
-        const row = parseInt(coordMatch[1]);
-        const col = parseInt(coordMatch[2]);
-        if (this.isValidCoordinate(row, col)) {
-          return {
-            row,
-            col,
-            reasoning: '从回复中提取的坐标'
-          };
-        }
-      }
-      
-      throw new Error('无法解析AI回复中的坐标信息');
-    } catch (error) {
-      console.error('解析AI回复失败:', error, '原始回复:', response);
-      throw new Error(`AI回复格式错误: ${error.message}`);
-    }
-  }
-
-  // 验证坐标有效性
-  isValidCoordinate(row, col) {
-    return Number.isInteger(row) && Number.isInteger(col) && 
-           row >= 0 && row < 15 && col >= 0 && col < 15;
+    return aiPromptService.parseAIResponse(response, 'gomoku');
   }
 
   // 测试AI连接
@@ -424,14 +304,10 @@ ${historyStr}
   }
 }
 
-// 预设AI配置
-export const PRESET_AI_CONFIGS = [
-  {
-    id: 'Kimi',
-    name: 'Kimi',
-    apiUrl: 'https://api.moonshot.cn/v1',
-    modelName: 'kimi-k2-turbo-preview',
-    description: 'Kimi'
-  }
+// 导入统一的AI预设服务
+import { aiPresetService, PRESET_AI_CONFIGS } from './AIPresetService.js';
+// 导入统一的AI提示词服务
+import { aiPromptService } from './AIPromptService.js';
 
-];
+// 导出预设配置（从统一服务获取）
+export { PRESET_AI_CONFIGS };

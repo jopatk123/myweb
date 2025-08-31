@@ -36,9 +36,7 @@ export class GameModeService {
 
   // 配置玩家AI
   configurePlayerAI(playerNumber, aiConfig) {
-    console.log('[DEBUG GameModeService] configurePlayerAI called for player', playerNumber, 'with config:', aiConfig);
     if (!aiConfig || !aiConfig.apiUrl || !aiConfig.apiKey) {
-      console.error('[DEBUG GameModeService] AI配置不完整:', aiConfig);
       throw new Error('AI配置不完整');
     }
 
@@ -46,14 +44,12 @@ export class GameModeService {
     this.players[playerNumber].name = aiConfig.playerName || `AI${playerNumber}`;
     
     // 创建AI服务实例
-    console.log('[DEBUG GameModeService] Creating AIModelService instance');
     const aiService = new AIModelService({
       ...aiConfig,
       playerName: this.players[playerNumber].name
     });
     
     this.aiServices.set(playerNumber, aiService);
-    console.log('[DEBUG GameModeService] AI service created and stored for player', playerNumber);
   }
 
   // 获取玩家信息
@@ -78,15 +74,11 @@ export class GameModeService {
 
   // 获取AI移动 - 支持思考过程回调
   async getAIMove(playerNumber, board, gameHistory, onThinkingUpdate = null) {
-    console.log('[DEBUG GameModeService] getAIMove called for player', playerNumber);
     const aiService = this.getAIService(playerNumber);
-    console.log('[DEBUG GameModeService] AI service for player', playerNumber, ':', aiService);
     if (!aiService) {
-      console.error('[DEBUG GameModeService] No AI service found for player', playerNumber);
       throw new Error(`玩家${playerNumber}未配置AI服务`);
     }
 
-    console.log('[DEBUG GameModeService] Calling aiService.getNextMove');
     return await aiService.getNextMove(board, gameHistory, playerNumber, onThinkingUpdate);
   }
 

@@ -200,24 +200,23 @@ function handleStartGame() {
 function handleConfiguredStart() { handleStartGame(); }
 
 function handleConfigSaved(config) {
-  console.log('[DEBUG GomokuApp] handleConfigSaved called with:', config);
   gameMode.value = config.mode;
   aiConfig.value = config.aiConfig;
   
   // 配置游戏模式服务
-  console.log('[DEBUG GomokuApp] Setting game mode to:', config.mode);
+  const debug = window.location.search.includes('gomokuDebug=1');
   gameModeService.setGameMode(config.mode);
   
   if (config.mode === 'human_vs_ai') {
-    console.log('[DEBUG GomokuApp] Configuring player 2 AI with config:', config.aiConfig);
+    if (debug) console.log('[GomokuApp] Configuring player 2 AI');
     gameModeService.configurePlayerAI(2, config.aiConfig);
   } else if (config.mode === 'ai_vs_ai') {
     // AI对AI模式需要配置两个AI
-    console.log('[DEBUG GomokuApp] Configuring AI vs AI mode');
+    if (debug) console.log('[GomokuApp] Configuring AI vs AI mode');
     gameModeService.configurePlayerAI(1, config.ai1Config || config.aiConfig);
     gameModeService.configurePlayerAI(2, config.ai2Config || config.aiConfig);
   }
-  console.log('[DEBUG GomokuApp] Game mode service configured');
+  if (debug) console.log('[GomokuApp] Game mode service configured');
 }
 
 function handleRestartGame() {
@@ -236,39 +235,35 @@ function handleRestartGame() {
 }
 
 async function handlePlayerMove(row, col) {
-  console.log('[DEBUG GomokuApp] handlePlayerMove called:', row, col);
+  const debug = window.location.search.includes('gomokuDebug=1');
   // 在AI思考时或者不是人类玩家回合时不允许下棋
   if (isAIThinking.value) {
-    console.log('[DEBUG GomokuApp] AI is thinking, player move blocked');
+    if (debug) console.log('[GomokuApp] AI is thinking, player move blocked');
     return;
   }
   
   // 检查当前玩家是否为人类
-  console.log('[DEBUG GomokuApp] Current player:', currentPlayer.value, 'is AI:', gameModeService.isAIPlayer(currentPlayer.value));
   if (gameModeService.isAIPlayer(currentPlayer.value)) {
-    console.log('[DEBUG GomokuApp] Current player is AI, move blocked');
+    if (debug) console.log('[GomokuApp] Current player is AI, move blocked');
     return;
   }
-
-  console.log('[DEBUG GomokuApp] Making player move');
   if (makePlayerMove(row, col)) {
-    console.log('[DEBUG GomokuApp] Player move successful, redrawing board');
+    if (debug) console.log('[GomokuApp] Player move successful');
     nextTick(() => {
       gomokuBoard.value?.drawBoard();
     });
 
     // 检查游戏是否结束
     if (gameOver.value) {
-      console.log('[DEBUG GomokuApp] Game over, winner:', winner.value);
       recordGameResult(winner.value);
       return;
     }
 
     // 处理AI回合
-    console.log('[DEBUG GomokuApp] Calling handleAITurn');
+    if (debug) console.log('[GomokuApp] Calling handleAITurn');
     await handleAITurn();
   } else {
-    console.log('[DEBUG GomokuApp] Player move failed');
+    if (debug) console.log('[GomokuApp] Player move failed');
   }
 }
 
@@ -335,7 +330,8 @@ onMounted(() => {
       }
     }
   } catch (error) {
-    console.error('加载配置失败:', error);
+  const debug = window.location.search.includes('gomokuDebug=1');
+  if (debug) console.error('加载配置失败:', error);
   }
 
   nextTick(() => {

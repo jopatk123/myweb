@@ -25,7 +25,7 @@
       </div>
       <div class="form-group">
         <label>模型名称:</label>
-        <input type="text" v-model="modelValue.modelName" placeholder="gpt-3.5-turbo" />
+        <input type="text" v-model="modelValue.modelName" placeholder="deepseek-chat" />
       </div>
       <div class="form-group">
         <label>玩家名称:</label>

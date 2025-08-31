@@ -36,39 +36,24 @@ export function useGomokuAIThinking(deps) {
   const lastMoveWithReasoning = ref(null);
 
   async function handleAITurn() {
-    console.log('[DEBUG] handleAITurn called, gameOver:', gameOver.value, 'currentPlayer:', deps.currentPlayer.value);
-    if (gameOver.value) {
-      console.log('[DEBUG] Game is over, AI turn skipped');
-      return;
-    }
-    const playerNumber = deps.currentPlayer.value;
-    console.log('[DEBUG] Checking if player', playerNumber, 'is AI:', gameModeService.isAIPlayer(playerNumber));
-    if (!gameModeService.isAIPlayer(playerNumber)) {
-      console.log('[DEBUG] Current player is not AI, turn skipped');
-      return;
-    }
-
-    console.log('[DEBUG] Starting AI turn for player', playerNumber);
+  if (gameOver.value) return;
+  const playerNumber = deps.currentPlayer.value;
+  if (!gameModeService.isAIPlayer(playerNumber)) return;
     isAIThinking.value = true;
     currentAIPlayer.value = playerNumber;
   const debug = window.location.search.includes('gomokuDebug=1');
-  if (debug) console.log('[Gomoku][AI] turn start for player', playerNumber);
 
     try {
-      const playerInfo = gameModeService.getPlayer(playerNumber);
-      console.log('[DEBUG] Player info:', playerInfo);
-      console.log('[DEBUG] Getting AI move from gameModeService');
-      const aiResult = await gameModeService.getAIMove(
+  const playerInfo = gameModeService.getPlayer(playerNumber);
+    const aiResult = await gameModeService.getAIMove(
         playerNumber,
         board.value,
         gameHistory ? gameHistory.value : [],
         (thinkingUpdate) => {
-          console.log('[DEBUG] Thinking update received:', thinkingUpdate);
           currentThinking.value = thinkingUpdate;
-          if (debug) console.log('[Gomoku][AI] thinking update', thinkingUpdate);
+      if (debug) console.log('[Gomoku][AI] thinking update', thinkingUpdate);
         }
       );
-      console.log('[DEBUG] AI move result:', aiResult);
 
       // 补充 80% / 100% 进度（AIModelService 解析后已经返回，这里模拟终段展示）
       currentThinking.value = {
@@ -82,8 +67,7 @@ export function useGomokuAIThinking(deps) {
 
       currentThinking.value = null;
 
-      if (makePlayerMove(aiResult.row, aiResult.col)) {
-        console.log('[DEBUG] AI move executed successfully at:', aiResult.row, aiResult.col);
+  if (makePlayerMove(aiResult.row, aiResult.col)) {
         const thinkingRecord = {
           moveNumber: moveCount.value,
             player: currentAIPlayer.value,
@@ -93,13 +77,11 @@ export function useGomokuAIThinking(deps) {
             analysis: aiResult.analysis
         };
   thinkingHistory.value.push(thinkingRecord);
-  console.log('[DEBUG] Added thinking record to history. Total records:', thinkingHistory.value.length);
   if (debug) console.log('[Gomoku][AI] move decided', thinkingRecord);
         lastMoveWithReasoning.value = thinkingRecord;
         nextTick(() => { gomokuBoard.value?.drawBoard(); });
 
         if (gameOver.value) {
-          console.log('[DEBUG] Game ended after AI move, winner:', winner.value);
           recordGameResult(winner.value);
           return;
         }
@@ -108,16 +90,13 @@ export function useGomokuAIThinking(deps) {
           setTimeout(() => { handleAITurn(); }, 1000);
         }
       } else {
-        console.error('[DEBUG] AI move FAILED - makePlayerMove returned false for:', aiResult.row, aiResult.col);
-        console.error('[DEBUG] Current board state at position:', board.value[aiResult.row][aiResult.col]);
-        console.error('[DEBUG] Current player should be:', currentAIPlayer.value);
+        // fallback handled below
       }
     } catch (e) {
-      console.error('[DEBUG] AI下棋失败, 使用后备逻辑:', e);
-      console.error('[DEBUG] Error stack:', e.stack);
+      if (debug) console.error('[Gomoku][AI] error, using fallback', e);
       await handleSimpleAIMove();
     } finally {
-      console.log('[DEBUG] AI turn completed, resetting thinking state');
+      if (debug) console.log('[Gomoku][AI] turn completed');
       isAIThinking.value = false;
       currentAIPlayer.value = null;
     }

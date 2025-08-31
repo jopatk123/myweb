@@ -37,21 +37,22 @@ export function useGomokuGame() {
   }
 
   function makePlayerMove(row, col) {
-    console.log('[DEBUG makePlayerMove] Called with:', row, col, 'currentPlayer:', gameLogic.value.currentPlayer, 'gameOver:', gameLogic.value.gameOver);
-    
+    const debug = window.location.search.includes('gomokuDebug=1');
+    if (debug) console.log('[DEBUG makePlayerMove] Called with:', row, col, 'currentPlayer:', gameLogic.value.currentPlayer, 'gameOver:', gameLogic.value.gameOver);
+
     if (gameLogic.value.gameOver) {
-      console.log('[DEBUG makePlayerMove] Game is over, move rejected');
+      if (debug) console.log('[DEBUG makePlayerMove] Game is over, move rejected');
       return false;
     }
 
     // 移除玩家限制检查，允许AI调用此函数
-    console.log('[DEBUG makePlayerMove] Attempting to make move');
+    if (debug) console.log('[DEBUG makePlayerMove] Attempting to make move');
     if (gameLogic.value.makeMove(row, col)) {
-      console.log('[DEBUG makePlayerMove] Move successful! New current player:', gameLogic.value.currentPlayer);
+      if (debug) console.log('[DEBUG makePlayerMove] Move successful! New current player:', gameLogic.value.currentPlayer);
       lastMove.value = { row, col };
       return true;
     }
-    console.log('[DEBUG makePlayerMove] Move failed - position may be occupied or invalid');
+    if (debug) console.log('[DEBUG makePlayerMove] Move failed - position may be occupied or invalid');
     return false;
   }
 

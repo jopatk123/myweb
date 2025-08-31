@@ -1,7 +1,7 @@
 // AI配置管理组合式函数
 import { ref, reactive } from 'vue';
 import { GameModeService, GAME_MODES } from '../services/GameModeService.js';
-import { PRESET_AI_CONFIGS } from '../services/AIModelService.js';
+import { aiPresetService, PRESET_AI_CONFIGS } from '../services/AIPresetService.js';
 
 export function useAIConfig() {
   // 游戏模式服务
@@ -22,7 +22,7 @@ export function useAIConfig() {
   const defaultConfig = {
     apiUrl: '',
     apiKey: '',
-    modelName: 'gpt-3.5-turbo',
+  modelName: 'deepseek-chat',
     playerName: '',
     maxTokens: 1000,
     temperature: 0.1
@@ -56,24 +56,17 @@ export function useAIConfig() {
 
   // 获取预设配置
   function getPresetConfig(presetId) {
-    return PRESET_AI_CONFIGS.find(config => config.id === presetId);
+    return aiPresetService.getPresetById(presetId);
   }
 
   // 应用预设配置
   function applyPresetConfig(playerNumber, presetId) {
-    const preset = getPresetConfig(presetId);
-    if (!preset) {
-      return { success: false, error: '未找到预设配置' };
+    try {
+      const config = aiPresetService.applyPreset(presetId, defaultConfig);
+      return { success: true, config };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
-
-    const config = {
-      ...defaultConfig,
-      apiUrl: preset.apiUrl,
-      modelName: preset.modelName,
-      playerName: preset.name
-    };
-
-    return { success: true, config };
   }
 
   // 测试AI连接
@@ -161,7 +154,8 @@ export function useAIConfig() {
         setGameMode(currentMode.value);
       }
     } catch (error) {
-      console.error('加载AI配置失败:', error);
+    const debug = window.location.search.includes('gomokuDebug=1');
+    if (debug) console.error('加载AI配置失败:', error);
     }
   }
 

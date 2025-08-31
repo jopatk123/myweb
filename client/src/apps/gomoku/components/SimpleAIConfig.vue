@@ -45,6 +45,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { aiPresetService } from '../services/AIPresetService.js';
 import GameModeSelector from './common/GameModeSelector.vue';
 import HumanVsAISection from './simple-config/HumanVsAISection.vue';
 import AIVsAISection from './simple-config/AIVsAISection.vue';
@@ -53,20 +54,18 @@ const emit = defineEmits(['close', 'start-game', 'config-saved']);
 
 // 基础状态
 const gameMode = ref('human_vs_ai');
-const config = ref({ apiUrl: '', apiKey: '', modelName: 'gpt-3.5-turbo', playerName: 'AI大师' });
-const ai1Config = ref({ apiUrl: '', apiKey: '', modelName: 'gpt-3.5-turbo', playerName: 'AI黑子' });
-const ai2Config = ref({ apiUrl: '', apiKey: '', modelName: 'gpt-3.5-turbo', playerName: 'AI白子' });
+// 默认使用 Deepseek 预设
+const config = ref({ apiUrl: 'https://api.deepseek.com/v1', apiKey: '', modelName: 'deepseek-chat', playerName: 'Deepseek AI' });
+const ai1Config = ref({ apiUrl: '', apiKey: '', modelName: 'deepseek-chat', playerName: 'AI黑子' });
+const ai2Config = ref({ apiUrl: '', apiKey: '', modelName: 'deepseek-chat', playerName: 'AI白子' });
 
 // 测试状态
 const testing = ref(false); const testResult = ref(null);
 const testingAI1 = ref(false); const testingAI2 = ref(false);
 const ai1TestResult = ref(null); const ai2TestResult = ref(null);
 
-// 预设
-const presets = {
-  openai: { apiUrl: 'https://api.openai.com/v1/chat/completions', modelName: 'gpt-3.5-turbo', playerName: 'GPT助手' },
-  claude: { apiUrl: 'https://api.anthropic.com/v1/messages', modelName: 'claude-3-sonnet-20240229', playerName: 'Claude助手' }
-};
+// 使用统一的预设服务
+const presets = aiPresetService.presets;
 
 // 计算属性（确保返回布尔值，否则会把最后一个真值字符串传下去触发类型警告）
 const canTest = computed(() => !!(config.value.apiUrl && config.value.apiKey));
@@ -87,7 +86,7 @@ async function genericTest(targetRef, testingRef, resultRef){
     const url = targetRef.value.apiUrl.replace(/\s+/g,'');
     // 做一个最小 POST 调用（不会真正消耗大量 tokens）
     const payload = {
-      model: targetRef.value.modelName || 'gpt-3.5-turbo',
+    model: targetRef.value.modelName || 'deepseek-chat',
       messages:[{ role:'user', content:'ping' }],
       max_tokens:1
     };
@@ -125,15 +124,15 @@ function saveAndStart(){
 }
 
 function resetConfig(){
-  Object.assign(config.value,{ apiUrl:'', apiKey:'', modelName:'gpt-3.5-turbo', playerName:'AI大师' });
-  Object.assign(ai1Config.value,{ apiUrl:'', apiKey:'', modelName:'gpt-3.5-turbo', playerName:'AI黑子' });
-  Object.assign(ai2Config.value,{ apiUrl:'', apiKey:'', modelName:'gpt-3.5-turbo', playerName:'AI白子' });
+  Object.assign(config.value,{ apiUrl:'', apiKey:'', modelName:'deepseek-chat', playerName:'AI大师' });
+  Object.assign(ai1Config.value,{ apiUrl:'', apiKey:'', modelName:'deepseek-chat', playerName:'AI黑子' });
+  Object.assign(ai2Config.value,{ apiUrl:'', apiKey:'', modelName:'deepseek-chat', playerName:'AI白子' });
   testResult.value=ai1TestResult.value=ai2TestResult.value=null;
 }
 
 function loadConfig(){
   try { const saved=localStorage.getItem('gomoku_simple_config'); if(saved){ const data=JSON.parse(saved); gameMode.value=data.gameMode||'human_vs_ai'; if(data.config){ Object.assign(config.value,{ ...data.config, apiKey:'' }); } }}
-  catch(e){ console.error('加载配置失败:',e); }
+    catch(error){ const debug = window.location.search.includes('gomokuDebug=1'); if(debug) console.error('加载配置失败:',error); }
 }
 onMounted(loadConfig);
 </script>
