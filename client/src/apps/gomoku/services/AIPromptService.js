@@ -1,4 +1,25 @@
 // AI提示词管理服务 - 五子棋AI提示词模板和逻辑
+import { GOMOKU_ADVANCED_PROMPT } from './AIGomokuPromptTemplate.js';
+
+// ========= 常量区域 =========
+export const BOARD_SIZE = 15;
+export const DEFAULT_TEMPLATE_ID = 'gomoku-system';
+export const FALLBACK_TEMPLATE_ID = 'gomoku-advanced';
+const THREAT_PRIORITIES = Object.freeze({
+  '五连': 10,
+  '活四': 9,
+  '冲四': 8,
+  '跳四': 7,
+  '活三': 6,
+  '冲三': 5,
+  '活跳三': 4,
+  '冲跳三': 3,
+  '跳三': 3,
+  '死跳三': 2,
+  '活二': 1,
+  '跳二': 1
+});
+
 export class AIPromptService {
   constructor() {
     this.promptTemplates = this.initializePromptTemplates();
@@ -6,126 +27,20 @@ export class AIPromptService {
 
   // 初始化提示词模板
   initializePromptTemplates() {
+    // 提示词模板集中定义（如需新增模板，可在此扩展或创建新的模板文件）
     return {
-      // 高级五子棋AI提示词模板
       'gomoku-advanced': {
         id: 'gomoku-advanced',
         name: '高级五子棋AI提示词',
         description: '包含详细威胁分析、跳跃威胁识别和完整封堵策略的高级AI提示词',
-        template: `你是一个专业的五子棋AI选手，具备深度分析能力。请严格按照以下步骤进行分析：
-
-首先确定棋盘大小，当前棋盘大小为15x15，从(0,0)到(14,14)，行列都从0开始，到14结束
-
-第一步：威胁识别和分类
-扫描棋盘识别以下威胁类型（按优先级排序）：
-
-1. 五连：五子连线，获胜条件
-   示例：● ● ● ● ●
-
-2. 活四：四子连线，两端无阻挡，下一步必胜
-   示例：· ● ● ● ● ·
-   
-3. 冲四：四子连线，一端被阻挡，另一端可形成五连
-   示例：○ ● ● ● ● ·（左端被阻挡）
-   示例：边 ● ● ● ● ·（左端被边界阻挡）
-
-4. 跳四：四子不连续但可形成五连的特殊形态
-   - 跳一：● ● ● · ●（中间间隔一个空位）
-   - 跳二：● ● · ● ●（两端各有两子，中间隔一位）
-   - 跳三：● · ● ● ●（左端一子，右端三子，中间隔一位）
-   示例：● ● ● · ● ·（需封堵空位形成五连）
-
-5. 活三：三子连线，两端无阻挡，下一步可形成活四
-   示例：· ● ● ● ·
-   
-6. 跳三：三子不连续但可形成活三或冲三的特殊形态
-   - 单跳三：● ● · ●（两子连续，隔一位一子）
-   - 双跳三：● · ● · ●（三子不连续，两个间隔）
-   示例：· ● ● · ● ·（需要同时考虑两个发展方向）
-
-7. 冲三：三子连线，一端被阻挡，另一端可形成冲四
-   示例：○ ● ● ● ·（左端被阻挡）
-
-8. 活二：二子连线，两端无阻挡，可发展为活三
-   示例：· ● ● ·
-
-9. 跳二：二子不连续但可发展的形态
-   示例：· ● · ● ·
-
-第二步：威胁分析
-对每个威胁进行详细分析：
-- 威胁方向：水平（—）、垂直（|）、主对角（\）、次对角（/）
-- 威胁位置：精确的起始点和结束点坐标
-- 发展空间：分析两端和中间空隙的阻挡情况
-- 威胁等级：按优先级排序（五连>活四>冲四>跳四>活三>跳三>冲三>...）
-- 关键封堵点：必须封堵的位置坐标
-
-第三步：专项封堵策略
-
-活四封堵策略（最高优先级）：
-1. 立即封堵活四的任意一端
-2. 如果同时存在多个活四，优先封堵能形成自己攻击的位置
-
-冲四封堵策略：
-1. 识别未被阻挡的一端
-2. 在开口端进行封堵
-3. 示例：○ ● ● ● ● · → 必须在(row, col+1)封堵
-
-跳四封堵策略：
-1. 识别跳四的空隙位置
-2. 封堵关键空位阻止形成五连
-3. 示例：● ● ● · ● · → 必须封堵(row, col+3)位置
-
-活三封堵策略：
-1. 识别活三威胁线的两个端点坐标
-2. 检查两端是否被边界或棋子阻挡
-3. 选择最佳封堵位置：
-   - 优先选择能同时建立自己威胁的位置
-   - 如果两端都可封堵，选择更有利于自己发展的一端
-4. 示例：· ● ● ● · → 可封堵两端中的任意一端
-
-跳三封堵策略：
-1. 分析跳三的具体形态
-2. 封堵关键发展位置
-3. 示例：· ● ● · ● · → 重点关注(row, col+3)和两端发展
-
-第四步：位置验证
-验证每个候选位置：
-1. 边界检查：确保坐标在(0,0)到(14,14)范围内
-2. 占用检查：确保目标位置为空(值为0)
-3. 有效性检查：验证封堵能真正阻止威胁
-4. 冲突检查：避免选择已被占用的位置
-
-第五步：综合决策
-选择最佳落子位置，综合考虑：
-1. 威胁优先级：活四>冲四>跳四>活三>跳三>冲三>活二
-2. 防守效果：能否有效阻止对手威胁
-3. 攻击价值：是否能建立自己的威胁
-4. 位置价值：中心位置通常比边角更有价值
-5. 连锁效应：一步棋能否同时防守和进攻
-
-特殊情况处理：
-- 同时存在多个活三：选择能防住最危险的，或能形成自己威胁的
-- 跳棋威胁：重点分析不连续威胁的关键封堵点
-- 边界威胁：考虑边界对威胁发展的限制
-- 复合威胁：一个位置可能同时形成多种威胁
-
-关键提醒：
-- 活四和跳四必须立即封堵，否则下一步必输
-- 活三威胁必须优先处理，否则下一步形成活四
-- 跳三和跳四要特别注意不连续的威胁模式
-- 封堵位置必须精确，考虑所有可能的发展方向
-- 优先选择能同时防守和进攻的位置
-- 仔细分析边界对威胁发展的影响作用
-
-回复格式：
-{
-  "row": 数字,
-  "col": 数字,
-  "reasoning": "分析过程，包括：1.威胁识别结果 2.威胁分析和分类 3.选择的封堵策略 4.位置验证过程 5.最终决策理由。需要控制在200字以内"
-}
-
-`
+        template: GOMOKU_ADVANCED_PROMPT
+      },
+      // 兼容旧代码中使用的默认ID（内容与高级版相同，可后续独立定制）
+      'gomoku-system': {
+        id: 'gomoku-system',
+        name: '系统默认五子棋AI提示词',
+        description: '系统默认（当前与高级模板一致）',
+        template: GOMOKU_ADVANCED_PROMPT
       }
     };
   }
@@ -141,10 +56,9 @@ export class AIPromptService {
   }
 
   // 获取系统提示词
-  getSystemPrompt(templateId = 'gomoku-advanced') {
-  // 目前项目仅使用单一模板，按请求id返回对应模板内容，找不到时回退到默认模板
-  const template = this.promptTemplates[templateId];
-  return template ? template.template : this.promptTemplates['gomoku-advanced'].template;
+  getSystemPrompt(templateId = DEFAULT_TEMPLATE_ID) {
+    const template = this.promptTemplates[templateId] || this.promptTemplates[FALLBACK_TEMPLATE_ID];
+    return template.template;
   }
 
   // 构建游戏状态提示词（templateId 被忽略，因为当前仅有单一模板）
@@ -267,14 +181,28 @@ ${threatAnalysis}
   // 解析AI回复
   parseAIResponse(response) {
     try {
-      // 尝试提取JSON
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!response || typeof response !== 'string') throw new Error('空回复');
+      // 1. 代码块 JSON
+      const fenced = response.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      if (fenced && fenced[1]) {
+        const parsed = JSON.parse(fenced[1].trim());
+        return this.validateGomokuResponse(parsed);
+      }
+      // 2. 第一段 JSON 对象
+      const jsonMatch = response.match(/\{[\s\S]*?\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         return this.validateGomokuResponse(parsed);
       }
-      
-      throw new Error('无法解析AI回复中的JSON信息');
+      // 3. 宽松坐标匹配
+      const coordRegex = /row\D*(-?\d+)[\s\S]*?col\D*(-?\d+)/i;
+      const loose = response.match(coordRegex);
+      if (loose) {
+        const row = parseInt(loose[1], 10);
+        const col = parseInt(loose[2], 10);
+        return this.validateGomokuResponse({ row, col, reasoning: response.slice(0, 200) });
+      }
+      throw new Error('未找到有效JSON或坐标');
     } catch (error) {
       throw new Error(`AI回复格式错误: ${error.message}`);
     }
@@ -283,19 +211,16 @@ ${threatAnalysis}
   // 验证五子棋AI回复
   validateGomokuResponse(parsed) {
     if (this.isValidCoordinate(parsed.row, parsed.col)) {
-      return {
-        row: parsed.row,
-        col: parsed.col,
-        reasoning: parsed.reasoning || '无说明'
-      };
+      let reasoning = (parsed.reasoning || '').toString();
+      if (reasoning.length > 220) reasoning = reasoning.slice(0, 217) + '...';
+      return { row: parsed.row, col: parsed.col, reasoning: reasoning || '无说明' };
     }
     throw new Error('AI回复中的坐标无效');
   }
 
   // 验证坐标有效性
   isValidCoordinate(row, col) {
-    return Number.isInteger(row) && Number.isInteger(col) && 
-           row >= 0 && row < 15 && col >= 0 && col < 15;
+    return Number.isInteger(row) && Number.isInteger(col) && row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
   }
 
   // 威胁分析工具方法
@@ -568,21 +493,7 @@ ${threatAnalysis}
 
   // 获取威胁优先级
   getThreatPriority(type) {
-    const priorities = {
-      '五连': 10,
-      '活四': 9,
-      '冲四': 8,
-      '跳四': 7,
-      '活三': 6,
-      '冲三': 5,
-      '活跳三': 4,
-      '冲跳三': 3,
-      '死跳三': 2,
-      '跳三': 3,
-      '活二': 1,
-      '跳二': 1
-    };
-    return priorities[type] || 0;
+    return THREAT_PRIORITIES[type] || 0;
   }
 
   // 生成威胁分析提示词

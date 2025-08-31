@@ -281,9 +281,7 @@ export class AIModelService {
         playerName: this.playerName,
         thinkingTime,
         analysis: {
-          thinkingTime,
-            moveType: this.analyzeMoveType(parsed, board),
-            winProbability: this.estimateWinProbability(parsed, board, gameHistory)
+          thinkingTime
         }
       };
     }
@@ -302,9 +300,7 @@ export class AIModelService {
         playerName: this.playerName,
         thinkingTime,
         analysis: {
-          thinkingTime,
-          moveType: this.analyzeMoveType(parsed, board),
-          winProbability: this.estimateWinProbability(parsed, board, gameHistory)
+          thinkingTime
         }
       };
     }
@@ -316,20 +312,7 @@ export class AIModelService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // 分析招法类型
-  analyzeMoveType(move, board) {
-    // 简单的招法类型分析
-    const types = ['开局', '攻击', '防守', '连接', '封堵'];
-    return types[Math.floor(Math.random() * types.length)];
-  }
-
-  // 估算胜率
-  estimateWinProbability(move, board, gameHistory) {
-    // 简单的胜率估算
-    const baseRate = 50;
-    const variation = Math.floor(Math.random() * 30) - 15;
-    return Math.max(10, Math.min(90, baseRate + variation));
-  }
+  // （已移除本地招法/胜率估算，完全依赖大模型返回与提示词逻辑）
 
   // 获取系统提示词（使用统一服务）
   getSystemPrompt() {
