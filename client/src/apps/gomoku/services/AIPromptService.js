@@ -1,4 +1,4 @@
-// AI提示词管理服务 - 统一管理所有AI提示词模板和逻辑
+// AI提示词管理服务 - 五子棋AI提示词模板和逻辑
 export class AIPromptService {
   constructor() {
     this.promptTemplates = this.initializePromptTemplates();
@@ -41,48 +41,6 @@ export class AIPromptService {
   "col": 8,
   "reasoning": "此位置有助于我快速连成五子，或阻止对手获胜。"
 }`
-      },
-
-      // 贪吃蛇系统提示词模板
-      'snake-system': {
-        id: 'snake-system',
-        name: '贪吃蛇系统提示词',
-        description: '贪吃蛇AI的系统角色定义和规则说明',
-        template: `你是一个专业的贪吃蛇AI选手。你的目标是在不撞墙和不撞到自己的前提下，尽可能多地吃到食物。
-
-规则说明：
-- 游戏区域：20x20的网格
-- 目标：控制蛇移动，吃到食物，让蛇变长
-- 移动方向：上、下、左、右四个方向
-- 死亡条件：撞墙或撞到自己的身体
-
-策略要点：
-1. 优先选择安全的方向移动
-2. 在安全的前提下，选择距离食物最近的方向
-3. 避免进入死胡同
-4. 保持蛇身的连续性
-
-回复格式：
-请严格按照以下JSON格式回复，不要包含其他内容：
-{
-  "direction": "up|down|left|right",
-  "reasoning": "详细的分析和移动理由"
-}`
-      },
-
-      // 通用游戏系统提示词模板
-      'general-game-system': {
-        id: 'general-game-system',
-        name: '通用游戏系统提示词',
-        description: '通用游戏AI的系统角色定义',
-        template: `你是一个专业的游戏AI选手。请根据具体的游戏规则和目标进行最佳决策。
-
-回复格式：
-请严格按照以下JSON格式回复，不要包含其他内容：
-{
-  "action": "具体行动",
-  "reasoning": "详细的分析和决策理由"
-}`
       }
     };
   }
@@ -115,14 +73,7 @@ export class AIPromptService {
       throw new Error(`未找到提示词模板: ${templateId}`);
     }
 
-    switch (templateId) {
-      case 'gomoku-system':
-        return this.buildGomokuPrompt(gameData);
-      case 'snake-system':
-        return this.buildSnakePrompt(gameData);
-      default:
-        return this.buildGeneralPrompt(gameData);
-    }
+    return this.buildGomokuPrompt(gameData);
   }
 
   // 构建五子棋游戏状态提示词
@@ -140,25 +91,6 @@ ${boardStr}
 ${historyStr}
 
 你现在执${playerStr}，请分析当前局面并给出最佳下棋位置。`;
-  }
-
-  // 构建贪吃蛇游戏状态提示词
-  buildSnakePrompt(gameData) {
-    const { snake, food, direction } = gameData;
-    return `当前游戏状态：
-蛇的位置：${JSON.stringify(snake)}
-食物的位置：${JSON.stringify(food)}
-当前方向：${direction}
-
-请分析当前局面并选择最佳的移动方向。`;
-  }
-
-  // 构建通用游戏状态提示词
-  buildGeneralPrompt(gameData) {
-    return `当前游戏状态：
-${JSON.stringify(gameData, null, 2)}
-
-请分析当前局面并给出最佳决策。`;
   }
 
   // 将棋盘转换为字符串
@@ -243,23 +175,14 @@ ${JSON.stringify(gameData, null, 2)}
     }));
   }
 
-  // 解析AI回复（通用方法）
-  parseAIResponse(response, gameType = 'gomoku') {
+  // 解析AI回复
+  parseAIResponse(response) {
     try {
       // 尝试提取JSON
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        
-        // 根据游戏类型验证回复格式
-        switch (gameType) {
-          case 'gomoku':
-            return this.validateGomokuResponse(parsed);
-          case 'snake':
-            return this.validateSnakeResponse(parsed);
-          default:
-            return parsed;
-        }
+        return this.validateGomokuResponse(parsed);
       }
       
       throw new Error('无法解析AI回复中的JSON信息');
@@ -280,18 +203,6 @@ ${JSON.stringify(gameData, null, 2)}
     throw new Error('AI回复中的坐标无效');
   }
 
-  // 验证贪吃蛇AI回复
-  validateSnakeResponse(parsed) {
-    const validDirections = ['up', 'down', 'left', 'right'];
-    if (validDirections.includes(parsed.direction)) {
-      return {
-        direction: parsed.direction,
-        reasoning: parsed.reasoning || '无说明'
-      };
-    }
-    throw new Error('AI回复中的方向无效');
-  }
-
   // 验证坐标有效性
   isValidCoordinate(row, col) {
     return Number.isInteger(row) && Number.isInteger(col) && 
@@ -305,4 +216,4 @@ export const aiPromptService = new AIPromptService();
 // 导出便捷方法
 export const getSystemPrompt = (templateId) => aiPromptService.getSystemPrompt(templateId);
 export const buildGamePrompt = (templateId, gameData) => aiPromptService.buildGamePrompt(templateId, gameData);
-export const parseAIResponse = (response, gameType) => aiPromptService.parseAIResponse(response, gameType);
+export const parseAIResponse = (response) => aiPromptService.parseAIResponse(response);
