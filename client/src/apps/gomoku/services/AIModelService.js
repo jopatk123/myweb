@@ -293,10 +293,26 @@ export class AIModelService {
   // 测试AI连接
   async testConnection() {
     try {
+      // 验证配置
+      if (!this.apiUrl || !this.apiKey) {
+        throw new Error('AI配置不完整：需要API URL和API Key');
+      }
+
+      if (!this.apiUrl.startsWith('http')) {
+        throw new Error('API URL格式不正确，必须以http或https开头');
+      }
+
+      // 进行实际的API调用测试
       const testBoard = Array(15).fill().map(() => Array(15).fill(0));
       testBoard[7][7] = 1; // 在中心放一个黑子
       
       const result = await this.getNextMove(testBoard, [{row: 7, col: 7, player: 1}], 2);
+      
+      // 验证返回结果
+      if (!result || typeof result.row !== 'number' || typeof result.col !== 'number') {
+        throw new Error('AI返回的移动结果格式不正确');
+      }
+      
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

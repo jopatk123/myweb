@@ -37,7 +37,17 @@ export class GameModeService {
   // 配置玩家AI
   configurePlayerAI(playerNumber, aiConfig) {
     if (!aiConfig || !aiConfig.apiUrl || !aiConfig.apiKey) {
-      throw new Error('AI配置不完整');
+      throw new Error('AI配置不完整：需要API URL和API Key');
+    }
+
+    // 验证API URL格式
+    if (!aiConfig.apiUrl.startsWith('http')) {
+      throw new Error('API URL格式不正确，必须以http或https开头');
+    }
+
+    // 验证API Key不为空
+    if (!aiConfig.apiKey.trim()) {
+      throw new Error('API Key不能为空');
     }
 
     this.players[playerNumber].config = aiConfig;
@@ -90,6 +100,10 @@ export class GameModeService {
       if (player.type === PLAYER_TYPES.AI_MODEL) {
         if (!player.config) {
           errors.push(`玩家${playerNumber}需要配置AI`);
+        } else if (!player.config.apiUrl || !player.config.apiKey) {
+          errors.push(`玩家${playerNumber}的AI配置不完整：需要API URL和API Key`);
+        } else if (!player.config.apiUrl.startsWith('http')) {
+          errors.push(`玩家${playerNumber}的API URL格式不正确`);
         } else if (!this.aiServices.has(parseInt(playerNumber))) {
           errors.push(`玩家${playerNumber}的AI服务未初始化`);
         }

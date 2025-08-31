@@ -171,6 +171,15 @@ function validateAndStart() {
     return;
   }
 
+  // 检查是否所有AI都已经测试过连接
+  for (const playerNumber of configurablePlayers) {
+    const testResult = testResults[playerNumber];
+    if (!testResult || testResult.success !== true) {
+      validationError.value = `请先测试玩家${playerNumber}的AI连接，确保连接成功后再开始游戏`;
+      return;
+    }
+  }
+
   // 保存配置并开始游戏
   saveConfigToStorage();
   emit('start-game');

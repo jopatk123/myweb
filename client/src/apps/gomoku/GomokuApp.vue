@@ -177,9 +177,18 @@ const gameModeInfo = computed(() => gameModeService.getGameModeInfo());
 
 // 事件处理器
 function handleStartGame() {
-  if (!aiConfig.value && gameMode.value !== 'demo') {
-    showAIConfig.value = true;
-    return;
+  // 检查游戏模式是否需要AI配置
+  if (gameMode.value === 'human_vs_ai' || gameMode.value === 'ai_vs_ai') {
+    if (!aiConfig.value) {
+      showAIConfig.value = true;
+      return;
+    }
+    
+    // 验证AI配置是否完整
+    if (!aiConfig.value.apiUrl || !aiConfig.value.apiKey) {
+      showAIConfig.value = true;
+      return;
+    }
   }
 
   startGame();
@@ -188,7 +197,13 @@ function handleStartGame() {
   if (gameMode.value === 'ai_vs_ai') {
     nextTick(() => {
       gomokuBoard.value?.drawBoard();
-      handleAITurn();
+      try {
+        handleAITurn();
+      } catch (error) {
+        const debug = window.location.search.includes('gomokuDebug=1');
+        if (debug) console.error('[GomokuApp] AI vs AI start failed:', error);
+        alert(`AI连接失败: ${error.message}\n请检查API配置并重新开始游戏。`);
+      }
     });
   } else {
     nextTick(() => {
@@ -229,7 +244,13 @@ function handleRestartGame() {
     
     // 如果是AI对AI模式，重新开始AI对战
     if (gameMode.value === 'ai_vs_ai') {
-      handleAITurn();
+      try {
+        handleAITurn();
+      } catch (error) {
+        const debug = window.location.search.includes('gomokuDebug=1');
+        if (debug) console.error('[GomokuApp] AI vs AI restart failed:', error);
+        alert(`AI连接失败: ${error.message}\n请检查API配置并重新开始游戏。`);
+      }
     }
   });
 }
@@ -261,7 +282,14 @@ async function handlePlayerMove(row, col) {
 
     // 处理AI回合
     if (debug) console.log('[GomokuApp] Calling handleAITurn');
-    await handleAITurn();
+    try {
+      await handleAITurn();
+    } catch (error) {
+      if (debug) console.error('[GomokuApp] AI turn failed:', error);
+      // AI连接失败，显示错误信息
+      alert(`AI连接失败: ${error.message}\n请检查API配置并重新开始游戏。`);
+      return;
+    }
   } else {
     if (debug) console.log('[GomokuApp] Player move failed');
   }

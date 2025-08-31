@@ -90,11 +90,13 @@ export function useGomokuAIThinking(deps) {
           setTimeout(() => { handleAITurn(); }, 1000);
         }
       } else {
-        // fallback handled below
+        // AI移动失败，游戏无法继续
+        throw new Error('AI移动失败：无法在指定位置下棋');
       }
     } catch (e) {
-      if (debug) console.error('[Gomoku][AI] error, using fallback', e);
-      await handleSimpleAIMove();
+      if (debug) console.error('[Gomoku][AI] error', e);
+      // AI连接失败，游戏无法继续
+      throw new Error(`AI连接失败: ${e.message}`);
     } finally {
       if (debug) console.log('[Gomoku][AI] turn completed');
       isAIThinking.value = false;
@@ -102,31 +104,7 @@ export function useGomokuAIThinking(deps) {
     }
   }
 
-  async function handleSimpleAIMove() {
-    const empty = [];
-    for (let r = 0; r < 15; r++) {
-      for (let c = 0; c < 15; c++) {
-        if (board.value[r][c] === 0) empty.push({ row: r, col: c });
-      }
-    }
-    if (!empty.length) return;
-    const { row, col } = empty[Math.floor(Math.random() * empty.length)];
-    const playerInfo = gameModeService.getPlayer(currentAIPlayer.value || deps.currentPlayer.value);
-    if (makePlayerMove(row, col)) {
-      const record = {
-        moveNumber: moveCount.value,
-        player: currentAIPlayer.value,
-        playerName: playerInfo.name,
-        position: { row, col },
-        reasoning: `随机选择位置(${row + 1}, ${col + 1})`,
-        analysis: { thinkingTime: '0.5', moveType: '随机', winProbability: 50 }
-      };
-      thinkingHistory.value.push(record);
-      lastMoveWithReasoning.value = record;
-      nextTick(() => { gomokuBoard.value?.drawBoard(); });
-      if (gameOver.value) recordGameResult(winner.value);
-    }
-  }
+  // 简化的AI移动功能已移除，必须通过API进行AI对战
 
   function clearThinkingHistory() {
     thinkingHistory.value = [];
@@ -149,7 +127,6 @@ export function useGomokuAIThinking(deps) {
     lastMoveWithReasoning,
     // 方法
     handleAITurn,
-    handleSimpleAIMove,
     clearThinkingHistory,
     getAIThinkingText
   };

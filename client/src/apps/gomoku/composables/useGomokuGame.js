@@ -56,12 +56,7 @@ export function useGomokuGame() {
     return false;
   }
 
-  // 简化的AI移动（用于演示）
-  function makeAIMove() {
-    // 这个函数现在只是一个占位符
-    // 实际的AI逻辑在主组件中处理
-    return null;
-  }
+  // AI移动功能已移除，必须通过API进行AI对战
 
   function undoMove() {
     if (!canUndo.value) return false;
@@ -120,7 +115,6 @@ export function useGomokuGame() {
     startGame,
     restartGame,
     makePlayerMove,
-    makeAIMove,
     undoMove,
     getHint
   };

@@ -75,6 +75,15 @@ export function useAIConfig() {
       return { success: false, error: '请先配置AI' };
     }
 
+    const config = aiConfigs[playerNumber];
+    if (!config.apiUrl || !config.apiKey) {
+      return { success: false, error: 'AI配置不完整：需要API URL和API Key' };
+    }
+
+    if (!config.apiUrl.startsWith('http')) {
+      return { success: false, error: 'API URL格式不正确，必须以http或https开头' };
+    }
+
     isTestingConnection.value = true;
     
     try {

@@ -108,7 +108,15 @@ const testAI2Connection = ()=>genericTest(ai2Config, testingAI2, ai2TestResult);
 
 function saveAndStart(){
   if(gameMode.value==='human_vs_ai'){
-    if(!canTest.value){ testResult.value={ type:'error', message:'请填写完整的AI配置'}; return; }
+    if(!canTest.value){ 
+      testResult.value={ type:'error', message:'请填写完整的AI配置'}; 
+      return; 
+    }
+    // 检查是否已经测试过连接且成功
+    if(!testResult.value || testResult.value.type !== 'success'){
+      testResult.value={ type:'error', message:'请先测试API连接，确保连接成功后再开始游戏'}; 
+      return; 
+    }
     localStorage.setItem('gomoku_simple_config', JSON.stringify({ gameMode:gameMode.value, config:config.value }));
     emit('config-saved',{ mode:gameMode.value, aiConfig:config.value });
   } else if(gameMode.value==='ai_vs_ai') {
@@ -116,6 +124,15 @@ function saveAndStart(){
       if(!canTestAI1.value) ai1TestResult.value={ type:'error', message:'请填写完整的AI1配置'};
       if(!canTestAI2.value) ai2TestResult.value={ type:'error', message:'请填写完整的AI2配置'};
       return;
+    }
+    // 检查两个AI是否都已经测试过连接且成功
+    if(!ai1TestResult.value || ai1TestResult.value.type !== 'success'){
+      ai1TestResult.value={ type:'error', message:'请先测试AI1连接，确保连接成功后再开始游戏'}; 
+      return; 
+    }
+    if(!ai2TestResult.value || ai2TestResult.value.type !== 'success'){
+      ai2TestResult.value={ type:'error', message:'请先测试AI2连接，确保连接成功后再开始游戏'}; 
+      return; 
     }
     localStorage.setItem('gomoku_simple_config', JSON.stringify({ gameMode:gameMode.value, ai1Config:ai1Config.value, ai2Config:ai2Config.value }));
     emit('config-saved',{ mode:gameMode.value, ai1Config:ai1Config.value, ai2Config:ai2Config.value });
