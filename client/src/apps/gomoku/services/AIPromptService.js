@@ -152,8 +152,9 @@ export class AIPromptService {
   // 构建游戏状态提示词
   buildGamePrompt(templateId, gameData) {
     const template = this.getTemplateById(templateId);
-    if (!template) {
-      // 模板不存在时降级为默认模板，记录警告但不抛出错误
+    // 如果只有默认模板（项目当前仅提供 gomoku-advanced），不应打印误导性警告。
+    // 仅在用户请求了非默认且不存在的模板时记录警告。
+    if (!template && templateId && templateId !== 'gomoku-advanced') {
       console.warn(`提示词模板未找到: ${templateId}，将使用默认模板`);
     }
 

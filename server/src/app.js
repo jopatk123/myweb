@@ -14,6 +14,7 @@ import { createNovelBookmarkRoutes } from './routes/novel-bookmarks.routes.js';
 import { createSnakeMultiplayerRoutes } from './routes/snake-multiplayer.routes.js';
 import messageRoutes from './routes/messages.routes.js';
 import { createInternalLogsRoutes } from './routes/internal.logs.routes.js';
+import { createLogRoutes } from './routes/log.routes.js';
 import errorHandler from './middleware/error.middleware.js';
 import {
   normalizeRequestKeys,
@@ -83,10 +84,12 @@ app.use('/api/novel-bookmarks', createNovelBookmarkRoutes(db));
 app.use('/api/snake-multiplayer', createSnakeMultiplayerRoutes());
 app.use('/api/messages', messageRoutes);
 
-// 内部调试路由（仅在非生产环境启用）
-if (process.env.NODE_ENV !== 'production') {
-  app.use('/internal/logs', createInternalLogsRoutes());
-}
+// 内部调试路由：始终注册 /internal/logs，用于接收客户端的 AI 日志。
+// 通过环境变量可以在部署时禁用处理逻辑，但路由保持可用以避免客户端 404。
+app.use('/internal/logs', createInternalLogsRoutes());
+
+// 日志管理路由
+app.use('/api/logs', createLogRoutes());
 
 // API根路径处理
 app.get('/api', (req, res) => {

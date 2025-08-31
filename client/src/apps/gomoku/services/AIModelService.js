@@ -1,3 +1,6 @@
+// 导入AI日志服务
+import { aiLogService } from '../../../services/aiLogService.js';
+
 // AI大模型服务
 export class AIModelService {
   constructor(config) {
@@ -150,6 +153,16 @@ export class AIModelService {
             });
             if (retry.ok) {
               const rawRetry = await retry.clone().text();
+              
+              // 记录重试成功的日志
+              aiLogService.logConversation({
+                requestText: prompt,
+                responseText: rawRetry,
+                model: this.modelName,
+                playerType: playerType,
+                timestamp: new Date().toISOString()
+              });
+              
               console.log('[Gomoku][AI][RawResponse][retry]', rawRetry);
               return await this.processResponse(retry, playerType, onThinkingUpdate, startTime, board, gameHistory);
             }
@@ -161,9 +174,19 @@ export class AIModelService {
         throw new Error(`API请求失败: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      // 记录成功响应的原始文本并发送到服务器内部日志（仅发送 requestText & responseText）
+      // 记录成功响应的原始文本并发送到服务器内部日志
       try {
         const rawText = await response.clone().text();
+        
+        // 发送完整日志到服务器
+        aiLogService.logConversation({
+          requestText: prompt,
+          responseText: rawText,
+          model: this.modelName,
+          playerType: playerType,
+          timestamp: new Date().toISOString()
+        });
+        
         // 在浏览器控制台输出：只显示请求文本与回复文本
         try {
           console.log('[Gomoku][AI][RequestText]', prompt);
@@ -173,6 +196,7 @@ export class AIModelService {
         }
       } catch (e) {
         // 忽略读取失败
+        console.warn('日志记录失败:', e);
       }
 
       if (onThinkingUpdate) {
