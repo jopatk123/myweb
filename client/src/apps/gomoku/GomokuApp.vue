@@ -178,7 +178,7 @@ const gameModeInfo = computed(() => gameModeService.getGameModeInfo());
 // 事件处理器
 function handleStartGame() {
   // 检查游戏模式是否需要AI配置
-  if (gameMode.value === 'human_vs_ai' || gameMode.value === 'ai_vs_ai') {
+  if (gameMode.value === 'human_vs_ai') {
     if (!aiConfig.value) {
       showAIConfig.value = true;
       return;
@@ -186,6 +186,19 @@ function handleStartGame() {
     
     // 验证AI配置是否完整
     if (!aiConfig.value.apiUrl || !aiConfig.value.apiKey) {
+      showAIConfig.value = true;
+      return;
+    }
+  } else if (gameMode.value === 'ai_vs_ai') {
+    if (!aiConfig.value || !aiConfig.value.ai1Config || !aiConfig.value.ai2Config) {
+      showAIConfig.value = true;
+      return;
+    }
+    
+    // 验证两个AI配置是否完整
+    const ai1 = aiConfig.value.ai1Config;
+    const ai2 = aiConfig.value.ai2Config;
+    if (!ai1.apiUrl || !ai1.apiKey || !ai2.apiUrl || !ai2.apiKey) {
       showAIConfig.value = true;
       return;
     }
@@ -217,20 +230,24 @@ function handleConfiguredStart() { handleStartGame(); }
 
 function handleConfigSaved(config) {
   gameMode.value = config.mode;
-  aiConfig.value = config.aiConfig;
   
   // 配置游戏模式服务
   const debug = window.location.search.includes('gomokuDebug=1');
   gameModeService.setGameMode(config.mode);
   
   if (config.mode === 'human_vs_ai') {
+    aiConfig.value = config.aiConfig;
     if (debug) console.log('[GomokuApp] Configuring player 2 AI');
     gameModeService.configurePlayerAI(2, config.aiConfig);
   } else if (config.mode === 'ai_vs_ai') {
     // AI对AI模式需要配置两个AI
+    aiConfig.value = {
+      ai1Config: config.ai1Config,
+      ai2Config: config.ai2Config
+    };
     if (debug) console.log('[GomokuApp] Configuring AI vs AI mode');
-    gameModeService.configurePlayerAI(1, config.ai1Config || config.aiConfig);
-    gameModeService.configurePlayerAI(2, config.ai2Config || config.aiConfig);
+    gameModeService.configurePlayerAI(1, config.ai1Config);
+    gameModeService.configurePlayerAI(2, config.ai2Config);
   }
   if (debug) console.log('[GomokuApp] Game mode service configured');
 }
