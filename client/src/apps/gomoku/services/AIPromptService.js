@@ -20,7 +20,6 @@ export class AIPromptService {
         description: '包含详细威胁分析、跳跃威胁识别和完整封堵策略的高级AI提示词',
         template: GOMOKU_ADVANCED_PROMPT
       },
-      // 兼容旧代码中使用的默认ID（内容与高级版相同，可后续独立定制）
       'gomoku-system': {
         id: 'gomoku-system',
         name: '系统默认五子棋AI提示词',
@@ -58,7 +57,7 @@ export class AIPromptService {
   const historyStr = formatHistory(gameHistory);
     const playerStr = playerType === 1 ? '黑子' : '白子';
     const threatAnalysis = generateThreatAnalysisPrompt(board, gameHistory, playerType);
-    return `当前棋局状态：
+  return `当前棋局状态：
 棋盘（0=空位，1=黑子，2=白子）：
 ${boardStr}
 
@@ -73,10 +72,11 @@ ${threatAnalysis}
 - 如果存在活三威胁，必须立即封堵，否则必输
 - 封堵位置必须在威胁线上或威胁线的延长线上
 - 优先选择能同时建立自己防守阵型的位置
-- 考虑棋盘边界对威胁发展的影响当前的棋盘边界为(0,0)到(14,14)`;
+- 考虑棋盘边界对威胁发展的影响当前的棋盘边界为(0,0)到(14,14)
+
+仅返回 JSON，格式为 {"row":数字, "col":数字, "reasoning":字符串}，不要额外文字。`;
   }
 
-  // （已拆分：棋盘与历史记录格式化已迁移到 AIBoardFormatter）
 
   // 添加自定义提示词模板
   addCustomTemplate(template) {
