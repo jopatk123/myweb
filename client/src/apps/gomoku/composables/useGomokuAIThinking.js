@@ -1,5 +1,6 @@
 // 管理AI思考与落子逻辑的组合式函数，拆分自 GomokuApp.vue，便于维护与测试
 import { ref, nextTick } from 'vue';
+import { useAIRuleViolation } from './useAIRuleViolation.js';
 
 /**
  * useGomokuAIThinking
@@ -13,6 +14,7 @@ import { ref, nextTick } from 'vue';
  * @param {Function} deps.makePlayerMove 执行落子(row,col)=>boolean
  * @param {Function} deps.recordGameResult 记录结果(winner)
  * @param {import('vue').Ref} deps.gomokuBoard 棋盘组件 ref (需有 drawBoard)
+ * @param {Function} deps.showViolationModal 显示违规模态框函数
  */
 export function useGomokuAIThinking(deps) {
   const {
@@ -20,20 +22,26 @@ export function useGomokuAIThinking(deps) {
     gameMode,
     board,
     moveCount,
-  gameHistory,
+    gameHistory,
     gameOver,
     winner,
     makePlayerMove,
     recordGameResult,
-    gomokuBoard
-  } = deps;
-
-  // 状态
+    gomokuBoard,
+    showViolationModal
+  } = deps;  // 状态
   const isAIThinking = ref(false);
   const currentAIPlayer = ref(null);
   const currentThinking = ref(null);
   const thinkingHistory = ref([]);
   const lastMoveWithReasoning = ref(null);
+
+  // 规则违反处理
+  const {
+    validateAIMove,
+    getViolationAlert,
+    clearViolation
+  } = useAIRuleViolation();
 
   async function handleAITurn() {
   if (gameOver.value) return;
@@ -67,6 +75,30 @@ export function useGomokuAIThinking(deps) {
 
       currentThinking.value = null;
 
+      // 获取玩家名称用于违规提示
+      const playerNames = {
+        1: gameModeService.getPlayer(1)?.name || 'AI玩家1',
+        2: gameModeService.getPlayer(2)?.name || 'AI玩家2'
+      };
+
+      // 验证AI移动是否违反规则
+      const validationResult = validateAIMove(aiResult, board.value, playerNumber, playerNames);
+      if (validationResult.gameEnded) {
+        // AI违规，游戏结束
+        const violationAlert = getViolationAlert();
+        if (violationAlert && showViolationModal) {
+          // 显示友好的违规模态框
+          showViolationModal(violationAlert.violationData);
+        } else {
+          // 后备方案：显示alert
+          alert(violationAlert?.message || 'AI违规判负');
+        }
+        
+        // 记录游戏结果（违规方判负）
+        recordGameResult(validationResult.winner);
+        return;
+      }
+
   if (makePlayerMove(aiResult.row, aiResult.col)) {
         const thinkingRecord = {
           moveNumber: moveCount.value,
@@ -90,16 +122,89 @@ export function useGomokuAIThinking(deps) {
           setTimeout(() => { handleAITurn(); }, 1000);
         }
       } else {
-        // AI移动失败，游戏无法继续
-        throw new Error('AI移动失败：无法在指定位置下棋');
+        // AI移动失败，可能是位置已被占用等原因，这种情况也视为违规
+        const playerNames = {
+          1: gameModeService.getPlayer(1)?.name || 'AI玩家1',
+          2: gameModeService.getPlayer(2)?.name || 'AI玩家2'
+        };
+        
+        const violationResult = {
+          gameEnded: true,
+          winner: playerNumber === 1 ? 2 : 1,
+          endReason: 'rule_violation'
+        };
+
+        const violatingPlayerName = playerNames[playerNumber];
+        const winnerName = playerNames[violationResult.winner];
+        
+        if (showViolationModal) {
+          showViolationModal({
+            violatingPlayer: playerNumber,
+            winner: violationResult.winner,
+            violatingPlayerName,
+            winnerName,
+            violationType: 'occupied_position',
+            violationMessage: '尝试在已有棋子的位置下棋',
+            detailMessage: `下棋失败，可能位置已被占用`,
+            timestamp: new Date()
+          });
+        } else {
+          alert(`🚫 AI违规判负\n\n${violatingPlayerName} 尝试下棋失败！\n可能原因：位置已被占用或其他违规行为\n\n🏆 ${winnerName} 获胜！`);
+        }
+        
+        recordGameResult(violationResult.winner);
+        return;
       }
     } catch (e) {
       if (debug) console.error('[Gomoku][AI] error', e);
-      // AI连接失败，不再抛出错误阻断游戏，而是记录警告并降级处理
+      
+      // 检查是否是AI回复格式错误或解析错误
+      const playerNames = {
+        1: gameModeService.getPlayer(1)?.name || 'AI玩家1',
+        2: gameModeService.getPlayer(2)?.name || 'AI玩家2'
+      };
+
+      // 判断错误类型，如果是格式错误或解析错误，则判负
+      if (e.message && (
+        e.message.includes('格式错误') || 
+        e.message.includes('解析失败') ||
+        e.message.includes('坐标无效') ||
+        e.message.includes('API返回数据格式错误')
+      )) {
+        const winner = playerNumber === 1 ? 2 : 1;
+        const winnerName = playerNames[winner];
+        const violatingPlayerName = playerNames[playerNumber];
+        
+        if (showViolationModal) {
+          showViolationModal({
+            violatingPlayer: playerNumber,
+            winner,
+            violatingPlayerName,
+            winnerName,
+            violationType: 'parsing_error',
+            violationMessage: 'AI回复格式错误',
+            detailMessage: e.message,
+            timestamp: new Date()
+          });
+        } else {
+          alert(`🚫 AI违规判负\n\n${violatingPlayerName} AI回复格式错误被判负！\n错误信息：${e.message}\n\n🏆 ${winnerName} 获胜！`);
+        }
+        
+        recordGameResult(winner);
+        return;
+      }
+
+      // 其他错误（如网络错误）不判负，只是警告
       console.warn('[Gomoku][AI] connection failed:', e);
       // 可选：将当前Thinking置为提醒信息
-      currentThinking.value = { player: playerNumber, playerName: playerInfo?.name || 'AI', steps: ['AI请求失败，已降级处理'], progress: 100, progressText: 'AI请求失败' };
-      // 不再抛出，允许游戏继续（AI为辅助功能）
+      const playerInfo = gameModeService.getPlayer(playerNumber);
+      currentThinking.value = { 
+        player: playerNumber, 
+        playerName: playerInfo?.name || 'AI', 
+        steps: ['AI请求失败，已降级处理'], 
+        progress: 100, 
+        progressText: 'AI请求失败' 
+      };
     } finally {
       if (debug) console.log('[Gomoku][AI] turn completed');
       isAIThinking.value = false;
@@ -112,6 +217,7 @@ export function useGomokuAIThinking(deps) {
   function clearThinkingHistory() {
     thinkingHistory.value = [];
     lastMoveWithReasoning.value = null;
+    clearViolation(); // 清除违规记录
   }
 
   function getAIThinkingText() {

@@ -8,6 +8,14 @@
       @config-saved="handleConfigSaved"
     />
 
+    <!-- AI违规提示模态框 -->
+    <ViolationModal
+      v-if="showViolation"
+      :violation-data="violationData"
+      :visible="showViolation"
+      @close="handleViolationClose"
+    />
+
     <!-- 游戏头部 -->
     <GomokuHeader
       :current-player="currentPlayer"
@@ -102,6 +110,7 @@ import GomokuOverlays from './GomokuOverlays.vue';
 import SimpleAIConfig from './components/SimpleAIConfig.vue';
 import AIThinkingPanel from './components/AIThinkingPanel.vue';
 import GameStatusPanel from './components/GameStatusPanel.vue';
+import ViolationModal from './components/ViolationModal.vue';
 import { useGomokuGame } from './composables/useGomokuGame.js';
 import { useGomokuStats } from './composables/useGomokuStats.js';
 import { useGomokuHint } from './composables/useGomokuHint.js';
@@ -147,6 +156,10 @@ const gomokuBoard = ref(null);
 const showAIConfig = ref(false);
 const gameMode = ref('human_vs_ai');
 const aiConfig = ref(null);
+
+// 违规处理状态
+const showViolation = ref(false);
+const violationData = ref(null);
 // 引入 AI 思考逻辑组合
 const {
   isAIThinking,
@@ -163,13 +176,16 @@ const {
   board,
   moveCount,
   gameHistory,
-  gameHistory,
   gameOver,
   winner,
   makePlayerMove,
   recordGameResult,
   gomokuBoard,
-  currentPlayer
+  currentPlayer,
+  showViolationModal: (data) => {
+    violationData.value = data;
+    showViolation.value = true;
+  }
 });
 
 // 计算属性
@@ -333,6 +349,12 @@ function handleUndoMove() {
       gomokuBoard.value?.drawBoard();
     });
   }
+}
+
+// 违规模态框关闭处理
+function handleViolationClose() {
+  showViolation.value = false;
+  violationData.value = null;
 }
 
 function handleShowHint() {
