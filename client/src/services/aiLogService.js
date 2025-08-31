@@ -23,6 +23,10 @@ export class AILogService {
    * @param {string} logData.model - AI模型名称
    * @param {number} logData.playerType - 玩家类型 (1=黑子, 2=白子)
    * @param {string} logData.timestamp - 时间戳
+   * @param {Object} logData.rawRequest - 原始请求数据（可选）
+   * @param {Object} logData.rawResponse - 原始响应数据（可选）
+   * @param {Object} logData.gameState - 游戏状态信息（可选）
+   * @param {Object} logData.parsedResult - 解析后的结果（可选）
    */
   async logConversation(logData) {
     if (!this.enabled) {
@@ -35,7 +39,11 @@ export class AILogService {
         responseText: logData.responseText || '',
         model: logData.model || 'unknown',
         playerType: logData.playerType || 'unknown',
-        timestamp: logData.timestamp || new Date().toISOString()
+        timestamp: logData.timestamp || new Date().toISOString(),
+        rawRequest: logData.rawRequest || null,
+        rawResponse: logData.rawResponse || null,
+        gameState: logData.gameState || null,
+        parsedResult: logData.parsedResult || null
       };
 
       // 发送到服务器

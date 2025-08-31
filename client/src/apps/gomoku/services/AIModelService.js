@@ -177,6 +177,24 @@ export class AIModelService {
       // 记录成功响应的原始文本并发送到服务器内部日志
       try {
         const rawText = await response.clone().text();
+        const rawResponseData = await response.clone().json().catch(() => null);
+        
+        // 构建游戏状态信息
+        const gameState = {
+          board: board,
+          gameHistory: gameHistory,
+          currentPlayer: playerType,
+          totalMoves: gameHistory.length,
+          boardSize: board.length
+        };
+        
+        // 构建原始请求数据
+        const rawRequest = {
+          url: this.apiUrl,
+          headers: this.buildRequestHeaders(),
+          payload: JSON.parse(payloadString),
+          prompt: prompt
+        };
         
         // 发送完整日志到服务器
         aiLogService.logConversation({
@@ -184,7 +202,10 @@ export class AIModelService {
           responseText: rawText,
           model: this.modelName,
           playerType: playerType,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          rawRequest: rawRequest,
+          rawResponse: rawResponseData,
+          gameState: gameState
         });
         
         // 在浏览器控制台输出：只显示请求文本与回复文本
@@ -212,6 +233,21 @@ export class AIModelService {
       await this.delay(300);
 
       const result = await this.processResponse(response, playerType, onThinkingUpdate, startTime, board, gameHistory);
+
+      // 记录解析后的结果
+      try {
+        aiLogService.logConversation({
+          requestText: '', // 这里不需要重复记录请求
+          responseText: '', // 这里不需要重复记录响应
+          model: this.modelName,
+          playerType: playerType,
+          timestamp: new Date().toISOString(),
+          parsedResult: result
+        });
+      } catch (e) {
+        // 忽略解析结果记录失败
+        console.warn('解析结果记录失败:', e);
+      }
 
       if (onThinkingUpdate) {
         onThinkingUpdate({
