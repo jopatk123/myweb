@@ -14,8 +14,8 @@ export class AIPresetService {
         apiUrl: 'https://api.moonshot.cn/v1',
         modelName: 'kimi-k2-turbo-preview',
         playerName: 'Moonshot',
-        maxTokens: 1000,
-        temperature: 0.1,
+        maxTokens: 5000,
+        temperature: 0.5,
         description: 'Moonshot Kimi 模型'
       },
       'kimi': {
@@ -24,8 +24,8 @@ export class AIPresetService {
         apiUrl: 'https://api.moonshot.cn/v1',
         modelName: 'kimi-k2-0711-preview',
         playerName: 'Kimi',
-        maxTokens: 1000,
-        temperature: 0.1,
+        maxTokens: 5000,
+        temperature: 0.5,
         description: 'Kimi 模型'
       },
 
@@ -36,8 +36,8 @@ export class AIPresetService {
         apiUrl: 'https://api.deepseek.com/v1',
         modelName: 'deepseek-chat',
         playerName: 'Deepseek AI',
-        maxTokens: 1000,
-        temperature: 0.1,
+        maxTokens: 5000,
+        temperature: 0.5,
         description: 'Deepseek 聊天模型 (deepseek-chat)'
       },
 
@@ -47,8 +47,8 @@ export class AIPresetService {
         apiUrl: 'https://api.chatanywhere.tech/v1',
         modelName: 'gpt-5-chat-latest',
         playerName: 'GPT-5-mini',
-        maxTokens: 1000,
-        temperature: 0.1,
+        maxTokens: 5000,
+        temperature: 0.5,
         description: 'GPT-5预设 (chatanywhere)'
       },
 
