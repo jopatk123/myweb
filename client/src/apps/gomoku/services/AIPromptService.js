@@ -142,32 +142,20 @@ export class AIPromptService {
 
   // 获取系统提示词
   getSystemPrompt(templateId = 'gomoku-advanced') {
-    const template = this.getTemplateById(templateId);
-    return template ? template.template : this.getDefaultSystemPrompt();
+  // 目前项目仅使用单一模板，按请求id返回对应模板内容，找不到时回退到默认模板
+  const template = this.promptTemplates[templateId];
+  return template ? template.template : this.promptTemplates['gomoku-advanced'].template;
   }
 
-  // 获取默认系统提示词
-  getDefaultSystemPrompt() {
-    return this.promptTemplates['gomoku-advanced'].template;
-  }
-
-  // 构建游戏状态提示词
+  // 构建游戏状态提示词（templateId 被忽略，因为当前仅有单一模板）
   buildGamePrompt(templateId, gameData) {
-    const template = this.getTemplateById(templateId);
-    // 如果只有默认模板（项目当前仅提供 gomoku-advanced），不应打印误导性警告。
-    // 仅在用户请求了非默认且不存在的模板时记录警告。
-    if (!template && templateId && templateId !== 'gomoku-advanced') {
-      console.warn(`提示词模板未找到: ${templateId}，将使用默认模板`);
-    }
-
-    // 目前模板内容主要用于系统提示，但构建棋局状态不依赖模板本身，仍然返回标准游戏提示
     return this.buildGomokuPrompt(gameData);
   }
 
   // 构建五子棋游戏状态提示词
   buildGomokuPrompt(gameData) {
     const { board, gameHistory, playerType } = gameData;
-    const boardStr = this.boardToString(board);
+  const boardStr = this.boardToString(board);
     const historyStr = this.historyToString(gameHistory);
     const playerStr = playerType === 1 ? '黑子' : '白子';
     
@@ -194,17 +182,19 @@ ${threatAnalysis}
 
   // 将棋盘转换为字符串
   boardToString(board) {
+    if (!board || !Array.isArray(board) || !Array.isArray(board[0])) return '无效棋盘数据';
+    const size = board.length;
     let result = '   ';
     // 添加列号
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < size; i++) {
       result += i.toString().padStart(2, ' ') + ' ';
     }
     result += '\n';
     
     // 添加棋盘内容
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < size; i++) {
       result += i.toString().padStart(2, ' ') + ' ';
-      for (let j = 0; j < 15; j++) {
+      for (let j = 0; j < size; j++) {
         let cell = board[i][j];
         if (cell === 0) {
           result += ' · '; // 空位用点表示，更直观
@@ -318,13 +308,36 @@ ${threatAnalysis}
       [1, -1]   // 左下斜
     ];
 
-    for (let row = 0; row < 15; row++) {
-      for (let col = 0; col < 15; col++) {
+    // 使用 visited 集合来避免沿同一线段重复分析（性能优化）
+    const visited = new Set();
+    const size = board.length;
+    for (let row = 0; row < size; row++) {
+      for (let col = 0; col < size; col++) {
         if (board[row][col] === playerType) {
           for (const [dr, dc] of directions) {
+            // 以线段的最小端点作为标识，避免多次从线中不同点重复分析
+            const key = `${row}-${col}-${dr}-${dc}`;
+            if (visited.has(key)) continue;
+
             const threat = this.analyzeDirection(board, row, col, dr, dc, playerType);
             if (threat) {
               threats.push(threat);
+              // 标记该线段上所有坐标为已访问，减少重复分析
+              try {
+                const { leftEnd, rightEnd } = threat;
+                if (leftEnd && rightEnd) {
+                  let r = leftEnd.row;
+                  let c = leftEnd.col;
+                  while (true) {
+                    visited.add(`${r}-${c}-${dr}-${dc}`);
+                    if (r === rightEnd.row && c === rightEnd.col) break;
+                    r += dr; c += dc;
+                    if (!this.isValidCoordinate(r, c)) break;
+                  }
+                }
+              } catch (e) {
+                // 忽略标记错误，防止影响主流程
+              }
             }
           }
         }
@@ -671,7 +684,6 @@ ${threatAnalysis}
   // 获取封堵位置
   getBlockPositions(threat) {
     const positions = [];
-    
     // 处理跳跃威胁
     if (!threat.continuous && threat.gaps) {
       // 跳跃威胁需要封堵关键空隙
@@ -685,12 +697,15 @@ ${threatAnalysis}
     
     // 处理连续威胁
     const { leftEnd, rightEnd, blockedLeft, blockedRight, count } = threat;
-    
-    if (count === 0) return positions;
-    
-    // 计算方向向量
-    const dr = count > 1 ? Math.sign(rightEnd.row - leftEnd.row) : 0;
-    const dc = count > 1 ? Math.sign(rightEnd.col - leftEnd.col) : 0;
+    if (!count || count < 2) return positions; // 少于2子的威胁不需要封堵建议
+
+    // 计算方向向量（基于端点差值，若端点相同则尝试从邻点推断）
+    let dr = Math.sign(rightEnd.row - leftEnd.row);
+    let dc = Math.sign(rightEnd.col - leftEnd.col);
+    if (dr === 0 && dc === 0) {
+      // 退回到检查附近单元以推断方向，安全兜底为水平
+      dr = 0; dc = 1;
+    }
     
     // 检查左端封堵位置
     if (!blockedLeft) {
