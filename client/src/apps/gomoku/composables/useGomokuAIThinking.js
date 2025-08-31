@@ -95,8 +95,11 @@ export function useGomokuAIThinking(deps) {
       }
     } catch (e) {
       if (debug) console.error('[Gomoku][AI] error', e);
-      // AI连接失败，游戏无法继续
-      throw new Error(`AI连接失败: ${e.message}`);
+      // AI连接失败，不再抛出错误阻断游戏，而是记录警告并降级处理
+      console.warn('[Gomoku][AI] connection failed:', e);
+      // 可选：将当前Thinking置为提醒信息
+      currentThinking.value = { player: playerNumber, playerName: playerInfo?.name || 'AI', steps: ['AI请求失败，已降级处理'], progress: 100, progressText: 'AI请求失败' };
+      // 不再抛出，允许游戏继续（AI为辅助功能）
     } finally {
       if (debug) console.log('[Gomoku][AI] turn completed');
       isAIThinking.value = false;

@@ -202,7 +202,8 @@ function handleStartGame() {
       } catch (error) {
         const debug = window.location.search.includes('gomokuDebug=1');
         if (debug) console.error('[GomokuApp] AI vs AI start failed:', error);
-        alert(`AI连接失败: ${error.message}\n请检查API配置并重新开始游戏。`);
+  // 用非阻塞的控制台警告替代弹窗，避免中断游戏流程
+  console.warn('[GomokuApp] AI connection failed (start):', error);
       }
     });
   } else {
@@ -249,7 +250,8 @@ function handleRestartGame() {
       } catch (error) {
         const debug = window.location.search.includes('gomokuDebug=1');
         if (debug) console.error('[GomokuApp] AI vs AI restart failed:', error);
-        alert(`AI连接失败: ${error.message}\n请检查API配置并重新开始游戏。`);
+  // 用非阻塞的控制台警告替代弹窗，避免中断游戏流程
+  console.warn('[GomokuApp] AI connection failed (restart):', error);
       }
     }
   });
@@ -286,9 +288,8 @@ async function handlePlayerMove(row, col) {
       await handleAITurn();
     } catch (error) {
       if (debug) console.error('[GomokuApp] AI turn failed:', error);
-      // AI连接失败，显示错误信息
-      alert(`AI连接失败: ${error.message}\n请检查API配置并重新开始游戏。`);
-      return;
+  // AI连接失败，记录为警告，不再阻断玩家流程（AI为辅助功能）
+  console.warn('[GomokuApp] AI turn failed:', error);
     }
   } else {
     if (debug) console.log('[GomokuApp] Player move failed');
