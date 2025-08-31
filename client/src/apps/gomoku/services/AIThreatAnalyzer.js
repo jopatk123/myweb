@@ -166,26 +166,6 @@ export function generateTacticalAdvice(opponentThreats, myThreats) {
 }
 
 export function generateThreatAnalysisPrompt(board, gameHistory, playerType) {
-  const opponentType = playerType === 1 ? 2 : 1;
-  const opponentThreats = analyzeThreats(board, opponentType);
-  const myThreats = analyzeThreats(board, playerType);
-  let txt = '当前局面威胁分析：\n\n';
-  if (opponentThreats.length) {
-    txt += '⚠️  对手威胁（按优先级排序）：\n';
-    opponentThreats.forEach((t,i) => {
-      txt += `${i+1}. ${formatThreatDescription(t)}\n`;
-      if (['活四','冲四','跳四','活三'].includes(t.type)) {
-        const blocks = getBlockPositions(t);
-        if (blocks.length) txt += `   🛡️  必须封堵位置：${blocks.map(p=>`(${p.row},${p.col})`).join(' 或 ')}\n`;
-      }
-    });
-    txt += '\n';
-  } else txt += '✅ 对手暂无直接威胁\n\n';
-  if (myThreats.length) {
-    txt += '⚡ 我方攻击机会：\n';
-    myThreats.forEach((t,i) => { txt += `${i+1}. ${formatThreatDescription(t)}\n`; });
-    txt += '\n';
-  } else txt += '🔍 我方需要寻找攻击机会\n\n';
-  txt += generateTacticalAdvice(opponentThreats, myThreats);
-  return txt;
+  // WARNING: deprecated - prompt generation removed. Use analyzeThreats/analyzeDirection APIs directly if needed.
+  return '';
 }

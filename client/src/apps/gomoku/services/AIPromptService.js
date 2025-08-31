@@ -56,15 +56,12 @@ export class AIPromptService {
   const boardStr = formatBoard(board);
   const historyStr = formatHistory(gameHistory);
     const playerStr = playerType === 1 ? '黑子' : '白子';
-    const threatAnalysis = generateThreatAnalysisPrompt(board, gameHistory, playerType);
   return `当前棋局状态：
 棋盘（0=空位，1=黑子，2=白子）：
 ${boardStr}
 
 历史走棋记录：
 ${historyStr}
-
-${threatAnalysis}
 
 你现在执${playerStr}，请分析当前局面并给出最佳下棋位置。
 
