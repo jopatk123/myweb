@@ -32,7 +32,7 @@ export function createInternalLogsRoutes() {
       
       const logFile = path.join(logDir, 'ai-conversations.log');
       
-      // 创建日志条目
+      // 创建日志条目（基础数据）
       const logEntry = {
         timestamp: timestamp || new Date().toISOString(),
         model: model || 'unknown',
@@ -44,86 +44,111 @@ export function createInternalLogsRoutes() {
         gameState: gameState || null,
         parsedResult: parsedResult || null
       };
-      
-      // 格式化日志输出
+
+      const MAX_PROMPT_LOG = parseInt(process.env.AI_LOG_MAX_PROMPT || '0', 10); // 0=不截断
+      const MAX_MESSAGE_CONTENT = parseInt(process.env.AI_LOG_MAX_MESSAGE || '2000', 10);
+      const MAX_RESPONSE_TEXT = parseInt(process.env.AI_LOG_MAX_RESPONSE || '0', 10);
+
       let logLine = `\n${'='.repeat(80)}\n`;
       logLine += `[${logEntry.timestamp}] [Model: ${logEntry.model}] [Player: ${logEntry.playerType}]\n`;
       logLine += `${'='.repeat(80)}\n\n`;
-      
-      // 游戏状态信息（简化显示）
+
       if (logEntry.gameState) {
         logLine += `🎮 GAME STATE:\n`;
         logLine += `   Current Player: ${logEntry.gameState.currentPlayer === 1 ? 'Black' : 'White'}\n`;
         logLine += `   Total Moves: ${logEntry.gameState.totalMoves}\n`;
         logLine += `   Board Size: ${logEntry.gameState.boardSize}x${logEntry.gameState.boardSize}\n`;
-        
-        // 显示棋盘状态（简化版）
-        if (logEntry.gameState.board) {
-          logLine += `   Board State:\n`;
-          const board = logEntry.gameState.board;
-          for (let i = 0; i < Math.min(5, board.length); i++) {
-            const row = board[i].slice(0, 5).map(cell => cell === 0 ? '·' : cell === 1 ? '●' : '○').join(' ');
-            logLine += `     Row ${i}: ${row}\n`;
-          }
-          if (board.length > 5) {
-            logLine += `     ... (${board.length - 5} more rows)\n`;
-          }
+        if (Array.isArray(logEntry.gameState.board)) {
+          logLine += `   Full Board:\n`;
+          logEntry.gameState.board.forEach((row, idx) => {
+            const line = row.map(cell => cell === 0 ? '·' : cell === 1 ? '●' : '○').join(' ');
+            logLine += `     Row ${idx.toString().padStart(2,' ')}: ${line}\n`;
+          });
         }
         logLine += `\n`;
       }
-      
-      // 请求内容（简化显示）
+
       if (logEntry.requestText) {
-        logLine += `📝 REQUEST:\n`;
-        // 截取前500字符，避免过长
-        const requestPreview = logEntry.requestText.length > 500 
-          ? logEntry.requestText.substring(0, 500) + '...'
-          : logEntry.requestText;
-        logLine += `${requestPreview}\n\n`;
+        let promptToShow = logEntry.requestText;
+        if (MAX_PROMPT_LOG > 0 && promptToShow.length > MAX_PROMPT_LOG) {
+          promptToShow = promptToShow.slice(0, MAX_PROMPT_LOG) + `\n...(truncated, total ${logEntry.requestText.length} chars)`;
+        }
+        logLine += `📝 REQUEST (chars=${logEntry.requestText.length}):\n${promptToShow}\n\n`;
       }
-      
-      // 原始请求数据（关键信息）
+
       if (logEntry.rawRequest) {
+        const payload = logEntry.rawRequest.payload || {};
         logLine += `🔧 REQUEST DETAILS:\n`;
         logLine += `   URL: ${logEntry.rawRequest.url}\n`;
-        logLine += `   Model: ${logEntry.rawRequest.payload?.model || 'unknown'}\n`;
-        logLine += `   Temperature: ${logEntry.rawRequest.payload?.temperature || 'unknown'}\n`;
-        logLine += `   Max Tokens: ${logEntry.rawRequest.payload?.maxTokens || 'unknown'}\n`;
+        logLine += `   Model: ${payload.model || 'unknown'}\n`;
+        if (payload.temperature !== undefined) logLine += `   Temperature: ${payload.temperature}\n`;
+        const maxTokens = payload.max_tokens ?? payload.maxTokens;
+        if (maxTokens !== undefined) logLine += `   Max Tokens: ${maxTokens}\n`;
+        if (Array.isArray(payload.messages)) {
+          logLine += `   Messages (${payload.messages.length}):\n`;
+          payload.messages.forEach((m,i) => {
+            const content = (m.content || '').toString();
+            let shown = content;
+            if (MAX_MESSAGE_CONTENT > 0 && shown.length > MAX_MESSAGE_CONTENT) {
+              shown = shown.slice(0, MAX_MESSAGE_CONTENT) + `\n...(truncated, total ${content.length} chars)`;
+            }
+            logLine += `     [${i}] role=${m.role} length=${content.length}\n`;
+            shown.split('\n').forEach(line => { logLine += `           ${line}\n`; });
+          });
+        }
         logLine += `\n`;
       }
-      
-      // 响应内容
+
       if (logEntry.responseText) {
-        logLine += `🤖 RESPONSE:\n`;
-        logLine += `${logEntry.responseText}\n\n`;
+        let respShow = logEntry.responseText;
+        if (MAX_RESPONSE_TEXT > 0 && respShow.length > MAX_RESPONSE_TEXT) {
+          respShow = respShow.slice(0, MAX_RESPONSE_TEXT) + `\n...(truncated, total ${logEntry.responseText.length} chars)`;
+        }
+        logLine += `🤖 RAW RESPONSE TEXT (chars=${logEntry.responseText.length}):\n${respShow}\n\n`;
       }
-      
-      // 原始响应数据（关键信息）
+
       if (logEntry.rawResponse) {
+        const rr = logEntry.rawResponse;
         logLine += `📊 RESPONSE DETAILS:\n`;
-        logLine += `   ID: ${logEntry.rawResponse.id || 'unknown'}\n`;
-        logLine += `   Created: ${new Date(logEntry.rawResponse.created * 1000).toISOString()}\n`;
-        if (logEntry.rawResponse.usage) {
-          logLine += `   Tokens: ${logEntry.rawResponse.usage.promptTokens || 0} + ${logEntry.rawResponse.usage.completionTokens || 0} = ${logEntry.rawResponse.usage.totalTokens || 0}\n`;
+        logLine += `   ID: ${rr.id || 'unknown'}\n`;
+        if (rr.created) logLine += `   Created: ${new Date(rr.created * 1000).toISOString()}\n`;
+        const usage = rr.usage || {};
+        const promptTokens = usage.prompt_tokens || usage.promptTokens || 0;
+        const completionTokens = usage.completion_tokens || usage.completionTokens || 0;
+        const totalTokens = usage.total_tokens || usage.totalTokens || (promptTokens + completionTokens);
+        if (promptTokens || completionTokens || totalTokens) {
+          logLine += `   Tokens: prompt=${promptTokens} completion=${completionTokens} total=${totalTokens}\n`;
+        }
+        if (Array.isArray(rr.choices)) {
+          logLine += `   Choices: ${rr.choices.length}\n`;
+          rr.choices.forEach((c,i) => {
+            const content = c.message?.content || c.text || '';
+            let shown = content;
+            if (MAX_RESPONSE_TEXT > 0 && shown.length > MAX_RESPONSE_TEXT) {
+              shown = shown.slice(0, MAX_RESPONSE_TEXT) + `\n...(truncated, total ${content.length} chars)`;
+            }
+            logLine += `     [${i}] finish=${c.finish_reason || c.finishReason || 'unknown'} length=${content.length}\n`;
+            shown.split('\n').forEach(line => { logLine += `           ${line}\n`; });
+          });
         }
         logLine += `\n`;
       }
-      
-      // 解析后的结果
+
       if (logEntry.parsedResult) {
+        const pr = logEntry.parsedResult;
         logLine += `🎯 PARSED RESULT:\n`;
-        logLine += `   Position: (${logEntry.parsedResult.row}, ${logEntry.parsedResult.col})\n`;
-        logLine += `   Player: ${logEntry.parsedResult.playerName || 'unknown'}\n`;
-        logLine += `   Thinking Time: ${logEntry.parsedResult.thinkingTime || 'unknown'}s\n`;
-        if (logEntry.parsedResult.analysis) {
-          logLine += `   Move Type: ${logEntry.parsedResult.analysis.moveType || 'unknown'}\n`;
-          logLine += `   Win Probability: ${logEntry.parsedResult.analysis.winProbability || 'unknown'}%\n`;
+        logLine += `   Position: (${pr.row}, ${pr.col})\n`;
+        if (pr.playerName) logLine += `   Player: ${pr.playerName}\n`;
+        if (pr.thinkingTime) logLine += `   Thinking Time: ${pr.thinkingTime}s\n`;
+        if (pr.analysis) {
+          if (pr.analysis.moveType) logLine += `   Move Type: ${pr.analysis.moveType}\n`;
+          if (pr.analysis.winProbability !== undefined) logLine += `   Win Probability: ${pr.analysis.winProbability}%\n`;
         }
-        if (logEntry.parsedResult.reasoning) {
-          logLine += `   Reasoning: ${logEntry.parsedResult.reasoning}\n`;
-        }
+        if (pr.reasoning) logLine += `   Reasoning: ${pr.reasoning}\n`;
         logLine += `\n`;
       }
+
+      logLine += `${'='.repeat(80)}\n\n`;
       
       logLine += `${'='.repeat(80)}\n\n`;
       
