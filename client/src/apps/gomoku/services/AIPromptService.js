@@ -2,7 +2,6 @@
 import { GOMOKU_ADVANCED_PROMPT } from './AIGomokuPromptTemplate.js';
 import { BOARD_SIZE, DEFAULT_TEMPLATE_ID, FALLBACK_TEMPLATE_ID, isValidCoordinate } from './AIConstants.js';
 import { boardToString as formatBoard, historyToString as formatHistory } from './AIBoardFormatter.js';
-import { generateThreatAnalysisPrompt } from './AIThreatAnalyzer.js';
 import { parseAIResponse as parseResponseExternal } from './AIResponseParser.js';
 
 export class AIPromptService {
@@ -120,9 +119,7 @@ ${historyStr}
   // 验证坐标有效性
   isValidCoordinate(row, col) { return isValidCoordinate(row, col, BOARD_SIZE); }
 
-  // 威胁分析工具方法
-  // 生成威胁分析提示词（直接使用拆分模块函数）
-  generateThreatAnalysisPrompt(board, gameHistory, playerType) { return generateThreatAnalysisPrompt(board, gameHistory, playerType); }
+  // （威胁分析本地代码已移除，交由大模型自行识别）
 }
 
 // 创建单例实例
