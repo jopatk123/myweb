@@ -393,11 +393,34 @@ onMounted(() => {
     if (saved) {
       const data = JSON.parse(saved);
       gameMode.value = data.gameMode || 'human_vs_ai';
+      const rememberKeys = !!data.rememberKeys;
       if (data.config) {
         aiConfig.value = {
           ...data.config,
-          apiKey: '' // 不加载API Key
+          apiKey: rememberKeys ? (data.config.apiKey || '') : ''
         };
+        if(gameMode.value==='human_vs_ai'){
+          // 配置服务（如果有 apiUrl 与 apiKey 则完整，否则等待用户输入）
+          if(data.config.apiUrl && data.config.apiKey && rememberKeys){
+            gameModeService.setGameMode(gameMode.value);
+            gameModeService.configurePlayerAI(2, aiConfig.value);
+          }
+        }
+      }
+      if(data.ai1Config || data.ai2Config){
+        aiConfig.value = {
+          ai1Config: data.ai1Config ? { ...data.ai1Config, apiKey: rememberKeys ? (data.ai1Config.apiKey||'') : '' } : null,
+          ai2Config: data.ai2Config ? { ...data.ai2Config, apiKey: rememberKeys ? (data.ai2Config.apiKey||'') : '' } : null
+        };
+        if(gameMode.value==='ai_vs_ai'){
+          gameModeService.setGameMode(gameMode.value);
+          if(aiConfig.value.ai1Config && aiConfig.value.ai1Config.apiUrl && aiConfig.value.ai1Config.apiKey && rememberKeys){
+            gameModeService.configurePlayerAI(1, aiConfig.value.ai1Config);
+          }
+          if(aiConfig.value.ai2Config && aiConfig.value.ai2Config.apiUrl && aiConfig.value.ai2Config.apiKey && rememberKeys){
+            gameModeService.configurePlayerAI(2, aiConfig.value.ai2Config);
+          }
+        }
       }
     }
   } catch (error) {

@@ -36,6 +36,9 @@
       />
 
       <div class="config-actions">
+        <label class="remember-key">
+          <input type="checkbox" v-model="rememberKeys" /> 记住 API Key（仅保存在本浏览器本地）
+        </label>
         <button @click="saveAndStart" class="btn btn-success btn-md start-btn">开始游戏</button>
         <button @click="resetConfig" class="btn btn-muted btn-md reset-btn">重置</button>
       </div>
@@ -63,6 +66,9 @@ const ai2Config = ref({ apiUrl: '', apiKey: '', modelName: 'deepseek-chat', play
 const testing = ref(false); const testResult = ref(null);
 const testingAI1 = ref(false); const testingAI2 = ref(false);
 const ai1TestResult = ref(null); const ai2TestResult = ref(null);
+
+// 是否记住密钥
+const rememberKeys = ref(false);
 
 // 使用统一的预设服务
 const presets = aiPresetService.presets;
@@ -117,8 +123,10 @@ function saveAndStart(){
       testResult.value={ type:'error', message:'请先测试API连接，确保连接成功后再开始游戏'}; 
       return; 
     }
-    localStorage.setItem('gomoku_simple_config', JSON.stringify({ gameMode:gameMode.value, config:config.value }));
-    emit('config-saved',{ mode:gameMode.value, aiConfig:config.value });
+  const storeConfig = { ...config.value };
+  if(!rememberKeys.value) storeConfig.apiKey='';
+  localStorage.setItem('gomoku_simple_config', JSON.stringify({ gameMode:gameMode.value, config:storeConfig, rememberKeys:rememberKeys.value }));
+  emit('config-saved',{ mode:gameMode.value, aiConfig:config.value });
   } else if(gameMode.value==='ai_vs_ai') {
     if(!canTestAI1.value || !canTestAI2.value){
       if(!canTestAI1.value) ai1TestResult.value={ type:'error', message:'请填写完整的AI1配置'};
@@ -134,8 +142,11 @@ function saveAndStart(){
       ai2TestResult.value={ type:'error', message:'请先测试AI2连接，确保连接成功后再开始游戏'}; 
       return; 
     }
-    localStorage.setItem('gomoku_simple_config', JSON.stringify({ gameMode:gameMode.value, ai1Config:ai1Config.value, ai2Config:ai2Config.value }));
-    emit('config-saved',{ mode:gameMode.value, ai1Config:ai1Config.value, ai2Config:ai2Config.value });
+  const storeAI1 = { ...ai1Config.value };
+  const storeAI2 = { ...ai2Config.value };
+  if(!rememberKeys.value){ storeAI1.apiKey=''; storeAI2.apiKey=''; }
+  localStorage.setItem('gomoku_simple_config', JSON.stringify({ gameMode:gameMode.value, ai1Config:storeAI1, ai2Config:storeAI2, rememberKeys:rememberKeys.value }));
+  emit('config-saved',{ mode:gameMode.value, ai1Config:ai1Config.value, ai2Config:ai2Config.value });
   }
   emit('start-game'); emit('close');
 }
@@ -148,8 +159,27 @@ function resetConfig(){
 }
 
 function loadConfig(){
-  try { const saved=localStorage.getItem('gomoku_simple_config'); if(saved){ const data=JSON.parse(saved); gameMode.value=data.gameMode||'human_vs_ai'; if(data.config){ Object.assign(config.value,{ ...data.config, apiKey:'' }); } }}
-    catch(error){ const debug = window.location.search.includes('gomokuDebug=1'); if(debug) console.error('加载配置失败:',error); }
+  try { 
+    const saved=localStorage.getItem('gomoku_simple_config'); 
+    if(saved){ 
+      const data=JSON.parse(saved); 
+      gameMode.value=data.gameMode||'human_vs_ai'; 
+      rememberKeys.value=!!data.rememberKeys;
+      if(data.config){
+        Object.assign(config.value,{ ...data.config });
+        if(!rememberKeys.value) config.value.apiKey='';
+      }
+      if(data.ai1Config){
+        Object.assign(ai1Config.value,{ ...data.ai1Config });
+        if(!rememberKeys.value) ai1Config.value.apiKey='';
+      }
+      if(data.ai2Config){
+        Object.assign(ai2Config.value,{ ...data.ai2Config });
+        if(!rememberKeys.value) ai2Config.value.apiKey='';
+      }
+    }
+  }
+  catch(error){ const debug = window.location.search.includes('gomokuDebug=1'); if(debug) console.error('加载配置失败:',error); }
 }
 onMounted(loadConfig);
 </script>
@@ -325,6 +355,14 @@ onMounted(loadConfig);
   justify-content: center; 
   padding-top: 20px; 
   border-top: 1px solid #eee; 
+}
+
+.remember-key {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  color:#555;
 }
 
 @media (max-width: 768px) {
