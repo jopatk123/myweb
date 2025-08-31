@@ -14,7 +14,6 @@ import { createNovelBookmarkRoutes } from './routes/novel-bookmarks.routes.js';
 import { createSnakeMultiplayerRoutes } from './routes/snake-multiplayer.routes.js';
 import messageRoutes from './routes/messages.routes.js';
 import { createInternalLogsRoutes } from './routes/internal.logs.routes.js';
-import { createLogRoutes } from './routes/log.routes.js';
 import errorHandler from './middleware/error.middleware.js';
 import {
   normalizeRequestKeys,
@@ -88,8 +87,7 @@ app.use('/api/messages', messageRoutes);
 // 通过环境变量可以在部署时禁用处理逻辑，但路由保持可用以避免客户端 404。
 app.use('/internal/logs', createInternalLogsRoutes());
 
-// 日志管理路由
-app.use('/api/logs', createLogRoutes());
+// /api/logs 已移除（文件日志已停用）
 
 // API根路径处理
 app.get('/api', (req, res) => {

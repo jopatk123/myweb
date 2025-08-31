@@ -1,8 +1,8 @@
 <template>
   <div class="ai-logs-viewer">
     <div class="header">
-      <h2>AI对话日志查看器</h2>
-      <div class="controls">
+      <h2>AI对话日志查看器（已禁用文件存储）</h2>
+      <div class="controls" v-if="!disabled">
         <button @click="refreshLogs" :disabled="loading">
           <span v-if="loading">刷新中...</span>
           <span v-else>刷新</span>
@@ -13,7 +13,11 @@
       </div>
     </div>
 
-    <div class="stats" v-if="stats">
+    <div class="disabled-tip" v-if="disabled">
+      已取消将 AI 对话写入服务器文件，只保留控制台输出。此页面显示空数据。
+    </div>
+
+    <div class="stats" v-if="stats && !disabled">
       <div class="stat-item">
         <label>日志条目:</label>
         <span>{{ stats.entries }}</span>
@@ -28,7 +32,7 @@
       </div>
     </div>
 
-    <div class="filters">
+  <div class="filters" v-if="!disabled">
       <input
         v-model="searchQuery"
         @input="debouncedSearch"
@@ -48,9 +52,9 @@
         正在加载日志...
       </div>
       <div v-else-if="logs.length === 0" class="empty">
-        暂无日志记录
+        {{ disabled ? '文件日志功能已禁用' : '暂无日志记录' }}
       </div>
-      <div v-else class="logs-list">
+      <div v-else class="logs-list" v-if="!disabled">
         <div
           v-for="(log, index) in logs"
           :key="index"
@@ -85,9 +89,10 @@ import { logsApi } from '../../api/logs.js';
 export default {
   name: 'AILogsViewer',
   setup() {
-    const logs = ref([]);
-    const stats = ref(null);
-    const loading = ref(false);
+  const logs = ref([]);
+  const stats = ref(null);
+  const loading = ref(false);
+  const disabled = ref(false);
     const searchQuery = ref('');
     const selectedLines = ref(100);
 
@@ -95,6 +100,7 @@ export default {
       try {
         const result = await logsApi.getAILogStats();
         stats.value = result.data;
+        if (result.data?.disabled) disabled.value = true;
       } catch (error) {
         console.error('获取日志统计失败:', error);
       }
@@ -110,7 +116,12 @@ export default {
         };
         
         const result = await logsApi.getAILogs(params);
-        logs.value = result.data.logs || [];
+        if (result.data?.disabled) {
+          disabled.value = true;
+          logs.value = [];
+        } else {
+          logs.value = result.data.logs || [];
+        }
         
         // 同时更新统计信息
         await loadStats();
@@ -172,7 +183,8 @@ export default {
       refreshLogs,
       clearLogs,
       formatDate,
-      debouncedSearch
+  debouncedSearch,
+  disabled
     };
   }
 };
@@ -217,6 +229,16 @@ export default {
 
 .controls button.danger:hover {
   background: #cc0000;
+}
+
+.disabled-tip {
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  color: #ad8b00;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 14px;
 }
 
 .controls button:disabled {

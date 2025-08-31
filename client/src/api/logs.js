@@ -1,40 +1,8 @@
-import axios from 'axios';
-
-const apiBase = import.meta.env.VITE_API_BASE || '/api';
-
-const api = axios.create({ 
-  baseURL: apiBase, 
-  timeout: 30000 
-});
-
-api.interceptors.response.use(
-  resp => resp.data,
-  error => Promise.reject(error.response?.data || error)
-);
+// AI 文件日志功能已移除：此模块保留兼容导出，所有方法返回禁用状态。
+const disabled = () => Promise.resolve({ code: 200, data: { logs: [], disabled: true } });
 
 export const logsApi = {
-  /**
-   * 获取AI对话日志
-   * @param {Object} params - 查询参数
-   * @param {number} params.lines - 返回行数，默认100
-   * @param {string} params.search - 搜索关键词
-   * @param {string} params.format - 返回格式 'text' | 'json'
-   */
-  getAILogs(params = {}) {
-    return api.get('/logs/ai', { params });
-  },
-
-  /**
-   * 获取AI日志统计信息
-   */
-  getAILogStats() {
-    return api.get('/logs/ai/stats');
-  },
-
-  /**
-   * 清空AI对话日志
-   */
-  clearAILogs() {
-    return api.delete('/logs/ai');
-  }
+  getAILogs: disabled,
+  getAILogStats: () => Promise.resolve({ code: 200, data: { fileExists: false, entries: 0, size: 0, disabled: true } }),
+  clearAILogs: () => Promise.resolve({ code: 200, message: 'disabled' })
 };
