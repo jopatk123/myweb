@@ -14,6 +14,10 @@ COMPOSE_FILE="docker/docker-compose.yml"
 HOST_IP="43.163.120.212"
 HOST_PORT="10010"
 
+# 固定 Compose 项目名以隔离不同项目，允许通过环境变量覆盖
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-myweb}"
+export COMPOSE_PROJECT_NAME
+
 log()  { echo -e "\033[1;34m[INFO]\033[0m $*"; }
 ok()   { echo -e "\033[1;32m[SUCCESS]\033[0m $*"; }
 warn() { echo -e "\033[1;33m[WARN]\033[0m $*"; }
@@ -171,7 +175,14 @@ EOF
   
   # 启动服务（构建镜像并启动容器）
   log "启动容器与服务（首次启动会自动进行 schema 初始化与 ensure 兜底）..."
-  $DC -f "$COMPOSE_FILE" up -d --build --remove-orphans
+  # 控制是否删除 orphan 容器：默认不删除，可通过环境变量 REMOVE_ORPHANS=true 启用
+  if [ "${REMOVE_ORPHANS:-false}" = "true" ]; then
+    log "使用 --remove-orphans（环境变量 REMOVE_ORPHANS=true）"
+    $DC -f "$COMPOSE_FILE" up -d --build --remove-orphans
+  else
+    log "不使用 --remove-orphans（默认），保留现有未在 compose 文件中的容器"
+    $DC -f "$COMPOSE_FILE" up -d --build
+  fi
 
   # 检查数据库状态（由后端 initDatabase 执行 schema+ensure 初始化）
   log "检查数据库状态..."
