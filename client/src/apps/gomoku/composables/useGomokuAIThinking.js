@@ -68,6 +68,15 @@ export function useGomokuAIThinking(deps) {
         }
       );
 
+        // DEBUG: log snapshot used for AI request and player mapping
+        if (debug) {
+          console.log('[Gomoku][AI] request snapshot', {
+            playerNumberSent: playerNumber,
+            boardSnapshot: board.value.map(row => row.slice(0, 15)),
+            moveHistorySnapshot: (gameHistory ? gameHistory.value : []).slice(-10)
+          });
+        }
+
       // 补充 80% / 100% 进度（AIModelService 解析后已经返回，这里模拟终段展示）
       currentThinking.value = {
         player: playerNumber,

@@ -1,16 +1,16 @@
 // 威胁分析模块
 import { THREAT_PRIORITIES, isValidCoordinate } from './AIConstants.js';
+import { DIRECTIONS } from '../constants/gameConstants.js';
 
 // 主入口：分析棋盘上指定玩家的所有威胁
 export function analyzeThreats(board, playerType) {
   const threats = [];
-  const directions = [ [0,1], [1,0], [1,1], [1,-1] ];
   const visited = new Set();
   const size = board.length;
   for (let row = 0; row < size; row++) {
     for (let col = 0; col < size; col++) {
       if (board[row][col] === playerType) {
-        for (const [dr, dc] of directions) {
+        for (const [dr, dc] of DIRECTIONS) {
           const key = `${row}-${col}-${dr}-${dc}`;
           if (visited.has(key)) continue;
           const threat = analyzeDirection(board, row, col, dr, dc, playerType);

@@ -118,7 +118,14 @@ export class AIModelService {
 
       await this.delay(300);
 
+      // Ensure playerType is numeric 1 or 2 (mapping to black/white) when building prompt
+      if (typeof playerType !== 'number') {
+        console.warn('[Gomoku][AIModelService] playerType expected number (1 or 2), got:', playerType);
+      }
       const prompt = this.buildPrompt(board, gameHistory, playerType);
+
+      // DEBUG: record prompt and playerType
+      try { console.log('[Gomoku][AIModelService] prompt for playerType', playerType, prompt.slice(0, 800)); } catch(e) {}
 
       if (onThinkingUpdate) {
         onThinkingUpdate({
