@@ -66,5 +66,7 @@ export function useNovelParser() {
   return {
     parseChapters,
     parseBookFile,
+    // 将 generateId 暴露给外部使用（之前导入但未返回，导致调用方拿到 undefined）
+    generateId,
   };
 }
