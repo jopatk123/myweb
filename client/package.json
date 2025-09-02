@@ -27,6 +27,6 @@
     "prettier": "^3.6.2",
     "vite": "^4.5.0",
     "vitest": "^0.34.0",
-    "vue-eslint-parser": "^9.4.3"
+  "vue-eslint-parser": "^10.2.0"
   }
 }
