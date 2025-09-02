@@ -1,4 +1,5 @@
-export default function errorHandler(err, req, res, next) {
+export default function errorHandler(err, req, res, _next) {
+  void _next;
   // 日志记录
   console.error(`[${new Date().toISOString()}] ${err.stack}`);
 

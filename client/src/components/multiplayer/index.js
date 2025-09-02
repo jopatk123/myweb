@@ -345,7 +345,8 @@ export const gameUtils = {
   /**
    * 生成随机房间名称
    */
-  generateRoomName: (gameType, mode) => {
+  generateRoomName: (gameType, _mode) => {
+  void _mode
     const adjectives = ['快乐', '激烈', '友好', '刺激', '挑战', '休闲', '竞技', '有趣']
     const nouns = ['房间', '大厅', '战场', '擂台', '竞技场', '游戏室']
     
@@ -367,8 +368,9 @@ export const gameUtils = {
   /**
    * 获取推荐设置
    */
-  getRecommendedSettings: (gameType, mode, playerCount) => {
+  getRecommendedSettings: (gameType, _mode, playerCount) => {
     const config = gameUtils.getGameConfig(gameType)
+  void _mode
     
     // 基础推荐设置
     const baseSettings = {

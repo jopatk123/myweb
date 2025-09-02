@@ -21,7 +21,8 @@ if (!cols.includes('is_autostart')) {
     db.exec(
       'CREATE INDEX IF NOT EXISTS idx_apps_is_autostart ON apps(is_autostart)'
     );
-  } catch (error) {
+  } catch (_error) {
+    void _error;
     // 忽略索引创建错误
   }
   console.log('✅ Added column is_autostart and index');

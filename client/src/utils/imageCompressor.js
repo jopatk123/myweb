@@ -10,7 +10,7 @@ const MAX_WIDTH = 1920;
 const MAX_HEIGHT = 1080;
 
 // 质量设置
-const QUALITY_STEPS = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
+// quality steps removed; unused
 
 /**
  * 压缩图片
@@ -33,8 +33,8 @@ export async function compressImage(file, maxSize = MAX_FILE_SIZE) {
       // 清理临时URL（img.src 会在下面设置，onload 在运行时可访问 url）
       try {
         URL.revokeObjectURL(url);
-      } catch (e) {
-        // ignore
+      } catch (_err) {
+        void _err;
       }
 
       // 计算新的尺寸

@@ -165,7 +165,8 @@ export class AppModel {
         'changes=',
         info.changes
       );
-    } catch (error) {
+    } catch (_error) {
+      void _error;
       // ignore logging errors
     }
     return info.changes === undefined ? true : info.changes;

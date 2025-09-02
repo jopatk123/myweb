@@ -12,7 +12,8 @@ export function useNovelStorage() {
           err
         );
         const metaOnly = books.map(b => {
-          const { content, chapters, ...meta } = b;
+          const { content: _content, chapters: _chapters, ...meta } = b;
+          void _content; void _chapters;
           return meta;
         });
         try {

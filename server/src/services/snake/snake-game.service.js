@@ -2,9 +2,9 @@
 import { RoomManagerService } from '../multiplayer/room-manager.service.js';
 import { SnakeRoomModel } from '../../models/snake-room.model.js';
 import { SnakePlayerModel } from '../../models/snake-player.model.js';
-import { SnakeGameRecordModel } from '../../models/snake-game-record.model.js';
+// Removed unused imports to silence lint warnings
 import { createInitialSnake, updateSharedGameTick } from './shared-mode.logic.js';
-import { initCompetitivePlayers, updateCompetitiveGameTick, generateCompetitiveFoods } from './competitive-mode.logic.js';
+import { updateCompetitiveGameTick } from './competitive-mode.logic.js';
 import { VoteManager } from './vote-manager.js';
 import { GameLifecycleManager } from './game-lifecycle.js';
 

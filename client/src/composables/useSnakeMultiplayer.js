@@ -11,7 +11,7 @@ import { SnakeStateManager } from './multiplayer/snakeStateManager.js';
 
 export function useSnakeMultiplayer() {
   // WebSocket
-  const { ws, isConnected, connect, disconnect, send, onMessage, offMessage } = useWebSocket();
+  const { isConnected, connect, send, onMessage, offMessage } = useWebSocket();
 
   // 基础状态
   const isInRoom = ref(false);

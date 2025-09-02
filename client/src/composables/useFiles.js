@@ -18,7 +18,7 @@ export function useFiles() {
   const lastError = ref(null);
 
   const totalPages = computed(() =>
-    Math.ceil((total.value || 0) / (limit.value || 1))
+    Math.ceil(((total.value || 0) ) / (limit.value || 1))
   );
 
   function unwrap(resp) {
@@ -80,7 +80,7 @@ export function useFiles() {
         const file = fileArray[i];
         currentFileName.value = file.name;
 
-        await filesApi.upload([file], (progress, loaded, total) => {
+    await filesApi.upload([file], (progress) => {
           // 计算当前文件的已上传字节数
           const currentFileUploaded = Math.round((progress / 100) * file.size);
           // 累积总上传字节数

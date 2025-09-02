@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import { bookmarksApi } from '@/api/bookmarks.js';
-import { generateId } from '../utils/idGenerator.js';
+// generateId import removed (not used here)
 
 export function useNovelBookmarks() {
   const bookmarks = ref({}); // 按书籍ID分组存储书签
@@ -226,7 +226,7 @@ export function useNovelBookmarks() {
                 })
               : null;
             return found ? found.id : null;
-          } catch (_) {
+          } catch {
             return null;
           }
         };

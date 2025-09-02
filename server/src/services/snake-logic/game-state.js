@@ -19,6 +19,7 @@ export function initGameState(roomId, mode, config) {
 }
 
 export function initSharedGame(gameState, players) {
+  void players;
   const boardSize = gameState.config.BOARD_SIZE;
   const center = Math.floor(boardSize / 2);
   

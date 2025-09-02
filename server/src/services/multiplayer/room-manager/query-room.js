@@ -1,6 +1,7 @@
 // 查询相关逻辑
 export function queryRoomFactory(Service){
-  Service.prototype.getActiveRooms = function(filters = {}){
+  Service.prototype.getActiveRooms = function(_filters = {}){
+    void _filters;
     try { const rooms = this.RoomModel.getActiveRooms(); const gameType = this.getGameType(); return rooms.filter(room => { return !room.game_type || room.game_type === gameType; }).map(room => ({ ...room, game_type: gameType })); } catch (error) { console.error('获取房间列表失败:', error); throw error; }
   };
 

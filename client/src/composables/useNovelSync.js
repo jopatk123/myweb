@@ -4,7 +4,8 @@ import { useNovelParser } from './useNovelParser.js';
 
 export function useNovelSync() {
   const loading = ref(false);
-  const { parseChapters, generateId } = useNovelParser();
+  const { parseChapters: _parseChapters, generateId } = useNovelParser();
+  void _parseChapters;
 
   // 从后端同步小说列表（按需合并到本地）
   async function syncServerNovels(books, readingProgress, saveBooks) {

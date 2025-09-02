@@ -50,8 +50,9 @@ export class AILogService {
       await this.sendToServer(logEntry);
       
     } catch (error) {
+      void error;
       // 更详细的错误输出
-      console.warn('AI日志记录失败:', error && error.message ? error.message : error);
+      console.warn('AI日志记录失败');
 
       // 针对后端返回的 404 或特定错误，降级策略：将日志写入 localStorage 以便后续上传
       try {
@@ -73,8 +74,9 @@ export class AILogService {
           }
         }
       } catch (storageErr) {
+        void storageErr;
         // 如果localStorage不可用，则退回到队列机制
-        console.warn('AI日志备份失败，本地存储不可用:', storageErr && storageErr.message ? storageErr.message : storageErr);
+        console.warn('AI日志备份失败，本地存储不可用');
         this.logQueue.push(logData);
         if (this.logQueue.length > 100) this.logQueue.shift();
       }
@@ -119,6 +121,7 @@ export class AILogService {
       try {
         await this.logConversation(logData);
       } catch (error) {
+        void error;
         // 重试失败，重新加入队列
         this.logQueue.push(logData);
       }

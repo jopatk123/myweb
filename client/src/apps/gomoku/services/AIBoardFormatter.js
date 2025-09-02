@@ -1,5 +1,5 @@
 // 棋盘与历史记录格式化
-import { isValidCoordinate } from './AIConstants.js';
+// 不需要外部校验函数，移除未使用的导入以避免 ESLint 警告
 
 export function boardToString(board) {
   if (!board || !Array.isArray(board) || !Array.isArray(board[0])) return '无效棋盘数据';

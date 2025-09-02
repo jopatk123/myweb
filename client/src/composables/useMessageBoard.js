@@ -19,7 +19,8 @@ export function useMessageBoard() {
   });
 
   // WebSocket连接
-  const { isConnected, onMessage, send } = useWebSocket();
+  const { isConnected, onMessage } = useWebSocket();
+  // 目前 messageBoard 通过 API 推送并由 WebSocket 接收广播
 
   // 分页信息
   const pagination = reactive({

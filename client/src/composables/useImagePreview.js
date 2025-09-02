@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+// ref not required here
 
 export function useImagePreview() {
   // 获取图片URL

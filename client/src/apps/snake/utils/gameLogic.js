@@ -2,7 +2,7 @@
  * 贪吃蛇游戏核心逻辑工具
  * 将游戏逻辑从 composable 中分离出来
  */
-import { GAME_CONFIG, INITIAL_GAME_STATE, DIRECTIONS } from '../constants/gameConstants.js';
+import { GAME_CONFIG, INITIAL_GAME_STATE } from '../constants/gameConstants.js';
 
 /**
  * 位置和碰撞检测工具

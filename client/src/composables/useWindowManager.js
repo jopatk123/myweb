@@ -1,4 +1,4 @@
-import { ref, reactive, nextTick, markRaw } from 'vue';
+import { ref, reactive, nextTick as _nextTick, markRaw } from 'vue';
 
 // 全局窗口管理器
 const windows = ref([]);
@@ -10,6 +10,7 @@ let baseZIndex = 1000;
  * 窗口管理器 - 管理多个应用窗口
  */
 export function useWindowManager() {
+  void _nextTick;
   /**
    * 创建新窗口
    * @param {Object} options - 窗口配置

@@ -273,7 +273,8 @@ export class AIModelService {
     }
   }
 
-  async processResponse(response, playerType, onThinkingUpdate, startTime, board, gameHistory) {
+  async processResponse(response, playerType, onThinkingUpdate, startTime, _board, _gameHistory) {
+  void _board; void _gameHistory;
     const data = await response.json();
     // OpenAI / moonshot / ollama 风格
     if (data.choices && data.choices[0]) {
@@ -369,7 +370,7 @@ export class AIModelService {
 }
 
 // 导入统一的AI预设服务
-import { aiPresetService, PRESET_AI_CONFIGS } from './AIPresetService.js';
+import { PRESET_AI_CONFIGS } from './AIPresetService.js';
 // 导入统一的AI提示词服务
 import { aiPromptService } from './AIPromptService.js';
 

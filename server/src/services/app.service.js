@@ -36,8 +36,9 @@ export class AppService {
       const { mapToSnake } = await import('../utils/field-mapper.js');
       return this.appModel.create(mapToSnake(payload));
     } catch (error) {
+      void error;
       // 回退：若动态 import 失败，则直接传入 payload（model 层会兼容）
-      return this.appModel.create(payload);
+    return this.appModel.create(payload);
     }
   }
 
@@ -69,8 +70,9 @@ export class AppService {
           await fs.unlink(filePath).catch(() => {});
         }
       } catch (e) {
+        void e;
         // 清理失败不影响删除流程，仅日志提示
-        console.warn('[AppService.deleteApp] 清理图标失败:', e?.message || e);
+    console.warn('[AppService.deleteApp] 清理图标失败:');
       }
     }
 
@@ -128,6 +130,7 @@ export class AppService {
           sourcePath = p;
           break;
         } catch (error) {
+          void error;
           // ignore: candidate path not found, continue to next
         }
       }
@@ -145,7 +148,8 @@ export class AppService {
 
       return newFilename;
     } catch (error) {
-      console.error('复制预选图标失败:', error);
+      void error;
+      console.error('复制预选图标失败:');
       throw new Error(`复制预选图标失败: ${error?.message || '未知错误'}`);
     }
   }

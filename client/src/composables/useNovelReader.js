@@ -37,7 +37,7 @@ export function useNovelReader() {
     saveSettings,
     loadSettings,
   } = useNovelStorage();
-  const { parseChapters, parseBookFile, generateId } = useNovelParser();
+  const { parseChapters, generateId } = useNovelParser();
   const { syncServerNovels } = useNovelSync();
   const {
     bookmarks: bookmarksData,
@@ -46,7 +46,6 @@ export function useNovelReader() {
     addBookmark: addBookmarkToStorage,
     deleteBookmark: deleteBookmarkFromStorage,
     updateBookmark: updateBookmarkInStorage,
-    loadBookmarks: loadBookmarksFromServer,
     forceSyncBookmarks,
     syncAllBookmarks,
     deleteBookmarksByBookId: deleteBookmarksByBookIdFromStorage,
@@ -78,12 +77,12 @@ export function useNovelReader() {
     loading.value = true;
     try {
       // 上传到后端（小说专用端点）
-      const resp = await filesApi.uploadNovels(files, p => {});
+    const resp = await filesApi.uploadNovels(files, p => void p); // Keep the parameter as is
       // 后端现在返回 { code, success, data, novels? }
       const created = resp && resp.data ? resp.data : null;
       // 支持两种后端返回：单个 file 对象或数组；并兼容后端新增的 novels 字段
-      let uploadedFiles = [];
-      let uploadedNovels = [];
+  let uploadedFiles = [];
+  // no-op placeholder for potential server-side novel metadata
       if (created) {
         if (Array.isArray(created)) {
           uploadedFiles = created;
@@ -94,15 +93,11 @@ export function useNovelReader() {
           uploadedFiles = [created];
         }
       }
-      if (resp && resp.novels) {
-        uploadedNovels = Array.isArray(resp.novels)
-          ? resp.novels
-          : [resp.novels];
-      }
+  // ignore resp.novels metadata on client side for now
 
       const uploaded = uploadedFiles;
 
-      for (const f of uploaded) {
+    for (const f of uploaded) {
         try {
           const id = f.id || f.ID || f.id;
           const downloadUrl = filesApi.downloadUrl(id);
@@ -204,7 +199,7 @@ export function useNovelReader() {
       }
     }
 
-    // 更新最后阅读时间并保存元数据/内容（如果已加载）
+  // 更新最后阅读时间并保存元数据/内容（如果已加载）
     book.lastRead = new Date().toISOString();
     saveBooks(books.value);
   }
@@ -304,9 +299,9 @@ export function useNovelReader() {
     saveProgress(readingProgress.value);
   }
 
-  function showBookInfo(book) {
-    // 显示书籍详情的逻辑
-    
+  function showBookInfo(_book) {
+    // 显示书籍详情的逻辑（暂未实现）
+    void _book;
   }
 
   // 处理强制同步书签
@@ -323,7 +318,7 @@ export function useNovelReader() {
 
   // 初始化函数
   async function initialize() {
-    loadBooks(books);
+  loadBooks(books);
     loadProgress(readingProgress);
     loadSettings(readerSettings);
     // 从后端加载小说（适配多浏览器/多设备同步）

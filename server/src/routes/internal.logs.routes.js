@@ -12,8 +12,6 @@ export function createInternalLogsRoutes() {
         timestamp, 
         model, 
         playerType,
-        rawRequest,
-        rawResponse,
         gameState,
         parsedResult
       } = req.body || {};
@@ -49,9 +47,10 @@ export function createInternalLogsRoutes() {
       console.log('===================================================\n');
       
       res.json({ success: true });
-    } catch (e) {
-      console.error('Failed to log AI internal:', e);
-      res.status(500).json({ success: false, error: e.message });
+    } catch (_e) {
+      void _e;
+      console.error('Failed to log AI internal:', _e);
+      res.status(500).json({ success: false, error: _e.message });
     }
   });
 

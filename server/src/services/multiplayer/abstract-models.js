@@ -13,8 +13,9 @@ export class AbstractRoomModel {
    * @param {object} roomData - 房间数据
    * @returns {object} 创建的房间
    */
-  static create(roomData) {
-    throw new Error('create method must be implemented');
+  static create(_roomData) {
+  void _roomData;
+  throw new Error('create method must be implemented');
   }
 
   /**
@@ -22,8 +23,9 @@ export class AbstractRoomModel {
    * @param {string} roomCode - 房间码
    * @returns {object|null} 房间对象
    */
-  static findByRoomCode(roomCode) {
-    throw new Error('findByRoomCode method must be implemented');
+  static findByRoomCode(_roomCode) {
+  void _roomCode;
+  throw new Error('findByRoomCode method must be implemented');
   }
 
   /**
@@ -31,8 +33,9 @@ export class AbstractRoomModel {
    * @param {number} roomId - 房间ID
    * @returns {object|null} 房间对象
    */
-  static findById(roomId) {
-    throw new Error('findById method must be implemented');
+  static findById(_roomId) {
+  void _roomId;
+  throw new Error('findById method must be implemented');
   }
 
   /**
@@ -41,8 +44,10 @@ export class AbstractRoomModel {
    * @param {object} updates - 更新数据
    * @returns {boolean} 更新是否成功
    */
-  static update(roomId, updates) {
-    throw new Error('update method must be implemented');
+  static update(_roomId, _updates) {
+  void _roomId;
+  void _updates;
+  throw new Error('update method must be implemented');
   }
 
   /**
@@ -50,8 +55,9 @@ export class AbstractRoomModel {
    * @param {number} roomId - 房间ID
    * @returns {boolean} 删除是否成功
    */
-  static delete(roomId) {
-    throw new Error('delete method must be implemented');
+  static delete(_roomId) {
+  void _roomId;
+  throw new Error('delete method must be implemented');
   }
 
   /**
@@ -59,8 +65,9 @@ export class AbstractRoomModel {
    * @param {object} filters - 过滤条件
    * @returns {Array} 房间列表
    */
-  static getActiveRooms(filters = {}) {
-    throw new Error('getActiveRooms method must be implemented');
+  static getActiveRooms(_filters = {}) {
+  void _filters;
+  throw new Error('getActiveRooms method must be implemented');
   }
 
   /**
@@ -87,8 +94,9 @@ export class AbstractPlayerModel {
    * @param {object} playerData - 玩家数据
    * @returns {object} 创建的玩家
    */
-  static create(playerData) {
-    throw new Error('create method must be implemented');
+  static create(_playerData) {
+  void _playerData;
+  throw new Error('create method must be implemented');
   }
 
   /**
@@ -97,8 +105,10 @@ export class AbstractPlayerModel {
    * @param {string} sessionId - 会话ID
    * @returns {object|null} 玩家对象
    */
-  static findByRoomAndSession(roomId, sessionId) {
-    throw new Error('findByRoomAndSession method must be implemented');
+  static findByRoomAndSession(_roomId, _sessionId) {
+  void _roomId;
+  void _sessionId;
+  throw new Error('findByRoomAndSession method must be implemented');
   }
 
   /**
@@ -106,8 +116,9 @@ export class AbstractPlayerModel {
    * @param {number} roomId - 房间ID
    * @returns {Array} 玩家列表
    */
-  static findByRoomId(roomId) {
-    throw new Error('findByRoomId method must be implemented');
+  static findByRoomId(_roomId) {
+  void _roomId;
+  throw new Error('findByRoomId method must be implemented');
   }
 
   /**
@@ -115,8 +126,9 @@ export class AbstractPlayerModel {
    * @param {number} roomId - 房间ID
    * @returns {Array} 在线玩家列表
    */
-  static findOnlineByRoomId(roomId) {
-    throw new Error('findOnlineByRoomId method must be implemented');
+  static findOnlineByRoomId(_roomId) {
+  void _roomId;
+  throw new Error('findOnlineByRoomId method must be implemented');
   }
 
   /**
@@ -125,8 +137,10 @@ export class AbstractPlayerModel {
    * @param {object} updates - 更新数据
    * @returns {boolean} 更新是否成功
    */
-  static update(playerId, updates) {
-    throw new Error('update method must be implemented');
+  static update(_playerId, _updates) {
+  void _playerId;
+  void _updates;
+  throw new Error('update method must be implemented');
   }
 
   /**
@@ -134,8 +148,9 @@ export class AbstractPlayerModel {
    * @param {string} sessionId - 会话ID
    * @returns {boolean} 删除是否成功
    */
-  static deleteBySession(sessionId) {
-    throw new Error('deleteBySession method must be implemented');
+  static deleteBySession(_sessionId) {
+  void _sessionId;
+  throw new Error('deleteBySession method must be implemented');
   }
 
   /**
@@ -143,8 +158,9 @@ export class AbstractPlayerModel {
    * @param {number} roomId - 房间ID
    * @returns {boolean} 删除是否成功
    */
-  static deleteByRoomId(roomId) {
-    throw new Error('deleteByRoomId method must be implemented');
+  static deleteByRoomId(_roomId) {
+  void _roomId;
+  throw new Error('deleteByRoomId method must be implemented');
   }
 
   /**
@@ -152,8 +168,9 @@ export class AbstractPlayerModel {
    * @param {number} roomId - 房间ID
    * @returns {number} 玩家数量
    */
-  static getPlayerCount(roomId) {
-    throw new Error('getPlayerCount method must be implemented');
+  static getPlayerCount(_roomId) {
+  void _roomId;
+  throw new Error('getPlayerCount method must be implemented');
   }
 }
 
@@ -167,8 +184,9 @@ export class AbstractGameRecordModel {
    * @param {object} recordData - 记录数据
    * @returns {object} 创建的记录
    */
-  static create(recordData) {
-    throw new Error('create method must be implemented');
+  static create(_recordData) {
+  void _recordData;
+  throw new Error('create method must be implemented');
   }
 
   /**
@@ -176,8 +194,9 @@ export class AbstractGameRecordModel {
    * @param {number} roomId - 房间ID
    * @returns {Array} 游戏记录列表
    */
-  static findByRoomId(roomId) {
-    throw new Error('findByRoomId method must be implemented');
+  static findByRoomId(_roomId) {
+  void _roomId;
+  throw new Error('findByRoomId method must be implemented');
   }
 
   /**
@@ -200,9 +219,11 @@ export class ModelFactory {
    * @param {object} options - 选项
    * @returns {class} 房间模型类
    */
-  static createRoomModel(gameType, options = {}) {
+  static createRoomModel(_gameType, _options = {}) {
     // 这里可以根据游戏类型返回对应的模型类
     // 或者返回一个通用的模型类，通过配置来区分不同游戏
+    void _gameType;
+    void _options;
     throw new Error('createRoomModel method must be implemented');
   }
 
@@ -212,7 +233,9 @@ export class ModelFactory {
    * @param {object} options - 选项
    * @returns {class} 玩家模型类
    */
-  static createPlayerModel(gameType, options = {}) {
+  static createPlayerModel(_gameType, _options = {}) {
+    void _gameType;
+    void _options;
     throw new Error('createPlayerModel method must be implemented');
   }
 
@@ -222,7 +245,9 @@ export class ModelFactory {
    * @param {object} options - 选项
    * @returns {class} 游戏记录模型类
    */
-  static createGameRecordModel(gameType, options = {}) {
+  static createGameRecordModel(_gameType, _options = {}) {
+    void _gameType;
+    void _options;
     throw new Error('createGameRecordModel method must be implemented');
   }
 }

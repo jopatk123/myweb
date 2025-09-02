@@ -5,7 +5,7 @@ export function createSnakeHandlers(ctx) {
     state,
     events,
     utils: { resetRoomState, clearVoteTimer },
-    refs: { currentRoom, currentPlayer, players, gameState, gameStatus, error, votes, myVote, voteTimeout, voteTimer },
+  refs: { currentRoom, currentPlayer, players, gameState, gameStatus, error, votes, myVote, voteTimeout },
   } = ctx;
 
   function handleRoomCreated(data) {
@@ -24,7 +24,7 @@ export function createSnakeHandlers(ctx) {
     if (code) {
       localStorage.setItem('snakeCurrentRoomCode', code);
       // 立即再次获取房间信息，确保所有字段齐全（防止早期导航时缺字段）
-      try { ctx.api.getRoomInfo(code); } catch (e) { /* ignore */ }
+  try { ctx.api.getRoomInfo(code); } catch (e) { console.warn('fallback getRoomInfo failed', e); }
     }
   }
 

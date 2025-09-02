@@ -165,7 +165,8 @@ export function generateTacticalAdvice(opponentThreats, myThreats) {
   return advice;
 }
 
-export function generateThreatAnalysisPrompt(board, gameHistory, playerType) {
+export function generateThreatAnalysisPrompt(_board, _gameHistory, _playerType) {
   // WARNING: deprecated - prompt generation removed. Use analyzeThreats/analyzeDirection APIs directly if needed.
+  void _board; void _gameHistory; void _playerType;
   return '';
 }

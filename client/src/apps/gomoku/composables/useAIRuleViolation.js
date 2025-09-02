@@ -75,6 +75,7 @@ export function useAIRuleViolation() {
 
       return { isValid: true };
     } catch (error) {
+      console.warn('validatePosition failed', error);
       return {
         isValid: false,
         violationType: VIOLATION_TYPES.OUT_OF_BOUNDS,

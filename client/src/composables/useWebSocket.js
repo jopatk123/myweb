@@ -1,7 +1,7 @@
 /**
  * WebSocket组合式函数
  */
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted } from 'vue';
 
 // --- 单例状态（模块级） ---
 let _wsRef;          // WebSocket 实例 ref
@@ -47,6 +47,7 @@ export function useWebSocket() {
         try {
           host = new URL(apiBase).host;
         } catch (error) {
+          void error;
           console.warn('Invalid VITE_API_BASE URL:', apiBase);
           host = window.location.host;
         }
@@ -93,8 +94,9 @@ export function useWebSocket() {
       // 原始日志（可注释）
       // console.debug('[WS][raw]', data);
           handleMessage(data);
-        } catch (error) {
-          console.error('WebSocket message parse error:', error);
+      } catch (_error) {
+        void _error;
+        console.error('WebSocket message parse error');
         }
       };
 
@@ -106,11 +108,13 @@ export function useWebSocket() {
         }
       };
 
-      ws.value.onerror = error => {
-        console.error('WebSocket error:', error);
+      ws.value.onerror = _error => {
+        void _error;
+        console.error('WebSocket error');
       };
-    } catch (error) {
-      console.error('WebSocket connection error:', error);
+    } catch (_error) {
+      void _error;
+      console.error('WebSocket connection error');
     }
   };
 
