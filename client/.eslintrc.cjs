@@ -1,5 +1,4 @@
 module.exports = {
-  root: true,
   env: {
     browser: true,
     node: true,
@@ -10,7 +9,10 @@ module.exports = {
     'plugin:vue/vue3-recommended',
     '@vue/eslint-config-prettier'
   ],
+  parser: 'vue-eslint-parser',
   parserOptions: {
+    parser: '@babel/eslint-parser',
+    requireConfigFile: false,
     ecmaVersion: 'latest',
     sourceType: 'module',
   },

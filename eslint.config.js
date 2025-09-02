@@ -19,4 +19,5 @@ export default [
       'no-unused-vars': 'warn',
     },
   },
+  
 ];
