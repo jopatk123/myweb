@@ -49,7 +49,11 @@ export function useGomokuMultiplayer(){
   function toggleReady(){ const code = currentRoom.value?.room_code || currentRoom.value?.roomCode; if(code) api.toggleReady(code); }
   function leaveRoom(){ const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; if(code) api.leaveRoom(code); isInRoom.value=false; currentRoom.value=null; currentPlayer.value=null; players.value=[]; gameState.value=null; gameStatus.value='lobby'; }
   function startGame(){ const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; if(code) api.startGame(code); }
+  
+  // expose debug-friendly variants
+  function debugToggleReady(){ const code = currentRoom.value?.room_code || currentRoom.value?.roomCode; console.debug('[GomokuMP] toggleReady called, room=', code); if(code) return api.toggleReady(code); return false; }
+  function debugStartGame(){ const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; console.debug('[GomokuMP] startGame called, room=', code); if(code) return api.startGame(code); return false; }
   function place(row,col){ if(gameStatus.value!=='playing') return; const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; if(!code) return; api.placePiece(code,row,col); }
 
-  return { isConnected, isInRoom, currentRoom, currentPlayer, players, gameState, gameStatus, error, loading, mySeat, isReady, canStart, bothReady, createRoom, joinRoom, toggleReady, leaveRoom, startGame, place, events };
+  return { isConnected, isInRoom, currentRoom, currentPlayer, players, gameState, gameStatus, error, loading, mySeat, isReady, canStart, bothReady, createRoom, joinRoom, toggleReady, leaveRoom, startGame, place, events, debugToggleReady, debugStartGame };
 }

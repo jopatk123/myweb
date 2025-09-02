@@ -56,8 +56,8 @@
           <div>wsDebug: {{ wsDebug }}</div>
         </div>
         <div class="actions" v-if="mp.isInRoom">
-          <button @click="toggleReady">{{ mp.isReady? '取消准备':'准备' }}</button>
-          <button @click="startGame" :disabled="!mp.canStart">开始对局</button>
+          <button @click="mp.debugToggleReady()">{{ mp.isReady? '取消准备':'准备' }}</button>
+          <button @click="mp.debugStartGame()" :disabled="!mp.canStart">开始对局</button>
         </div>
         <div v-if="mp.gameStatus==='playing' || mp.gameStatus==='finished'" class="mp-board-wrapper">
           <GomokuBoard
