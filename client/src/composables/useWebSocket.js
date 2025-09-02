@@ -100,7 +100,7 @@ export function useWebSocket() {
 
       ws.value.onclose = () => {
         isConnected.value = false;
-        if (reconnectAttempts.value < maxReconnectAttempts) {
+        if (reconnectAttempts.value < _maxReconnectAttempts) {
           reconnectAttempts.value++;
           reconnectInterval.value = setTimeout(() => { connect(); }, 3000 * reconnectAttempts.value);
         }
@@ -164,9 +164,7 @@ export function useWebSocket() {
   // 组件挂载时连接
   onMounted(() => { connect(); });
 
-  // 组件卸载时断开连接
-  // 不在卸载时主动断开，让单例长存，除非显式调用 disconnect()
-  onUnmounted(() => {});
+  // 组件卸载时不主动断开（保持单例），如需断开请显式调用 disconnect()
 
   return {
     ws,

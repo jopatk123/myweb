@@ -24,7 +24,7 @@ export function generateCompetitiveFoods(service, gameState){
 export function updateCompetitiveGameTick(service, roomId){
   const gameState = service.getGameState(roomId); if(!gameState) return; const size = service.SNAKE_CONFIG.BOARD_SIZE;
   // 更新房间时间戳避免被误判闲置
-  try { service.RoomModel.update(roomId, { /* tick touch */ }); } catch(e) {}
+  try { service.RoomModel.update(roomId, { /* tick touch */ }); } catch (e) { console.warn('competitive tick touch failed', e); }
   let alive=0; let survivor=null;
   Object.entries(gameState.snakes).forEach(([sid,snake])=>{
     if(snake.gameOver) return;

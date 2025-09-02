@@ -16,7 +16,7 @@ export function updateSharedGameTick(service, roomId){
   const gameState = service.getGameState(roomId);
   if(!gameState || !gameState.sharedSnake || gameState.status!=='playing') return;
   // 触发一次房间更新时间，避免被视为空闲
-  try { service.RoomModel.update(roomId, { /* touch timestamp */ }); } catch(e) {}
+  try { service.RoomModel.update(roomId, { /* touch timestamp */ }); } catch (e) { console.warn('shared tick touch failed', e); }
   const snake = gameState.sharedSnake;
   if(snake.isWaitingForFirstVote){
     if(!gameState.startTime) gameState.startTime = Date.now();

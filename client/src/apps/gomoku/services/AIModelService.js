@@ -125,7 +125,7 @@ export class AIModelService {
       const prompt = this.buildPrompt(board, gameHistory, playerType);
 
       // DEBUG: record prompt and playerType
-      try { console.log('[Gomoku][AIModelService] prompt for playerType', playerType, prompt.slice(0, 800)); } catch(e) {}
+  try { console.log('[Gomoku][AIModelService] prompt for playerType', playerType, prompt.slice(0, 800)); } catch(e) { console.warn('Console log failed:', e); }
 
       if (onThinkingUpdate) {
         onThinkingUpdate({
@@ -220,10 +220,10 @@ export class AIModelService {
           console.log('[Gomoku][AI][RequestText]', prompt);
           console.log('[Gomoku][AI][ResponseText]', rawText);
         } catch (e) {
-          // 忽略控制台写入错误
+          console.warn('Console write failed:', e);
         }
       } catch (e) {
-        // 忽略读取失败
+        // 忽略读取失败，但记录警告
         console.warn('日志记录失败:', e);
       }
 
@@ -252,7 +252,7 @@ export class AIModelService {
           parsedResult: result
         });
       } catch (e) {
-        // 忽略解析结果记录失败
+        // 记录但不阻塞主流程
         console.warn('解析结果记录失败:', e);
       }
 
@@ -268,8 +268,6 @@ export class AIModelService {
 
       await this.delay(200);
       return result;
-    } catch (error) {
-      throw error;
     } finally {
       this.isThinking = false;
     }

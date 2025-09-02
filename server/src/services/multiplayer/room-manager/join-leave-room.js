@@ -41,8 +41,12 @@ export function joinLeaveRoomFactory(Service){
       const remainingPlayers = this.PlayerModel.getPlayerCount(roomId);
       this.RoomModel.update(roomId, { current_players: remainingPlayers });
       this.broadcastToRoom(roomId, 'player_left', { session_id: sessionId, player_name: player.player_name, room_id: roomId, remaining_count: remainingPlayers });
-      if (remainingPlayers === 0 || room.created_by === sessionId) { this.cleanupRoom(roomId); }
-      else if (room.created_by === sessionId) { this.transferHostRole(roomId); }
+      // 如果房间已空则清理房间；否则如果离开者是房主则转移房主
+      if (remainingPlayers === 0) {
+        this.cleanupRoom(roomId);
+      } else if (room.created_by === sessionId) {
+        this.transferHostRole(roomId);
+      }
       console.log(`玩家 ${player.player_name} 离开 ${this.getGameType()} 房间`);
       return { success: true };
     } catch (error) { console.error('离开房间失败:', error); throw error; }

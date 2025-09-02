@@ -28,7 +28,7 @@ export function analyzeThreats(board, playerType) {
                     if (!isValidCoordinate(r, c)) break;
                   }
                 }
-              } catch(_) {}
+              } catch (e) { console.warn('analyzeThreats visited mark failed', e); }
             }
         }
       }

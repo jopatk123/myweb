@@ -29,7 +29,6 @@ export async function updateSharedGame(roomId, service) {
 
   for (const segment of gameState.sharedSnake.body) {
     if (head.x === segment.x && head.y === segment.y) {
-    return await service.endGame(roomId, 'self_collision');
       return await service.endGame(roomId, 'self_collision');
     }
   }
