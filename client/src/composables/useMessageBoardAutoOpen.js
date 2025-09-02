@@ -9,7 +9,7 @@ import MessageBoardWindow from '@/components/message-board/MessageBoardWindow.vu
 export function useMessageBoardAutoOpen() {
   const isAutoOpenEnabled = ref(true);
   const { onMessage } = useWebSocket();
-  const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
+  const { createWindow, findWindowByApp, findWindowByAppAll, setActiveWindow, showWindowWithoutFocus } = useWindowManager();
 
   // 获取会话ID
   const getSessionId = () => {
@@ -26,16 +26,27 @@ export function useMessageBoardAutoOpen() {
     );
   };
 
-  // 打开或激活留言板窗口
-  const openMessageBoard = () => {
-    // 检查是否已经有留言板窗口
-    const existingWindow = findWindowByApp('messageBoard');
+  // 打开或显示留言板窗口（可选择不抢占焦点）
+  const openMessageBoard = (options = { activate: true }) => {
+    // 首先尝试找到任何已存在的留言板窗口（包括最小化或隐藏）
+    const existingWindow = findWindowByAppAll('messageBoard');
 
     if (existingWindow) {
-      // 如果已存在，激活窗口
-      setActiveWindow(existingWindow.id);
+      if (options.activate) {
+        // 要求激活窗口
+        setActiveWindow(existingWindow.id);
+      } else {
+        // 恢复/显示窗口但不改变当前活动窗口
+        try {
+          showWindowWithoutFocus(existingWindow.id);
+        } catch (e) {
+          // 回退：直接设置可见并取消最小化
+          existingWindow.minimized = false;
+          existingWindow.visible = true;
+        }
+      }
     } else {
-      // 创建新的留言板窗口
+      // 窗口不存在：创建新的留言板窗口（可选择不抢占焦点）
       createWindow({
         component: MessageBoardWindow,
         title: '💬 留言板',
@@ -44,16 +55,17 @@ export function useMessageBoardAutoOpen() {
         height: 600,
         props: {},
         storageKey: 'messageBoardPos',
+        activate: options.activate,
       });
     }
   };
 
-  // 处理新消息事件
+  // 处理新消息事件（自动打开时不抢占焦点）
   const handleNewMessage = data => {
     const { autoOpenSessions } = data;
 
     if (shouldAutoOpen(autoOpenSessions)) {
-      openMessageBoard();
+      openMessageBoard({ activate: false });
     }
   };
 

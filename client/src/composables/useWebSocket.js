@@ -19,6 +19,7 @@ function initSingleton() {
   _isConnected = ref(false);
   _reconnectAttempts = ref(0);
   _reconnectTimerRef = ref(null);
+  // map of type -> Set of handlers
   _messageHandlers = new Map();
   _initialized = true;
 }
@@ -122,10 +123,18 @@ export function useWebSocket() {
   const handleMessage = data => {
     const { type } = data;
 
-    if (messageHandlers.has(type)) {
-      const handler = messageHandlers.get(type);
-      handler(data.data || data);
-    }
+    if (!messageHandlers.has(type)) return;
+    const handlers = messageHandlers.get(type);
+    if (!handlers) return;
+    const payload = data.data || data;
+    // 调用所有注册的处理器
+    handlers.forEach(h => {
+      try {
+        h(payload);
+      } catch (e) {
+        console.error('WebSocket handler error', e);
+      }
+    });
   };
 
   // 发送消息
@@ -139,14 +148,23 @@ export function useWebSocket() {
     return false;
   };
 
-  // 注册消息处理器
+  // 注册消息处理器（支持多订阅者）
   const onMessage = (type, handler) => {
-    messageHandlers.set(type, handler);
+    if (!messageHandlers.has(type)) {
+      messageHandlers.set(type, new Set());
+    }
+    messageHandlers.get(type).add(handler);
   };
 
-  // 移除消息处理器
-  const offMessage = type => {
-    messageHandlers.delete(type);
+  // 移除消息处理器：如果提供 handler，则移除该 handler；否则移除该 type 的所有处理器
+  const offMessage = (type, handler) => {
+    if (!messageHandlers.has(type)) return;
+    if (handler) {
+      messageHandlers.get(type).delete(handler);
+      if (messageHandlers.get(type).size === 0) messageHandlers.delete(type);
+    } else {
+      messageHandlers.delete(type);
+    }
   };
 
   // 断开连接

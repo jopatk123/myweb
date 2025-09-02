@@ -49,9 +49,26 @@ export function useWindowManager() {
     });
 
     windows.value.push(window);
-    setActiveWindow(windowId);
+    // 允许传入 options.activate = false 来避免创建时抢占焦点
+    if (options.activate !== false) {
+      setActiveWindow(windowId);
+    }
 
     return window;
+  }
+
+  /**
+   * 在不改变活动窗口（不设置 activeWindowId）的情况下显示/恢复窗口
+   * 这用于像通知类的自动弹窗场景：显示窗口但不抢占当前焦点
+   */
+  function showWindowWithoutFocus(windowId) {
+    const window = windows.value.find(w => w.id === windowId);
+    if (window) {
+      window.minimized = false;
+      window.maximized = false;
+      window.visible = true;
+      // 不调用 setActiveWindow， 保持当前活动窗口不变
+    }
   }
 
   /**
@@ -137,6 +154,13 @@ export function useWindowManager() {
   }
 
   /**
+   * 检查应用（无视 visible 状态）是否已经存在（包括最小化或隐藏的窗口）
+   */
+  function findWindowByAppAll(appSlug) {
+    return windows.value.find(w => w.appSlug === appSlug);
+  }
+
+  /**
    * 获取所有窗口
    */
   function getAllWindows() {
@@ -160,7 +184,9 @@ export function useWindowManager() {
     restoreWindow,
     toggleMaximize,
     findWindowByApp,
+  findWindowByAppAll,
     getAllWindows,
     getActiveWindow,
+  showWindowWithoutFocus,
   };
 }
