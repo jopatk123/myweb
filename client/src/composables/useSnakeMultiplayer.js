@@ -29,9 +29,7 @@ export function useSnakeMultiplayer() {
   const voteTimer = ref(null);
   const myVote = ref(null);
 
-  // 统计 / 排行（占位，后续可由独立 API 填充）
-  const playerStats = ref(null);
-  const leaderboard = ref([]);
+
 
   // 计算属性
   const canStart = computed(() => {
@@ -223,7 +221,7 @@ export function useSnakeMultiplayer() {
   return {
     // 状态
     isConnected, isInRoom, currentRoom, currentPlayer, players, gameState, gameStatus, error, loading,
-    votes, voteTimeout, myVote, playerStats, leaderboard,
+  votes, voteTimeout, myVote,
     // 计算属性
     canStart, isReady, isGameHost,
     // 行为

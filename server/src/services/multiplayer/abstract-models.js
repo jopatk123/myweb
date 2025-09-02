@@ -186,18 +186,7 @@ export class AbstractGameRecordModel {
    * @param {object} options - 选项
    * @returns {object} 玩家统计
    */
-  static getPlayerStats(sessionId, options = {}) {
-    throw new Error('getPlayerStats method must be implemented');
-  }
-
-  /**
-   * 获取排行榜
-   * @param {object} options - 选项
-   * @returns {Array} 排行榜
-   */
-  static getLeaderboard(options = {}) {
-    throw new Error('getLeaderboard method must be implemented');
-  }
+  // optional stats/leaderboard methods removed
 }
 
 /**
@@ -324,7 +313,7 @@ export class ModelValidator {
    */
   static validateGameRecordModel(GameRecordModel) {
     const requiredMethods = [
-      'create', 'findByRoomId', 'getPlayerStats', 'getLeaderboard'
+      'create', 'findByRoomId'
     ];
     
     return this._validateMethods(GameRecordModel, requiredMethods, 'GameRecordModel');

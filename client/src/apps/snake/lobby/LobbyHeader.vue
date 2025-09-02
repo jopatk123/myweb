@@ -2,12 +2,6 @@
   <div class="lobby-header">
     <h2>🐍 多人贪吃蛇</h2>
     <div class="header-actions">
-      <button class="btn-secondary" @click="$emit('show-stats')">
-        📊 统计信息
-      </button>
-      <button class="btn-secondary" @click="$emit('show-leaderboard')">
-        🏆 排行榜
-      </button>
       <button class="btn-secondary" @click="$emit('refresh-rooms')" :disabled="loading">
         🔄 刷新房间
       </button>
@@ -20,7 +14,7 @@ defineProps({
   loading: { type: Boolean, default: false }
 })
 
-defineEmits(['show-stats', 'show-leaderboard', 'refresh-rooms'])
+defineEmits(['refresh-rooms'])
 </script>
 
 <style scoped>

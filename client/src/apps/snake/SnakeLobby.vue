@@ -2,8 +2,6 @@
   <div class="snake-lobby">
     <!-- 头部导航 -->
     <LobbyHeader 
-      @show-stats="showStats = true"
-      @show-leaderboard="showLeaderboard = true"
       @refresh-rooms="refreshRooms"
       :loading="loading"
     />
@@ -46,21 +44,7 @@
       />
     </div>
 
-    <!-- 统计信息弹窗 -->
-    <StatsModal
-      v-if="showStats"
-      :stats="playerStats"
-      @close="showStats = false"
-    />
-
-    <!-- 排行榜弹窗 -->
-    <LeaderboardModal
-      v-if="showLeaderboard"
-      :leaderboard="leaderboard"
-      :mode="leaderboardMode"
-      @close="showLeaderboard = false"
-      @switch-mode="switchLeaderboardMode"
-    />
+  
   </div>
 </template>
 
@@ -76,8 +60,6 @@ import ConnectionStatus from './lobby/ConnectionStatus.vue'
 import QuickStartSection from './lobby/QuickStartSection.vue'
 import JoinRoomSection from './lobby/JoinRoomSection.vue'
 import ActiveRoomsSection from './lobby/ActiveRoomsSection.vue'
-import StatsModal from './lobby/StatsModal.vue'
-import LeaderboardModal from './lobby/LeaderboardModal.vue'
 
 const emit = defineEmits(['joinRoom', 'createRoom'])
 
@@ -98,11 +80,6 @@ const playerName = ref(localStorage.getItem('snakePlayerName') || '')
 const selectedMode = ref('shared')
 const roomCodeInput = ref('')
 const activeRooms = ref([])
-const showStats = ref(false)
-const showLeaderboard = ref(false)
-const playerStats = ref(null)
-const leaderboard = ref([])
-const leaderboardMode = ref('all')
 
 // 监听玩家名字变化，保存到本地存储
 watch(playerName, (newName) => {
@@ -195,38 +172,7 @@ const spectateRoom = (roomCode) => {
   error.value = '观战功能尚未开放。';
 }
 
-const loadPlayerStats = async () => {
-  try {
-    playerStats.value = await snakeMultiplayerApi.getPlayerStats()
-  } catch (err) {
-    console.error('加载统计信息失败:', err)
-    playerStats.value = null
-  }
-}
-
-const loadLeaderboard = async (mode = null) => {
-  try {
-    leaderboard.value = await snakeMultiplayerApi.getLeaderboard(mode)
-  } catch (err) {
-    console.error('加载排行榜失败:', err)
-    leaderboard.value = []
-  }
-}
-
-const switchLeaderboardMode = (mode) => {
-  leaderboardMode.value = mode
-  const apiMode = mode === 'all' ? null : mode
-  loadLeaderboard(apiMode)
-}
-
-// 监听弹窗显示，加载数据
-watch(showStats, (show) => {
-  if (show) loadPlayerStats()
-})
-
-watch(showLeaderboard, (show) => {
-  if (show) loadLeaderboard()
-})
+ 
 
 // 组件挂载时初始化
 onMounted(async () => {

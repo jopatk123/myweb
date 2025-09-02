@@ -89,59 +89,7 @@ export const SnakeMultiplayerController = {
   /**
    * 获取玩家统计信息
    */
-  async getPlayerStats(req, res) {
-    try {
-      const sessionId = req.headers['x-session-id'];
-      if (!sessionId) {
-        return res.status(400).json({
-          success: false,
-          message: '缺少会话ID'
-        });
-      }
-
-      const stats = await SnakeGameRecordModel.getPlayerStats(sessionId);
-      const recentGames = await SnakeGameRecordModel.findByPlayer(sessionId, 10);
-
-      res.json({
-        success: true,
-        data: {
-          stats,
-          recent_games: recentGames
-        }
-      });
-    } catch (error) {
-      console.error('获取玩家统计失败:', error);
-      res.status(500).json({
-        success: false,
-        message: '获取统计信息失败'
-      });
-    }
-  },
-
-  /**
-   * 获取排行榜
-   */
-  async getLeaderboard(req, res) {
-    try {
-      const { mode, limit = 10 } = req.query;
-      
-      const leaderboard = await SnakeGameRecordModel.getLeaderboard(
-        mode || null, 
-        Math.min(parseInt(limit), 50) // 最多50条
-      );
-
-      res.json({
-        success: true,
-        data: leaderboard
-      });
-    } catch (error) {
-      console.error('获取排行榜失败:', error);
-      res.status(500).json({
-        success: false,
-        message: '获取排行榜失败'
-      });
-    }
-  },
+  
 
   /**
    * 清理离线玩家

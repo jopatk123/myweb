@@ -476,33 +476,7 @@ export function useMultiplayerRoom(options = {}) {
     return statusMap[status] || status;
   };
 
-  // 获取玩家统计
-  const getPlayerStats = async (sessionId = null) => {
-    try {
-      const id = sessionId || currentPlayer.value?.session_id;
-      if (!id) return null;
-      
-      return await apiRequest(`/stats/player/${id}`);
-    } catch (err) {
-      console.error('获取玩家统计失败:', err);
-      return null;
-    }
-  };
-
-  // 获取排行榜
-  const getLeaderboard = async (options = {}) => {
-    try {
-      const queryParams = new URLSearchParams({
-        game_type: gameType,
-        ...options
-      });
-      
-      return await apiRequest(`/leaderboard?${queryParams}`);
-    } catch (err) {
-      console.error('获取排行榜失败:', err);
-      return [];
-    }
-  };
+  // stats/leaderboard API removed
 
   // 生命周期
   onMounted(() => {
@@ -587,9 +561,7 @@ export function useMultiplayerRoom(options = {}) {
     startGame,
     sendGameMessage,
     
-    // 统计和排行榜
-    getPlayerStats,
-    getLeaderboard,
+  
     
     // 工具方法
     formatTime,

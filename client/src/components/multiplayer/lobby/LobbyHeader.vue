@@ -2,14 +2,8 @@
   <div class="lobby-header">
     <h2>{{ title }}</h2>
     <div class="header-actions">
-      <slot name="header-actions">
-        <button class="btn-secondary" @click="$emit('showStats')">
-          📊 统计信息
-        </button>
-        <button class="btn-secondary" @click="$emit('showLeaderboard')">
-          🏆 排行榜
-        </button>
-      </slot>
+  <slot name="header-actions">
+  </slot>
       <button class="btn-secondary" @click="$emit('refreshRooms')" :disabled="loading">
         🔄 刷新房间
       </button>
@@ -29,7 +23,7 @@ defineProps({
   }
 });
 
-defineEmits(['showStats', 'showLeaderboard', 'refreshRooms']);
+defineEmits(['refreshRooms']);
 </script>
 
 <style scoped>

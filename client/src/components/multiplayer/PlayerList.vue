@@ -31,13 +31,7 @@
       <EmptySlot v-for="i in emptySlots" :key="`empty-${i}`" />
     </div>
 
-    <PlayerStats
-      v-if="showStats"
-      :ready-count="readyCount"
-      :player-count="players.length"
-      :all-ready="allReady"
-      :min-players="minPlayers"
-    />
+    
   </div>
 </template>
 
@@ -56,7 +50,7 @@ export default {
     currentUser: { type: Object, default: null },
     hostId: { type: String, default: null },
     title: { type: String, default: '房间玩家' },
-    showStats: { type: Boolean, default: true },
+    
     canKick: { type: Boolean, default: false },
     actionDisabled: { type: Boolean, default: false }
   },

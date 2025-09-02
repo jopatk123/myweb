@@ -12,8 +12,6 @@ export { default as ReadyControls } from './ReadyControls.vue'
 export { default as VoteButtons } from './VoteButtons.vue'
 export { default as SharedGamePanel } from './SharedGamePanel.vue'
 export { default as CompetitiveGamePanel } from './CompetitiveGamePanel.vue'
-export { default as StatsModal } from './StatsModal.vue'
-export { default as LeaderboardModal } from './LeaderboardModal.vue'
 export { default as VotersDisplay } from './VotersDisplay.vue'
 
 // 大厅子组件
@@ -467,8 +465,7 @@ export const COMPONENT_PRESETS = {
     showPlayerCount: true,
     showQuickJoin: true,
     showCreateRoom: true,
-    showStats: true,
-    showLeaderboard: true,
+  // stats/leaderboard removed
     showSettings: true
   }
 }

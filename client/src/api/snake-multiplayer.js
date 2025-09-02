@@ -41,43 +41,8 @@ export const snakeMultiplayerApi = {
     }
   },
 
-  /**
-   * 获取玩家统计信息
-   */
-  async getPlayerStats() {
-    try {
-      const sessionId = localStorage.getItem('sessionId');
-      const response = await axios.get(`${API_BASE}/snake-multiplayer/stats`, {
-        headers: {
-          'X-Session-Id': sessionId
-        }
-      });
-      return response.data.data;
-    } catch (error) {
-      console.error('获取统计信息失败:', error);
-      throw new Error(error.response?.data?.message || '获取统计信息失败');
-    }
-  },
 
-  /**
-   * 获取排行榜
-   */
-  async getLeaderboard(mode = null, limit = 10) {
-    try {
-      const params = { limit };
-      if (mode) {
-        params.mode = mode;
-      }
-      
-      const response = await axios.get(`${API_BASE}/snake-multiplayer/leaderboard`, {
-        params
-      });
-      return response.data.data || [];
-    } catch (error) {
-      console.error('获取排行榜失败:', error);
-      throw new Error(error.response?.data?.message || '获取排行榜失败');
-    }
-  },
+  // Stats and leaderboard API removed
 
   /**
    * 清理离线玩家

@@ -18,9 +18,7 @@ export class GameServiceFactory {
       minPlayers: 1,
       maxPlayers: 8,
       gameSpeed: 150,
-      timeout: 3000,
-      enableStats: true,
-      enableLeaderboard: true,
+  timeout: 3000,
       autoCleanup: true,
       cleanupInterval: 5 * 60 * 1000 // 5分钟
     };
@@ -110,9 +108,7 @@ export class GameServiceFactory {
         return super.getActiveRooms({ ...filters, game_type: gameType });
       }
 
-      static getGameTypeStats() {
-        return super.getStats({ game_type: gameType });
-      }
+  // removed game-type stats helper
     }
 
     // 确保数据表存在
@@ -139,14 +135,7 @@ export class GameServiceFactory {
         return tableName;
       }
 
-      // 可以在这里添加游戏特定的方法
-      static getGameTypeStats(sessionId) {
-        return super.getPlayerStats(sessionId, { game_type: gameType });
-      }
-
-      static getGameTypeLeaderboard(options = {}) {
-        return super.getLeaderboard({ ...options, game_type: gameType });
-      }
+    
     }
 
     // 确保数据表存在

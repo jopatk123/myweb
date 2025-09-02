@@ -3,11 +3,7 @@
     <LobbyHeader
       :title="computedTitle"
       :loading="loading"
-      :show-stats="preset.showStats"
-      :show-leaderboard="preset.showLeaderboard"
       :show-settings="preset.showSettings"
-      @show-stats="$emit('showStats')"
-      @show-leaderboard="$emit('showLeaderboard')"
       @show-settings="$emit('showSettings')"
       @refresh-rooms="refreshRooms"
     >
@@ -232,8 +228,6 @@ const emit = defineEmits([
   'create-room', 
   'join-room',
   'refresh-rooms',
-  'show-stats',
-  'show-leaderboard',
   'show-settings',
   'clear-error',
   'retry',
