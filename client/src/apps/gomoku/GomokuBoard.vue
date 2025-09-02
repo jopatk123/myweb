@@ -32,6 +32,17 @@
       type: Object,
       default: null,
     },
+    // 单机原逻辑：仅玩家1(黑棋)可交互；多人模式需要双方都能交互
+    // restrictToPlayerOne=true 时行为与之前完全一致
+    restrictToPlayerOne: {
+      type: Boolean,
+      default: true,
+    },
+    // 多人模式下本地玩家的棋子编号 (1 or 2)
+    myPlayerNumber: {
+      type: Number,
+      default: 1,
+    },
   });
 
   const emit = defineEmits(['move']);
@@ -252,8 +263,16 @@
     return null;
   }
 
+  function canLocalPlayerMove() {
+    if (props.gameOver) return false;
+    if (props.restrictToPlayerOne) {
+      return props.currentPlayer === 1; // 保持旧逻辑
+    }
+    return props.currentPlayer === props.myPlayerNumber; // 多人模式：轮到自己
+  }
+
   function handleClick(event) {
-    if (props.gameOver || props.currentPlayer !== 1) return;
+    if (!canLocalPlayerMove()) return;
 
     const position = getPositionFromEvent(event);
     if (position && props.board[position.row][position.col] === 0) {
@@ -262,7 +281,7 @@
   }
 
   function handleMouseMove(event) {
-    if (props.gameOver || props.currentPlayer !== 1) return;
+    if (!canLocalPlayerMove()) return;
 
     const position = getPositionFromEvent(event);
     if (position && props.board[position.row][position.col] === 0) {

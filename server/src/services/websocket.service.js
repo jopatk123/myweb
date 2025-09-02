@@ -5,14 +5,19 @@ import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 // 迁移到新抽象：使用适配器包装新的 SnakeGameService
 import { SnakeMultiplayerAdapter } from './snake-multiplayer.adapter.js';
+import { GomokuMultiplayerService } from './gomoku-multiplayer.service.js';
 
 export class WebSocketService {
   constructor() {
     this.clients = new Map();
     this.wss = null;
   this.snakeMultiplayer = new SnakeMultiplayerAdapter(this);
+  this.gomokuService = new GomokuMultiplayerService(this);
   // 维护会话所在房间码映射，用于断线自动离开
   this.sessionRoomMap = new Map(); // sessionId -> roomCode
+  // 映射：client-provided sessionId <-> server分配的 connection id
+  this.serverToClient = new Map(); // serverConnId -> clientSessionId
+  this.clientToServer = new Map(); // clientSessionId -> serverConnId
   }
 
   init(server) {
@@ -25,6 +30,8 @@ export class WebSocketService {
       const sessionId = req.headers['x-session-id'] || uuidv4();
 
       this.clients.set(sessionId, ws);
+  // 保存 server-side connection id 到 ws 以便后续查找
+  ws._serverSessionId = sessionId;
       ws.send(
         JSON.stringify({
           type: 'connected',
@@ -42,6 +49,12 @@ export class WebSocketService {
       });
 
       ws.on('close', () => {
+        // 清理映射
+        const clientId = this.serverToClient.get(sessionId);
+        if (clientId) {
+          this.clientToServer.delete(clientId);
+          this.serverToClient.delete(sessionId);
+        }
         this.clients.delete(sessionId);
         console.log(`WebSocket client disconnected: ${sessionId}`);
         
@@ -59,53 +72,90 @@ export class WebSocketService {
   }
 
   async handleMessage(sessionId, message) {
+  // Map server connection id to client-provided sessionId when available
+  const clientId = this.serverToClient.get(sessionId) || sessionId;
     switch (message.type) {
       case 'ping':
         this.sendToClient(sessionId, { type: 'pong' });
         break;
       case 'join':
-        console.log(`Client ${sessionId} joined message board`);
+        // Client may provide its own sessionId (stored in localStorage). Map it to our server connection id.
+        try{
+          const provided = message.sessionId;
+          if(provided){
+            this.serverToClient.set(sessionId, provided);
+            this.clientToServer.set(provided, sessionId);
+            // also set a quick property on the ws object
+            const ws = this.clients.get(sessionId);
+            if(ws) ws._clientSessionId = provided;
+          }
+        }catch(e){}
+        console.log(`Client ${sessionId} joined message board (mapped clientId=${this.serverToClient.get(sessionId)||sessionId})`);
         break;
       
       // 贪吃蛇多人游戏消息
       case 'snake_create_room':
-        this.handleSnakeCreateRoom(sessionId, message.data);
+        this.handleSnakeCreateRoom(clientId, message.data);
         break;
       case 'snake_join_room':
-        this.handleSnakeJoinRoom(sessionId, message.data);
+        this.handleSnakeJoinRoom(clientId, message.data);
         break;
       case 'snake_toggle_ready':
-        this.handleSnakeToggleReady(sessionId, message.data);
+        this.handleSnakeToggleReady(clientId, message.data);
         break;
       case 'snake_vote':
-        this.handleSnakeVote(sessionId, message.data);
+        this.handleSnakeVote(clientId, message.data);
         break;
       case 'snake_move':
-        this.handleSnakeMove(sessionId, message.data);
+        this.handleSnakeMove(clientId, message.data);
         break;
       case 'snake_leave_room':
-        this.handleSnakeLeaveRoom(sessionId, message.data);
+        this.handleSnakeLeaveRoom(clientId, message.data);
         break;
       case 'snake_get_room_info':
-        this.handleSnakeGetRoomInfo(sessionId, message.data);
+        this.handleSnakeGetRoomInfo(clientId, message.data);
         break;
-      case 'snake_start_game':
+    case 'snake_start_game':
         // 适配器实现了 startGame，调用并返回结果
         try {
-          const { roomCode } = message.data || {};
-          await this.snakeMultiplayer.startGame(sessionId, roomCode);
+      const { roomCode } = message.data || {};
+      await this.snakeMultiplayer.startGame(clientId, roomCode);
           // 广播房间列表更新（具体的 game_started 会由底层服务通过 room 广播发送完整 payload）
           this.broadcast('snake_room_list_updated');
         } catch (e) {
           console.error('处理 snake_start_game 失败:', e && e.message);
-          this.sendToClient(sessionId, { type: 'snake_error', data: { message: e.message } });
+      this.sendToClient(clientId, { type: 'snake_error', data: { message: e.message } });
         }
         break;
+      // 五子棋多人模式
+      case 'gomoku_create_room':
+        try { const { playerName } = message.data||{}; const result = this.gomokuService.createRoom(clientId, playerName); this.sendToClient(clientId,{ type:'gomoku_room_created', data: result }); }
+        catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
+      case 'gomoku_join_room':
+        try { const { playerName, roomCode } = message.data||{}; const result = this.gomokuService.joinRoom(clientId, playerName, roomCode); this.sendToClient(clientId,{ type:'gomoku_room_joined', data: result }); }
+        catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
+      case 'gomoku_toggle_ready':
+        try { const { roomCode } = message.data||{}; const p = this.gomokuService.toggleReady(clientId, roomCode); this.sendToClient(clientId,{ type:'gomoku_ready_toggled', data: p }); }
+        catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
+      case 'gomoku_start_game':
+        try { const { roomCode } = message.data||{}; this.gomokuService.startGame(clientId, roomCode); }
+        catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
+      case 'gomoku_place_piece':
+        try { const { roomCode, row, col } = message.data||{}; this.gomokuService.placePiece(clientId, roomCode, row, col); }
+        catch(e){ /* ignore */ } break;
+      case 'gomoku_leave_room':
+        try { const { roomCode } = message.data||{}; this.gomokuService.leaveRoom(clientId, roomCode); this.sendToClient(clientId,{ type:'gomoku_room_left', data:{ success:true }}); }
+        catch(e){ /* ignore */ } break;
+      case 'gomoku_get_room_info':
+        try { const { roomCode } = message.data||{}; const info = this.gomokuService.getRoomInfo(roomCode); this.sendToClient(clientId,{ type:'gomoku_room_info', data: info }); }
+        catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
     }
   }
 
   sendToClient(sessionId, data) {
-    const client = this.clients.get(sessionId);
+    // sessionId may be a client-provided id; map back to server connection id
+    const serverId = this.clientToServer.get(sessionId) || sessionId;
+    const client = this.clients.get(serverId);
     if (client && client.readyState === client.OPEN) {
       client.send(JSON.stringify(data));
       return true;
