@@ -132,17 +132,80 @@ export class WebSocketService {
   // 向房间广播消息
   async broadcastToRoom(roomId, eventType, data) {
     try {
-      // 这里需要从数据库获取房间内的玩家
-      // 暂时使用简单的实现
-      this.clients.forEach((client, sessionId) => {
-        if (client.readyState === client.OPEN) {
-          this.sendToClient(sessionId, {
-            type: `snake_${eventType}`,
-            data: {
-              room_id: roomId,
-              ...data
+      // 仅向属于该房间的在线玩家发送事件，减少不必要的广播开销
+      // 优先使用 PlayerModel.findOnlineByRoomId 获取该房间所有在线玩家的 session_id
+      let sessionIds = [];
+      try {
+        if (this.snakeMultiplayer && this.snakeMultiplayer.PlayerModel && typeof this.snakeMultiplayer.PlayerModel.findOnlineByRoomId === 'function') {
+          const players = await this.snakeMultiplayer.PlayerModel.findOnlineByRoomId(roomId);
+          sessionIds = (players || []).map(p => p.session_id).filter(Boolean);
+        }
+      } catch (e) {
+        console.warn('broadcastToRoom: failed to get players from PlayerModel, falling back to sessionRoomMap', e);
+      }
+
+      // fallback: use sessionRoomMap (sessionId -> room_code) if model lookup failed or returned empty
+      if ((!sessionIds || sessionIds.length === 0) && this.sessionRoomMap && this.sessionRoomMap.size > 0) {
+        // try to match by room code string if roomId is actually a room code
+        // sessionRoomMap stores room_code values
+        this.sessionRoomMap.forEach((code, sessionId) => {
+          if (!code) return;
+          // allow sending when roomId equals code or when code ends/contains roomId
+          if (String(code) === String(roomId) || String(code).toLowerCase() === String(roomId).toLowerCase()) {
+            sessionIds.push(sessionId);
+          }
+        });
+      }
+
+      // If we still have no sessionIds, try to resolve room code via RoomModel (roomId might be a numeric id or roomCode)
+      if (!sessionIds || sessionIds.length === 0) {
+        try {
+          if (this.snakeMultiplayer && this.snakeMultiplayer.RoomModel && typeof this.snakeMultiplayer.RoomModel.findById === 'function') {
+            const room = await this.snakeMultiplayer.RoomModel.findById(roomId);
+            if (room && room.id) {
+              const players = await this.snakeMultiplayer.PlayerModel.findOnlineByRoomId(room.id);
+              sessionIds = (players || []).map(p => p.session_id).filter(Boolean);
             }
-          });
+          }
+        } catch (e) {
+          // ignore and try other fallbacks
+        }
+      }
+
+      // If still empty, as a last resort do a filtered broadcast using sessionRoomMap matching room code or roomId string.
+      const message = JSON.stringify({ type: `snake_${eventType}`, data: { room_id: roomId, ...data } });
+      if (!sessionIds || sessionIds.length === 0) {
+        // fallback: send only to clients whose sessionRoomMap indicates they are in the same room code
+        this.sessionRoomMap.forEach((code, sessionId) => {
+          if (!code) return;
+          if (String(code) === String(roomId) || String(code).toLowerCase() === String(roomId).toLowerCase()) {
+            const client = this.clients.get(sessionId);
+            if (client && client.readyState === client.OPEN) {
+              try { client.send(message); } catch (err) { console.warn('send to client failed', sessionId, err); }
+            } else {
+              this.clients.delete(sessionId);
+            }
+          }
+        });
+        // also, if nothing matched, fall back to broadcasting to all clients for compatibility (safe but heavier)
+        let anySent = false;
+        this.clients.forEach((client, sessionId) => {
+          if (client && client.readyState === client.OPEN) {
+            try { client.send(message); anySent = true; } catch (err) { console.warn('send to client failed', sessionId, err); }
+          } else { this.clients.delete(sessionId); }
+        });
+        if (!anySent) {
+          console.warn('broadcastToRoom: no clients sent for room', roomId);
+        }
+        return;
+      }
+
+      sessionIds.forEach(sessionId => {
+        const client = this.clients.get(sessionId);
+        if (client && client.readyState === client.OPEN) {
+          try { client.send(message); } catch (err) { console.warn('send to client failed', sessionId, err); }
+        } else {
+          this.clients.delete(sessionId);
         }
       });
     } catch (error) {

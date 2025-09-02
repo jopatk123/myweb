@@ -21,8 +21,8 @@ export class SnakeGameService extends RoomManagerService {
     });
     
     this.SNAKE_CONFIG = { 
-      VOTE_TIMEOUT: 80, 
-      GAME_SPEED: 100, 
+  VOTE_TIMEOUT: 80, 
+  GAME_SPEED: 100, 
       BOARD_SIZE: 20, 
       INITIAL_SNAKE_LENGTH: 3 
     };
@@ -82,10 +82,35 @@ export class SnakeGameService extends RoomManagerService {
     return this.lifecycleManager.startGame(roomId, hostSessionId);
   }
 
-  startSharedLoop(roomId){ if(this.gameTimers.has(roomId)) return; setTimeout(()=>{ if(this.gameTimers.has(roomId)) return; const loop=setInterval(()=>updateSharedGameTick(this, roomId), this.SNAKE_CONFIG.GAME_SPEED); this.gameTimers.set(roomId, loop); },1000); }
+  startSharedLoop(roomId){
+    if(this.gameTimers.has(roomId)) return;
+    // 立即启动 shared 模式循环（不再有额外 1s 启动延迟）
+    if(this.gameTimers.has(roomId)) return;
+    const loop = setInterval(() => updateSharedGameTick(this, roomId), this.SNAKE_CONFIG.GAME_SPEED);
+    this.gameTimers.set(roomId, loop);
+  }
   startCompetitiveLoop(roomId){ const tick=()=>{ const gs=this.getGameState(roomId); if(!gs||gs.mode!=='competitive') return; if(gs.status!=='playing'){ this.gameTimers.delete(roomId); return; } updateCompetitiveGameTick(this, roomId); const latest=this.getGameState(roomId); if(latest && latest.status==='playing'){ this.gameTimers.set(roomId, setTimeout(tick, this.SNAKE_CONFIG.GAME_SPEED)); } else { this.gameTimers.delete(roomId);} }; if(this.gameTimers.has(roomId)){ clearTimeout(this.gameTimers.get(roomId)); this.gameTimers.delete(roomId);} this.gameTimers.set(roomId, setTimeout(tick, this.SNAKE_CONFIG.GAME_SPEED)); }
 
-  handleCompetitiveMove(roomId, sessionId, direction){ const gs=this.getGameState(roomId); if(!gs||gs.mode!=='competitive') return; const snake=gs.snakes?.[sessionId]; if(!snake||snake.gameOver) return; const opp={up:'down',down:'up',left:'right',right:'left'}; if(opp[snake.direction]===direction) return; snake.nextDirection=direction; }
+  handleCompetitiveMove(roomId, sessionId, direction){
+    const gs = this.getGameState(roomId);
+    if(!gs || gs.mode !== 'competitive') return;
+    const snake = gs.snakes?.[sessionId];
+    if(!snake || snake.gameOver) return;
+    const opp = { up:'down', down:'up', left:'right', right:'left' };
+    if(opp[snake.direction] === direction) return;
+    // 设置下一步方向
+    snake.nextDirection = direction;
+
+    // 尝试立即广播该玩家的方向变更，提供更实时的反馈（最小化 payload）
+    try {
+      this.wsService && this.wsService.broadcastToRoom && this.wsService.broadcastToRoom(roomId, 'competitive_update', {
+        snakes: { [sessionId]: { nextDirection: snake.nextDirection } }
+      });
+    } catch (e) {
+      // 若广播失败，不影响游戏主逻辑；完整状态仍会在下一个 tick 广播
+      console.warn('immediate competitive move broadcast failed', e);
+    }
+  }
 
   endGame(roomId, reason = 'finished') {
     return this.lifecycleManager.endGame(roomId, reason);
