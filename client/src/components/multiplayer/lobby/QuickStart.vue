@@ -3,13 +3,13 @@
     <h3>快速开始</h3>
     <div class="quick-start-controls">
       <input
-        :value="playerName"
-        @input="$emit('update:playerName', $event.target.value)"
+  :value="playerName"
+  @input="$emit('update:playerName', $event.target.value)"
         type="text"
         :placeholder="playerNamePlaceholder"
         maxlength="20"
         class="player-name-input"
-        @keyup.enter="$emit('quickJoin')"
+        
       />
       
       <slot name="mode-selector" :selectedMode="selectedMode" :onModeChange="onModeChange">
@@ -30,14 +30,6 @@
       </slot>
       
       <div class="quick-start-buttons">
-        <button 
-          class="btn-primary"
-          @click="$emit('quickJoin')"
-          :disabled="!playerName.trim() || loading"
-        >
-          🚀 快速匹配
-        </button>
-        
         <button 
           class="btn-secondary"
           @click="$emit('showCreateRoom')"
@@ -62,7 +54,6 @@ defineProps({
 defineEmits([
   'update:playerName',
   'update:selectedMode',
-  'quickJoin',
   'showCreateRoom'
 ]);
 

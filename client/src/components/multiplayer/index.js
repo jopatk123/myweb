@@ -447,7 +447,7 @@ export const COMPONENT_PRESETS = {
   quickStart: {
     showModeSelector: true,
     showPlayerCount: true,
-    showQuickJoin: true,
+  showQuickJoin: false,
     showCreateRoom: true
   },
   
@@ -455,7 +455,7 @@ export const COMPONENT_PRESETS = {
   minimal: {
     showModeSelector: false,
     showPlayerCount: false,
-    showQuickJoin: true,
+  showQuickJoin: false,
     showCreateRoom: false
   },
   
@@ -463,7 +463,7 @@ export const COMPONENT_PRESETS = {
   full: {
     showModeSelector: true,
     showPlayerCount: true,
-    showQuickJoin: true,
+  showQuickJoin: false,
     showCreateRoom: true,
   // stats/leaderboard removed
     showSettings: true

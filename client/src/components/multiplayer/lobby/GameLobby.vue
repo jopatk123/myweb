@@ -33,7 +33,7 @@
 
     <div v-else class="lobby-content">
       <QuickStart
-        v-if="preset.showQuickJoin || preset.showCreateRoom"
+        v-if="preset.showCreateRoom"
         v-model:player-name="localPlayerName"
         v-model:selected-mode="localSelectedMode"
         :player-name-placeholder="playerNamePlaceholder"
@@ -41,10 +41,8 @@
         :loading="loading"
         :show-mode-selector="preset.showModeSelector"
         :show-player-count="preset.showPlayerCount"
-        :show-quick-join="preset.showQuickJoin"
         :show-create-room="preset.showCreateRoom"
         :game-config="gameConfig"
-        @quick-join="handleQuickJoin"
         @show-create-room="showCreateRoom = true"
       >
         <template #mode-selector="{ selectedMode, onModeChange }">
@@ -224,7 +222,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-  'quick-join',
   'create-room', 
   'join-room',
   'refresh-rooms',
@@ -297,22 +294,6 @@ watch(availableGameModes, (modes) => {
 }, { immediate: true });
 
 // 方法
-const handleQuickJoin = () => {
-  const validation = gameUtils.validatePlayerName(localPlayerName.value);
-  if (!validation.isValid) {
-    multiplayerEvents.emit('show-toast', {
-      type: 'error',
-      message: validation.message
-    });
-    return;
-  }
-  
-  emit('quick-join', {
-    playerName: validation.formatted,
-    mode: localSelectedMode.value,
-    gameType: props.gameType
-  });
-};
 
 const handleCreateRoom = (config) => {
   const validation = gameUtils.validatePlayerName(localPlayerName.value);

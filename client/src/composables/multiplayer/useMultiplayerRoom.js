@@ -361,40 +361,6 @@ export function useMultiplayerRoom(options = {}) {
     }
   };
 
-  // 快速加入房间
-  const quickJoin = async (playerName, mode = null) => {
-    try {
-      loading.value = true;
-      error.value = null;
-      
-      const data = await apiRequest('/rooms/quick-join', {
-        method: 'POST',
-        body: JSON.stringify({
-          player_name: playerName,
-          mode,
-          game_type: gameType
-        })
-      });
-      
-      if (data.room) {
-        // 加入已存在的房间
-        sendMessage('join_room', {
-          room_code: data.room.room_code,
-          player_name: playerName
-        });
-      } else {
-        // 创建新房间
-        return createRoom(playerName, { mode });
-      }
-      
-      return data;
-    } catch (err) {
-      error.value = err.message;
-      throw err;
-    } finally {
-      loading.value = false;
-    }
-  };
 
   // 获取房间列表
   const getRoomList = async (filters = {}) => {
@@ -549,11 +515,10 @@ export function useMultiplayerRoom(options = {}) {
     connectToServer,
     disconnectFromServer,
     
-    // 房间操作
-    createRoom,
-    joinRoom,
-    quickJoin,
-    leaveRoom,
+  // 房间操作
+  createRoom,
+  joinRoom,
+  leaveRoom,
     getRoomList,
     
     // 游戏操作

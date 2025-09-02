@@ -18,12 +18,11 @@
 
     <div v-else class="lobby-content">
       <!-- 快速开始区域 -->
-      <QuickStartSection
+  <QuickStartSection
         v-model:playerName="playerName"
         v-model:selectedMode="selectedMode"
         :loading="loading"
         @create-room="createNewRoom"
-        @quick-join="quickJoin"
       />
 
       <!-- 加入指定房间 -->
@@ -116,26 +115,6 @@ const createNewRoom = async () => {
   }
 }
 
-const quickJoin = async () => {
-  if (!playerName.value.trim()) {
-    error.value = '请输入您的玩家名称！';
-    return;
-  }
-  
-  await refreshRooms(); // 先刷新一次列表
-
-  const suitableRoom = activeRooms.value.find(room => {
-    const currentPlayers = room.current_players ?? room.currentPlayers;
-    const maxPlayers = room.max_players ?? room.maxPlayers;
-    return room.status === 'waiting' && room.mode === selectedMode.value && currentPlayers < maxPlayers;
-  });
-
-  if (suitableRoom) {
-    await joinRoomById(suitableRoom.room_code || suitableRoom.roomCode)
-  } else {
-    await createNewRoom()
-  }
-}
 
 const joinSpecificRoom = async () => {
   if (!playerName.value.trim() || !roomCodeInput.value.trim()) {
