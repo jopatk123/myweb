@@ -148,8 +148,11 @@ export class GomokuMultiplayerService {
 
   // 获取活跃房间列表
   getActiveRooms() {
+    // 只返回处于 "waiting" 或 "playing" 状态的活跃房间，过滤掉已结束/已删除的房间
     const activeRooms = [];
     for (const [roomCode, room] of this.rooms) {
+      if (!room || !room.status) continue;
+      if (room.status !== 'waiting' && room.status !== 'playing') continue;
       activeRooms.push({
         room_code: room.room_code,
         status: room.status,

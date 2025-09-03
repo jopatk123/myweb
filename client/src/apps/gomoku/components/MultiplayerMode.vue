@@ -77,6 +77,19 @@ watch(() => props.mp.isConnected, (connected) => {
   }
 });
 
+// 确保当切换回大厅时，父组件的 mpLoading 不会卡住（例如 create/join 超时或未清理时）
+watch(showLobby, (isLobby) => {
+  if (isLobby) {
+    // 向父组件发出更新，确保创建/加入按钮可以重新启用
+    try {
+      emit('update:mpLoading', false);
+      console.debug('[MultiplayerMode] Emitted update:mpLoading false when showing lobby');
+    } catch (e) {
+      console.warn('[MultiplayerMode] Failed to emit mpLoading reset:', e);
+    }
+  }
+});
+
 // 监听房间创建成功后自动刷新房间列表
 watch(() => props.mp.currentRoom, (room) => {
   if (room && !props.mp.isInRoom) {
