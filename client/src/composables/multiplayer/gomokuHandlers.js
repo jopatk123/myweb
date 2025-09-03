@@ -7,6 +7,7 @@ export function createGomokuHandlers(ctx){
   }
 
   function handleRoomCreated(data){
+    console.debug('[GomokuHandlers] handleRoomCreated called with data:', data);
     normalizeRoom(data.room);
     // Only treat as local join if the created player matches our session
     const sid = localStorage.getItem('sessionId');
@@ -16,6 +17,7 @@ export function createGomokuHandlers(ctx){
     console.debug('[GomokuHandlers] SessionId comparison - local:', sid, 'server:', data.player?.session_id);
     
     if(isSelf){
+      console.debug('[GomokuHandlers] Setting currentRoom for self:', data.room);
       currentRoom.value = data.room;
       currentPlayer.value = data.player;
       players.value = [data.player];
@@ -26,6 +28,7 @@ export function createGomokuHandlers(ctx){
       // 触发房间创建成功事件
       events.emitRoomCreate(data);
     } else {
+      console.debug('[GomokuHandlers] Room created by another player (not self)');
       // broadcast: other clients may want to know a room was created, but do not auto-enter
       console.debug('[GomokuHandlers] Room created by another player:', data.room?.room_code);
       

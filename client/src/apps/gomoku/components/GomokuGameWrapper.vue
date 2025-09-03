@@ -23,16 +23,21 @@
 
 <script setup>
 import GomokuBoard from '../GomokuBoard.vue';
-import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
+// import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
 import { reactive, unref, watch, computed } from 'vue';
 
 const props = defineProps({
+  mp: Object,
   canStart: Boolean
 });
 
 const emit = defineEmits(['start-game', 'move']);
 
-const mp = useGomokuMultiplayer();
+// 使用传入的 mp 实例，而不是创建新的
+// const mp = useGomokuMultiplayer();
+
+// local reference to props.mp
+const mp = props.mp;
 
 const mpBoard = reactive({
   board: Array.from({ length: 15 }, () => Array(15).fill(0)),
@@ -49,24 +54,28 @@ const mySeat = computed(() => unref(mp.mySeat));
 const gameStatus = computed(() => unref(mp.gameStatus));
 const canStart = computed(() => props.canStart);
 
-// 监听服务器 gameState 更新
-mp.events.onGameUpdate(data => {
-  console.debug('[GomokuGameWrapper] GameUpdate event received:', data);
-  if (!data) return;
-  const gs = data.game_state || data;
-  console.debug('[GomokuGameWrapper] Game state:', gs);
-  if (gs?.board) {
-    mpBoard.board = gs.board;
-    console.debug('[GomokuGameWrapper] Updated board:', gs.board);
-  }
-  if (gs?.currentPlayer) {
-    mpBoard.currentPlayer = gs.currentPlayer;
-    console.debug('[GomokuGameWrapper] Updated currentPlayer:', gs.currentPlayer);
-  }
-  mpBoard.lastMove = gs.lastMove || null;
-  mpBoard.winner = gs.winner || null;
-  console.debug('[GomokuGameWrapper] Updated mpBoard:', mpBoard);
-});
+// 监听服务器 gameState 更新（guard: 确保 mp 和事件处理函数存在）
+if (mp && mp.events && typeof mp.events.onGameUpdate === 'function') {
+  mp.events.onGameUpdate(data => {
+    console.debug('[GomokuGameWrapper] GameUpdate event received:', data);
+    if (!data) return;
+    const gs = data.game_state || data;
+    console.debug('[GomokuGameWrapper] Game state:', gs);
+    if (gs?.board) {
+      mpBoard.board = gs.board;
+      console.debug('[GomokuGameWrapper] Updated board:', gs.board);
+    }
+    if (gs?.currentPlayer) {
+      mpBoard.currentPlayer = gs.currentPlayer;
+      console.debug('[GomokuGameWrapper] Updated currentPlayer:', gs.currentPlayer);
+    }
+    mpBoard.lastMove = gs.lastMove || null;
+    mpBoard.winner = gs.winner || null;
+    console.debug('[GomokuGameWrapper] Updated mpBoard:', mpBoard);
+  });
+} else {
+  console.debug('[GomokuGameWrapper] mp.events.onGameUpdate not available yet');
+}
 
 function onMove(row, col) {
   emit('move', row, col);

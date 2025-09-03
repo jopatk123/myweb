@@ -71,61 +71,67 @@ export function useWebSocket() {
   };
 
   const connect = () => {
-    try {
-      let sessionId = localStorage.getItem('sessionId');
-      
-      // 如果没有sessionId，生成一个
-      if (!sessionId) {
-        sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('sessionId', sessionId);
-        console.debug('[WebSocket] Generated new sessionId:', sessionId);
-      }
-      
-      const wsUrl = getWebSocketUrl();
-      if (ws.value && ws.value.readyState === WebSocket.OPEN) return; // 已连接
-      ws.value = new WebSocket(wsUrl);
-
-      // 设置会话ID头部（如果支持）
-      if (sessionId) {
-        ws.value.sessionId = sessionId;
-      }
-
-      ws.value.onopen = () => {
-        isConnected.value = true;
-        reconnectAttempts.value = 0;
-        console.debug('[WebSocket] Connected with sessionId:', sessionId);
-        send({ type: 'join', sessionId });
-        flushQueue();
-      };
-
-    ws.value.onmessage = event => {
-        try {
-          const data = JSON.parse(event.data);
-      // 原始日志（可注释）
-      // console.debug('[WS][raw]', data);
-          handleMessage(data);
-      } catch (_error) {
-        void _error;
-        console.error('WebSocket message parse error');
+    return new Promise((resolve, reject) => {
+      try {
+        let sessionId = localStorage.getItem('sessionId');
+        
+        // 如果没有sessionId，生成一个
+        if (!sessionId) {
+          sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('sessionId', sessionId);
+          console.debug('[WebSocket] Generated new sessionId:', sessionId);
         }
-      };
-
-      ws.value.onclose = () => {
-        isConnected.value = false;
-        if (reconnectAttempts.value < _maxReconnectAttempts) {
-          reconnectAttempts.value++;
-          reconnectInterval.value = setTimeout(() => { connect(); }, 3000 * reconnectAttempts.value);
+        
+        const wsUrl = getWebSocketUrl();
+        if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+          resolve();
+          return; // 已连接
         }
-      };
+        ws.value = new WebSocket(wsUrl);
 
-      ws.value.onerror = _error => {
-        void _error;
-        console.error('WebSocket error');
-      };
-    } catch (_error) {
-      void _error;
-      console.error('WebSocket connection error');
-    }
+        // 设置会话ID头部（如果支持）
+        if (sessionId) {
+          ws.value.sessionId = sessionId;
+        }
+
+        ws.value.onopen = () => {
+          isConnected.value = true;
+          reconnectAttempts.value = 0;
+          console.debug('[WebSocket] Connected with sessionId:', sessionId);
+          send({ type: 'join', sessionId });
+          flushQueue();
+          resolve();
+        };
+
+        ws.value.onmessage = event => {
+          try {
+            const data = JSON.parse(event.data);
+        // 原始日志（可注释）
+        // console.debug('[WS][raw]', data);
+            handleMessage(data);
+        } catch (_error) {
+          void _error;
+          console.error('WebSocket message parse error');
+          }
+        };
+
+        ws.value.onclose = () => {
+          isConnected.value = false;
+          if (reconnectAttempts.value < _maxReconnectAttempts) {
+            reconnectAttempts.value++;
+            reconnectInterval.value = setTimeout(() => { connect(); }, 3000 * reconnectAttempts.value);
+          }
+        };
+
+        ws.value.onerror = (error) => {
+          console.error('WebSocket connection error:', error);
+          reject(error);
+        };
+      } catch (error) {
+        console.error('WebSocket connection setup error:', error);
+        reject(error);
+      }
+    });
   };
 
   // 处理接收到的消息

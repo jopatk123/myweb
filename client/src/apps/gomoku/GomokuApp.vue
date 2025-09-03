@@ -10,13 +10,14 @@
     <!-- 多人模式 -->
     <MultiplayerMode
       v-else-if="ui.mode === 'multiplayer'"
+      :mp="mp"
       :mp-form="mpForm"
       :mp-loading="mpLoading"
       :latest-room-code="latestRoomCode"
       @back="backToModeSelect"
       @update:mpForm="updateMpForm"
       @update:mpLoading="mpLoading = $event"
-      @update:latestRoomCode="latestRoomCode = $event"
+      @update:latestRoomCode="handleLatestRoomCodeUpdate"
     />
 
     <!-- AI 模式 -->
@@ -28,12 +29,16 @@
 import ModeSelect from './components/ModeSelect.vue';
 import MultiplayerMode from './components/MultiplayerMode.vue';
 import AIMode from './components/AIMode.vue';
+import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
 import { reactive, ref } from 'vue';
 
 const ui = reactive({ showModeSelect: true, mode: 'ai' });
 const mpForm = reactive({ playerName: localStorage.getItem('gomoku_mp_name') || '玩家', joinCode: '' });
 const mpLoading = ref(false);
 const latestRoomCode = ref(null);
+
+// 创建共享的多人游戏实例
+const mp = useGomokuMultiplayer();
 
 function selectAIMode() {
   ui.showModeSelect = false;
@@ -52,6 +57,12 @@ function backToModeSelect() {
 
 function updateMpForm(newForm) {
   Object.assign(mpForm, newForm);
+}
+
+function handleLatestRoomCodeUpdate(newCode) {
+  console.debug('[GomokuApp] handleLatestRoomCodeUpdate called with:', newCode, 'current value:', latestRoomCode.value);
+  latestRoomCode.value = newCode;
+  console.debug('[GomokuApp] latestRoomCode updated to:', latestRoomCode.value);
 }
 </script>
 

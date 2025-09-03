@@ -64,7 +64,7 @@ export function useGomokuMultiplayer(){
   }
 
   function createRoom(playerName){
-    console.debug('[GomokuMP] Creating room for player:', playerName);
+    console.debug('[GomokuMP] createRoom called with playerName:', playerName);
     loading.value = true; 
     error.value = null;
     
@@ -72,6 +72,7 @@ export function useGomokuMultiplayer(){
     resetRoomState();
     
     try { 
+      console.debug('[GomokuMP] Sending createRoom API call');
       api.createRoom(playerName); 
     } catch(e){ 
       console.error('[GomokuMP] Failed to send create room:', e);
@@ -79,6 +80,7 @@ export function useGomokuMultiplayer(){
       loading.value = false; 
       return Promise.reject(e);
     }
+    console.debug('[GomokuMP] Waiting for room operation result');
     return waitRoomOperation('create');
   }
   

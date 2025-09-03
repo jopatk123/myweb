@@ -60,24 +60,30 @@
 
 <script setup>
 import GomokuPlayerCard from './GomokuPlayerCard.vue';
-import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
+// import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
 import { computed, unref } from 'vue';
 
 const props = defineProps({
+  mp: Object,
   latestRoomCode: String
 });
 
 const emit = defineEmits(['back']);
 
-const mp = useGomokuMultiplayer();
+// 使用传入的 mp 实例，而不是创建新的
+// const mp = useGomokuMultiplayer();
+
+// local reference to props.mp to avoid undefined `mp` in template/computeds
+const mp = props.mp;
 
 const roomCode = computed(() => {
-  return props.latestRoomCode || mp.currentRoom?.room_code || mp.currentRoom?.roomCode;
+  const currentRoom = unref(mp.currentRoom);
+  const code = props.latestRoomCode || currentRoom?.room_code || currentRoom?.roomCode;
+  console.debug('[GomokuRoom] roomCode computed:', code, 'latestRoomCode:', props.latestRoomCode, 'currentRoom:', currentRoom, 'timestamp:', Date.now());
+  return code;
 });
 
-const currentPlayerSessionId = computed(() => {
-  return mp.currentPlayer?.session_id;
-});
+const currentPlayerSessionId = computed(() => unref(mp.currentPlayer)?.session_id);
 
 const isInRoom = computed(() => unref(mp.isInRoom));
 const isReady = computed(() => unref(mp.isReady));

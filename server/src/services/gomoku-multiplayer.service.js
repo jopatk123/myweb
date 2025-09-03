@@ -20,6 +20,7 @@ export class GomokuMultiplayerService {
     this.rooms.set(roomCode, room);
     
     console.debug(`[GomokuService] Room created: ${roomCode} by ${playerName} (server: ${sessionId}, client: ${clientSessionId})`);
+    console.debug(`[GomokuService] Sending room_created message to sessionId: ${sessionId}`);
     
     // 只向创建者发送房间创建消息
     this.ws.sendToClient(sessionId, { 

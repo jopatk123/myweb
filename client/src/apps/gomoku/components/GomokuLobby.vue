@@ -38,17 +38,24 @@
 
 <script setup>
 import GomokuRoomCard from './GomokuRoomCard.vue';
-import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
+// import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
 import { computed, unref } from 'vue';
 
 const props = defineProps({
+  mp: Object,
   mpForm: Object,
   mpLoading: Boolean
 });
 
 const emit = defineEmits(['back', 'update:mpForm', 'update:mpLoading', 'update:latestRoomCode']);
 
-const mp = useGomokuMultiplayer();
+// 使用传入的 mp 实例，而不是创建新的
+
+// Ensure local references to props are available as variables used below
+// (props.mp is an object containing refs/methods like createRoom/getRoomList)
+const mp = props.mp;
+const mpForm = props.mpForm;
+const mpLoading = props.mpLoading;
 
 // Safe room list: ensure we only expose a plain array of room objects to the template
 const safeRoomList = computed(() => {
@@ -70,8 +77,11 @@ async function createRoom() {
   try {
     console.debug('[GomokuLobby] Creating room for:', props.mpForm.playerName);
     const room = await mp.createRoom(props.mpForm.playerName);
-    emit('update:latestRoomCode', room?.room_code || room?.roomCode || null);
-    console.debug('[GomokuLobby] Room created successfully:', room?.room_code || room?.roomCode);
+    console.debug('[GomokuLobby] Room created result:', room);
+    const roomCode = room?.room_code || room?.roomCode || null;
+    console.debug('[GomokuLobby] Extracted roomCode:', roomCode);
+    emit('update:latestRoomCode', roomCode);
+    console.debug('[GomokuLobby] Emitted latestRoomCode:', roomCode);
   } catch (e) {
     console.error('[GomokuLobby] Failed to create room:', e);
     mp.error.value = e.message || '创建房间失败，请重试';
