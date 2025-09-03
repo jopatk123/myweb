@@ -18,33 +18,40 @@
         Game Debug: Status={{ gameStatus }}, MySeat={{ mySeat }}, Board={{ board?.[0]?.[0] !== undefined ? 'loaded' : 'empty' }}
       </div>
     </div>
+
+    <!-- 游戏结束弹窗 -->
+    <div v-if="showGameEndDialog" class="game-end-dialog-backdrop" @click.self="closeDialog">
+      <div class="game-end-dialog">
+        <div class="dialog-title">游戏结束</div>
+        <div class="dialog-content">
+          <p>{{ winner === mySeat ? '恭喜你赢得了比赛！' : '很遗憾，你输掉了比赛。' }}</p>
+        </div>
+        <div class="dialog-actions">
+          <button @click="closeDialog">确定</button>
+          <button @click="restartGame">再来一局</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import GomokuBoard from '../GomokuBoard.vue';
-// import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
-import { reactive, unref, watch, computed } from 'vue';
+import { reactive, unref, watch, computed, ref } from 'vue';
 
-const props = defineProps({
-  mp: Object,
-  canStart: Boolean
-});
-
+const props = defineProps({ mp: Object, canStart: Boolean });
 const emit = defineEmits(['start-game', 'move']);
 
-// 使用传入的 mp 实例，而不是创建新的
-// const mp = useGomokuMultiplayer();
-
-// local reference to props.mp
 const mp = props.mp;
 
 const mpBoard = reactive({
   board: Array.from({ length: 15 }, () => Array(15).fill(0)),
   currentPlayer: 1,
   lastMove: null,
-  winner: null
+  winner: null,
 });
+
+const showGameEndDialog = ref(false);
 
 const board = computed(() => mpBoard.board);
 const currentPlayer = computed(() => mpBoard.currentPlayer);
@@ -54,38 +61,45 @@ const mySeat = computed(() => unref(mp.mySeat));
 const gameStatus = computed(() => unref(mp.gameStatus));
 const canStart = computed(() => props.canStart);
 
-// 监听服务器 gameState 更新（guard: 确保 mp 和事件处理函数存在）
-if (mp && mp.events && typeof mp.events.onGameUpdate === 'function') {
-  mp.events.onGameUpdate(data => {
-    console.debug('[GomokuGameWrapper] GameUpdate event received:', data);
-    if (!data) return;
-    const gs = data.game_state || data;
-    console.debug('[GomokuGameWrapper] Game state:', gs);
-    if (gs?.board) {
-      mpBoard.board = gs.board;
-      console.debug('[GomokuGameWrapper] Updated board:', gs.board);
-    }
-    if (gs?.currentPlayer) {
-      mpBoard.currentPlayer = gs.currentPlayer;
-      console.debug('[GomokuGameWrapper] Updated currentPlayer:', gs.currentPlayer);
-    }
-    mpBoard.lastMove = gs.lastMove || null;
-    mpBoard.winner = gs.winner || null;
-    console.debug('[GomokuGameWrapper] Updated mpBoard:', mpBoard);
-  });
-} else {
-  console.debug('[GomokuGameWrapper] mp.events.onGameUpdate not available yet');
+function applyGameState(gs) {
+  if (!gs) return;
+  if (gs.board) mpBoard.board = gs.board;
+  if (gs.currentPlayer) mpBoard.currentPlayer = gs.currentPlayer;
+  mpBoard.lastMove = gs.lastMove || null;
+  const prev = mpBoard.winner;
+  mpBoard.winner = gs.winner || null;
+  if (!prev && mpBoard.winner) {
+    showGameEndDialog.value = true;
+  }
 }
 
-function onMove(row, col) {
-  emit('move', row, col);
+function handleGameUpdate(data) {
+  const gs = data?.game_state || data;
+  applyGameState(gs);
 }
 
-function startGame() {
-  emit('start-game');
+function handleMatchEnd(data) {
+  const gs = data?.game_state || data;
+  applyGameState(gs);
+  showGameEndDialog.value = true;
 }
+
+let _registered = false;
+watch(() => mp && mp.events, (ev) => {
+  if (!ev || _registered) return;
+  if (typeof ev.onGameUpdate === 'function') ev.onGameUpdate(handleGameUpdate);
+  if (typeof ev.onMatchEnd === 'function') ev.onMatchEnd(handleMatchEnd);
+  _registered = true;
+}, { immediate: true });
+
+watch(() => unref(mp.gameState), (gs) => { if (gs) applyGameState(gs); }, { immediate: true });
+watch(() => unref(mp.gameStatus), (s) => { if (s === 'finished') showGameEndDialog.value = true; }, { immediate: true });
+
+function onMove(row, col) { emit('move', row, col); }
+function startGame() { emit('start-game'); }
+function closeDialog() { showGameEndDialog.value = false; }
+function restartGame() { startGame(); showGameEndDialog.value = false; }
 </script>
-
 <style scoped>
 .mp-board-wrapper {
   display: flex;
@@ -99,5 +113,72 @@ function startGame() {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* 游戏结束弹窗样式 */
+.game-end-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.game-end-dialog {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.dialog-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  text-align: center;
+  color: #333;
+}
+
+.dialog-content {
+  margin-bottom: 20px;
+  text-align: center;
+  color: #555;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.dialog-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.dialog-actions button:first-child {
+  background: #6c757d;
+  color: white;
+}
+
+.dialog-actions button:first-child:hover {
+  background: #5a6268;
+}
+
+.dialog-actions button:last-child {
+  background: #007bff;
+  color: white;
+}
+
+.dialog-actions button:last-child:hover {
+  background: #0056b3;
 }
 </style>
