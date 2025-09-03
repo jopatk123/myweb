@@ -149,6 +149,12 @@ export class WebSocketService {
       case 'gomoku_get_room_info':
         try { const { roomCode } = message.data||{}; const info = this.gomokuService.getRoomInfo(roomCode); this.sendToClient(clientId,{ type:'gomoku_room_info', data: info }); }
         catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
+      case 'gomoku_get_room_list':
+        try { 
+          const activeRooms = this.gomokuService.getActiveRooms(); 
+          this.sendToClient(clientId,{ type:'gomoku_room_list', data: { rooms: activeRooms } }); 
+        }
+        catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
     }
   }
 

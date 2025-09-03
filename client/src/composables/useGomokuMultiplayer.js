@@ -14,6 +14,7 @@ export function useGomokuMultiplayer(){
   const gameStatus = ref('lobby');
   const error = ref(null);
   const loading = ref(false);
+  const roomList = ref([]); // 活跃房间列表
 
   const mySeat = computed(()=> currentPlayer.value?.seat || 1);
   const isReady = computed(()=> !!currentPlayer.value?.is_ready);
@@ -45,6 +46,17 @@ export function useGomokuMultiplayer(){
   async function init(){ if(!isConnected.value) await connect(); registerHandlers(); }
   onMounted(()=>{ init(); });
   onUnmounted(()=>{ unregisterHandlers(); });
+
+  // 监听房间列表更新
+  events.onRoomListUpdate((rooms) => {
+    roomList.value = rooms;
+    console.debug('[GomokuMP] Room list updated:', rooms.length, 'rooms');
+  });
+
+  function getRoomList() {
+    console.debug('[GomokuMP] Requesting room list');
+    api.getRoomList();
+  }
 
   function createRoom(playerName){
     loading.value = true; error.value = null;
@@ -79,5 +91,5 @@ export function useGomokuMultiplayer(){
     api.placePiece(code,row,col); 
   }
 
-  return { isConnected, isInRoom, currentRoom, currentPlayer, players, gameState, gameStatus, error, loading, mySeat, isReady, canStart, bothReady, createRoom, joinRoom, toggleReady, leaveRoom, startGame, place, events, debugToggleReady, debugStartGame };
+  return { isConnected, isInRoom, currentRoom, currentPlayer, players, gameState, gameStatus, error, loading, roomList, mySeat, isReady, canStart, bothReady, createRoom, joinRoom, toggleReady, leaveRoom, startGame, place, getRoomList, events, debugToggleReady, debugStartGame };
 }

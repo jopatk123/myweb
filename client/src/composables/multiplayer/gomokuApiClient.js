@@ -6,6 +6,7 @@ export class GomokuApiClient {
   toggleReady(roomCode){ if(!roomCode) return; console.debug('[GomokuApi] send toggle_ready', roomCode); return this.ws.send({ type:'gomoku_toggle_ready', data:{ roomCode }}); }
   leaveRoom(roomCode){ if(!roomCode) return; console.debug('[GomokuApi] send leave_room', roomCode); return this.ws.send({ type:'gomoku_leave_room', data:{ roomCode }}); }
   getRoomInfo(roomCode){ console.debug('[GomokuApi] send get_room_info', roomCode); return this.ws.send({ type:'gomoku_get_room_info', data:{ roomCode: roomCode.toUpperCase() }}); }
+  getRoomList(){ console.debug('[GomokuApi] send get_room_list'); return this.ws.send({ type:'gomoku_get_room_list', data:{} }); }
   startGame(roomCode){ if(!roomCode) return; console.debug('[GomokuApi] send start_game', roomCode); return this.ws.send({ type:'gomoku_start_game', data:{ roomCode }}); }
   placePiece(roomCode, row, col){ if(!roomCode) return; console.debug('[GomokuApi] send place_piece', roomCode, row, col); return this.ws.send({ type:'gomoku_place_piece', data:{ roomCode, row, col }}); }
 }

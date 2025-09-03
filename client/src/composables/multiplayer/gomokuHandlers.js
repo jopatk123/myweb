@@ -148,6 +148,11 @@ export function createGomokuHandlers(ctx){
   function handleGameUpdate(data){ if(data.game_state) gameState.value=data.game_state; events.emitGameUpdate(data); }
   function handleGameEnded(data){ if(data.game_state) gameState.value=data.game_state; gameStatus.value='finished'; events.emitMatchEnd(data); }
   function handleError(d){ error.value = d.message; }
+  function handleRoomList(data){ 
+    console.debug('[GomokuHandlers] Room list received:', data.rooms?.length || 0, 'rooms');
+    // 触发房间列表更新事件
+    events.emitRoomListUpdate && events.emitRoomListUpdate(data.rooms || []); 
+  }
 
   return {
     gomoku_room_created: handleRoomCreated,
@@ -160,6 +165,7 @@ export function createGomokuHandlers(ctx){
     gomoku_game_started: handleGameStarted,
     gomoku_game_update: handleGameUpdate,
     gomoku_game_ended: handleGameEnded,
+    gomoku_room_list: handleRoomList,
     gomoku_error: handleError,
   };
 }

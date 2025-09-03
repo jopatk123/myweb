@@ -23,6 +23,9 @@ export class GomokuMultiplayerService {
       data: { room, player } 
     });
     
+    // 广播房间列表更新
+    this.broadcastRoomListUpdate();
+    
     return { room, player };
   }
 
@@ -46,6 +49,9 @@ export class GomokuMultiplayerService {
     
     // 向房间内所有玩家广播新玩家加入
     this._broadcastRoom(room, 'player_joined', { room, player });
+    
+    // 广播房间列表更新
+    this.broadcastRoomListUpdate();
     
     return { room, player };
   }
@@ -107,11 +113,47 @@ export class GomokuMultiplayerService {
     const room = this.rooms.get(roomCode); if(!room) return;
     const idx = room.players.findIndex(p=>p.session_id===sessionId);
     if(idx>=0){ const [player] = room.players.splice(idx,1); this._broadcastRoom(room,'player_left',{ player }); }
-    if(room.players.length===0){ this.rooms.delete(roomCode); }
+    if(room.players.length===0){ 
+      this.rooms.delete(roomCode); 
+      console.debug(`[GomokuService] Room ${roomCode} deleted (no players)`);
+    }
     else { room.status='waiting'; room.players.forEach(p=> p.is_ready=false); }
+    
+    // 广播房间列表更新
+    this.broadcastRoomListUpdate();
   }
 
   getRoomInfo(roomCode){ const room = this.rooms.get(roomCode); if(!room) return null; return { room, players: room.players, game_state: room.game_state }; }
+
+  // 获取活跃房间列表
+  getActiveRooms() {
+    const activeRooms = [];
+    for (const [roomCode, room] of this.rooms) {
+      activeRooms.push({
+        room_code: room.room_code,
+        status: room.status,
+        created_at: room.created_at,
+        created_by: room.created_by,
+        current_players: room.players.length,
+        max_players: 2,
+        players: room.players.map(p => ({
+          session_id: p.session_id,
+          player_name: p.player_name,
+          is_ready: p.is_ready,
+          seat: p.seat
+        }))
+      });
+    }
+    return activeRooms;
+  }
+
+  // 向所有连接的客户端广播房间列表更新
+  broadcastRoomListUpdate() {
+    const activeRooms = this.getActiveRooms();
+    // 向所有连接的客户端发送房间列表更新
+    this.ws.broadcast('gomoku_room_list', { rooms: activeRooms });
+    console.debug('[GomokuService] Broadcast room list update:', activeRooms.length, 'rooms');
+  }
 
   _broadcastRoom(room, event, payload){ 
     const type = 'gomoku_'+event; 
