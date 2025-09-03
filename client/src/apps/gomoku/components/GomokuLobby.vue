@@ -10,8 +10,8 @@
       <input v-model="mpForm.joinCode" placeholder="输入房间码加入" />
     </div>
     <div class="form-row buttons">
-      <button @click="createRoom" :disabled="mpLoading">创建房间</button>
-      <button @click="joinRoom" :disabled="mpLoading">加入房间</button>
+      <button @click="createRoom" :disabled="mpLoading || !mpForm.playerName.trim()">创建房间</button>
+      <button @click="joinRoom" :disabled="mpLoading || !mpForm.playerName.trim() || !mpForm.joinCode">加入房间</button>
       <button @click="refreshRoomList" :disabled="!mp.isConnected">刷新房间列表</button>
       <button @click="$emit('back')">返回</button>
     </div>
@@ -61,13 +61,20 @@ const safeRoomList = computed(() => {
 });
 
 async function createRoom() {
+  if (!props.mpForm.playerName.trim()) {
+    mp.error.value = '请输入玩家昵称';
+    return;
+  }
+  
   emit('update:mpLoading', true);
   try {
+    console.debug('[GomokuLobby] Creating room for:', props.mpForm.playerName);
     const room = await mp.createRoom(props.mpForm.playerName);
     emit('update:latestRoomCode', room?.room_code || room?.roomCode || null);
     console.debug('[GomokuLobby] Room created successfully:', room?.room_code || room?.roomCode);
   } catch (e) {
     console.error('[GomokuLobby] Failed to create room:', e);
+    mp.error.value = e.message || '创建房间失败，请重试';
   } finally {
     emit('update:mpLoading', false);
     localStorage.setItem('gomoku_mp_name', props.mpForm.playerName);
@@ -75,14 +82,24 @@ async function createRoom() {
 }
 
 async function joinRoom() {
-  if (!props.mpForm.joinCode) return;
+  if (!props.mpForm.playerName.trim()) {
+    mp.error.value = '请输入玩家昵称';
+    return;
+  }
+  if (!props.mpForm.joinCode) {
+    mp.error.value = '请输入房间码';
+    return;
+  }
+  
   emit('update:mpLoading', true);
   try {
+    console.debug('[GomokuLobby] Joining room:', props.mpForm.joinCode, 'for:', props.mpForm.playerName);
     const room = await mp.joinRoom(props.mpForm.playerName, props.mpForm.joinCode);
     emit('update:latestRoomCode', room?.room_code || room?.roomCode || null);
     console.debug('[GomokuLobby] Joined room successfully:', room?.room_code || room?.roomCode);
   } catch (e) {
     console.error('[GomokuLobby] Failed to join room:', e);
+    mp.error.value = e.message || '加入房间失败，请检查房间码是否正确';
   } finally {
     emit('update:mpLoading', false);
     localStorage.setItem('gomoku_mp_name', props.mpForm.playerName);

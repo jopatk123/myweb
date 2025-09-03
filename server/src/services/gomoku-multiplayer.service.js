@@ -9,13 +9,17 @@ export class GomokuMultiplayerService {
 
   createRoom(sessionId, playerName){
     const roomCode = this._genCode();
+    
+    // 获取客户端sessionId用于前端匹配
+    const clientSessionId = this.ws.serverToClient.get(sessionId) || sessionId;
+    
     const room = { room_code: roomCode, status:'waiting', created_at:Date.now(), players:[], created_by: sessionId };
-    const player = { session_id: sessionId, player_name: playerName||'玩家', is_ready:false, seat:1 };
+    const player = { session_id: clientSessionId, player_name: playerName||'玩家', is_ready:false, seat:1 };
     room.players.push(player);
     room.game_state = this._createEmptyGameState();
     this.rooms.set(roomCode, room);
     
-    console.debug(`[GomokuService] Room created: ${roomCode} by ${playerName}`);
+    console.debug(`[GomokuService] Room created: ${roomCode} by ${playerName} (server: ${sessionId}, client: ${clientSessionId})`);
     
     // 只向创建者发送房间创建消息
     this.ws.sendToClient(sessionId, { 
@@ -33,13 +37,17 @@ export class GomokuMultiplayerService {
     const room = this.rooms.get(roomCode);
     if(!room) throw new Error('房间不存在');
     if(room.players.length>=2) throw new Error('房间已满');
-    if(room.players.find(p => p.session_id === sessionId)) throw new Error('已在房间中');
+    
+    // 获取客户端sessionId用于前端匹配
+    const clientSessionId = this.ws.serverToClient.get(sessionId) || sessionId;
+    
+    if(room.players.find(p => p.session_id === clientSessionId)) throw new Error('已在房间中');
     
     const seat = room.players.find(p=>p.seat===1)? 2:1;
-    const player = { session_id: sessionId, player_name: playerName||'玩家', is_ready:false, seat };
+    const player = { session_id: clientSessionId, player_name: playerName||'玩家', is_ready:false, seat };
     room.players.push(player);
     
-    console.debug(`[GomokuService] Player ${playerName} joined room ${roomCode}`);
+    console.debug(`[GomokuService] Player ${playerName} joined room ${roomCode} (server: ${sessionId}, client: ${clientSessionId})`);
     
     // 向加入者发送房间加入消息
     this.ws.sendToClient(sessionId, { 
@@ -60,7 +68,9 @@ export class GomokuMultiplayerService {
     const room = this.rooms.get(roomCode); 
     if(!room) throw new Error('房间不存在');
     
-    const p = room.players.find(p=>p.session_id===sessionId); 
+    // 获取客户端sessionId用于匹配
+    const clientSessionId = this.ws.serverToClient.get(sessionId) || sessionId;
+    const p = room.players.find(p=>p.session_id===clientSessionId); 
     if(!p) throw new Error('不在房间');
     
     p.is_ready = !p.is_ready;
@@ -98,7 +108,10 @@ export class GomokuMultiplayerService {
     const room = this.rooms.get(roomCode); if(!room) return;
     if(room.status!=='playing') return;
     const gs = room.game_state;
-    const player = room.players.find(p=>p.session_id===sessionId); if(!player) return;
+    
+    // 获取客户端sessionId用于匹配
+    const clientSessionId = this.ws.serverToClient.get(sessionId) || sessionId;
+    const player = room.players.find(p=>p.session_id===clientSessionId); if(!player) return;
     if(gs.winner) return;
     if(gs.currentPlayer !== player.seat) return; // not turn
     if(row<0||row>=15||col<0||col>=15) return; if(gs.board[row][col]!==0) return;
@@ -111,8 +124,15 @@ export class GomokuMultiplayerService {
 
   leaveRoom(sessionId, roomCode){
     const room = this.rooms.get(roomCode); if(!room) return;
-    const idx = room.players.findIndex(p=>p.session_id===sessionId);
-    if(idx>=0){ const [player] = room.players.splice(idx,1); this._broadcastRoom(room,'player_left',{ player }); }
+    
+    // 获取客户端sessionId用于匹配
+    const clientSessionId = this.ws.serverToClient.get(sessionId) || sessionId;
+    const idx = room.players.findIndex(p=>p.session_id===clientSessionId);
+    if(idx>=0){ 
+      const [player] = room.players.splice(idx,1); 
+      console.debug(`[GomokuService] Player ${player.player_name} left room ${roomCode}`);
+      this._broadcastRoom(room,'player_left',{ player }); 
+    }
     if(room.players.length===0){ 
       this.rooms.delete(roomCode); 
       console.debug(`[GomokuService] Room ${roomCode} deleted (no players)`);

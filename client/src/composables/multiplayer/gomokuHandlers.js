@@ -13,6 +13,7 @@ export function createGomokuHandlers(ctx){
     const isSelf = data.player && data.player.session_id===sid;
     
     console.debug('[GomokuHandlers] Room created:', data.room?.room_code, 'isSelf:', isSelf);
+    console.debug('[GomokuHandlers] SessionId comparison - local:', sid, 'server:', data.player?.session_id);
     
     if(isSelf){
       currentRoom.value = data.room;
@@ -21,9 +22,17 @@ export function createGomokuHandlers(ctx){
       gameStatus.value = data.room?.status || 'waiting';
       try{ state.isInRoom.value = true; }catch(e){}
       console.debug('[GomokuHandlers] Entered room as creator:', data.room?.room_code);
+      
+      // 触发房间创建成功事件
+      events.emitRoomCreate(data);
     } else {
       // broadcast: other clients may want to know a room was created, but do not auto-enter
       console.debug('[GomokuHandlers] Room created by another player:', data.room?.room_code);
+      
+      // 如果没有sessionId，可能是首次访问，尝试生成一个
+      if (!sid && data.player) {
+        console.warn('[GomokuHandlers] No sessionId found, this might be the issue');
+      }
     }
   }
 
@@ -33,6 +42,7 @@ export function createGomokuHandlers(ctx){
     const isSelf = data.player && data.player.session_id===sid;
     
     console.debug('[GomokuHandlers] Room joined:', data.room?.room_code, 'isSelf:', isSelf);
+    console.debug('[GomokuHandlers] SessionId comparison - local:', sid, 'server:', data.player?.session_id);
     
     if(isSelf){
       currentRoom.value = data.room;
@@ -43,6 +53,9 @@ export function createGomokuHandlers(ctx){
       gameStatus.value = data.room?.status || 'waiting';
       try{ state.isInRoom.value = true; }catch(e){}
       console.debug('[GomokuHandlers] Successfully joined room:', data.room?.room_code);
+      
+      // 触发房间加入成功事件
+      events.emitRoomJoin(data);
     } else {
       // if we already are in this room, add the player to our list
       try{

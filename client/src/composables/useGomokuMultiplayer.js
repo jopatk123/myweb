@@ -26,11 +26,15 @@ export function useGomokuMultiplayer(){
 
   // register/unregister handlers helpers
   function registerHandlers(){
-    if(registerHandlers._registered) return;
+    if(registerHandlers._registered) {
+      console.debug('[GomokuMP] Handlers already registered, skipping');
+      return;
+    }
     const handlers = createGomokuHandlers({ events, refs:{ currentRoom, currentPlayer, players, gameState, gameStatus, error }, state:{ isInRoom } });
     registerHandlers._handlers = handlers;
     Object.entries(handlers).forEach(([type, h])=> onMessage(type, h));
     registerHandlers._registered = true;
+    console.debug('[GomokuMP] Handlers registered successfully');
   }
 
   function unregisterHandlers(){
@@ -41,6 +45,7 @@ export function useGomokuMultiplayer(){
     });
     registerHandlers._registered = false;
     registerHandlers._handlers = null;
+    console.debug('[GomokuMP] Handlers unregistered');
   }
 
   async function init(){ if(!isConnected.value) await connect(); registerHandlers(); }
@@ -59,18 +64,118 @@ export function useGomokuMultiplayer(){
   }
 
   function createRoom(playerName){
-    loading.value = true; error.value = null;
-    try { api.createRoom(playerName); } catch(e){ error.value = e.message; loading.value = false; }
-    return waitRoom();
+    console.debug('[GomokuMP] Creating room for player:', playerName);
+    loading.value = true; 
+    error.value = null;
+    
+    // 清理之前的状态
+    resetRoomState();
+    
+    try { 
+      api.createRoom(playerName); 
+    } catch(e){ 
+      console.error('[GomokuMP] Failed to send create room:', e);
+      error.value = e.message; 
+      loading.value = false; 
+      return Promise.reject(e);
+    }
+    return waitRoomOperation('create');
   }
+  
   function joinRoom(playerName, roomCode){
-    loading.value = true; error.value = null;
-    try { api.joinRoom(playerName, roomCode); } catch(e){ error.value = e.message; loading.value = false; }
-    return waitRoom(roomCode);
+    console.debug('[GomokuMP] Joining room:', roomCode, 'for player:', playerName);
+    loading.value = true; 
+    error.value = null;
+    
+    // 清理之前的状态（除了roomList）
+    resetRoomState();
+    
+    try { 
+      api.joinRoom(playerName, roomCode); 
+    } catch(e){ 
+      console.error('[GomokuMP] Failed to send join room:', e);
+      error.value = e.message; 
+      loading.value = false; 
+      return Promise.reject(e);
+    }
+    return waitRoomOperation('join', roomCode);
   }
-  function waitRoom(code){ return new Promise((resolve,reject)=>{ const timer=setTimeout(()=>reject(new Error('超时')),8000); const stop=watch(currentRoom,(v)=>{ if(v && (!code || v.room_code===code || v.roomCode===code)){ clearTimeout(timer); stop(); resolve(v); } }); }); }
+
+  function resetRoomState() {
+    console.debug('[GomokuMP] Resetting room state');
+    isInRoom.value = false;
+    currentRoom.value = null;
+    currentPlayer.value = null;
+    players.value = [];
+    gameState.value = null;
+    gameStatus.value = 'lobby';
+    // 清理错误状态，但不清理loading状态（由操作函数自己控制）
+    error.value = null;
+  }
+
+  function waitRoomOperation(operation, expectedRoomCode) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        loading.value = false;
+        const errorMsg = `${operation === 'create' ? '创建房间' : '加入房间'}超时，请重试`;
+        console.error('[GomokuMP]', errorMsg);
+        reject(new Error(errorMsg));
+      }, 10000); // 增加到10秒
+
+      // 监听房间状态变化
+      const stopWatchRoom = watch(currentRoom, (room) => {
+        if (room && (
+          !expectedRoomCode || 
+          room.room_code === expectedRoomCode || 
+          room.roomCode === expectedRoomCode
+        )) {
+          console.debug('[GomokuMP] Room operation successful:', operation, room.room_code || room.roomCode);
+          clearTimeout(timer);
+          stopWatchRoom();
+          loading.value = false;
+          resolve(room);
+        }
+      });
+
+      // 也监听isInRoom状态，作为备用指标
+      const stopWatchInRoom = watch(isInRoom, (inRoom) => {
+        if (inRoom && currentRoom.value) {
+          console.debug('[GomokuMP] In room status confirmed');
+          // 给currentRoom的watch一点时间先处理
+          setTimeout(() => {
+            if (currentRoom.value && (
+              !expectedRoomCode || 
+              currentRoom.value.room_code === expectedRoomCode || 
+              currentRoom.value.roomCode === expectedRoomCode
+            )) {
+              clearTimeout(timer);
+              stopWatchRoom();
+              stopWatchInRoom();
+              loading.value = false;
+              resolve(currentRoom.value);
+            }
+          }, 100);
+        }
+      });
+    });
+  }
   function toggleReady(){ const code = currentRoom.value?.room_code || currentRoom.value?.roomCode; if(code) api.toggleReady(code); }
-  function leaveRoom(){ const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; if(code) api.leaveRoom(code); isInRoom.value=false; currentRoom.value=null; currentPlayer.value=null; players.value=[]; gameState.value=null; gameStatus.value='lobby'; }
+  function leaveRoom(){ 
+    const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; 
+    console.debug('[GomokuMP] Leaving room:', code);
+    
+    if(code) {
+      try {
+        api.leaveRoom(code); 
+      } catch(e) {
+        console.error('[GomokuMP] Failed to send leave room:', e);
+      }
+    }
+    
+    // 完全重置状态
+    resetRoomState();
+    console.debug('[GomokuMP] Room state reset after leaving');
+  }
   function startGame(){ const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; if(code) api.startGame(code); }
   
   // expose debug-friendly variants

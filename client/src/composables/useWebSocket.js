@@ -72,7 +72,15 @@ export function useWebSocket() {
 
   const connect = () => {
     try {
-      const sessionId = localStorage.getItem('sessionId');
+      let sessionId = localStorage.getItem('sessionId');
+      
+      // 如果没有sessionId，生成一个
+      if (!sessionId) {
+        sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('sessionId', sessionId);
+        console.debug('[WebSocket] Generated new sessionId:', sessionId);
+      }
+      
       const wsUrl = getWebSocketUrl();
       if (ws.value && ws.value.readyState === WebSocket.OPEN) return; // 已连接
       ws.value = new WebSocket(wsUrl);
@@ -85,6 +93,7 @@ export function useWebSocket() {
       ws.value.onopen = () => {
         isConnected.value = true;
         reconnectAttempts.value = 0;
+        console.debug('[WebSocket] Connected with sessionId:', sessionId);
         send({ type: 'join', sessionId });
         flushQueue();
       };
