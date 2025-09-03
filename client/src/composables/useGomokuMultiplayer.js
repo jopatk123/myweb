@@ -23,12 +23,23 @@ export function useGomokuMultiplayer(){
   const events = createGomokuEvents();
   const api = new GomokuApiClient({ send });
 
+  // register/unregister handlers helpers
   function registerHandlers(){
+    if(registerHandlers._registered) return;
     const handlers = createGomokuHandlers({ events, refs:{ currentRoom, currentPlayer, players, gameState, gameStatus, error }, state:{ isInRoom } });
+    registerHandlers._handlers = handlers;
     Object.entries(handlers).forEach(([type, h])=> onMessage(type, h));
+    registerHandlers._registered = true;
   }
+
   function unregisterHandlers(){
-    // 简单：依赖 useWebSocket 提供的 offMessage(全部)不实现；逐个移除
+    const handlers = registerHandlers._handlers;
+    if(!handlers) return;
+    Object.entries(handlers).forEach(([type, h])=> {
+      try{ offMessage(type, h); }catch(e){}
+    });
+    registerHandlers._registered = false;
+    registerHandlers._handlers = null;
   }
 
   async function init(){ if(!isConnected.value) await connect(); registerHandlers(); }
