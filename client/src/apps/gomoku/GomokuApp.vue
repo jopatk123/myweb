@@ -56,10 +56,13 @@
           <div>wsDebug: {{ wsDebug }}</div>
         </div>
         <div class="actions" v-if="mp.isInRoom">
-          <button @click="mp.debugToggleReady()">{{ mp.isReady? '取消准备':'准备' }}</button>
-          <button @click="mp.debugStartGame()" :disabled="!mp.canStart">开始对局</button>
+          <button @click="toggleReady">{{ mp.isReady? '取消准备':'准备' }}</button>
+          <button @click="startGame" :disabled="!mp.canStart">开始对局</button>
+          <div style="margin-top: 8px; font-size: 12px; color: #999;">
+            Debug: gameStatus={{ unref(mp.gameStatus) }}, isInRoom={{ mp.isInRoom }}, players={{ mp.players?.length }}
+          </div>
         </div>
-        <div v-if="mp.gameStatus==='playing' || mp.gameStatus==='finished'" class="mp-board-wrapper">
+        <div v-if="showGameBoard" class="mp-board-wrapper">
           <GomokuBoard
             ref="gomokuBoard"
             :board="mpBoard.board"
@@ -67,13 +70,16 @@
             :game-over="!!mpBoard.winner"
             :last-move="mpBoard.lastMove"
             :restrict-to-player-one="false"
-            :my-player-number="mp.mySeat"
+            :my-player-number="unref(mp.mySeat) || 1"
             @move="onMpMove"
           />
           <div class="mp-status">
             <div>当前轮到: {{ mpBoard.currentPlayer===1? '黑':'白' }}</div>
             <div v-if="mpBoard.winner">胜者: {{ mpBoard.winner===1? '黑':'白' }}</div>
-            <button v-if="mp.gameStatus==='finished'" @click="startGame" :disabled="!mp.canStart">再来一局</button>
+            <button v-if="unref(mp.gameStatus)==='finished'" @click="startGame" :disabled="!mp.canStart">再来一局</button>
+            <div style="margin-top: 8px; font-size: 12px; color: #999;">
+              Game Debug: Status={{ unref(mp.gameStatus) }}, MySeat={{ unref(mp.mySeat) }}, Board={{ mpBoard.board?.[0]?.[0] !== undefined ? 'loaded' : 'empty' }}
+            </div>
           </div>
         </div>
       </div>
@@ -201,7 +207,7 @@ import GameStatusPanel from './components/GameStatusPanel.vue';
 import ViolationModal from './components/ViolationModal.vue';
 import { useGomokuApp } from './composables/useGomokuApp.js';
 import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
-import { reactive, ref, computed, unref } from 'vue';
+import { reactive, ref, computed, unref, watch } from 'vue';
 
 const app = useGomokuApp();
 const mp = useGomokuMultiplayer();
@@ -215,8 +221,17 @@ const latestRoomCopied = ref(false);
 const seatSlots = computed(() => {
   const slots = [ { seat:1, player_name: null, session_id: null, is_ready:false }, { seat:2, player_name: null, session_id: null, is_ready:false } ];
   try{
-    (mp.players||[]).forEach(p=>{ if(p && p.seat && p.seat>=1 && p.seat<=2){ slots[p.seat-1] = { ...slots[p.seat-1], ...p }; } });
-  }catch(e){}
+    const players = unref(mp.players) || [];
+    console.debug('[GomokuApp] seatSlots update, players:', players);
+    players.forEach(p=>{ 
+      if(p && p.seat && p.seat>=1 && p.seat<=2){ 
+        slots[p.seat-1] = { ...slots[p.seat-1], ...p }; 
+        console.debug('[GomokuApp] Updated slot', p.seat-1, 'with player:', p);
+      } 
+    });
+  }catch(e){
+    console.error('[GomokuApp] seatSlots error:', e);
+  }
   return slots;
 });
 
@@ -244,36 +259,96 @@ const showLobby = computed(() => {
   } catch (e) { return true; }
 });
 
+const showGameBoard = computed(() => {
+  try {
+    const status = unref(mp.gameStatus);
+    return status === 'playing' || status === 'finished';
+  } catch (e) { return false; }
+});
+
 function selectAIMode(){ ui.showModeSelect=false; ui.mode='ai'; }
 function selectMultiplayerMode(){ ui.showModeSelect=false; ui.mode='multiplayer'; }
 function backToModeSelect(){ ui.showModeSelect=true; ui.mode='ai'; }
 
 async function createRoom(){
   mpLoading.value = true;
-  // optimistic UI: mark as in-room and create a temporary player so actions appear immediately
-  try{
-    const sid = localStorage.getItem('sessionId') || null;
-    mp.isInRoom.value = true;
-    mp.currentRoom.value = mp.currentRoom.value || { room_code: null };
-    mp.currentPlayer.value = { session_id: sid, player_name: mpForm.playerName, is_ready:false, seat:1 };
-    mp.players.value = [ mp.currentPlayer.value ];
-  }catch(e){}
   try{
     const room = await mp.createRoom(mpForm.playerName);
     latestRoomCode.value = room?.room_code || room?.roomCode || null;
-  }catch(e){ /* error handled in mp.error */ }
-  finally{ mpLoading.value=false; localStorage.setItem('gomoku_mp_name', mpForm.playerName); }
+    console.debug('[GomokuApp] Room created successfully:', latestRoomCode.value);
+  }catch(e){ 
+    console.error('[GomokuApp] Failed to create room:', e);
+  }
+  finally{ 
+    mpLoading.value=false; 
+    localStorage.setItem('gomoku_mp_name', mpForm.playerName); 
+  }
 }
-async function joinRoom(){ if(!mpForm.joinCode) return; mpLoading.value=true; try{ const sid = localStorage.getItem('sessionId')||null; mp.isInRoom.value = true; mp.currentPlayer.value = { session_id: sid, player_name: mpForm.playerName, is_ready:false, seat: null }; if(!mp.players.value) mp.players.value = []; if(!mp.players.value.find(p=>p.session_id===sid)) mp.players.value.push(mp.currentPlayer.value); const room = await mp.joinRoom(mpForm.playerName, mpForm.joinCode); latestRoomCode.value = room?.room_code || room?.roomCode || null; }catch(e){} finally{ mpLoading.value=false; localStorage.setItem('gomoku_mp_name', mpForm.playerName); } }
-function toggleReady(){ mp.toggleReady(); }
-function startGame(){ mp.startGame(); }
+async function joinRoom(){ 
+  if(!mpForm.joinCode) return; 
+  mpLoading.value=true; 
+  try{ 
+    const room = await mp.joinRoom(mpForm.playerName, mpForm.joinCode); 
+    latestRoomCode.value = room?.room_code || room?.roomCode || null; 
+    console.debug('[GomokuApp] Joined room successfully:', latestRoomCode.value);
+  }catch(e){
+    console.error('[GomokuApp] Failed to join room:', e);
+  } 
+  finally{ 
+    mpLoading.value=false; 
+    localStorage.setItem('gomoku_mp_name', mpForm.playerName); 
+  } 
+}
+function toggleReady(){ 
+  console.debug('[GomokuApp] toggleReady called');
+  mp.toggleReady(); 
+}
+function startGame(){ 
+  console.debug('[GomokuApp] startGame called');
+  mp.startGame(); 
+}
 function leaveRoom(){ mp.leaveRoom(); }
-function onMpMove(row,col){ const code= mp.currentRoom?.room_code||mp.currentRoom?.roomCode; if(!code) return; mp.place(row,col); }
+function onMpMove(row,col){ 
+  const code = unref(mp.currentRoom)?.room_code || unref(mp.currentRoom)?.roomCode; 
+  console.debug('[GomokuApp] Move attempt:', row, col, 'roomCode:', code);
+  if(!code) {
+    console.warn('[GomokuApp] No room code available for move');
+    return; 
+  }
+  mp.place(row,col); 
+}
 
 function copyRoomCode(){ const code = latestRoomCode.value || mp.currentRoom?.room_code || mp.currentRoom?.roomCode; if(!code || !navigator?.clipboard) return; navigator.clipboard.writeText(code).then(()=>{ latestRoomCopied.value=true; setTimeout(()=>{ latestRoomCopied.value=false; },2000); }).catch(()=>{}); }
 
+// 监听游戏状态变化
+watch(() => mp.gameStatus, (newStatus, oldStatus) => {
+  console.debug('[GomokuApp] gameStatus changed from', oldStatus, 'to', newStatus);
+}, { immediate: true });
+
+// 监听游戏板显示状态变化
+watch(showGameBoard, (newShow, oldShow) => {
+  console.debug('[GomokuApp] showGameBoard changed from', oldShow, 'to', newShow);
+  console.debug('[GomokuApp] Current gameStatus:', unref(mp.gameStatus));
+}, { immediate: true });
+
 // 监听服务器 gameState 更新
-mp.events.onGameUpdate(data=>{ if(!data) return; const gs = data.game_state || data; if(gs?.board){ mpBoard.board = gs.board; } if(gs?.currentPlayer) mpBoard.currentPlayer=gs.currentPlayer; mpBoard.lastMove=gs.lastMove||null; mpBoard.winner=gs.winner||null; });
+mp.events.onGameUpdate(data=>{ 
+  console.debug('[GomokuApp] GameUpdate event received:', data);
+  if(!data) return; 
+  const gs = data.game_state || data; 
+  console.debug('[GomokuApp] Game state:', gs);
+  if(gs?.board){ 
+    mpBoard.board = gs.board; 
+    console.debug('[GomokuApp] Updated board:', gs.board);
+  } 
+  if(gs?.currentPlayer) {
+    mpBoard.currentPlayer = gs.currentPlayer;
+    console.debug('[GomokuApp] Updated currentPlayer:', gs.currentPlayer);
+  }
+  mpBoard.lastMove = gs.lastMove || null; 
+  mpBoard.winner = gs.winner || null;
+  console.debug('[GomokuApp] Updated mpBoard:', mpBoard);
+});
 
 // 解构以便模板使用（保留原有的变量名以兼容模板）
 const {

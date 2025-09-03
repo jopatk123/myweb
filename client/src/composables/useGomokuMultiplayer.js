@@ -64,7 +64,20 @@ export function useGomokuMultiplayer(){
   // expose debug-friendly variants
   function debugToggleReady(){ const code = currentRoom.value?.room_code || currentRoom.value?.roomCode; console.debug('[GomokuMP] toggleReady called, room=', code); if(code) return api.toggleReady(code); return false; }
   function debugStartGame(){ const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; console.debug('[GomokuMP] startGame called, room=', code); if(code) return api.startGame(code); return false; }
-  function place(row,col){ if(gameStatus.value!=='playing') return; const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; if(!code) return; api.placePiece(code,row,col); }
+  function place(row,col){ 
+    console.debug('[GomokuMP] place called:', row, col, 'gameStatus:', gameStatus.value);
+    if(gameStatus.value!=='playing') {
+      console.warn('[GomokuMP] Game not in playing status:', gameStatus.value);
+      return; 
+    }
+    const code=currentRoom.value?.room_code||currentRoom.value?.roomCode; 
+    if(!code) {
+      console.warn('[GomokuMP] No room code for place');
+      return; 
+    }
+    console.debug('[GomokuMP] Sending place piece:', code, row, col);
+    api.placePiece(code,row,col); 
+  }
 
   return { isConnected, isInRoom, currentRoom, currentPlayer, players, gameState, gameStatus, error, loading, mySeat, isReady, canStart, bothReady, createRoom, joinRoom, toggleReady, leaveRoom, startGame, place, events, debugToggleReady, debugStartGame };
 }

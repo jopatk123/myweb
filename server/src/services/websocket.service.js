@@ -129,13 +129,13 @@ export class WebSocketService {
         break;
       // 五子棋多人模式
       case 'gomoku_create_room':
-        try { const { playerName } = message.data||{}; const result = this.gomokuService.createRoom(clientId, playerName); this.sendToClient(clientId,{ type:'gomoku_room_created', data: result }); }
+        try { const { playerName } = message.data||{}; this.gomokuService.createRoom(clientId, playerName); }
         catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
       case 'gomoku_join_room':
-        try { const { playerName, roomCode } = message.data||{}; const result = this.gomokuService.joinRoom(clientId, playerName, roomCode); this.sendToClient(clientId,{ type:'gomoku_room_joined', data: result }); }
+        try { const { playerName, roomCode } = message.data||{}; this.gomokuService.joinRoom(clientId, playerName, roomCode); }
         catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
       case 'gomoku_toggle_ready':
-        try { const { roomCode } = message.data||{}; const p = this.gomokuService.toggleReady(clientId, roomCode); this.sendToClient(clientId,{ type:'gomoku_ready_toggled', data: p }); }
+        try { const { roomCode } = message.data||{}; this.gomokuService.toggleReady(clientId, roomCode); }
         catch(e){ this.sendToClient(clientId,{ type:'gomoku_error', data:{ message: e.message }});} break;
       case 'gomoku_start_game':
         try { const { roomCode } = message.data||{}; this.gomokuService.startGame(clientId, roomCode); }

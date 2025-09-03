@@ -14,7 +14,15 @@ export class GomokuMultiplayerService {
     room.players.push(player);
     room.game_state = this._createEmptyGameState();
     this.rooms.set(roomCode, room);
-    this._broadcastRoom(room, 'room_created', { room, player });
+    
+    console.debug(`[GomokuService] Room created: ${roomCode} by ${playerName}`);
+    
+    // 只向创建者发送房间创建消息
+    this.ws.sendToClient(sessionId, { 
+      type: 'gomoku_room_created', 
+      data: { room, player } 
+    });
+    
     return { room, player };
   }
 
@@ -22,27 +30,61 @@ export class GomokuMultiplayerService {
     const room = this.rooms.get(roomCode);
     if(!room) throw new Error('房间不存在');
     if(room.players.length>=2) throw new Error('房间已满');
+    if(room.players.find(p => p.session_id === sessionId)) throw new Error('已在房间中');
+    
     const seat = room.players.find(p=>p.seat===1)? 2:1;
     const player = { session_id: sessionId, player_name: playerName||'玩家', is_ready:false, seat };
     room.players.push(player);
+    
+    console.debug(`[GomokuService] Player ${playerName} joined room ${roomCode}`);
+    
+    // 向加入者发送房间加入消息
+    this.ws.sendToClient(sessionId, { 
+      type: 'gomoku_room_joined', 
+      data: { room, player } 
+    });
+    
+    // 向房间内所有玩家广播新玩家加入
     this._broadcastRoom(room, 'player_joined', { room, player });
+    
     return { room, player };
   }
 
   toggleReady(sessionId, roomCode){
-    const room = this.rooms.get(roomCode); if(!room) throw new Error('房间不存在');
-    const p = room.players.find(p=>p.session_id===sessionId); if(!p) throw new Error('不在房间');
+    const room = this.rooms.get(roomCode); 
+    if(!room) throw new Error('房间不存在');
+    
+    const p = room.players.find(p=>p.session_id===sessionId); 
+    if(!p) throw new Error('不在房间');
+    
     p.is_ready = !p.is_ready;
-    this._broadcastRoom(room, 'player_ready_changed', { player:p, players: room.players });
+    
+    console.debug(`[GomokuService] Player ${p.player_name} ready status: ${p.is_ready}`);
+    
+    // 向操作者发送ready切换确认
+    this.ws.sendToClient(sessionId, { 
+      type: 'gomoku_ready_toggled', 
+      data: p 
+    });
+    
+    // 向房间内所有玩家广播状态变化
+    this._broadcastRoom(room, 'player_ready_changed', { player: p, players: room.players });
+    
     return p;
   }
 
   startGame(sessionId, roomCode){
-    const room = this.rooms.get(roomCode); if(!room) throw new Error('房间不存在');
+    const room = this.rooms.get(roomCode); 
+    if(!room) throw new Error('房间不存在');
     if(room.players.length!==2) throw new Error('需 2 名玩家');
     if(!room.players.every(p=>p.is_ready)) throw new Error('双方均准备才可开始');
+    
     room.status='playing';
     room.game_state = this._createEmptyGameState();
+    
+    console.debug(`[GomokuService] Game started in room ${roomCode}`);
+    
+    // 向房间内所有玩家广播游戏开始
     this._broadcastRoom(room, 'game_started', { game_state: room.game_state, players: room.players });
   }
 
@@ -71,8 +113,21 @@ export class GomokuMultiplayerService {
 
   getRoomInfo(roomCode){ const room = this.rooms.get(roomCode); if(!room) return null; return { room, players: room.players, game_state: room.game_state }; }
 
-  _broadcastRoom(room, event, payload){ const type = 'gomoku_'+event; const data = { ...payload, room }; // 简单广播给所有连接（玩家少，开销低）
-    this.ws.broadcast(type, data);
+  _broadcastRoom(room, event, payload){ 
+    const type = 'gomoku_'+event; 
+    const data = { ...payload, room }; 
+    
+    // 只向房间内的玩家发送消息
+    if(room && room.players && room.players.length > 0) {
+      room.players.forEach(player => {
+        if(player && player.session_id) {
+          this.ws.sendToClient(player.session_id, { type, data });
+        }
+      });
+      console.debug(`[GomokuService] Broadcast ${event} to room ${room.room_code} players:`, room.players.map(p => p.player_name));
+    } else {
+      console.debug(`[GomokuService] No players to broadcast ${event} to`);
+    }
   }
 
   _genCode(){ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code=''; for(let i=0;i<6;i++) code+=chars[Math.floor(Math.random()*chars.length)]; if(this.rooms.has(code)) return this._genCode(); return code; }
