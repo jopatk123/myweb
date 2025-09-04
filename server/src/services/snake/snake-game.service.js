@@ -102,15 +102,7 @@ export class SnakeGameService extends RoomManagerService {
     // 设置下一步方向
     snake.nextDirection = direction;
 
-    // 尝试立即广播该玩家的方向变更，提供更实时的反馈（最小化 payload）
-    try {
-      this.wsService && this.wsService.broadcastToRoom && this.wsService.broadcastToRoom(roomId, 'competitive_update', {
-        snakes: { [sessionId]: { nextDirection: snake.nextDirection } }
-      });
-    } catch (e) {
-      // 若广播失败，不影响游戏主逻辑；完整状态仍会在下一个 tick 广播
-      console.warn('immediate competitive move broadcast failed', e);
-    }
+  // 取消即时最小广播，改为仅在主循环 tick 时发送完整状态，避免客户端出现空帧闪烁
   }
 
   endGame(roomId, reason = 'finished') {
