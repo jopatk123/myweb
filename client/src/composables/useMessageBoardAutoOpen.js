@@ -11,20 +11,8 @@ export function useMessageBoardAutoOpen() {
   const { onMessage } = useWebSocket();
   const { createWindow, findWindowByApp, findWindowByAppAll, setActiveWindow, showWindowWithoutFocus } = useWindowManager();
 
-  // 获取会话ID
-  const getSessionId = () => {
-    return localStorage.getItem('sessionId');
-  };
-
-  // 检查是否应该自动打开
-  const shouldAutoOpen = autoOpenSessions => {
-    const sessionId = getSessionId();
-    return (
-      isAutoOpenEnabled.value &&
-      sessionId &&
-      autoOpenSessions.includes(sessionId)
-    );
-  };
+  // NOTE: 为满足“只要有新消息就强制打开留言板”的需求，
+  // 我们在收到 newMessage 时总是打开/激活留言板窗口，而不再根据用户设置或会话列表做条件判断。
 
   // 打开或显示留言板窗口（可选择不抢占焦点）
   const openMessageBoard = (options = { activate: true }) => {
@@ -61,13 +49,10 @@ export function useMessageBoardAutoOpen() {
     }
   };
 
-  // 处理新消息事件（自动打开时不抢占焦点）
-  const handleNewMessage = data => {
-    const { autoOpenSessions } = data;
-
-    if (shouldAutoOpen(autoOpenSessions)) {
-      openMessageBoard({ activate: false });
-    }
+  // 处理新消息事件（收到任何 newMessage 都强制打开并激活留言板）
+  const handleNewMessage = /* istanbul ignore next */ data => {
+    // 收到新消息时展示/恢复留言板窗口，但不抢占当前活动窗口（不改变焦点）
+    openMessageBoard({ activate: false });
   };
 
   // 手动打开留言板

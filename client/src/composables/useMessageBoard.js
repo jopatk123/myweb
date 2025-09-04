@@ -2,6 +2,7 @@
  * 留言板组合式函数
  */
 import { ref, reactive, computed, onMounted } from 'vue';
+import { useWindowManager } from './useWindowManager.js';
 import { messageAPI } from '@/api/message.js';
 import { useWebSocket } from './useWebSocket.js';
 
@@ -76,6 +77,37 @@ export function useMessageBoard() {
 
       if (response.code === 200) {
         // 消息会通过WebSocket实时推送，这里不需要手动添加
+        // 同步打开/激活留言板窗口（发送者本地立即可见）
+        try {
+          const { findWindowByAppAll, setActiveWindow, createWindow, showWindowWithoutFocus } = useWindowManager();
+          const existingWindow = findWindowByAppAll('message-board');
+          if (existingWindow) {
+            // 如果窗口已经存在，尝试以不改变焦点的方式显示它
+            try {
+              showWindowWithoutFocus(existingWindow.id);
+            } catch (e) {
+              // 回退到设置可见但不激活
+              existingWindow.minimized = false;
+              existingWindow.visible = true;
+            }
+          } else {
+            // 创建窗口但不激活（不抢占焦点）
+            createWindow({
+              component: () => import('@/components/message-board/MessageBoardWindow.vue'),
+              title: '💬 留言板',
+              appSlug: 'message-board',
+              width: 400,
+              height: 600,
+              props: {},
+              storageKey: 'message-board:pos',
+              activate: false,
+            });
+          }
+        } catch (e) {
+          // 忽略打开窗口时的任何错误
+          void e;
+        }
+
         return response.data;
       }
     } catch (err) {

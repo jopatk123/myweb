@@ -176,7 +176,8 @@
   }
 
   function onMinimize() {
-    emit('minimize', props.window.id);
+  // 将最小化的行为改为关闭窗口（与关闭按钮相同）
+  onClose();
   }
 
   function onMaximize() {
