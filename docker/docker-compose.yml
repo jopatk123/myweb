@@ -3,15 +3,15 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.server
-    container_name: myweb-backend
+    container_name: ${BACKEND_CONTAINER_NAME:-myweb-backend}
     ports:
       - '${BACKEND_HOST_PORT:-3302}:${BACKEND_PORT:-3302}'
     environment:
       - NODE_ENV=production
       - PORT=${BACKEND_PORT:-3302}
       - DB_PATH=/app/data/myweb.db
-      # 默认 CORS_ORIGIN 指向部署的宿主机和端口（可在环境或 .env 中覆盖）
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://43.163.120.212:10010}
+      # 默认 CORS_ORIGIN 指向部署的宿主机和 FRONTEND_HOST_PORT（可在环境或 .env 中覆盖）
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://43.163.120.212:${FRONTEND_HOST_PORT:-10010}}
     volumes:
       # 将重要数据持久化到宿主机对应目录（相对于本 compose 文件的路径）
       - ../server/data:/app/data:rw
@@ -29,7 +29,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.client
-    container_name: myweb-frontend
+    container_name: ${FRONTEND_CONTAINER_NAME:-myweb-frontend}
     ports:
       # 暴露到宿主机端口（请确保服务器防火墙/安全组已允许该端口）
       - '${FRONTEND_HOST_PORT:-10010}:80'

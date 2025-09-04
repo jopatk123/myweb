@@ -149,7 +149,19 @@ export function createSnakeHandlers(ctx) {
       gameState.value = data.game_state || { mode: 'competitive' };
     }
     if (data.game_state) Object.assign(gameState.value, data.game_state);
-    if (data.snakes) gameState.value.snakes = data.snakes;
+    if (data.snakes) {
+      // 合并而不是整体替换，防止仅 nextDirection 局部更新导致丢失 body 引起闪烁
+      if (!gameState.value.snakes) gameState.value.snakes = {};
+      Object.entries(data.snakes).forEach(([sid, partial]) => {
+        const existing = gameState.value.snakes[sid] || {};
+        // 如果没有 body 字段，说明是局部更新；保留原 body
+        if (!partial.body && existing.body) {
+          gameState.value.snakes[sid] = { ...existing, ...partial };
+        } else {
+          gameState.value.snakes[sid] = { ...existing, ...partial };
+        }
+      });
+    }
     if (data.foods) gameState.value.foods = data.foods;
   }
 

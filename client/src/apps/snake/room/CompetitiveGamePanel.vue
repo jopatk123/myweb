@@ -1,6 +1,6 @@
 <template>
   <div class="competitive-game-panel">
-    <h4>⚔️ 竞技模式游戏</h4>
+  <h4>⚔️ 多人竞技模式 (最多 8 人)</h4>
     
     <!-- 游戏画布区域 -->
     <div class="canvas-container">
@@ -23,8 +23,9 @@
         <div class="finish-card">
           <button class="close-btn" @click="showSummary=false" title="关闭">✕</button>
           <h3>🏁 对局结束</h3>
-          <p v-if="winnerName">胜者：<strong>{{ winnerName }}</strong></p>
-          <p v-else>没有胜者（全部淘汰）</p>
+          <p v-if="loserName">失败者：<strong style="color:#ef4444">{{ loserName }}</strong></p>
+          <p v-else-if="winnerName">胜者：<strong>{{ winnerName }}</strong></p>
+          <p v-else>本局未产生失败者</p>
           <div class="meta-line" v-if="durationSec > 0">耗时 {{ durationSec }}s · 总分 {{ totalScore }} · 食物 {{ totalFood }}</div>
           <div class="summary-table">
             <div class="summary-header">
@@ -61,9 +62,11 @@ const props = defineProps({
 });
 
 const currentPlayerId = computed(() => props.currentPlayerId);
-const boardPx = 400;
-const gridSize = 20;
-const cell = boardPx / gridSize;
+// 固定每格像素大小（px），画布像素随格子数量变化
+const CELL_PX = 20;
+const gridSize = computed(()=> props.gameState?.config?.BOARD_SIZE || 25);
+const cell = computed(()=> CELL_PX);
+const boardPx = computed(()=> Math.max(200, Math.floor(cell.value * gridSize.value)));
 const canvasRef = ref(null);
 const primaryFood = computed(() => {
   const foods = props.gameState?.foods;
@@ -80,8 +83,9 @@ const snakeListSorted = computed(() => [...snakeList.value].sort((a,b)=>b.score-
 const totalScore = computed(()=> snakeList.value.reduce((a,b)=>a + (b.score||0),0));
 const totalFood = computed(()=> totalScore.value / 10);
 
-const isGameFinished = computed(() => !!props.gameState?.gameOver || props.gameState?.winner || props.gameState?.status==='finished');
+const isGameFinished = computed(() => !!props.gameState?.gameOver || props.gameState?.winner || props.gameState?.loser || props.gameState?.status==='finished');
 const winnerName = computed(() => props.gameState?.winner?.player_name || props.gameState?.winner?.playerName || null);
+const loserName = computed(() => props.gameState?.loser?.player_name || props.gameState?.loser?.playerName || null);
 const durationSec = computed(()=> { const st = props.gameState?.startTime; const et = props.gameState?.endTime; if(!st) return 0; return Math.round(((et||Date.now())-st)/1000); });
 
 const showSummary = ref(false);

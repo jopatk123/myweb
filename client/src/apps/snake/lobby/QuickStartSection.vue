@@ -36,7 +36,7 @@
           />
           <span class="mode-option">
             ⚔️ 竞技模式
-            <small>双人对战</small>
+            <small>多人对战（最多8人，首撞者失败）</small>
           </span>
         </label>
       </div>

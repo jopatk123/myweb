@@ -91,7 +91,7 @@ if (_storedSnakeName && _storedSnakeName.trim()) {
   }
 }
 const playerName = ref(initialSnakeName)
-const selectedMode = ref('shared')
+const selectedMode = ref('competitive')
 const roomCodeInput = ref('')
 const activeRooms = ref([])
 

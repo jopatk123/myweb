@@ -84,6 +84,14 @@ export class GameLifecycleManager {
    */
   async _updateRoomAndGameState(roomId, gameState, players) {
     this.service.RoomModel.update(roomId, { status: 'playing' });
+    // 动态调整棋盘大小：以 2 人=基础大小，为基准每增加 1 人边长 +1
+    if(gameState.mode === 'competitive'){
+      const base = this.service.SNAKE_CONFIG.BOARD_SIZE; // 当前 20 (针对 2 人)
+  const extraPlayers = Math.max(0, players.length - 2);
+  const dynamicSize = base + extraPlayers * 3; // 每增加1玩家长和宽各+3
+      if(!gameState.config) gameState.config = {};
+      gameState.config.BOARD_SIZE = dynamicSize;
+    }
     this.service.updateGameState(roomId, { 
       status: 'playing', 
       startTime: Date.now() 
@@ -241,8 +249,10 @@ export class GameLifecycleManager {
       room_id: roomId,
       reason,
       final_score: gameState.sharedSnake?.score || 0,
-      game_state: gameState,
-      winner: gameState.winner || null
+  game_state: gameState,
+  winner: gameState.winner || null, // 兼容旧字段
+  loser: gameState.loser || null,
+  winners: gameState.winners || (gameState.winner? [gameState.winner]: [])
     });
   }
 }

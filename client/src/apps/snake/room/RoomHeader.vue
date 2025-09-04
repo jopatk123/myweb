@@ -1,7 +1,14 @@
 <template>
   <div class="room-header">
     <div class="room-info">
-  <h2>🏠 房间 {{ room?.room_code || room?.roomCode || '——' }}</h2>
+      <h2>
+        🏠 房间
+        <span class="room-code">{{ roomCode }}</span>
+        <span v-if="playerDisplayName" class="player-name">
+          <span class="player-color-dot" :style="{ background: playerColor || '#ffffff' }"></span>
+          <span class="player-name-text">{{ playerDisplayName }}</span>
+        </span>
+      </h2>
       <div class="room-details">
         <span class="mode-badge" :class="`mode-${room?.mode}`">
           {{ room?.mode === 'shared' ? '🤝 共享模式' : '⚔️ 竞技模式' }}
@@ -24,12 +31,28 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   room: { type: Object, default: null },
-  gameStatus: { type: String, default: 'waiting' }
+  gameStatus: { type: String, default: 'waiting' },
+  currentPlayer: { type: Object, default: null }
 })
 
 defineEmits(['copy-room-code', 'leave-room'])
+
+const roomCode = computed(() => props.room?.room_code || props.room?.roomCode || '——')
+
+const playerDisplayName = computed(() => {
+  const p = props.currentPlayer || {}
+  return p.player_name || p.playerName || p.name || ''
+})
+
+const playerColor = computed(() => {
+  const p = props.currentPlayer || {}
+  // 常见字段名：player_color / playerColor / color / hex
+  return p.player_color || p.playerColor || p.color || p.hex || ''
+})
 
 const getStatusText = (status) => {
   const statusMap = {
@@ -98,8 +121,14 @@ const getStatusText = (status) => {
 
 .room-actions {
   display: flex;
+  flex-direction: column;
   gap: 10px;
+  align-items: flex-end; /* stack on the right side on larger screens */
 }
+
+.player-name { display: inline-flex; align-items: center; gap: 8px; margin-left: 8px; font-size: 28px; }
+.player-color-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 1px solid rgba(255,255,255,0.3); }
+.player-name-text { font-weight: 700; color: #f6c84c; }
 
 .btn-secondary, .btn-danger {
   padding: 10px 16px;
@@ -142,7 +171,7 @@ const getStatusText = (status) => {
   
   .room-actions {
     width: 100%;
-    justify-content: center;
+    align-items: center; /* center stacked buttons on mobile */
   }
 }
 </style>
