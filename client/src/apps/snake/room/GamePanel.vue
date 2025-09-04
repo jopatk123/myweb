@@ -9,28 +9,7 @@
         @vote="$emit('vote', $event)" 
         @restart="$emit('restart')"
       />
-      <div class="shared-hud">
-        <h5 class="hud-title">当前状态</h5>
-        <div class="shared-stats">
-          <div class="stat-line">
-            <span class="label">分数</span>
-            <span class="value">{{ sharedScore }}</span>
-          </div>
-            <div class="stat-line">
-            <span class="label">长度</span>
-            <span class="value">{{ sharedLength }}</span>
-          </div>
-          <div class="stat-line">
-            <span class="label">食物</span>
-            <span class="value">{{ sharedFood }}</span>
-          </div>
-          <div class="divider"></div>
-          <div class="stat-mini" v-if="gameState?.sharedSnake?.isWaitingForFirstVote">等待第一票开始…</div>
-          <div class="stat-mini" v-else-if="gameState?.status==='playing'">进行中</div>
-          <div class="stat-mini" v-else>{{ gameState?.status || '等待中' }}</div>
-        </div>
       </div>
-    </div>
     <div v-else class="competitive-wrapper">
       <div class="competitive-layout">
         <div class="board-area">
@@ -41,21 +20,7 @@
             @restart="$emit('restart')"
           />
         </div>
-        <div class="side-hud" v-if="gameState?.mode === 'competitive'">
-          <h5 class="hud-title">当前分数</h5>
-          <div class="hud-list">
-            <div v-for="(s, idx) in snakeArray" :key="s.player?.session_id" class="hud-item" :class="{ active: s.player?.session_id === currentPlayerId, dead: s.gameOver }">
-              <span class="dot" :style="{ background: s.player?.player_color || fallbackColor(idx) }"></span>
-              <span class="name" :title="s.player?.player_name">{{ s.player?.player_name || '玩家' }}</span>
-              <span class="score">{{ s.score }}</span>
-              <span class="food">🍎 {{ s.score/10 }}</span>
-            </div>
-          </div>
-          <div class="totals" v-if="snakeArray.length">
-            <div>总分: {{ totalScore }}</div>
-            <div>总食物: {{ totalFood }}</div>
-          </div>
-        </div>
+        
       </div>
     </div>
   </div>
@@ -64,7 +29,7 @@
 <script setup>
 import SharedGamePanel from './SharedGamePanel.vue'
 import CompetitiveGamePanel from './CompetitiveGamePanel.vue'
-import { computed } from 'vue'
+// no local computed properties required
 
 const props = defineProps({
   room: { type: Object, required: true },
@@ -78,19 +43,7 @@ const props = defineProps({
 
 defineEmits(['vote', 'move', 'restart'])
 
-const snakeArray = computed(() => {
-  const snakes = props.gameState?.snakes || {};
-  return Object.values(snakes);
-});
 function fallbackColor(i){ return ['#4ade80','#60a5fa','#f472b6','#facc15'][i % 4]; }
-const totalScore = computed(()=> snakeArray.value.reduce((a,b)=> a + (b.score||0),0));
-const totalFood = computed(()=> totalScore.value / 10);
-
-// 共享模式实时数据
-const sharedSnake = computed(()=> props.gameState?.sharedSnake || {});
-const sharedScore = computed(()=> sharedSnake.value.score || 0);
-const sharedFood = computed(()=> Math.floor(sharedScore.value / 10));
-const sharedLength = computed(()=> sharedSnake.value.body?.length || sharedSnake.value.length || 0);
 </script>
 
 <style scoped>

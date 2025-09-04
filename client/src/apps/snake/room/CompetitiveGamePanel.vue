@@ -48,16 +48,7 @@
       </div>
     </div>
 
-    <!-- 控制提示 -->
-    <div class="control-hints">
-      <h5>🎮 控制方式</h5>
-      <div class="controls">
-        <span class="control-key">WASD</span>
-        <span class="control-or">或</span>
-        <span class="control-key">方向键</span>
-        <span class="control-desc">控制蛇的移动</span>
-      </div>
-    </div>
+    
   </div>
 </template>
 
@@ -151,43 +142,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKey));
   color: #666;
 }
 
-.control-hints {
-  background: #f0f8ff;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid #e1e8ed;
-}
 
-.control-hints h5 {
-  margin: 0 0 15px 0;
-  color: #2c3e50;
-}
-
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  justify-content: center;
-}
-
-.control-key {
-  padding: 6px 12px;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-family: monospace;
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-.control-or {
-  color: #666;
-  font-style: italic;
-}
-
-.control-desc {
-  color: #666;
-}
 
 .canvas-container {
   position: relative;
