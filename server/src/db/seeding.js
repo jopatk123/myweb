@@ -155,7 +155,7 @@ export function ensureBuiltinApps(db) {
         slug: 'message-board',
         description: '用于站内留言与通知展示',
         icon_filename: 'message-board-128.svg',
-        is_visible: 1,
+  is_visible: 0,
         is_builtin: 1,
         target_url: null,
       },

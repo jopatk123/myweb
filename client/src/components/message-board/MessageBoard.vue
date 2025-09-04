@@ -76,10 +76,11 @@
   const sendSuccessToken = ref(0);
 
   // 临时设置（用于编辑）
+  // 临时设置用于编辑；用 userSettings 的当前值初始化，避免硬编码默认值
   const tempSettings = ref({
-    nickname: '',
-    avatarColor: '',
-    autoOpenEnabled: true,
+    nickname: userSettings.nickname || '',
+    avatarColor: userSettings.avatarColor || '',
+    autoOpenEnabled: Boolean(userSettings.autoOpenEnabled),
   });
 
   // 子组件发送回调

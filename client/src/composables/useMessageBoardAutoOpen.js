@@ -7,7 +7,7 @@ import { useWindowManager } from './useWindowManager.js';
 import MessageBoardWindow from '@/components/message-board/MessageBoardWindow.vue';
 
 export function useMessageBoardAutoOpen() {
-  const isAutoOpenEnabled = ref(true);
+  const isAutoOpenEnabled = ref(false);
   const { onMessage } = useWebSocket();
   const { createWindow, findWindowByApp, findWindowByAppAll, setActiveWindow, showWindowWithoutFocus } = useWindowManager();
 

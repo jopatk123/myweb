@@ -15,7 +15,7 @@ export function useMessageBoard() {
   const userSettings = reactive({
     nickname: 'Anonymous',
     avatarColor: '#007bff',
-    autoOpenEnabled: true,
+  autoOpenEnabled: false,
   });
 
   // WebSocket连接
