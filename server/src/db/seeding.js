@@ -150,6 +150,15 @@ export function ensureBuiltinApps(db) {
         is_builtin: 1,
         target_url: null,
       },
+      {
+        name: '留言板',
+        slug: 'message-board',
+        description: '用于站内留言与通知展示',
+        icon_filename: 'message-board-128.svg',
+        is_visible: 1,
+        is_builtin: 1,
+        target_url: null,
+      },
     ];
 
     const findStmt = db.prepare(

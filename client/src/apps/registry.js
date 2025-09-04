@@ -53,6 +53,14 @@ export const internalApps = [
     // 异步加载，避免初次加载体积增长
     component: defineAsyncComponent(() => import('./gomoku/GomokuApp.vue')),
   },
+  {
+    slug: 'message-board',
+    name: '留言板',
+    preferredSize: { width: 400, height: 600 },
+    component: defineAsyncComponent(
+      () => import('../components/message-board/MessageBoardWindow.vue')
+    ),
+  },
 ];
 
 export function getAppComponentBySlug(slug) {

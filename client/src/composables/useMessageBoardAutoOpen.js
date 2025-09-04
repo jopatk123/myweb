@@ -29,7 +29,8 @@ export function useMessageBoardAutoOpen() {
   // 打开或显示留言板窗口（可选择不抢占焦点）
   const openMessageBoard = (options = { activate: true }) => {
     // 首先尝试找到任何已存在的留言板窗口（包括最小化或隐藏）
-    const existingWindow = findWindowByAppAll('messageBoard');
+    // 使用与后端 / apps registry 中一致的 slug: 'message-board'
+    const existingWindow = findWindowByAppAll('message-board');
 
     if (existingWindow) {
       if (options.activate) {
@@ -50,11 +51,11 @@ export function useMessageBoardAutoOpen() {
       createWindow({
         component: MessageBoardWindow,
         title: '💬 留言板',
-        appSlug: 'messageBoard',
+        appSlug: 'message-board',
         width: 400,
         height: 600,
         props: {},
-        storageKey: 'messageBoardPos',
+        storageKey: 'message-board:pos',
         activate: options.activate,
       });
     }
