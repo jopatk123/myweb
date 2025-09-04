@@ -75,7 +75,22 @@ const {
 } = useSnakeMultiplayer()
 
 // 本地状态
-const playerName = ref(localStorage.getItem('snakePlayerName') || '')
+// 如果 localStorage 中没有保存的名字，则生成一个默认昵称并保存，用户可以编辑也可以直接使用默认值开始游戏
+const _storedSnakeName = localStorage.getItem('snakePlayerName')
+let initialSnakeName
+if (_storedSnakeName && _storedSnakeName.trim()) {
+  initialSnakeName = _storedSnakeName
+} else {
+  // 生成形如：玩家4839 的默认昵称，并持久化到 localStorage，保证在刷新/关闭后保持一致
+  initialSnakeName = `玩家${Math.floor(1000 + Math.random() * 9000)}`
+  try {
+    localStorage.setItem('snakePlayerName', initialSnakeName)
+  } catch (e) {
+    // 在无 localStorage 或受限环境下忽略错误，仅在内存中使用默认名
+    console.warn('无法写入 localStorage:', e && e.message)
+  }
+}
+const playerName = ref(initialSnakeName)
 const selectedMode = ref('shared')
 const roomCodeInput = ref('')
 const activeRooms = ref([])

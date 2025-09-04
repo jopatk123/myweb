@@ -25,7 +25,7 @@
 <script setup>
 defineProps({
   roomCode: { type: String, required: true },
-  playerName: { type: String, required: true },
+  playerName: { type: String, required: false, default: '' },
   loading: { type: Boolean, default: false }
 })
 

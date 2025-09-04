@@ -10,10 +10,10 @@
       <input v-model="mpForm.joinCode" placeholder="输入房间码加入" />
     </div>
     <div class="form-row buttons">
-      <button @click="createRoom" :disabled="mpLoading || !mpForm.playerName.trim()">创建房间</button>
-      <button @click="joinRoom" :disabled="mpLoading || !mpForm.playerName.trim() || !mpForm.joinCode">加入房间</button>
-      <button @click="refreshRoomList" :disabled="!mp.isConnected">刷新房间列表</button>
-      <button @click="$emit('back')">返回</button>
+      <button class="btn primary" @click="createRoom" :disabled="mpLoading || !mpForm.playerName.trim()">创建房间</button>
+      <button class="btn secondary" @click="joinRoom" :disabled="mpLoading || !mpForm.playerName.trim() || !mpForm.joinCode">加入房间</button>
+      <button class="btn ghost" @click="refreshRoomList" :disabled="!mp.isConnected">刷新房间列表</button>
+      <button class="btn" @click="$emit('back')">返回</button>
     </div>
     <p class="error" v-if="mp.error">{{ mp.error }}</p>
 
@@ -39,7 +39,7 @@
 <script setup>
 import GomokuRoomCard from './GomokuRoomCard.vue';
 // import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
-import { computed, unref } from 'vue';
+import { computed, unref, onMounted, watch } from 'vue';
 
 const props = defineProps({
   mp: Object,
@@ -145,6 +145,33 @@ function refreshRoomList() {
   console.debug('[GomokuLobby] Refreshing room list');
   mp.getRoomList();
 }
+
+// 进入多人模式后默认自动刷新一次房间列表：
+// - 如果已经连接则立即刷新
+// - 如果尚未连接，则监听 isConnected，连接成功后只触发一次刷新
+onMounted(() => {
+  try {
+    if (!mp) return;
+    const isConnected = unref(mp.isConnected);
+    if (isConnected) {
+      refreshRoomList();
+      return;
+    }
+
+    // 监听连接状态，连接后触发一次刷新并停止监听
+    const stopWatcher = watch(
+      () => unref(mp.isConnected),
+      (val) => {
+        if (val) {
+          refreshRoomList();
+          stopWatcher();
+        }
+      }
+    );
+  } catch (e) {
+    console.warn('[GomokuLobby] 自动刷新房间列表失败:', e);
+  }
+});
 </script>
 
 <style scoped>
@@ -166,6 +193,67 @@ function refreshRoomList() {
 .gomoku-room-lobby .buttons {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* 按钮通用样式 */
+.gomoku-room-lobby .btn {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #0b0b0b;
+  background: rgba(255, 255, 255, 0.9);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  box-shadow: 0 2px 6px rgba(2,6,23,0.15);
+}
+
+.gomoku-room-lobby .btn.primary {
+  background: linear-gradient(180deg, #ffd166, #fca311);
+  color: #0b0b0b;
+}
+
+.gomoku-room-lobby .btn.secondary {
+  background: linear-gradient(180deg, #89f7fe, #66d9e8);
+  color: #022b3a;
+}
+
+.gomoku-room-lobby .btn.ghost {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.gomoku-room-lobby .btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.18);
+}
+
+.gomoku-room-lobby .btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.gomoku-room-lobby .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 在窄屏上将按钮竖直排列并让每个按钮占满宽度 */
+@media (max-width: 560px) {
+  .gomoku-room-lobby .buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .gomoku-room-lobby .btn {
+    width: 100%;
+  }
 }
 
 .error {

@@ -56,8 +56,8 @@
 
 <script setup>
 defineProps({
-  playerName: { type: String, required: true },
-  selectedMode: { type: String, required: true },
+  playerName: { type: String, required: false, default: '' },
+  selectedMode: { type: String, required: false, default: 'shared' },
   loading: { type: Boolean, default: false }
 })
 
