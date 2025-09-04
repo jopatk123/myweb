@@ -60,6 +60,10 @@ export class WebSocketService {
         
         // 处理贪吃蛇游戏中的玩家离线
         this.handleSnakePlayerDisconnect(sessionId);
+        // 处理五子棋中的玩家离线（如果存在）
+        try{ if(this.gomokuService && typeof this.gomokuService.handlePlayerDisconnect === 'function') {
+          this.gomokuService.handlePlayerDisconnect(sessionId);
+        }}catch(e){ console.error('gomoku handle disconnect failed', e); }
       });
 
       ws.on('error', error => {

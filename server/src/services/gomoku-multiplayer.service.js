@@ -144,6 +144,38 @@ export class GomokuMultiplayerService {
     this.broadcastRoomListUpdate();
   }
 
+  /**
+   * 处理玩家断开连接时的清理
+   * 遍历所有房间，移除匹配的 session（支持 server-side sessionId 或 client-provided id）
+   */
+  async handlePlayerDisconnect(sessionId){
+    try{
+      const clientSessionId = this.ws.serverToClient.get(sessionId) || sessionId;
+      for(const [roomCode, room] of Array.from(this.rooms.entries())){
+        const idx = room.players.findIndex(p => p.session_id === clientSessionId || p.session_id === sessionId);
+        if(idx >= 0){
+          const [player] = room.players.splice(idx,1);
+          console.debug(`[GomokuService] Player ${player && player.player_name} removed from room ${roomCode} due to disconnect`);
+          // 广播玩家离开给房间内其他玩家
+          this._broadcastRoom(room,'player_left',{ player });
+
+          if(room.players.length === 0){
+            this.rooms.delete(roomCode);
+            console.debug(`[GomokuService] Room ${roomCode} deleted (no players) after disconnect`);
+          } else {
+            room.status = 'waiting';
+            room.players.forEach(p=> p.is_ready = false);
+          }
+
+          // 房间变更后更新房间列表
+          this.broadcastRoomListUpdate();
+        }
+      }
+    }catch(err){
+      console.error('[GomokuService] handlePlayerDisconnect failed:', err);
+    }
+  }
+
   getRoomInfo(roomCode){ const room = this.rooms.get(roomCode); if(!room) return null; return { room, players: room.players, game_state: room.game_state }; }
 
   // 获取活跃房间列表

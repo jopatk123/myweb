@@ -50,7 +50,31 @@ export function useGomokuMultiplayer(){
 
   async function init(){ if(!isConnected.value) await connect(); registerHandlers(); }
   onMounted(()=>{ init(); });
-  onUnmounted(()=>{ unregisterHandlers(); });
+  // 页面或组件卸载时尝试主动离开房间并注销消息处理器
+  onUnmounted(()=>{ 
+    try { 
+      const code = currentRoom.value?.room_code || currentRoom.value?.roomCode; 
+      if(code) { 
+        try{ api.leaveRoom(code); }catch(e){} 
+      }
+    } catch(e) {}
+    unregisterHandlers(); 
+  });
+
+  // 如果用户关闭或刷新页面，尽量发送离开房间请求，减少服务器端残留房间
+  if (typeof window !== 'undefined') {
+    const beforeUnloadHandler = (e) => {
+      try {
+        const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
+        if (code) {
+          api.leaveRoom(code);
+        }
+      } catch (err) {}
+    };
+    window.addEventListener('beforeunload', beforeUnloadHandler);
+    // 清理 listener（当组合式函数被销毁时）
+    onUnmounted(() => { window.removeEventListener('beforeunload', beforeUnloadHandler); });
+  }
 
   // 监听房间列表更新
   events.onRoomListUpdate((rooms) => {
