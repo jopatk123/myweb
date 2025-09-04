@@ -12,9 +12,7 @@ APP_NAME="myweb"
 IMAGE_NAME="myweb:latest"
 COMPOSE_FILE="docker/docker-compose.yml"
 # HOST_IP / FRONTEND_HOST_PORT 可通过 .env 覆盖（见 .env/.env.example）
-HOST_IP="${HOST_IP:-43.163.120.212}"
-# HOST_PORT 由 FRONTEND_HOST_PORT 提供，默认 10010
-HOST_PORT="${FRONTEND_HOST_PORT:-10010}"
+# (HOST_IP/HOST_PORT 将在加载 .env 后初始化，这样 FRONTEND_HOST_PORT 可以被 .env 覆盖)
 
 # 固定 Compose 项目名以隔离不同项目，允许通过环境变量覆盖
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-myweb}"
@@ -40,6 +38,10 @@ if [ -f .env ]; then
   . .env
   set +a
 fi
+
+# 在加载 .env 后设置 HOST_IP/HOST_PORT 的默认值（若 .env 中未设置）
+HOST_IP="${HOST_IP:-43.163.120.212}"
+HOST_PORT="${FRONTEND_HOST_PORT:-10010}"
 
 # 设置目录权限的函数
 setup_permissions() {
