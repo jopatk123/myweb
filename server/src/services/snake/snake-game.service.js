@@ -46,7 +46,8 @@ export class SnakeGameService extends RoomManagerService {
 
   // ---- 创建 / 初始化 ----
   createSnakeRoom(sessionId, playerName, mode, gameSettings={}){
-    const roomData = { mode, max_players: mode==='shared'?999:2, status:'waiting' };
+    // 竞技模式放宽到最多 8 人
+    const roomData = { mode, max_players: mode==='shared'?999: (mode==='competitive'?8:2), status:'waiting' };
     const gameConfig = { board_size:this.SNAKE_CONFIG.BOARD_SIZE, game_speed:this.SNAKE_CONFIG.GAME_SPEED, vote_timeout:this.SNAKE_CONFIG.VOTE_TIMEOUT, ...gameSettings };
     return this.createRoom(sessionId, playerName, roomData, gameConfig);
   }
