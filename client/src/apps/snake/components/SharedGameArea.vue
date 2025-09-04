@@ -16,11 +16,11 @@
     <div class="game-canvas-container">
       <SnakeCanvas
         ref="sharedCanvas"
-        :board-size="400"
-        :cell="20"
+        :board-size="BOARD_SIZE"
+        :cell="CELL"
         :snake="gameState?.sharedSnake?.body || []"
         :food="gameState?.food"
-        :grid-size="20"
+        :grid-size="GRID_SIZE"
         class="shared-canvas"
       />
     </div>
@@ -53,6 +53,11 @@ const handleVote = (direction) => {
   myVote.value = direction
   emit('vote', direction)
 }
+
+// 共享模式画布配置：固定单元像素 20px，画布像素随格子数变化
+const CELL = 20
+const GRID_SIZE = 25
+const BOARD_SIZE = CELL * GRID_SIZE
 
 // 处理键盘输入
 const handleKeyPress = (event) => {

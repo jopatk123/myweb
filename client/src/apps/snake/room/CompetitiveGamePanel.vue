@@ -62,12 +62,10 @@ const props = defineProps({
 });
 
 const currentPlayerId = computed(() => props.currentPlayerId);
-// 固定每格像素大小（px），调整此值可以改变单格视觉大小
+// 固定每格像素大小（px），画布像素随格子数量变化
 const CELL_PX = 20;
 const gridSize = computed(()=> props.gameState?.config?.BOARD_SIZE || 25);
-// 单格像素固定
 const cell = computed(()=> CELL_PX);
-// 整体画布像素随格子数量动态变化：cell * gridSize
 const boardPx = computed(()=> Math.max(200, Math.floor(cell.value * gridSize.value)));
 const canvasRef = ref(null);
 const primaryFood = computed(() => {

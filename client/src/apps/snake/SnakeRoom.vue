@@ -5,6 +5,7 @@
     <RoomHeader
       :room="currentRoom"
       :gameStatus="gameStatus"
+  :currentPlayer="currentPlayer"
       @copy-room-code="copyRoomCode"
       @leave-room="leaveRoom"
     />

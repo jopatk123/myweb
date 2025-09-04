@@ -25,13 +25,13 @@
       <div class="canvas-container">
         <SnakeCanvas
           ref="snakeCanvas"
-          :boardSize="400"
-          :cell="20"
+          :boardSize="BOARD_PX"
+          :cell="CELL_PX"
           :snake="snake"
           :food="food"
           :specialFood="null"
           :particles="[]"
-          :gridSize="20"
+          :gridSize="GRID_SIZE"
           :gameOver="false"
         />
       </div>
@@ -141,6 +141,11 @@ function handleRestart(){
   // 重开后等待新状态刷新隐藏面板
   showSummary.value = false;
 }
+
+// 画布格子/像素配置：固定单格像素，画布像素随格子数变化
+const CELL_PX = 20; // 每格像素固定为 20px
+const GRID_SIZE = computed(() => props.gameState?.config?.BOARD_SIZE || 25);
+const BOARD_PX = computed(() => Math.max(200, Math.floor(CELL_PX * GRID_SIZE.value)));
 
 // 计算蛇的位置数据
 const snake = computed(() => {
