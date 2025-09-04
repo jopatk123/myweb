@@ -36,8 +36,9 @@ export function initCompetitivePlayers(service, roomId, players){
 
 export function generateCompetitiveFoods(service, gameState){
   const foods=[]; const bodies = Object.values(gameState.snakes).flatMap(s=>s.body);
+  const size = gameState.config?.BOARD_SIZE || service.SNAKE_CONFIG.BOARD_SIZE;
   for(let i=0;i<Object.keys(gameState.snakes).length;i++){
-    foods.push(service.generateRandomPosition(service.SNAKE_CONFIG.BOARD_SIZE,bodies));
+    foods.push(service.generateRandomPosition(size,bodies));
   }
   return foods;
 }

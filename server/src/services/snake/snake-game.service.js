@@ -23,7 +23,7 @@ export class SnakeGameService extends RoomManagerService {
     this.SNAKE_CONFIG = { 
   VOTE_TIMEOUT: 80, 
   GAME_SPEED: 100, 
-      BOARD_SIZE: 20, 
+      BOARD_SIZE: 25, 
       INITIAL_SNAKE_LENGTH: 3 
     };
     
