@@ -5,14 +5,16 @@ set -euo pipefail
 # 自动化 Docker 部署脚本
 # - 在项目根以 docker-compose 方式部署
 # - 支持重试/二次执行（拉代码、重建、零停机重启）
-# - 健康检查端口: 10010
+# - 健康检查端口: 使用 FRONTEND_HOST_PORT（默认为 10010），可在 `.env` 中覆盖
 # - 自动处理权限问题
 
 APP_NAME="myweb"
 IMAGE_NAME="myweb:latest"
 COMPOSE_FILE="docker/docker-compose.yml"
-HOST_IP="43.163.120.212"
-HOST_PORT="10010"
+# HOST_IP / FRONTEND_HOST_PORT 可通过 .env 覆盖（见 .env/.env.example）
+HOST_IP="${HOST_IP:-43.163.120.212}"
+# HOST_PORT 由 FRONTEND_HOST_PORT 提供，默认 10010
+HOST_PORT="${FRONTEND_HOST_PORT:-10010}"
 
 # 固定 Compose 项目名以隔离不同项目，允许通过环境变量覆盖
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-myweb}"
@@ -29,6 +31,15 @@ need_cmd() {
     exit 1
   fi
 }
+
+# 尝试加载项目根目录下的 .env（如果存在），以便脚本能读取 FRONTEND_HOST_PORT、容器名等覆盖项
+# 使用 set -a 将变量导出到环境中，然后再取消自动导出
+if [ -f .env ]; then
+  # shellcheck disable=SC1090
+  set -a
+  . .env
+  set +a
+fi
 
 # 设置目录权限的函数
 setup_permissions() {
