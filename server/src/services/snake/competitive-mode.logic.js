@@ -56,8 +56,10 @@ export function updateCompetitiveGameTick(service, roomId){
     switch(snake.direction){case 'up':head.y--;break;case 'down':head.y++;break;case 'left':head.x--;break;case 'right':head.x++;break;}
     // 边界穿越继续包裹（保持原逻辑）
     if(head.x<0) head.x=size-1; else if(head.x>=size) head.x=0; if(head.y<0) head.y=size-1; else if(head.y>=size) head.y=0;
-    // 自撞不算输（仅撞击他人判负）；若需要包含自撞，可解除注释
-    // if(snake.body.some(seg=>seg.x===head.x && seg.y===head.y)){ loserDetected=snake; }
+    // 自撞判负（包含头撞到自己身体）
+    if(!loserDetected && snake.body.some(seg=>seg.x===head.x && seg.y===head.y)){
+      loserDetected = snake;
+    }
     // 撞到他人
     Object.entries(gameState.snakes).forEach(([oid,other])=>{ if(loserDetected||oid===sid||other.gameOver) return; if(other.body.some(seg=>seg.x===head.x && seg.y===head.y)){ loserDetected=snake; }});
     if(loserDetected) return;
