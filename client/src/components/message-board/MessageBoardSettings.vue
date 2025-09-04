@@ -61,20 +61,38 @@
     'request-clear',
   ]);
 
+  // local copy used for editing in the form
   const localSettings = ref({ ...props.modelValue });
 
+  // small deep-equality helper for this small settings object
+  const isEqual = (a, b) => {
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Only update localSettings when incoming prop actually differs to avoid
+  // write->emit->parent->prop->write cycles that cause recursive updates.
   watch(
     () => props.modelValue,
     val => {
-      localSettings.value = { ...val };
+      if (!isEqual(val, localSettings.value)) {
+        localSettings.value = { ...val };
+      }
     },
     { immediate: true, deep: true }
   );
 
+  // Only emit updates when localSettings differs from the prop to avoid
+  // emitting unchanged values which can trigger the above watcher.
   watch(
     localSettings,
     val => {
-      emit('update:modelValue', val);
+      if (!isEqual(val, props.modelValue)) {
+        emit('update:modelValue', { ...val });
+      }
     },
     { deep: true }
   );
