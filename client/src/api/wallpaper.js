@@ -5,7 +5,7 @@ const apiBase = import.meta.env.VITE_API_BASE || '/api';
 
 const api = axios.create({
   baseURL: apiBase,
-  timeout: 30000,
+  timeout: 300000, // 5分钟超时，避免上传大文件超时
 });
 
 // 响应拦截器
