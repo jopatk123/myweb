@@ -24,6 +24,30 @@ export class WallpaperGroupModel {
 
   create(data) {
     const { name } = data;
+
+    // If a group with the same name exists, handle accordingly.
+    // - If it was soft-deleted (deleted_at IS NOT NULL), restore it (undelete).
+    // - If it exists and is not deleted, consider it a duplicate and throw.
+    const existing = this.db
+      .prepare('SELECT * FROM wallpaper_groups WHERE name = ?')
+      .get(name);
+
+    if (existing) {
+      if (existing.deleted_at) {
+        // Restore soft-deleted group
+        this.db
+          .prepare(
+            'UPDATE wallpaper_groups SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+          )
+          .run(existing.id);
+        return this.findById(existing.id);
+      }
+
+      const err = new Error('分组已存在');
+      err.status = 400;
+      throw err;
+    }
+
     const sql = 'INSERT INTO wallpaper_groups (name) VALUES (?)';
 
     const result = this.db.prepare(sql).run(name);
