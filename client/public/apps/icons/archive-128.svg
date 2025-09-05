@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 背景：从蓝到绿的渐变，突出蓝/绿色调 -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1E90FF"/>
+      <stop offset="100%" stop-color="#32CD32"/>
+    </linearGradient>
+    <!-- 主体面板渐变，深浅蓝过渡 -->
+    <linearGradient id="panelGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#63B8FF"/>
+      <stop offset="100%" stop-color="#0B5FA5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- outer shell 使用蓝->绿渐变 -->
+  <rect x="8" y="16" width="112" height="96" rx="8" fill="url(#bgGrad)"/>
+  <!-- top bar 使用绿色强调 -->
+  <rect x="18" y="28" width="92" height="20" rx="4" fill="#32CD32"/>
+  <!-- main body 使用深浅蓝渐变 -->
+  <rect x="18" y="56" width="92" height="44" rx="4" fill="url(#panelGrad)"/>
+
+  <!-- zipper head (浅色以便在蓝/绿上可见) -->
+  <rect x="58" y="30" width="12" height="12" rx="2" fill="#E6F7FF" />
+  <!-- zipper pull 使用浅蓝色描边 -->
+  <path d="M64 42 L64 62" stroke="#E6F7FF" stroke-width="3" stroke-linecap="round" />
+  <circle cx="64" cy="68" r="4" fill="#E6F7FF" />
+
+  <!-- lines to suggest folds：使用浅蓝与深蓝的结合，透明度降低以显得柔和 -->
+  <path d="M26 64 H102" stroke="#77CFFF" stroke-width="1.5" stroke-linecap="round" opacity="0.45" />
+  <path d="M26 76 H102" stroke="#0A5B9A" stroke-width="1.5" stroke-linecap="round" opacity="0.35" />
+
+  <!-- small archive label 保持白色以确保可读性 -->
+  <text x="64" y="98" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="12">ARCHIVE</text>
+</svg>

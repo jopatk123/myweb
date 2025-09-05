@@ -9,18 +9,13 @@
         <img v-if="isImage" :src="previewUrl" class="media" />
         <video v-else-if="isVideo" :src="previewUrl" class="media" controls />
         <div v-else-if="isWord || isExcel" class="doc-wrap">
-          <iframe
-            :src="viewerSrc"
-            class="doc-frame"
-            referrerpolicy="no-referrer"
-          ></iframe>
-          <div class="doc-actions">
-            <span class="doc-tip"
-              >若预览失败，请尝试在新窗口打开（可能需要登录 Office 账号）</span
-            >
-            <a :href="previewUrl" target="_blank" rel="noopener" class="btn"
-              >在新窗口打开</a
-            >
+          <div v-if="loading" class="loading">正在生成预览...</div>
+          <div v-else-if="previewHtml" class="doc-html" v-html="previewHtml"></div>
+          <div v-else class="fallback">
+            无法预览该文件。你可以点击下方下载并在本地查看。
+            <div style="margin-top:10px">
+              <a :href="previewUrl" target="_blank" rel="noopener" class="btn">下载文件</a>
+            </div>
           </div>
         </div>
         <div v-else class="fallback">暂不支持该类型预览</div>
@@ -127,16 +122,73 @@
     return `${prefix}${path}`;
   });
 
-  // 在线查看器（优先 Office，皆使用绝对 URL）
-  const viewerSrc = computed(() => {
-    const abs = previewUrl.value;
-    const encoded = encodeURIComponent(abs);
-    return `https://view.officeapps.live.com/op/embed.aspx?src=${encoded}`;
-  });
+  // 前端渲染状态
+  const loading = ref(false);
+  const previewHtml = ref('');
+
+  // 辅助：从 URL 获取 ArrayBuffer（带凭据）
+  async function fetchArrayBuffer(url) {
+    const resp = await fetch(url, { credentials: 'include' });
+    if (!resp.ok) throw new Error('无法获取文件');
+    const size = Number(resp.headers.get('content-length') || 0);
+    // 阈值：不处理超过 10MB 的文件（可调整）
+    if (size && size > 10 * 1024 * 1024) throw new Error('文件过大');
+    return await resp.arrayBuffer();
+  }
+
+  // 生成预览（docx -> html, xlsx -> html）
+  async function generatePreview() {
+    previewHtml.value = '';
+    if (!previewUrl.value) return;
+    loading.value = true;
+    try {
+      const url = previewUrl.value;
+      // 仅处理 docx/xlsx 等可在前端解析的格式
+      if (isWord.value) {
+        // mammoth expects ArrayBuffer
+        const ab = await fetchArrayBuffer(url);
+        // dynamic import mammoth to reduce initial bundle cost
+        const mammoth = (await import('mammoth')).default || (await import('mammoth'));
+        const result = await mammoth.convertToHtml({ arrayBuffer: ab });
+        const DOMPurify = (await import('dompurify')).default;
+        previewHtml.value = DOMPurify.sanitize(result.value || '');
+      } else if (isExcel.value) {
+        const ab = await fetchArrayBuffer(url);
+        const XLSX = (await import('xlsx')).default || (await import('xlsx'));
+        const wb = XLSX.read(ab, { type: 'array' });
+        const first = wb.SheetNames[0];
+        const sheet = wb.Sheets[first];
+        // 用 sheet_to_html 并 sanitize
+        const rawHtml = XLSX.utils.sheet_to_html(sheet);
+        const DOMPurify = (await import('dompurify')).default;
+        previewHtml.value = DOMPurify.sanitize(rawHtml);
+      }
+    } catch (e) {
+      // 预览失败，previewHtml 保持空以触发 fallback UI
+      // console.error(e);
+      previewHtml.value = '';
+    } finally {
+      loading.value = false;
+    }
+  }
 
   function close() {
     emit('update:modelValue', false);
   }
+
+  // 当文件或模态打开时尝试生成预览（自动降级为不可预览提示）
+  watch(
+    [() => props.file, () => props.modelValue],
+    ([file, open]) => {
+      if (open && (isWord.value || isExcel.value)) {
+        // 异步生成
+        generatePreview().catch(() => {});
+      } else {
+        previewHtml.value = '';
+      }
+    },
+    { immediate: true }
+  );
 
   // The centering logic is now handled by the composable's onMounted hook.
   // The watch below handles re-centering if the modal is opened after mount.

@@ -10,18 +10,13 @@
         <img v-if="isImage" :src="previewUrl" class="media" />
         <video v-else-if="isVideo" :src="previewUrl" class="media" controls />
         <div v-else-if="isWord || isExcel" class="doc-wrap">
-          <iframe
-            :src="viewerSrc"
-            class="doc-frame"
-            referrerpolicy="no-referrer"
-          ></iframe>
-          <div class="doc-actions">
-            <span class="doc-tip"
-              >若预览失败，请尝试在新窗口打开（可能需要登录 Office 账号）</span
-            >
-            <a :href="previewUrl" target="_blank" rel="noopener" class="btn"
-              >在新窗口打开</a
-            >
+          <div v-if="loading" class="loading">正在生成预览...</div>
+          <div v-else-if="previewHtml" class="doc-html" v-html="previewHtml"></div>
+          <div v-else class="fallback">
+            无法预览该文件，您可以点击下方下载并在本地查看。
+            <div style="margin-top:10px">
+              <a :href="previewUrl" target="_blank" rel="noopener" class="btn">下载文件</a>
+            </div>
           </div>
         </div>
         <div v-else class="fallback">暂不支持该类型预览</div>
@@ -31,7 +26,7 @@
 </template>
 
 <script setup>
-  import { computed } from 'vue';
+  import { computed, ref, watch } from 'vue';
 
   const props = defineProps({
     file: { type: Object, default: null },
@@ -106,11 +101,55 @@
     return `${prefix}${path}`;
   });
 
-  const viewerSrc = computed(() => {
-    const abs = previewUrl.value;
-    const encoded = encodeURIComponent(abs);
-    return `https://view.officeapps.live.com/op/embed.aspx?src=${encoded}`;
-  });
+  const loading = ref(false);
+  const previewHtml = ref('');
+
+  async function fetchArrayBuffer(url) {
+    const resp = await fetch(url, { credentials: 'include' });
+    if (!resp.ok) throw new Error('无法获取文件');
+    const size = Number(resp.headers.get('content-length') || 0);
+    if (size && size > 10 * 1024 * 1024) throw new Error('文件过大');
+    return await resp.arrayBuffer();
+  }
+
+  async function generatePreview() {
+    previewHtml.value = '';
+    if (!previewUrl.value) return;
+    loading.value = true;
+    try {
+      const url = previewUrl.value;
+      if (isWord.value) {
+        const ab = await fetchArrayBuffer(url);
+        const mammoth = (await import('mammoth')).default || (await import('mammoth'));
+        const result = await mammoth.convertToHtml({ arrayBuffer: ab });
+        const DOMPurify = (await import('dompurify')).default;
+        previewHtml.value = DOMPurify.sanitize(result.value || '');
+      } else if (isExcel.value) {
+        const ab = await fetchArrayBuffer(url);
+        const XLSX = (await import('xlsx')).default || (await import('xlsx'));
+        const wb = XLSX.read(ab, { type: 'array' });
+        const first = wb.SheetNames[0];
+        const sheet = wb.Sheets[first];
+        const rawHtml = XLSX.utils.sheet_to_html(sheet);
+        const DOMPurify = (await import('dompurify')).default;
+        previewHtml.value = DOMPurify.sanitize(rawHtml);
+      }
+    } catch (e) {
+      previewHtml.value = '';
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // 当 file 变化时生成预览
+  watch(
+    () => props.file,
+    () => {
+      if (isWord.value || isExcel.value) generatePreview().catch(() => {});
+      else previewHtml.value = '';
+    },
+    { immediate: true }
+  );
 </script>
 
 <style scoped>
