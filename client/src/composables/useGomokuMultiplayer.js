@@ -16,7 +16,11 @@ export function useGomokuMultiplayer(){
   const loading = ref(false);
   const roomList = ref([]); // 活跃房间列表
 
-  const mySeat = computed(()=> currentPlayer.value?.seat || 1);
+  // 不要在 currentPlayer 不存在时默认返回 1，返回 null 更安全，避免把未加入的用户识别为1号位
+  const mySeat = computed(()=> {
+    const s = currentPlayer.value && currentPlayer.value.seat;
+    return s === undefined ? null : s;
+  });
   const isReady = computed(()=> !!currentPlayer.value?.is_ready);
   const bothReady = computed(()=> players.value.filter(p=>p.is_ready).length===2);
   const canStart = computed(()=> players.value.length===2 && bothReady.value && gameStatus.value==='waiting');

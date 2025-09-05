@@ -57,7 +57,11 @@ const board = computed(() => mpBoard.board);
 const currentPlayer = computed(() => mpBoard.currentPlayer);
 const lastMove = computed(() => mpBoard.lastMove);
 const winner = computed(() => mpBoard.winner);
-const mySeat = computed(() => unref(mp.mySeat));
+// 不要默认返回 1，若 currentPlayer 不存在应返回 null，避免在 game end 时把未设置的玩家当作 1 号位
+const mySeat = computed(() => {
+  const v = unref(mp.mySeat);
+  return v === undefined ? null : v;
+});
 const gameStatus = computed(() => unref(mp.gameStatus));
 const canStart = computed(() => props.canStart);
 
@@ -67,8 +71,10 @@ function applyGameState(gs) {
   if (gs.currentPlayer) mpBoard.currentPlayer = gs.currentPlayer;
   mpBoard.lastMove = gs.lastMove || null;
   const prev = mpBoard.winner;
-  mpBoard.winner = gs.winner || null;
-  if (!prev && mpBoard.winner) {
+  // 确保 winner 保持为 number|null
+  mpBoard.winner = gs.winner !== undefined && gs.winner !== null ? Number(gs.winner) : null;
+  // 仅当 winner 从无变为有时才弹窗
+  if (!prev && mpBoard.winner !== null) {
     showGameEndDialog.value = true;
   }
 }
@@ -81,7 +87,8 @@ function handleGameUpdate(data) {
 function handleMatchEnd(data) {
   const gs = data?.game_state || data;
   applyGameState(gs);
-  showGameEndDialog.value = true;
+  // handleMatchEnd 仅在实际有 winner 时显示对话框
+  if (mpBoard.winner !== null) showGameEndDialog.value = true;
 }
 
 let _registered = false;
@@ -93,7 +100,8 @@ watch(() => mp && mp.events, (ev) => {
 }, { immediate: true });
 
 watch(() => unref(mp.gameState), (gs) => { if (gs) applyGameState(gs); }, { immediate: true });
-watch(() => unref(mp.gameStatus), (s) => { if (s === 'finished') showGameEndDialog.value = true; }, { immediate: true });
+// 仅在游戏结束且存在 winner 时才显示对话框，防止 currentPlayer 丢失时误判
+watch(() => unref(mp.gameStatus), (s) => { if (s === 'finished' && mpBoard.winner !== null) showGameEndDialog.value = true; }, { immediate: true });
 
 function onMove(row, col) { emit('move', row, col); }
 function startGame() { emit('start-game'); }
