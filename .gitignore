@@ -79,6 +79,7 @@ Thumbs.db
 
 # Docker
 .dockerignore
+images.tar.gz
 
 # Temporary files
 *.tmp
@@ -90,5 +91,6 @@ server/uploads/files/*
 server/uploads/wallpapers/*
 server/uploads/novels/*
 server/uploads/message-images/*
+
 # Keep .gitkeep files
 !.gitkeep
