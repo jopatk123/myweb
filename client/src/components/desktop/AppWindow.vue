@@ -1,6 +1,7 @@
 <template>
   <div
     class="app-window"
+    ref="modalRef"
     :data-window-id="window.id"
     :data-app-slug="window.appSlug"
     :class="{
@@ -50,7 +51,23 @@
       />
       <div v-else class="empty">未找到应用组件</div>
     </div>
-    <div class="resize-handle" @pointerdown.prevent="onResizeStart">
+      <!-- 底部可拖动条：高度为顶部的一半，仅作拖动用 -->
+      <div
+        class="window-footer-drag"
+        @pointerdown.stop.prevent="onHeaderPointerDown"
+        aria-hidden="true"
+      />
+    <!-- 四角缩放把手 -->
+    <div class="resize-handle tl" @pointerdown.prevent="(e)=>onResizeStart(e,'tl')">
+      <div class="resize-corner" />
+    </div>
+    <div class="resize-handle tr" @pointerdown.prevent="(e)=>onResizeStart(e,'tr')">
+      <div class="resize-corner" />
+    </div>
+    <div class="resize-handle bl" @pointerdown.prevent="(e)=>onResizeStart(e,'bl')">
+      <div class="resize-corner" />
+    </div>
+    <div class="resize-handle br" @pointerdown.prevent="(e)=>onResizeStart(e,'br')">
       <div class="resize-corner" />
     </div>
   </div>
@@ -75,9 +92,8 @@
   const emit = defineEmits(['close', 'minimize', 'maximize', 'activate']);
 
   // 使用现有的拖拽功能
-  const { modalRef, modalStyle, onHeaderPointerDown } = useDraggableModal(
-    props.window.storageKey
-  );
+  const { modalRef, modalStyle, onHeaderPointerDown, pos, savePosition } =
+    useDraggableModal(props.window.storageKey);
 
   // 小说阅读器自动最小化功能
   const { minimizeWindow } = useWindowManager();
@@ -197,6 +213,9 @@
   let startY = 0;
   let startWidth = 0;
   let startHeight = 0;
+  let startLeft = 0;
+  let startTop = 0;
+  let resizeCorner = 'br'; // 'br'|'bl'|'tr'|'tl'
 
   function loadPersistedSize() {
     try {
@@ -232,15 +251,19 @@
     }
   }
 
-  function onResizeStart(e) {
+  function onResizeStart(e, corner = 'br') {
     e.stopPropagation();
     e.preventDefault();
     if (props.window.maximized) return; // 禁止在最大化时缩放
     resizing = true;
+    resizeCorner = corner;
     startX = e.clientX;
     startY = e.clientY;
     startWidth = Number(props.window.width || 520);
     startHeight = Number(props.window.height || 400);
+    // 记录当前窗口左上位置（来自 pos）
+    startLeft = Number(pos?.value?.x ?? 0);
+    startTop = Number(pos?.value?.y ?? 0);
     document.addEventListener('pointermove', onResizing);
     document.addEventListener('pointerup', onResizeEnd, { once: true });
   }
@@ -249,17 +272,59 @@
     if (!resizing) return;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
-    const newW = Math.max(MIN_WIDTH, Math.round(startWidth + dx));
-    const newH = Math.max(MIN_HEIGHT, Math.round(startHeight + dy));
+
+    let newW = startWidth;
+    let newH = startHeight;
+    let newLeft = startLeft;
+    let newTop = startTop;
+
+    switch (resizeCorner) {
+      case 'br':
+        newW = Math.max(MIN_WIDTH, Math.round(startWidth + dx));
+        newH = Math.max(MIN_HEIGHT, Math.round(startHeight + dy));
+        break;
+      case 'bl':
+        // 左下：宽度随鼠标向右减少，左边随之移动；高度随下拉增加
+        newW = Math.round(startWidth - dx);
+        if (newW < MIN_WIDTH) newW = MIN_WIDTH;
+        newLeft = startLeft + (startWidth - newW);
+        newH = Math.max(MIN_HEIGHT, Math.round(startHeight + dy));
+        break;
+      case 'tr':
+        // 右上：宽度随右移增加；高度随上移减少，top 需要移动
+        newW = Math.max(MIN_WIDTH, Math.round(startWidth + dx));
+        newH = Math.round(startHeight - dy);
+        if (newH < MIN_HEIGHT) newH = MIN_HEIGHT;
+        newTop = startTop + (startHeight - newH);
+        break;
+      case 'tl':
+        // 左上：宽度和高度都随移动减少，左/top 需要更新
+        newW = Math.round(startWidth - dx);
+        if (newW < MIN_WIDTH) newW = MIN_WIDTH;
+        newLeft = startLeft + (startWidth - newW);
+        newH = Math.round(startHeight - dy);
+        if (newH < MIN_HEIGHT) newH = MIN_HEIGHT;
+        newTop = startTop + (startHeight - newH);
+        break;
+    }
+
     props.window.width = newW;
     props.window.height = newH;
+    // 如果 left/top 发生变化，更新 pos（会在 onResizeEnd 时持久化）
+    if (typeof newLeft === 'number') pos.value.x = Math.round(newLeft);
+    if (typeof newTop === 'number') pos.value.y = Math.round(newTop);
   }
 
   function onResizeEnd() {
     resizing = false;
     document.removeEventListener('pointermove', onResizing);
-    // 持久化尺寸
+    // 持久化尺寸与位置
     persistSize();
+    try {
+      savePosition();
+    } catch (e) {
+      // ignore
+    }
   }
 
   // 初始化时尝试加载持久化尺寸
@@ -368,20 +433,59 @@
 
   .window-body {
     padding: 12px;
-    height: calc(100% - 45px);
+    /* 减去 header(约40-45px) 和底部拖拽条高度(约22px) */
+    height: calc(100% - 67px);
     overflow: auto;
+  }
+
+  /* 底部拖动条，仅用于拖动，样式与顶部活动状态一致，但高度为顶部的一半 */
+  .window-footer-drag {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 22px; /* 顶部约44px 时的一半高度 */
+    cursor: move;
+    background: transparent; /* 默认透明 */
+    z-index: 15;
+  }
+
+  .app-window.active .window-footer-drag {
+    background: linear-gradient(135deg, #007acc 0%, #005a9e 100%);
+    opacity: 0.95;
   }
 
   /* 右下角缩放把手 */
   .resize-handle {
     position: absolute;
-    right: 6px;
-    bottom: 6px;
     width: 14px;
     height: 14px;
-    cursor: nwse-resize;
     z-index: 20;
     opacity: 0.6;
+  }
+
+  .resize-handle.tl {
+    left: 6px;
+    top: 6px;
+    cursor: nwse-resize; /* 左上-右下 */
+  }
+
+  .resize-handle.tr {
+    right: 6px;
+    top: 6px;
+    cursor: nesw-resize; /* 右上-左下 */
+  }
+
+  .resize-handle.bl {
+    left: 6px;
+    bottom: 6px;
+    cursor: nesw-resize; /* 左下-右上 */
+  }
+
+  .resize-handle.br {
+    right: 6px;
+    bottom: 6px;
+    cursor: nwse-resize; /* 右下-左上 */
   }
 
   .resize-corner {

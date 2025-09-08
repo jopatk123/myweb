@@ -88,5 +88,8 @@ export function useDraggableModal(storageKey) {
     modalRef,
     modalStyle,
     onHeaderPointerDown,
+    // 导出位置引用与保存函数，以便外部（如窗口组件）在从左/上侧调整大小时更新位置
+    pos,
+    savePosition,
   };
 }
