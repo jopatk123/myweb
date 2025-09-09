@@ -34,7 +34,7 @@ fi
 # 构建 server 镜像（使用项目根作为 build context）
 if [ -f docker/Dockerfile.server ]; then
   echo "构建 server 镜像..."
-  docker build -t "$IMAGE_SERVER_TAG" -f docker/Dockerfile.server .
+  docker build ${BUILD_ARGS} -t "$IMAGE_SERVER_TAG" -f docker/Dockerfile.server .
 else
   echo "警告: 未找到 docker/Dockerfile.server，跳过 server 镜像构建"
 fi
@@ -67,7 +67,7 @@ if [ -f docker/Dockerfile.client ]; then
   fi
 
   # 执行构建
-  docker build -t "$IMAGE_FRONTEND_TAG" -f docker/Dockerfile.client .
+  docker build ${BUILD_ARGS} -t "$IMAGE_FRONTEND_TAG" -f docker/Dockerfile.client .
 
   # 构建完成后还原 client/public/apps/icons（如果之前备份或复制了）
   if [ "$CLEANUP_CLIENT_ICONS" = true ]; then
