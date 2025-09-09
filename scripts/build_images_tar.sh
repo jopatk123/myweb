@@ -13,6 +13,13 @@ OUT="${1:-images.tar.gz}"
 IMAGE_SERVER_TAG="${IMAGE_SERVER_TAG:-myweb_server:latest}"
 IMAGE_FRONTEND_TAG="${IMAGE_FRONTEND_TAG:-myweb_frontend:latest}"
 
+# 可选的构建参数（从环境传入），会被转成 --build-arg ... 传递给 docker build
+BUILD_ARGS=""
+if [ -n "${http_proxy:-}" ]; then BUILD_ARGS+=" --build-arg http_proxy=${http_proxy}"; fi
+if [ -n "${https_proxy:-}" ]; then BUILD_ARGS+=" --build-arg https_proxy=${https_proxy}"; fi
+if [ -n "${no_proxy:-}" ]; then BUILD_ARGS+=" --build-arg no_proxy=${no_proxy}"; fi
+if [ -n "${ALPINE_MIRROR:-}" ]; then BUILD_ARGS+=" --build-arg ALPINE_MIRROR=${ALPINE_MIRROR}"; fi
+
 echo "项目根: $PROJECT_ROOT"
 echo "Server image: $IMAGE_SERVER_TAG"
 echo "Frontend image: $IMAGE_FRONTEND_TAG"
