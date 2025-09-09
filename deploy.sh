@@ -105,7 +105,7 @@ health_check() {
   
   if command -v curl >/dev/null 2>&1; then
     # 后端 health 路由位于 /health（非 /api/health），通过 Nginx 检查 /health
-    if curl -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/health" >/dev/null 2>&1; then
+  if curl --noproxy 127.0.0.1 -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/health" >/dev/null 2>&1; then
       ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}  | 健康检查: http://${HOST_IP}:${HOST_PORT}/health"
       return 0
     else
