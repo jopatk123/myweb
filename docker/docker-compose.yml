@@ -3,6 +3,11 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.server
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+        - ALPINE_MIRROR
     container_name: ${BACKEND_CONTAINER_NAME:-myweb-backend}
     ports:
       - '${BACKEND_HOST_PORT:-3302}:${BACKEND_PORT:-3302}'
@@ -29,6 +34,11 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.client
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+        - ALPINE_MIRROR
     container_name: ${FRONTEND_CONTAINER_NAME:-myweb-frontend}
     ports:
       # 暴露到宿主机端口（请确保服务器防火墙/安全组已允许该端口）

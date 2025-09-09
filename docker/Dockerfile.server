@@ -3,8 +3,22 @@ FROM node:18-alpine
 # 设置工作目录
 WORKDIR /app
 
+# 接收可选的构建时代理与镜像源（保持默认行为，只有在提供变量时才替换）
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+ARG ALPINE_MIRROR
+ENV http_proxy=${http_proxy}
+ENV https_proxy=${https_proxy}
+ENV no_proxy=${no_proxy:-localhost,127.0.0.1}
+
 # 安装Python和构建工具（用于编译better-sqlite3）
-RUN apk add --no-cache python3 make g++ curl
+# 如果提供 ALPINE_MIRROR，则使用该镜像基础路径（例如: http://mirrors.aliyun.com/alpine/v3.21）
+RUN if [ -n "$ALPINE_MIRROR" ]; then \
+      printf '%s\n' "$ALPINE_MIRROR/main" "$ALPINE_MIRROR/community" > /etc/apk/repositories; \
+    fi && \
+    apk update && \
+    apk add --no-cache python3 make g++ curl
 
 # 创建非root用户
 RUN addgroup -g 1001 -S nodejs
