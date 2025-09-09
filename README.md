@@ -68,6 +68,56 @@ docker-compose up -d
 
 容器启动过程会执行必要的初始化脚本，查看容器日志以获取具体细节。
 
+## 部署与构建代理 / 镜像源（可选，稳健配置）
+
+在国内或受限网络环境下，构建镜像时可能需要代理或使用国内的 Alpine 镜像源。仓库已支持可选的构建时参数，推荐如下做法以保持可移植性：
+
+要点：
+- 不要把代理或镜像源写死到 `Dockerfile` 中；使用 build-time `ARG` 与环境变量，让不同主机/CI 按需注入。
+- 当需要在构建时使用国内镜像源，可通过 `ALPINE_MIRROR` 传入镜像基址（例如 `http://mirrors.aliyun.com/alpine/v3.21`）。
+
+常用环境变量（可在部署主机或 CI 中设置）：
+
+- http_proxy / https_proxy：HTTP/HTTPS 代理地址（例如 `http://127.0.0.1:7897` 或 `http://172.17.0.1:7897`）
+- no_proxy / NO_PROXY：绕过代理的地址（务必包含 `127.0.0.1,localhost` 以避免本机请求走代理）
+- ALPINE_MIRROR：可选的 Alpine 镜像基址（例如 `http://mirrors.aliyun.com/alpine/v3.21`）
+
+示例：在本机需要通过代理和使用阿里镜像构建：
+
+```bash
+# 导出代理与镜像源（仅在需要时）
+export http_proxy=http://172.17.0.1:7897
+export https_proxy=http://172.17.0.1:7897
+export no_proxy=localhost,127.0.0.1
+export ALPINE_MIRROR=http://mirrors.aliyun.com/alpine/v3.21
+
+# 使用 docker compose build 并把 build args 传入（compose 已配置读取这些 args）
+docker compose -f docker/docker-compose.yml build --no-cache
+docker compose -f docker/docker-compose.yml up -d --build
+```
+
+如果你希望让 Docker daemon 全局使用代理（可避免在某些环境中手动传入 build args），在部署主机上使用 systemd drop-in 配置（示例）：
+
+```bash
+sudo mkdir -p /etc/systemd/system/docker.service.d
+cat <<'EOF' | sudo tee /etc/systemd/system/docker.service.d/http-proxy.conf
+[Service]
+Environment="HTTP_PROXY=http://127.0.0.1:7897"
+Environment="HTTPS_PROXY=http://127.0.0.1:7897"
+Environment="NO_PROXY=localhost,127.0.0.1,172.17.0.1"
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+注意与最佳实践：
+
+- 健康检查与本机请求：部署脚本会通过 `curl` 访问 `127.0.0.1`，若在环境变量中全局设置了 `http_proxy`，请确保 `NO_PROXY` 包含 `127.0.0.1,localhost` 或在本地请求使用 `curl --noproxy 127.0.0.1`，以避免请求被代理并返回 502。
+- CI 与多主机部署：建议把代理 / ALPINE_MIRROR 作为 CI 环境变量或主机级配置，不要提交这些敏感或环境相关的值到仓库。
+- 可移植性：默认不设置 `ALPINE_MIRROR` 将使用官方仓库；仅在确实需要时注入镜像参数。
+
+如果需要，我可以把以上示例添加到仓库的 `CONTRIBUTING.md` 或 `deploy` 文档中作为部署模板。
+
 ## 常用脚本摘要
 
 - 根目录 `package.json`（workspaces）
