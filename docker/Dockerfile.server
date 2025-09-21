@@ -3,6 +3,11 @@ FROM node:18-alpine
 # 设置工作目录
 WORKDIR /app
 
+# 支持构建时参数：SKIP_SERVER_NPM_INSTALL 用于跳过 server 的 npm install（值为1时跳过）
+# USE_LOCAL_CLIENT 用于在构建 server 镜像时从本地上下文复制 client/dist（值为1时复制）
+ARG SKIP_SERVER_NPM_INSTALL=0
+ARG USE_LOCAL_CLIENT=0
+
 # 接收可选的构建时代理与镜像源（保持默认行为，只有在提供变量时才替换）
 ARG http_proxy
 ARG https_proxy
@@ -25,15 +30,33 @@ RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
 # 复制package.json
+
+# 复制 package.json
 COPY server/package*.json ./
 
-# 安装依赖（使用 npm install 而非 npm ci 以避免在单独构建镜像时因 lockfile 与 workspace 不一致导致失败）
-# 使用 --omit=dev 避免安装开发依赖，--no-audit 和 --no-fund 让构建日志更干净
-RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+# 安装依赖：当 SKIP_SERVER_NPM_INSTALL=1 时跳过安装（用于在单独仅构建 server 镜像时避免慢的 npm install）
+RUN if [ "${SKIP_SERVER_NPM_INSTALL:-0}" = "1" ]; then \
+      echo "SKIP_SERVER_NPM_INSTALL=1 - skipping npm install"; \
+    else \
+      npm install --omit=dev --no-audit --no-fund && npm cache clean --force; \
+    fi
 
 # 复制源代码
 COPY server/src ./src
+
+# 复制客户端静态资源图标
 COPY client/public/apps/icons ./preset-icons
+
+# 如果构建传入 USE_LOCAL_CLIENT=1，则尝试把本地 client/dist 复制到 server 的打包目录
+# 这样可以在构建 server 镜像时直接包含前端产物，server 的 app.js 在非生产时会使用 '../../client/dist'
+RUN if [ "${USE_LOCAL_CLIENT:-0}" = "1" ]; then \
+      if [ -d client/dist ]; then \
+        echo "USE_LOCAL_CLIENT=1 - copying client/dist into image"; \
+        mkdir -p client && cp -r client/dist client/; \
+      else \
+        echo "USE_LOCAL_CLIENT=1 but client/dist not found in build context"; \
+      fi; \
+    fi
 
 # 创建必要的目录
 RUN mkdir -p data uploads logs

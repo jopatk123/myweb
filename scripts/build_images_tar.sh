@@ -5,6 +5,7 @@ set -euo pipefail
 # 在项目根构建 server 与 client 镜像并导出为一个 images.tar.gz
 # 用法: scripts/build_images_tar.sh [output.tar.gz]
 # 可选环境变量: IMAGE_SERVER_TAG, IMAGE_FRONTEND_TAG
+# SKIP_SERVER_NPM_INSTALL=1 USE_LOCAL_CLIENT=1
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
@@ -19,11 +20,15 @@ if [ -n "${http_proxy:-}" ]; then BUILD_ARGS+=" --build-arg http_proxy=${http_pr
 if [ -n "${https_proxy:-}" ]; then BUILD_ARGS+=" --build-arg https_proxy=${https_proxy}"; fi
 if [ -n "${no_proxy:-}" ]; then BUILD_ARGS+=" --build-arg no_proxy=${no_proxy}"; fi
 if [ -n "${ALPINE_MIRROR:-}" ]; then BUILD_ARGS+=" --build-arg ALPINE_MIRROR=${ALPINE_MIRROR}"; fi
+if [ -n "${SKIP_SERVER_NPM_INSTALL:-}" ]; then BUILD_ARGS+=" --build-arg SKIP_SERVER_NPM_INSTALL=${SKIP_SERVER_NPM_INSTALL}"; fi
+if [ -n "${USE_LOCAL_CLIENT:-}" ]; then BUILD_ARGS+=" --build-arg USE_LOCAL_CLIENT=${USE_LOCAL_CLIENT}"; fi
 
 echo "项目根: $PROJECT_ROOT"
 echo "Server image: $IMAGE_SERVER_TAG"
 echo "Frontend image: $IMAGE_FRONTEND_TAG"
 echo "输出文件: $OUT"
+if [ -n "${SKIP_SERVER_NPM_INSTALL:-}" ]; then echo "环境: SKIP_SERVER_NPM_INSTALL=$SKIP_SERVER_NPM_INSTALL"; fi
+if [ -n "${USE_LOCAL_CLIENT:-}" ]; then echo "环境: USE_LOCAL_CLIENT=$USE_LOCAL_CLIENT"; fi
 
 # 检查 docker
 if ! command -v docker >/dev/null 2>&1; then

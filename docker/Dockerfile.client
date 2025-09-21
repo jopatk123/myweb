@@ -3,18 +3,28 @@ FROM node:18-alpine as builder
 # 设置工作目录
 WORKDIR /app
 
+# 可选：如果在构建时传入 USE_LOCAL_CLIENT=1，则会跳过安装与构建，期望构建上下文中已经包含 client/dist
+ARG USE_LOCAL_CLIENT=0
+
 # 复制package.json
 COPY client/package*.json ./
 
-# 安装依赖
-# 使用 npm install 以避免因宿主机 lockfile 与构建上下文不同步导致的构建失败
-RUN npm install --no-audit --no-fund
+# 安装依赖（可选跳过，当 USE_LOCAL_CLIENT=1 时跳过）
+RUN if [ "${USE_LOCAL_CLIENT:-0}" = "1" ]; then \
+			echo "USE_LOCAL_CLIENT=1 - skipping npm install"; \
+		else \
+			npm install --no-audit --no-fund; \
+		fi
 
-# 复制源代码
+# 复制源代码（如果构建上下文带有 client/dist，COPY 会把其一起带入）
 COPY client/ .
 
-# 构建应用
-RUN npm run build
+# 构建应用（可选跳过，当 USE_LOCAL_CLIENT=1 时跳过，期望 client/dist 已存在于构建上下文）
+RUN if [ "${USE_LOCAL_CLIENT:-0}" = "1" ]; then \
+			echo "USE_LOCAL_CLIENT=1 - skipping npm run build"; \
+		else \
+			npm run build; \
+		fi
 
 # 生产阶段
 FROM nginx:alpine
