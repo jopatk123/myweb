@@ -1,6 +1,6 @@
 #!/bin/bash
 #---------------------重要提示---------------------#
-#!!!完整镜像复制到/root/images.tar.gz，然后运行此脚本进行部署，否则使用deploy.sh
+#完整镜像复制到/root/images.tar.gz，然后运行此脚本进行部署，否则使用deploy.sh
 
 set -e  # 遇到错误时退出脚本
 
@@ -8,11 +8,37 @@ set -e  # 遇到错误时退出脚本
 echo "创建网络 myweb_net..."
 docker network create myweb_net || true
 
-# 2. 创建所需目录结构并设置权限
-echo "准备目录结构和权限..."
-mkdir -p /opt/myweb/server/{data,uploads/apps/icons,logs}
-chown -R 1001:1001 /opt/myweb/server
-chmod -R 775 /opt/myweb/server
+# 2. 使用 Docker 命名卷管理数据，避免直接操作项目目录
+echo "准备 Docker 命名卷..."
+docker volume create myweb_data || true
+docker volume create myweb_uploads || true
+docker volume create myweb_logs || true
+docker volume create myweb_preset_icons || true
+
+# 可选：如果需要将已有宿主机数据迁移到命名卷，请设置环境变量 DOCKER_VOLUME_MIGRATE=true
+# 并确保环境变量 HOST_DATA_PATH 指向旧数据根路径（默认 /opt/myweb/server）
+DOCKER_VOLUME_MIGRATE=${DOCKER_VOLUME_MIGRATE:-false}
+HOST_DATA_PATH=${HOST_DATA_PATH:-/opt/myweb/server}
+if [ "$DOCKER_VOLUME_MIGRATE" = "true" ]; then
+  echo "开始将宿主机现有数据从 $HOST_DATA_PATH 迁移到 Docker 命名卷（请先确保相关容器已停止）..."
+  # data
+  if [ -d "$HOST_DATA_PATH/data" ]; then
+    docker run --rm -v "$HOST_DATA_PATH/data":/from -v myweb_data:/to alpine sh -c "cp -a /from/. /to/"
+  fi
+  # uploads
+  if [ -d "$HOST_DATA_PATH/uploads" ]; then
+    docker run --rm -v "$HOST_DATA_PATH/uploads":/from -v myweb_uploads:/to alpine sh -c "cp -a /from/. /to/"
+  fi
+  # logs
+  if [ -d "$HOST_DATA_PATH/logs" ]; then
+    docker run --rm -v "$HOST_DATA_PATH/logs":/from -v myweb_logs:/to alpine sh -c "cp -a /from/. /to/"
+  fi
+  # preset icons
+  if [ -d "$HOST_DATA_PATH/../client/public/apps/icons" ]; then
+    docker run --rm -v "$HOST_DATA_PATH/../client/public/apps/icons":/from -v myweb_preset_icons:/to alpine sh -c "cp -a /from/. /to/"
+  fi
+  echo "迁移完成。你可以检查命名卷内容，确认无误后再删除宿主机上的旧数据。"
+fi
 
 # 3. 加载镜像（如果有本地镜像包）
 if [ -f "/root/images.tar.gz" ]; then
@@ -43,9 +69,9 @@ docker run -d \
   -e PORT=3302 \
   -e DB_PATH=/app/data/myweb.db \
   -e CORS_ORIGIN="http://175.178.47.135:10010" \
-  -v /opt/myweb/server/data:/app/data:rw \
-  -v /opt/myweb/server/uploads:/app/uploads:rw \
-  -v /opt/myweb/server/logs:/app/logs:rw \
+  -v myweb_data:/app/data \
+  -v myweb_uploads:/app/uploads \
+  -v myweb_logs:/app/logs \
   myweb_server:latest
 
 # 6. 启动前端服务容器
@@ -56,7 +82,7 @@ docker run -d \
   -p 10010:80 \
   --restart always \
   -e NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template \
-  -v /opt/myweb/server/uploads:/usr/share/nginx/uploads:ro \
+  -v myweb_uploads:/usr/share/nginx/uploads:ro \
   myweb_frontend:latest
 
 # 7. 显示部署结果
@@ -64,5 +90,5 @@ echo "部署完成！"
 echo "后端服务：容器名 myweb-backend，映射端口 3302"
 echo "前端服务：容器名 myweb-frontend，映射端口 10010"
 echo "可通过 http://宿主机IP:10010 访问应用"
-echo "日志文件位于 /opt/myweb/server/logs 目录"
-echo "上传文件位于 /opt/myweb/server/uploads 目录"
+echo "上传文件与日志已使用 Docker 命名卷管理（myweb_uploads, myweb_logs）"
+echo "若需要在宿主机上访问数据，可使用 'docker run --rm -v myweb_uploads:/data alpine ls -la /data' 等命令来查看卷内容"

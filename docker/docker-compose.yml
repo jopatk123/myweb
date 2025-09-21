@@ -18,11 +18,11 @@ services:
       # 默认 CORS_ORIGIN 指向部署的宿主机和 FRONTEND_HOST_PORT（可在环境或 .env 中覆盖）
       - CORS_ORIGIN=${CORS_ORIGIN:-http://43.163.120.212:${FRONTEND_HOST_PORT:-10010}}
     volumes:
-      # 将重要数据持久化到宿主机对应目录（相对于本 compose 文件的路径）
-      - ../server/data:/app/data:rw
-      - ../server/uploads:/app/uploads:rw
-      - ../server/logs:/app/logs:rw
-      - ../client/public/apps/icons:/app/preset-icons:ro
+      # 使用 Docker 命名卷管理数据，避免直接在项目目录内写入以减少权限问题
+      - myweb_data:/app/data
+      - myweb_uploads:/app/uploads
+      - myweb_logs:/app/logs
+      - myweb_preset_icons:/app/preset-icons:ro
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3302/health']
@@ -44,8 +44,8 @@ services:
       # 暴露到宿主机端口（请确保服务器防火墙/安全组已允许该端口）
       - '${FRONTEND_HOST_PORT:-10010}:80'
     volumes:
-      # 挂载上传目录到nginx的单独路径
-      - ../server/uploads:/usr/share/nginx/uploads:ro
+      # 使用 Docker 命名卷管理上传目录
+      - myweb_uploads:/usr/share/nginx/uploads:ro
     depends_on:
       - backend
     environment:
@@ -53,5 +53,12 @@ services:
     restart: unless-stopped
 
 volumes:
+  # 将主机绑定挂载改为由 Docker 管理的命名卷，避免将容器可变数据写入项目代码目录
   myweb_data:
+    driver: local
   myweb_uploads:
+    driver: local
+  myweb_logs:
+    driver: local
+  myweb_preset_icons:
+    driver: local

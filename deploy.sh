@@ -180,11 +180,32 @@ EOF
 
   log "启动/更新服务: $APP_NAME (使用 $COMPOSE_FILE)"
   
-  # 设置目录权限
-  setup_permissions || {
-    err "权限设置失败，部署终止"
-    exit 1
-  }
+  # 决定是否执行本地目录创建/权限设置：
+  # 优先使用环境变量 SKIP_LOCAL_DIR_SETUP=true 来跳过（新机器/仅使用 Docker 卷时推荐）
+  # 否则根据 compose 文件中是否存在 host bind mount 简单检测来决定
+  SKIP_LOCAL_DIR_SETUP=${SKIP_LOCAL_DIR_SETUP:-false}
+  if [ "$SKIP_LOCAL_DIR_SETUP" = "true" ]; then
+    log "已通过 SKIP_LOCAL_DIR_SETUP=true 跳过本地目录创建与权限设置"
+  else
+    # 简单检测：查找 docker/docker-compose.yml 中是否含有类似 '../' 或以 '/' 开头的主机路径（粗略判断）
+    if [ -f "$COMPOSE_FILE" ]; then
+      if grep -E "(^|\s)(\./|\.\./|/)[^:]*:" -q "$COMPOSE_FILE"; then
+        log "检测到 compose 中存在 host bind mount，执行本地目录权限设置"
+        setup_permissions || {
+          err "权限设置失败，部署终止"
+          exit 1
+        }
+      else
+        log "未检测到 host bind mount，跳过本地目录权限设置（使用 Docker 命名卷）"
+      fi
+    else
+      log "未找到 $COMPOSE_FILE，默认执行本地目录权限设置"
+      setup_permissions || {
+        err "权限设置失败，部署终止"
+        exit 1
+      }
+    fi
+  fi
   
   # 启动服务（构建镜像并启动容器）
   log "启动容器与服务（首次启动会自动进行 schema 初始化与 ensure 兜底）..."
