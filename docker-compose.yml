@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  myweb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SKIP_SERVER_NPM_INSTALL=${SKIP_SERVER_NPM_INSTALL:-0}
+        - USE_LOCAL_CLIENT=${USE_LOCAL_CLIENT:-0}
+    image: myweb:latest
+    # 使用环境变量使容器名可配置（优先使用 BACKEND_CONTAINER_NAME，否则回退到 myweb-app）
+    container_name: ${BACKEND_CONTAINER_NAME:-myweb-app}
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      - DB_PATH=/app/server/data/myweb.db
+    volumes:
+      # 持久化数据卷
+      - myweb-data:/app/server/data
+      - myweb-uploads:/app/server/uploads
+      - myweb-logs:/app/server/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "server/src/utils/health-check.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - myweb-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.myweb.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.services.myweb.loadbalancer.server.port=3000"
+
+  # 可选：用于生产环境的 Nginx 反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: myweb-nginx
+    ports:
+      - "${NGINX_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx-cache:/var/cache/nginx
+    depends_on:
+      - myweb
+    restart: unless-stopped
+    networks:
+      - myweb-network
+    profiles:
+      - production
+      - nginx
+
+volumes:
+  myweb-data:
+    driver: local
+  myweb-uploads:
+    driver: local
+  myweb-logs:
+    driver: local
+  nginx-cache:
+    driver: local
+
+networks:
+  myweb-network:
+    driver: bridge

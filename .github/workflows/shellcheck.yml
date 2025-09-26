@@ -1,0 +1,26 @@
+name: ShellCheck
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  shellcheck:
+    name: Run ShellCheck on scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        run: |
+          set -euo pipefail
+          # 查找仓库中所有 shell 脚本并运行 shellcheck（忽略 node_modules）
+          find . -type f -name '*.sh' -not -path './node_modules/*' -print0 | xargs -0 shellcheck -x

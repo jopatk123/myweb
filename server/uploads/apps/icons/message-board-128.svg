@@ -1,0 +1,19 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+	<!-- 背景圆 -->
+	<circle cx="64" cy="64" r="62" fill="#E3F2FD"/>
+
+	<!-- 留言板主体气泡 -->
+	<path d="M24 36c0-8.8 7.2-16 16-16h48c8.8 0 16 7.2 16 16v38c0 8.8-7.2 16-16 16H64l-12 12v-12H40c-8.8 0-16-7.2-16-16V36z" fill="#2196F3"/>
+
+	<!-- 文字行 -->
+	<rect x="38" y="44" width="52" height="6" rx="3" fill="#E3F7FF"/>
+	<rect x="38" y="58" width="36" height="6" rx="3" fill="#E3F7FF"/>
+	<rect x="38" y="72" width="28" height="6" rx="3" fill="#E3F7FF"/>
+
+	<!-- 小图标装饰：留言角标 -->
+	<circle cx="96" cy="36" r="8" fill="#FFEB3B"/>
+	<path d="M94 34c1-1 3-1 4 0l-1 1c-1-1-3-1-3 0l-0.1-1z" fill="#F57F17"/>
+
+	<!-- 微阴影提高层次 -->
+	<path d="M28 40c0-7 6-13 13-13h48c7 0 13 6 13 13v34c0 7-6 13-13 13H66l-12 12v-12H41c-6 0-13-6-13-13V40z" fill="#1976D2" opacity="0.12"/>
+</svg>

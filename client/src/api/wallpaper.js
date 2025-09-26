@@ -21,9 +21,11 @@ export const wallpaperApi = {
   // 获取所有壁纸，支持分页：传入 page, limit 时返回 { items, total }
   getWallpapers(groupId = null, page = null, limit = null) {
     const params = {};
-    if (groupId) params.groupId = groupId;
-    if (page) params.page = page;
-    if (limit) params.limit = limit;
+    // 注意：不要用简单的 if (value) 以免丢失 page=1 这类有效值
+    if (groupId !== null && groupId !== undefined && groupId !== '')
+      params.groupId = groupId;
+    if (page !== null && page !== undefined) params.page = page;
+    if (limit !== null && limit !== undefined) params.limit = limit;
     return api.get('/wallpapers', { params });
   },
 

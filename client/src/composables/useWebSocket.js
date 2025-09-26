@@ -54,8 +54,14 @@ export function useWebSocket() {
         }
       }
     } else {
-      // 开发环境端口映射
-      host = window.location.host.replace(':3000', ':3302');
+      // 如果没有 VITE_API_BASE，尝试从环境变量或当前 host 推导后端 host:port
+      const backendPort = import.meta.env.VITE_BACKEND_PORT || import.meta.env.VITE_PORT || import.meta.env.VITE_BE_PORT;
+      if (backendPort) {
+        host = window.location.host.replace(/:\d+$/, `:${backendPort}`);
+      } else {
+        // 默认假设后端与前端相同主机但端口为 3000（常见开发配置），保持相对路径
+        host = window.location.host;
+      }
     }
 
     return `${protocol}//${host}/ws`;

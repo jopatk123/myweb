@@ -107,22 +107,18 @@ app.get('/api', (req, res) => {
   });
 });
 
-// 提供客户端静态文件（仅在非生产环境中）
-if (process.env.NODE_ENV !== 'production') {
-  app.use(express.static(path.join(__dirname, '../../client/dist')));
-
-  // 对于所有非API路由，返回index.html（SPA路由支持）
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api/')) {
-      return next();
-    }
-    res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
-  });
-}
+// 直接始终提供客户端静态文件（包括生产环境）
+app.use(express.static(path.join(__dirname, '../../client/dist')));
 
 // 健康检查
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 对于所有非API路由，返回 index.html（SPA 支持）
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
 });
 
 // 404处理

@@ -1,0 +1,9 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="16" y="32" width="64" height="80" rx="8" fill="#fff" stroke="#ddd" stroke-width="2"/>
+  <rect x="48" y="16" width="64" height="80" rx="8" fill="#fff" stroke="#ddd" stroke-width="2"/>
+  <path d="M32 48 L48 64 L64 48 L48 32 Z" fill="#F44336"/>
+  <path d="M80 32 C88 32 96 40 96 48 C96 56 88 64 80 64 C72 64 64 56 64 48 C64 40 72 32 80 32 Z" fill="#263238"/>
+  <path d="M80 72 L96 88 L80 88 L64 72 Z" fill="#263238"/>
+  <text x="32" y="80" text-anchor="middle" fill="#F44336" font-size="16" font-weight="bold">A</text>
+  <text x="80" y="56" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">K</text>
+</svg>

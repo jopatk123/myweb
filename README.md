@@ -27,7 +27,7 @@ chmod +x scripts/dev.sh
 ./scripts/dev.sh
 ```
 
-脚本默认：前端端口 `3000`（可通过 FRONTEND_PORT 覆盖）；后端端口 `3302`（可通过 BACKEND_PORT 覆盖）。脚本会创建/修复 `server/data`、`server/uploads`、`server/logs` 的权限并运行 `server` 的 `db:check` 脚本。
+脚本默认：前端端口 `3000`（可通过 FRONTEND_PORT 覆盖）；后端端口默认使用 `PORT` 或 `BACKEND_PORT`（示例默认 3000）。脚本会创建/修复 `server/data`、`server/uploads`、`server/logs` 的权限并运行 `server` 的 `db:check` 脚本。
 
 可单独运行：
 
@@ -46,8 +46,8 @@ npm run dev
 ## 端口与访问
 
 - 前端（Vite 开发服务器）: http://localhost:3000
-- 后端 API: http://localhost:3302
-- WebSocket: ws://localhost:3302/ws
+- 后端 API: http://localhost:${BACKEND_PORT:-3000}
+- WebSocket: ws://localhost:${BACKEND_PORT:-3000}/ws
 
 （如需修改，编辑 `.env` 或在启动时设置环境变量）
 
@@ -131,7 +131,7 @@ sudo systemctl restart docker
   - `npm run test` — 使用 vitest
 
 - `server/`
-  - `npm run dev` — 使用 nodemon 启动后端（默认 3302）
+  - `npm run dev` — 使用 nodemon 启动后端（默认使用 PORT 或 BACKEND_PORT，例如 3000）
   - `npm run migrate` / `npm run seed` — Knex 迁移/seed
   - `npm run db:check` — 仓库提供的 DB 检查脚本
 

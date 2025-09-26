@@ -78,8 +78,9 @@ Thumbs.db
 *~
 
 # Docker
-.dockerignore
 images.tar.gz
+myweb-image.tar
+myweb-latest.tar
 
 # Temporary files
 *.tmp

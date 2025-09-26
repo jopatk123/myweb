@@ -1,7 +1,8 @@
 const fetch = require('node-fetch');
 
 async function sendTest() {
-  const url = 'http://localhost:3302/internal/logs/ai';
+  const backendPort = process.env.BACKEND_PORT || process.env.PORT || 3000;
+  const url = `http://localhost:${backendPort}/internal/logs/ai`;
   const payload = {
     requestText: '测试请求',
     responseText: '测试响应',

@@ -367,9 +367,9 @@
     await fetchWallpapers(selectedGroupId.value || null, true);
   };
 
-  const onLimitChange = async () => {
+  const onLimitChange = async newLimit => {
     setPage(1);
-    setLimit(limit.value);
+    setLimit(newLimit);
     await fetchWallpapers(selectedGroupId.value || null, true);
   };
 </script>

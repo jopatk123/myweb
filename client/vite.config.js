@@ -10,28 +10,22 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    // 支持通过 FRONTEND_PORT 或通用 PORT 环境变量覆盖前端端口，默认 3000
+    port: Number(process.env.FRONTEND_PORT || process.env.PORT || 3000),
     host: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3302',
-        changeOrigin: true,
-      },
-      '/internal': {
-        target: 'http://localhost:3302',
-        changeOrigin: true,
-      },
+    proxy: (() => {
+      const backendPort = process.env.BACKEND_PORT || process.env.PORT || 3000;
+      const backendHost = process.env.BACKEND_HOST || `localhost:${backendPort}`;
+      const httpTarget = `http://${backendHost}`;
+      const wsTarget = `ws://${backendHost}`;
+      return {
+        '/api': { target: httpTarget, changeOrigin: true },
+        '/internal': { target: httpTarget, changeOrigin: true },
         // 代理 WebSocket 到后端，开发时前端通过 vite server 转发 /ws
-        '/ws': {
-          target: 'ws://localhost:3302',
-          ws: true,
-          changeOrigin: true,
-        },
-      '/uploads': {
-        target: 'http://localhost:3302',
-        changeOrigin: true,
-      },
-    },
+        '/ws': { target: wsTarget, ws: true, changeOrigin: true },
+        '/uploads': { target: httpTarget, changeOrigin: true },
+      };
+    })(),
   },
   build: {
     outDir: 'dist',
