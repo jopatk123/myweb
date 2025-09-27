@@ -29,10 +29,38 @@ const app = express();
 // 信任代理设置（在生产环境中使用更精确的配置）
 app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 
+// 根据运行环境切换安全策略
+const enableHttpsSecurity = process.env.ENABLE_HTTPS_SECURITY === '1';
+const contentSecurityPolicyDirectives = {
+  defaultSrc: ['\'self\''],
+  styleSrc: ['\'self\'', '\'unsafe-inline\'', 'https:'],
+  scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\''],
+  imgSrc: ['\'self\'', 'data:', 'https:'],
+  fontSrc: ['\'self\'', 'https:', 'data:'],
+  connectSrc: ['\'self\'', 'ws:', 'wss:'],
+  objectSrc: ['\'none\''],
+  mediaSrc: ['\'self\''],
+  frameSrc: ['\'none\''],
+  baseUri: ['\'self\''],
+  formAction: ['\'self\''],
+  frameAncestors: ['\'self\''],
+  scriptSrcAttr: ['\'none\''],
+};
+
+if (enableHttpsSecurity) {
+  contentSecurityPolicyDirectives.upgradeInsecureRequests = [];
+} else {
+  contentSecurityPolicyDirectives.upgradeInsecureRequests = null;
+}
+
 // 安全中间件
 app.use(
   helmet({
+    contentSecurityPolicy: {
+      directives: contentSecurityPolicyDirectives,
+    },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    hsts: enableHttpsSecurity ? undefined : false,
   })
 );
 
