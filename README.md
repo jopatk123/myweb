@@ -1,164 +1,163 @@
-# MyWeb — 项目说明（中文）
+# MyWeb
 
-轻量的多人桌面型 Web 应用（单仓库 monorepo），前端使用 Vue 3 + Vite，后端使用 Node.js + Express，数据库为 SQLite。仓库按 `client/` 与 `server/` 分离前后端代码，根目录使用 npm workspaces 管理。
+轻量级的多人桌面风格 Web 应用。前端使用 **Vue 3 + Vite**，后端采用 **Node.js + Express**，持久化基于 **SQLite**。仓库通过 npm workspaces 同时管理 `client/` 与 `server/` 两个包。
 
-下面的 README 已根据仓库当前文件校对并做简明整理，包含开发、构建、部署与常用路径。
+---
 
-## 我将要做/已做的核对清单
+## 目录速览
 
-- [x] 核对项目结构（`client/`、`server/`、`scripts/`、`docker/` 等）
-- [x] 阅读根、`client`、`server` 的 `package.json` 以确定常用脚本
-- [x] 查看并理解一键开发脚本 `scripts/dev.sh` 的行为（安装依赖、修复权限、db 检查、启动前后端）
-- [x] 确认数据库与上传目录的默认位置（`server/data/myweb.db`、`server/uploads/`）
+```
+myweb/
+├── client/           # 前端 Vue 应用
+├── server/           # 后端 Express 服务
+├── deploy.sh         # Docker Compose 一键部署脚本
+├── build_myweb_images_tar.sh  # 镜像打包工具
+├── docker-compose.yml          # 生产运行所需的唯一服务 (myweb)
+├── Dockerfile        # 多阶段构建（前后端同镜像）
+├── dist/             # 可选：统一保存打包产物
+├── .env(.example)    # 环境变量入口
+└── README.md
+```
+
+---
+
+## 环境要求
+
+- Node.js ≥ 20
+- npm ≥ 9
+- （部署可选）Docker 24+ 与 docker compose 插件
+
+---
 
 ## 快速开始（本地开发）
 
-1. 克隆并进入仓库：
+1. **克隆代码并安装依赖**
 
-```bash
-git clone <repo-url>
-cd myweb
-```
+   ```bash
+   git clone <repo-url>
+   cd myweb
+   npm install
+   ```
 
-2. 推荐：使用一键开发脚本（会安装依赖、修复权限、检查 DB 并并行启动前后端）：
+2. **准备环境变量**
 
-```bash
-chmod +x scripts/dev.sh
-./scripts/dev.sh
-```
+   ```bash
+   cp .env.example .env
+   # 按需修改 PORT / VITE_API_BASE / CORS_ORIGIN 等
+   ```
 
-脚本默认：前端端口 `3000`（可通过 FRONTEND_PORT 覆盖）；后端端口默认使用 `PORT` 或 `BACKEND_PORT`（示例默认 3000）。脚本会创建/修复 `server/data`、`server/uploads`、`server/logs` 的权限并运行 `server` 的 `db:check` 脚本。
+3. **启动开发模式**（默认前端 3000，后端 3000/10010 由 `.env` 控制）
 
-可单独运行：
+   ```bash
+   npm run dev
+   ```
 
-```bash
-# 后端
-cd server
-npm install
-npm run dev
+   - 单独运行：`npm run dev:client` 或 `npm run dev:server`
+   - 访问地址：<http://localhost:3000>（Vite dev server 会代理 `/api` & `/ws` 到后端）
 
-# 前端
-cd client
-npm install
-npm run dev
-```
+---
 
-## 端口与访问
+## 常用脚本
 
-- 前端（Vite 开发服务器）: http://localhost:3000
-- 后端 API: http://localhost:${BACKEND_PORT:-3000}
-- WebSocket: ws://localhost:${BACKEND_PORT:-3000}/ws
+| 命令                                      | 说明                                                          |
+| ----------------------------------------- | ------------------------------------------------------------- |
+| `npm run dev`                             | 并行启动前端与后端开发服务                                    |
+| `npm run build`                           | 先构建后端再构建前端（生成 `client/dist` + 保持服务器可运行） |
+| `npm start`                               | 以生产模式启动后端（假设已有 `client/dist`）                  |
+| `npm run lint:check` / `npm run lint`     | ESLint 检查 / 自动修复                                        |
+| `npm run format:check` / `npm run format` | Prettier 校验与格式化                                         |
+| `npm test -w server`                      | 运行后端 Jest 测试                                            |
+| `npm run test -w client`                  | 运行前端 Vitest                                               |
+| `npm run contract-test`                   | 使用 Spectral 检查 `server/openapi.yaml`                      |
 
-（如需修改，编辑 `.env` 或在启动时设置环境变量）
+---
 
-## 构建与部署（简要）
-
-- 构建（本地）：
+## 构建产物
 
 ```bash
 npm run build
 ```
 
-- 使用 Docker（仓库含 `docker/` 配置）：
+- 后端：仍旧运行 `server/src/server.js`（内置构建步骤主要用于确保依赖就绪）。
+- 前端：产物位于 `client/dist/`，部署镜像会将其拷贝到 `/app/client/dist` 并由同一 Node 进程提供静态文件。
+
+---
+
+## 部署指南
+
+### 方案一：一键脚本 `deploy.sh`
 
 ```bash
-cd docker
-docker-compose up -d
+chmod +x deploy.sh
+./deploy.sh              # 默认读取 .env 并执行 docker compose up --build
 ```
 
-容器启动过程会执行必要的初始化脚本，查看容器日志以获取具体细节。
+- `.env` 中的 `PORT`/`BACKEND_PORT` 控制宿主机对外端口映射。
+- `DEPLOY_VITE_API_BASE` 或 `VITE_API_BASE` 会写入 `client/.env.production`，确保前端 API 地址正确。
+- 支持 `--no-build`、`--force-recreate`、`--skip-health-check` 等参数（运行 `./deploy.sh --help` 查看全部选项）。
+- 持久化数据通过命名卷挂载：`myweb-data`、`myweb-uploads`、`myweb-logs`。
 
-## 部署与构建代理 / 镜像源（可选，稳健配置）
-
-在国内或受限网络环境下，构建镜像时可能需要代理或使用国内的 Alpine 镜像源。仓库已支持可选的构建时参数，推荐如下做法以保持可移植性：
-
-要点：
-- 不要把代理或镜像源写死到 `Dockerfile` 中；使用 build-time `ARG` 与环境变量，让不同主机/CI 按需注入。
-- 当需要在构建时使用国内镜像源，可通过 `ALPINE_MIRROR` 传入镜像基址（例如 `http://mirrors.aliyun.com/alpine/v3.21`）。
-
-常用环境变量（可在部署主机或 CI 中设置）：
-
-- http_proxy / https_proxy：HTTP/HTTPS 代理地址（例如 `http://127.0.0.1:7897` 或 `http://172.17.0.1:7897`）
-- no_proxy / NO_PROXY：绕过代理的地址（务必包含 `127.0.0.1,localhost` 以避免本机请求走代理）
-- ALPINE_MIRROR：可选的 Alpine 镜像基址（例如 `http://mirrors.aliyun.com/alpine/v3.21`）
-
-示例：在本机需要通过代理和使用阿里镜像构建：
+### 方案二：手动执行 Docker Compose
 
 ```bash
-# 导出代理与镜像源（仅在需要时）
-export http_proxy=http://172.17.0.1:7897
-export https_proxy=http://172.17.0.1:7897
-export no_proxy=localhost,127.0.0.1
-export ALPINE_MIRROR=http://mirrors.aliyun.com/alpine/v3.21
-
-# 使用 docker compose build 并把 build args 传入（compose 已配置读取这些 args）
-docker compose -f docker/docker-compose.yml build --no-cache
-docker compose -f docker/docker-compose.yml up -d --build
+docker compose up -d --build
 ```
 
-如果你希望让 Docker daemon 全局使用代理（可避免在某些环境中手动传入 build args），在部署主机上使用 systemd drop-in 配置（示例）：
+- `docker-compose.yml` 仅包含 `myweb` 一个服务，端口映射默认 `${PORT:-3000}:3000`。
+- 需要在宿主机提供 `.env`（或附加 `--env-file`）。
+- 首次启动后可以通过 `docker compose logs -f myweb` 查看健康检查、数据库初始化和 WebSocket 状态。
+
+### 离线镜像打包
 
 ```bash
-sudo mkdir -p /etc/systemd/system/docker.service.d
-cat <<'EOF' | sudo tee /etc/systemd/system/docker.service.d/http-proxy.conf
-[Service]
-Environment="HTTP_PROXY=http://127.0.0.1:7897"
-Environment="HTTPS_PROXY=http://127.0.0.1:7897"
-Environment="NO_PROXY=localhost,127.0.0.1,172.17.0.1"
-EOF
-sudo systemctl daemon-reload
-sudo systemctl restart docker
+chmod +x build_myweb_images_tar.sh
+./build_myweb_images_tar.sh -o dist/myweb-images.tar
 ```
 
-注意与最佳实践：
+脚本会：
 
-- 健康检查与本机请求：部署脚本会通过 `curl` 访问 `127.0.0.1`，若在环境变量中全局设置了 `http_proxy`，请确保 `NO_PROXY` 包含 `127.0.0.1,localhost` 或在本地请求使用 `curl --noproxy 127.0.0.1`，以避免请求被代理并返回 502。
-- CI 与多主机部署：建议把代理 / ALPINE_MIRROR 作为 CI 环境变量或主机级配置，不要提交这些敏感或环境相关的值到仓库。
-- 可移植性：默认不设置 `ALPINE_MIRROR` 将使用官方仓库；仅在确实需要时注入镜像参数。
+1. 构建当前项目镜像。
+2. 将所需镜像导出到指定 tar 包（可选 gzip 压缩）。
+3. 生成 `*.manifest` 记录镜像摘要与大小，方便在离线主机上 `docker load`。
 
-如果需要，我可以把以上示例添加到仓库的 `CONTRIBUTING.md` 或 `deploy` 文档中作为部署模板。
+---
 
-## 常用脚本摘要
+## 环境变量速查
 
-- 根目录 `package.json`（workspaces）
-  - `npm run dev` — 并行启动 `client` 与 `server`（使用 concurrently）
-  - `npm run build` — 构建前后端
-  - `npm start` — 启动后端（生产）
+| 变量                    | 作用                                                  | 默认           |
+| ----------------------- | ----------------------------------------------------- | -------------- |
+| `FRONTEND_PORT`         | Vite 开发服务器端口                                   | `3000`         |
+| `BACKEND_PORT` / `PORT` | 生产环境对外暴露端口（Docker 宿主机 -> 容器 3000）    | `10010` 示例值 |
+| `VITE_API_BASE`         | 前端构建时使用的 API 基础路径（`/api` 或完整 URL）    | `/api`         |
+| `DEPLOY_VITE_API_BASE`  | 部署脚本专用覆盖项，优先写入 `client/.env.production` | _(未设置)_     |
+| `CORS_ORIGIN`           | 后端允许的跨域来源                                    | `*`            |
+| `RATE_LIMIT`            | 15 分钟内最大请求数（Express rate-limit）             | `1000`         |
 
-- `client/`
-  - `npm run dev` — Vite 开发服务器（默认 3000）
-  - `npm run build` — 构建前端
-  - `npm run test` — 使用 vitest
+更多可在 `.env.example` 中查阅。
 
-- `server/`
-  - `npm run dev` — 使用 nodemon 启动后端（默认使用 PORT 或 BACKEND_PORT，例如 3000）
-  - `npm run migrate` / `npm run seed` — Knex 迁移/seed
-  - `npm run db:check` — 仓库提供的 DB 检查脚本
+---
 
-## 重要路径
+## 数据与静态资源
 
-- 数据库文件：`server/data/myweb.db`
-- 上传目录：`server/uploads/`（壁纸位于 `server/uploads/wallpapers/`）
-- OpenAPI：`server/openapi.yaml`
-- Docker 配置：`docker/docker-compose.yml`
-- 开发脚本：`scripts/dev.sh`
+- 数据库：`server/data/myweb.db`
+- 上传目录：`server/uploads/`（包括 `wallpapers/`、`files/` 等子目录）
+- 前端静态资源构建后会被后端应用以 `express.static` 方式提供。
 
-## 技术栈（概要）
+---
 
-- 前端：Vue 3 + Vite + Vue Router
-- 后端：Node.js + Express
-- 数据库：SQLite（better-sqlite3），并通过 Knex 管理迁移/seed
-- 实时：ws（WebSocket）
-- 上传：Multer
-- 验证：Joi
+## API 概览
 
-## API 快览
-
-示例接口（更多在 `server/src/routes` 或 `server/openapi.yaml`）：
+后端路由文档可参考 `server/openapi.yaml`。常用端点示例：
 
 - `GET /api/wallpapers` — 获取壁纸列表
-- `POST /api/wallpapers` — 上传壁纸
-- `PUT /api/wallpapers/:id/active` — 切换活跃壁纸
-- `DELETE /api/wallpapers/:id` — 删除壁纸
+- `POST /api/files/upload` — 上传普通文件/小说
+- `GET /api/myapps` — 获取已注册的桌面应用
+- `POST /internal/logs` — 收集客户端 AI 日志
 
+---
 
+## 贡献
+
+- 提交前运行 `npm run lint:check && npm run format:check`，保持代码风格统一。
+- 项目使用 Husky + lint-staged 自动格式化常见文件类型。
+- 欢迎在 GitHub Issues 中反馈 Bug 或提出功能建议。

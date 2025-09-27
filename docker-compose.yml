@@ -36,34 +36,12 @@ services:
       - "traefik.http.routers.myweb.rule=Host(`${DOMAIN:-localhost}`)"
       - "traefik.http.services.myweb.loadbalancer.server.port=3000"
 
-  # 可选：用于生产环境的 Nginx 反向代理
-  nginx:
-    image: nginx:alpine
-    container_name: myweb-nginx
-    ports:
-      - "${NGINX_PORT:-80}:80"
-      - "${NGINX_HTTPS_PORT:-443}:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - nginx-cache:/var/cache/nginx
-    depends_on:
-      - myweb
-    restart: unless-stopped
-    networks:
-      - myweb-network
-    # NOTE: nginx is enabled by default. Previously this service was behind
-    # profiles (production, nginx) which required an explicit profile to start.
-    # Profiles have been removed so `docker compose up` will include nginx by default.
-
 volumes:
   myweb-data:
     driver: local
   myweb-uploads:
     driver: local
   myweb-logs:
-    driver: local
-  nginx-cache:
     driver: local
 
 networks:

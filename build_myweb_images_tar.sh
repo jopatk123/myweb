@@ -12,26 +12,20 @@ Options:
   -t, --tag TAG              Tag for the MyWeb image (default: myweb:latest)
   -o, --output FILE          Target path for the exported archive (default: ./dist/myweb-images-<timestamp>.tar)
       --build-arg KEY=VALUE  Forward additional --build-arg values (repeatable)
-      --nginx-image IMAGE    Override the nginx image to bundle (default: nginx:alpine)
-      --no-nginx             Skip bundling the nginx image
       --no-compress          Do not gzip the resulting tar archive
   -h, --help                 Show this help message and exit
 
 Environment overrides:
   IMAGE_TAG          Same as --tag
   OUTPUT_DIR         Default directory for generated artifacts (default: ./dist)
-  INCLUDE_NGINX      When set to 0, behaves like --no-nginx
   COMPRESS_TAR       When set to 0, behaves like --no-compress
-  NGINX_IMAGE        Same as --nginx-image
 EOF
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-  IMAGE_TAG=${IMAGE_TAG:-myweb:latest}
-NGINX_IMAGE=${NGINX_IMAGE:-nginx:alpine}
-INCLUDE_NGINX=${INCLUDE_NGINX:-1}
+IMAGE_TAG=${IMAGE_TAG:-myweb:latest}
 COMPRESS=${COMPRESS_TAR:-1}
 OUTPUT_DIR=${OUTPUT_DIR:-"$SCRIPT_DIR/dist"}
 OUTPUT_TAR=""
@@ -48,15 +42,6 @@ while [[ $# -gt 0 ]]; do
       [[ $# -lt 2 ]] && { echo "Error: --output requires a value" >&2; exit 1; }
       OUTPUT_TAR="$2"
       shift 2
-      ;;
-    --nginx-image)
-      [[ $# -lt 2 ]] && { echo "Error: --nginx-image requires a value" >&2; exit 1; }
-      NGINX_IMAGE="$2"
-      shift 2
-      ;;
-    --no-nginx)
-      INCLUDE_NGINX=0
-      shift
       ;;
     --no-compress)
       COMPRESS=0
@@ -95,28 +80,21 @@ fi
 
 mkdir -p "$(dirname "$OUTPUT_TAR")"
 
-echo "[1/4] Building image $IMAGE_TAG"
+echo "[1/3] Building image $IMAGE_TAG"
 docker build "${BUILD_ARGS[@]}" --file Dockerfile --tag "$IMAGE_TAG" "$SCRIPT_DIR"
 
 IMAGES_TO_SAVE=("$IMAGE_TAG")
-if [[ "$INCLUDE_NGINX" -eq 1 ]]; then
-  echo "[2/4] Ensuring dependency image $NGINX_IMAGE is available"
-  if ! docker image inspect "$NGINX_IMAGE" >/dev/null 2>&1; then
-    docker pull "$NGINX_IMAGE"
-  fi
-  IMAGES_TO_SAVE+=("$NGINX_IMAGE")
-fi
 
-printf '[3/4] Exporting images to %s\n' "$OUTPUT_TAR"
+printf '[2/3] Exporting image bundle to %s\n' "$OUTPUT_TAR"
 docker save "${IMAGES_TO_SAVE[@]}" -o "$OUTPUT_TAR"
 
 FINAL_OUTPUT="$OUTPUT_TAR"
 if [[ "$COMPRESS" -eq 1 ]]; then
   if command -v pigz >/dev/null 2>&1; then
-    echo "[3b] Compressing archive with pigz"
+  echo "[2b] Compressing archive with pigz"
     pigz -f "$OUTPUT_TAR"
   else
-    echo "[3b] Compressing archive with gzip"
+  echo "[2b] Compressing archive with gzip"
     gzip -f "$OUTPUT_TAR"
   fi
   FINAL_OUTPUT="${OUTPUT_TAR}.gz"
@@ -148,7 +126,7 @@ CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     echo "  docker compose up -d"
 } > "$MANIFEST_PATH"
 
-echo "[4/4] Bundle ready"
+echo "[3/3] Bundle ready"
 echo "  Archive : $FINAL_OUTPUT"
 echo "  Manifest: $MANIFEST_PATH"
 

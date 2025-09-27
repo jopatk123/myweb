@@ -10,7 +10,6 @@
 | `{{Project}}`    | 项目 Pascal 名       | `AwesomeApp`  |
 | `{{PORT_FE}}`    | 前端开发服务器端口   | `3000`        |
 | `{{PORT_BE}}`    | 后端 API 端口        | `3000` (或通过 BACKEND_PORT / PORT 覆盖) |
-| `{{PORT_NGINX}}` | 生产 Nginx 端口      | `50001`       |
 | `{{DB_NAME}}`    | SQLite 文件名        | `awesome.db`  |
 | `{{JWT_SECRET}}` | 随机 32 位字符串     | `xxx…`        |
 
@@ -161,7 +160,6 @@ docker/
 ├── Dockerfile.client
 ├── Dockerfile.server
 ├── docker-compose.yml
-├── nginx.conf.template
 └── .dockerignore
 ```
 
@@ -271,7 +269,6 @@ cd {{project}}
 ## Tech Stack
 - Frontend: Vue3 + Vite + Pinia
 - Backend: Node.js + Express + SQLite
-- Deploy: Docker + Nginx
 ```
 
 ---

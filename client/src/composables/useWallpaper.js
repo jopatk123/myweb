@@ -335,8 +335,8 @@ export function useWallpaper() {
     if (!wallpaper) return null;
     const fp = wallpaper.filePath || wallpaper.file_path || '';
 
-    // 对于图片文件，应该直接使用相对路径，不经过API
-    // 因为图片文件由Nginx直接提供静态文件服务
+  // 对于图片文件，应该直接使用相对路径，不经过API
+  // 图片由后端静态服务直接提供
     if (fp.startsWith('uploads/')) {
       return `/${fp}`;
     }

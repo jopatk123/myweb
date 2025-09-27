@@ -9,8 +9,6 @@ One-click deployment helper for the MyWeb stack using Docker Compose.
 
 Options:
   --env-file FILE          Load additional environment variables from FILE
-  --with-nginx             Start the optional nginx reverse proxy service
-  --without-nginx          Do not start nginx (default if certificates missing)
   --no-build               Skip image build step (use existing local images)
   --force-recreate         Force container recreation (passes --force-recreate)
   --skip-health-check      Do not run the HTTP health probe after startup
@@ -22,13 +20,11 @@ Options:
   -h, --help               Show this help message and exit
 
 Environment:
-  ENABLE_NGINX             When set to 1, enables nginx by default
   DEPLOY_HEALTH_TIMEOUT    Default timeout (seconds) for health check loop
   DOCKER_HOST              Standard Docker setting, honoured automatically
 
 Examples:
   ./deploy.sh --env-file .env.production
-  ENABLE_NGINX=1 ./deploy.sh --with-nginx
   ./deploy.sh --no-build --skip-health-check
 EOF
 }
@@ -55,7 +51,6 @@ if [[ -f "$PROJECT_ROOT/.env" ]]; then
 fi
 
 COMPOSE_CMD="docker compose"
-WITH_NGINX=${ENABLE_NGINX:-0}
 NO_BUILD=0
 FORCE_RECREATE=0
 SKIP_HEALTH=0
@@ -65,9 +60,6 @@ ENV_FILE=""
 PORT_MAPPING=""
 HOST_PART=""
 PORT_PART=""
-NGINX_HTTP_MAPPING=""
-NGINX_HOST_PART=""
-NGINX_PORT_PART=""
 FORCE_SETUP_PERMS=0
 SKIP_DB_CHECK=0
 
@@ -77,14 +69,6 @@ while [[ $# -gt 0 ]]; do
   [[ $# -lt 2 ]] && { err "--env-file requires a value"; exit 1; }
       ENV_FILE="$2"
       shift 2
-      ;;
-    --with-nginx)
-      WITH_NGINX=1
-      shift
-      ;;
-    --without-nginx)
-      WITH_NGINX=0
-      shift
       ;;
     --no-build)
       NO_BUILD=1
@@ -217,19 +201,38 @@ setup_permissions() {
 
 ensure_client_env() {
   local client_env="$PROJECT_ROOT/client/.env.production"
-  local api_base_default="/api"
+  local desired_base=""
 
   if [[ -n "${DEPLOY_VITE_API_BASE:-}" ]]; then
-    api_base_default="$DEPLOY_VITE_API_BASE"
-  elif [[ -f "$client_env" ]]; then
-    return
+    desired_base="$DEPLOY_VITE_API_BASE"
+  elif [[ -n "${VITE_API_BASE:-}" ]]; then
+    desired_base="$VITE_API_BASE"
+  fi
+
+  if [[ -f "$client_env" && -z "$desired_base" ]]; then
+    desired_base=$(grep -E '^VITE_API_BASE=' "$client_env" | tail -n1 | cut -d'=' -f2- || true)
+  fi
+
+  if [[ -z "$desired_base" ]]; then
+    desired_base="/api"
   fi
 
   mkdir -p "$(dirname "$client_env")"
+
+  local current_base=""
+  if [[ -f "$client_env" ]]; then
+    current_base=$(grep -E '^VITE_API_BASE=' "$client_env" | tail -n1 | cut -d'=' -f2- || true)
+  fi
+
+  if [[ "$current_base" == "$desired_base" && -n "$current_base" ]]; then
+    log "client/.env.production already set (VITE_API_BASE=$current_base)"
+    return
+  fi
+
   cat >"$client_env" <<EOF
-VITE_API_BASE=$api_base_default
+VITE_API_BASE=$desired_base
 EOF
-  log "client/.env.production updated (VITE_API_BASE=$api_base_default)"
+  log "client/.env.production updated (VITE_API_BASE=$desired_base)"
 }
 
 compose_args=(-f "$COMPOSE_FILE")
@@ -242,17 +245,6 @@ if [[ -n "$ENV_FILE" ]]; then
 fi
 
 services=(myweb)
-if [[ "$WITH_NGINX" -eq 1 ]]; then
-  CERT_PATH="$PROJECT_ROOT/nginx/ssl/cert.pem"
-  KEY_PATH="$PROJECT_ROOT/nginx/ssl/key.pem"
-  if [[ ! -f "$CERT_PATH" || ! -f "$KEY_PATH" ]]; then
-    err "nginx enabled but certificates not found at nginx/ssl. Provide cert.pem and key.pem or disable nginx."
-    exit 1
-  fi
-  services+=(nginx)
-else
-  log "nginx service will not be started (use --with-nginx to enable)."
-fi
 
 compose_up_flags=(-d)
 if [[ "$NO_BUILD" -eq 0 ]]; then
@@ -333,17 +325,6 @@ else
   exit 1
 fi
 
-if [[ "$WITH_NGINX" -eq 1 ]]; then
-  NGINX_HTTP_MAPPING=$($COMPOSE_CMD "${compose_args[@]}" port nginx 80 2>/dev/null || true)
-  if [[ -n "$NGINX_HTTP_MAPPING" ]]; then
-    NGINX_HOST_PART="${NGINX_HTTP_MAPPING%:*}"
-    NGINX_PORT_PART="${NGINX_HTTP_MAPPING##*:}"
-    if [[ "$NGINX_HOST_PART" == "0.0.0.0" || "$NGINX_HOST_PART" == "::" ]]; then
-      NGINX_HOST_PART="127.0.0.1"
-    fi
-  fi
-fi
-
 printf '\nAccess URLs:\n'
 if [[ -n "$PORT_MAPPING" ]]; then
   echo "  Web UI : http://${HOST_PART}:${PORT_PART}/"
@@ -355,12 +336,4 @@ else
     echo "  Web UI : http://127.0.0.1:3000/"
   fi
   echo "  Health : $HEALTH_URL"
-fi
-
-if [[ "$WITH_NGINX" -eq 1 ]]; then
-  if [[ -n "$NGINX_HTTP_MAPPING" ]]; then
-    echo "  Nginx  : http://${NGINX_HOST_PART}:${NGINX_PORT_PART}/"
-  else
-    echo "  Nginx  : http://${HOST_PART:-127.0.0.1}:${NGINX_PORT:-80}/"
-  fi
 fi
