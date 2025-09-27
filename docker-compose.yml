@@ -31,10 +31,11 @@ services:
       start_period: 40s
     networks:
       - myweb-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.myweb.rule=Host(`${DOMAIN:-localhost}`)"
-      - "traefik.http.services.myweb.loadbalancer.server.port=3000"
+    # 如果使用 Traefik 作为反向代理，取消以下注释并配置相应的服务。
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.myweb.rule=Host(`${DOMAIN:-localhost}`)"
+    #   - "traefik.http.services.myweb.loadbalancer.server.port=3000"
 
 volumes:
   myweb-data:
