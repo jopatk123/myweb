@@ -52,9 +52,9 @@ services:
     restart: unless-stopped
     networks:
       - myweb-network
-    profiles:
-      - production
-      - nginx
+    # NOTE: nginx is enabled by default. Previously this service was behind
+    # profiles (production, nginx) which required an explicit profile to start.
+    # Profiles have been removed so `docker compose up` will include nginx by default.
 
 volumes:
   myweb-data:

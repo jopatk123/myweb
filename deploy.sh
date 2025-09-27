@@ -1,169 +1,152 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
-# 自动化 Docker 部署脚本
-# - 在项目根以 docker-compose 方式部署（优先使用根目录 docker-compose.yml）
-# - 支持重试/二次执行（重建、零停机重启）
-# - 健康检查端口: 使用 HOST_PORT/PORT（默认 3000），可在 `.env` 中覆盖
-# - 自动处理权限问题（默认跳过，可通过 SKIP_LOCAL_DIR_SETUP=false 强制启用）
+usage() {
+  cat <<'EOF'
+Usage: deploy.sh [options]
 
-APP_NAME="myweb"
-IMAGE_NAME="myweb:latest"
-# 优先使用仓库根目录的 docker-compose.yml，其次尝试 docker/docker-compose.yml
-if [ -f "docker-compose.yml" ]; then
-  COMPOSE_FILE="docker-compose.yml"
-elif [ -f "docker/docker-compose.yml" ]; then
-  COMPOSE_FILE="docker/docker-compose.yml"
-else
-  echo "[ERROR] 未找到 docker-compose.yml 或 docker/docker-compose.yml" >&2
+One-click deployment helper for the MyWeb stack using Docker Compose.
+
+Options:
+  --env-file FILE          Load additional environment variables from FILE
+  --with-nginx             Start the optional nginx reverse proxy service
+  --without-nginx          Do not start nginx (default if certificates missing)
+  --no-build               Skip image build step (use existing local images)
+  --force-recreate         Force container recreation (passes --force-recreate)
+  --skip-health-check      Do not run the HTTP health probe after startup
+  --health-timeout SECONDS Timeout in seconds for the health probe (default: 120)
+  --health-url URL         Override the health probe URL (default derived from compose port)
+  --compose-cmd CMD        Override docker compose invocation (default: "docker compose")
+  --setup-permissions      Force local server directory permission fixes before deployment
+  --skip-db-check          Skip running the server db:check script after containers start
+  -h, --help               Show this help message and exit
+
+Environment:
+  ENABLE_NGINX             When set to 1, enables nginx by default
+  DEPLOY_HEALTH_TIMEOUT    Default timeout (seconds) for health check loop
+  DOCKER_HOST              Standard Docker setting, honoured automatically
+
+Examples:
+  ./deploy.sh --env-file .env.production
+  ENABLE_NGINX=1 ./deploy.sh --with-nginx
+  ./deploy.sh --no-build --skip-health-check
+EOF
+}
+
+log()  { printf '\033[1;34m[INFO]\033[0m %s\n' "$*"; }
+ok()   { printf '\033[1;32m[SUCCESS]\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33m[WARN]\033[0m %s\n' "$*"; }
+err()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*"; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+COMPOSE_FILE="$PROJECT_ROOT/docker-compose.yml"
+
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  err "docker-compose.yml not found in $PROJECT_ROOT"
   exit 1
 fi
-# HOST_IP / FRONTEND_HOST_PORT 可通过 .env 覆盖（见 .env/.env.example）
-# (HOST_IP/HOST_PORT 将在加载 .env 后初始化，这样 FRONTEND_HOST_PORT 可以被 .env 覆盖)
 
-# 固定 Compose 项目名以隔离不同项目，允许通过环境变量覆盖
-COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-myweb}"
-export COMPOSE_PROJECT_NAME
+if [[ -f "$PROJECT_ROOT/.env" ]]; then
+  # shellcheck disable=SC1090
+  set -a
+  . "$PROJECT_ROOT/.env"
+  set +a
+fi
 
-log()  { echo -e "\033[1;34m[INFO]\033[0m $*"; }
-ok()   { echo -e "\033[1;32m[SUCCESS]\033[0m $*"; }
-warn() { echo -e "\033[1;33m[WARN]\033[0m $*"; }
-err()  { echo -e "\033[1;31m[ERROR]\033[0m $*"; }
+COMPOSE_CMD="docker compose"
+WITH_NGINX=${ENABLE_NGINX:-0}
+NO_BUILD=0
+FORCE_RECREATE=0
+SKIP_HEALTH=0
+HEALTH_TIMEOUT=${DEPLOY_HEALTH_TIMEOUT:-120}
+HEALTH_URL=""
+ENV_FILE=""
+PORT_MAPPING=""
+HOST_PART=""
+PORT_PART=""
+NGINX_HTTP_MAPPING=""
+NGINX_HOST_PART=""
+NGINX_PORT_PART=""
+FORCE_SETUP_PERMS=0
+SKIP_DB_CHECK=0
 
-need_cmd() {
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --env-file)
+  [[ $# -lt 2 ]] && { err "--env-file requires a value"; exit 1; }
+      ENV_FILE="$2"
+      shift 2
+      ;;
+    --with-nginx)
+      WITH_NGINX=1
+      shift
+      ;;
+    --without-nginx)
+      WITH_NGINX=0
+      shift
+      ;;
+    --no-build)
+      NO_BUILD=1
+      shift
+      ;;
+    --force-recreate)
+      FORCE_RECREATE=1
+      shift
+      ;;
+    --skip-health-check)
+      SKIP_HEALTH=1
+      shift
+      ;;
+    --health-timeout)
+  [[ $# -lt 2 ]] && { err "--health-timeout requires a value"; exit 1; }
+      HEALTH_TIMEOUT="$2"
+      shift 2
+      ;;
+    --health-url)
+  [[ $# -lt 2 ]] && { err "--health-url requires a value"; exit 1; }
+      HEALTH_URL="$2"
+      shift 2
+      ;;
+    --compose-cmd)
+  [[ $# -lt 2 ]] && { err "--compose-cmd requires a value"; exit 1; }
+      COMPOSE_CMD="$2"
+      shift 2
+      ;;
+    --setup-permissions)
+      FORCE_SETUP_PERMS=1
+      shift
+      ;;
+    --skip-db-check)
+      SKIP_DB_CHECK=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+check_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
-    err "缺少命令: $1"
+    err "'$1' command not found. Please install it before running deploy.sh."
     exit 1
   fi
 }
 
-# 尝试加载项目根目录下的 .env（如果存在），以便脚本能读取 FRONTEND_HOST_PORT、容器名等覆盖项
-# 使用 set -a 将变量导出到环境中，然后再取消自动导出
-if [ -f .env ]; then
-  # shellcheck disable=SC1090
-  set -a
-  . .env
-  set +a
+check_command docker
+
+# Verify Docker daemon connectivity
+if ! docker info >/dev/null 2>&1; then
+  err "Docker daemon is not reachable. Ensure Docker is running and you have permission."
+  exit 1
 fi
-
-# 在加载 .env 后设置 HOST_IP/HOST_PORT 的默认值（若 .env 中未设置）
-# 优先使用传入的 HOST_IP；未设置时默认 127.0.0.1（可在 .env 覆盖）
-HOST_IP="${HOST_IP:-127.0.0.1}"
-# HOST_PORT 默认读取 compose 使用的 PORT（若 .env 未设置）回退到 3000
-HOST_PORT="${HOST_PORT:-${PORT:-3000}}"
-
-# 解析 Compose Profiles（例如启用 nginx 反向代理）：
-# - 可通过 PROFILES 指定（逗号或空格分隔）
-# - 或设置 ENABLE_NGINX=true 快速启用 nginx profile
-PROFILES="${PROFILES:-}"
-if [ "${ENABLE_NGINX:-false}" = "true" ]; then
-  if [ -z "$PROFILES" ]; then
-    PROFILES="nginx"
-  else
-    PROFILES="$PROFILES nginx"
-  fi
-fi
-
-COMPOSE_PROFILE_ARGS=()
-if [ -n "$PROFILES" ]; then
-  # 将逗号替换为空格，逐个添加 --profile
-  # shellcheck disable=SC2206
-  PROFILES_LIST=( ${PROFILES//,/ } )
-  for p in "${PROFILES_LIST[@]}"; do
-    [ -n "$p" ] && COMPOSE_PROFILE_ARGS+=("--profile" "$p")
-  done
-fi
-
-# 如启用了 nginx profile，则在未显式自定义 HOST_PORT 的情况下优先使用 NGINX_PORT（默认 80）
-if printf '%s\n' "${COMPOSE_PROFILE_ARGS[@]}" | grep -qE "--profile[[:space:]]+nginx"; then
-  if [ "${HOST_PORT}" = "${PORT:-3000}" ]; then
-    HOST_PORT="${NGINX_PORT:-80}"
-  fi
-fi
-
-# 设置目录权限的函数
-setup_permissions() {
-  # 允许通过环境变量覆盖默认 UID/GID（容器内运行的 node 用户为 1001:1001）
-  local PERM_UID=${PERM_UID:-1001}
-  local PERM_GID=${PERM_GID:-1001}
-
-  # 需要创建和授予权限的目录（包含上传的各子目录）
-  local dirs=(
-    "server/uploads"
-    "server/uploads/wallpapers"
-    "server/uploads/apps"
-    "server/uploads/apps/icons"
-    "server/uploads/files"
-    "server/uploads/novels"
-    "server/data"
-    "server/logs"
-  )
-  
-  log "设置目录权限 (uid=${PERM_UID} gid=${PERM_GID})..."
-  
-  for dir in "${dirs[@]}"; do
-    # 确保目录存在
-    mkdir -p "$dir" || true
-
-    # 设置归属（优先不使用 sudo，失败再回退）
-    if ! chown -R "${PERM_UID}:${PERM_GID}" "$dir" 2>/dev/null; then
-      if command -v sudo >/dev/null 2>&1; then
-        log "使用sudo设置 $dir 权限归属"
-        sudo chown -R "${PERM_UID}:${PERM_GID}" "$dir" || {
-          err "无法设置 $dir 权限归属，请检查 sudo 权限"
-          return 1
-        }
-      else
-        err "无法设置 $dir 权限归属，且系统没有 sudo 命令"
-        return 1
-      fi
-    fi
-
-    # 设置读写执行权限（目录 775）
-    chmod -R 775 "$dir" 2>/dev/null || {
-      if command -v sudo >/dev/null 2>&1; then
-        sudo chmod -R 775 "$dir" || {
-          err "无法设置 $dir 权限"
-          return 1
-        }
-      else
-        err "无法设置 $dir 权限"
-        return 1
-      fi
-    }
-  done
-  
-  ok "目录权限设置完成"
-}
-
-# 健康检查函数
-health_check() {
-  log "等待服务就绪..."
-  sleep 3
-  
-  if command -v curl >/dev/null 2>&1; then
-    # 后端 health 路由位于 /health（非 /api/health），通过 Nginx 或后端自身检查 /health
-    if curl --noproxy 127.0.0.1 -sSf -m 8 "http://127.0.0.1:${HOST_PORT}/health" >/dev/null 2>&1; then
-      ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}  | 健康检查: http://${HOST_IP}:${HOST_PORT}/health"
-      return 0
-    else
-      warn "健康检查失败"
-      return 1
-    fi
-  else
-    # 本机没有 curl：如果不存在 .env.production，则创建一个空的 VITE_API_BASE（生产构建使用相对路径）
-    if [ ! -f client/.env.production ]; then
-      log "创建 client/.env.production with empty VITE_API_BASE (use relative paths)"
-      mkdir -p client
-      cat > client/.env.production <<EOF
-VITE_API_BASE=
-EOF
-    fi
-    ok "部署完成。入口: http://${HOST_IP}:${HOST_PORT}（本机没有 curl 可用，无法执行健康检查）"
-    return 0
-  fi
-}
 
 detect_compose() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
@@ -174,115 +157,210 @@ detect_compose() {
     echo "docker-compose"
     return
   fi
-  err "未检测到 docker compose，请安装 Docker 并启用 compose 插件"
+  echo ""
+}
+
+if [[ "$COMPOSE_CMD" == "docker compose" ]]; then
+  detected=$(detect_compose)
+  if [[ -n "$detected" ]]; then
+    COMPOSE_CMD="$detected"
+  fi
+fi
+
+# Check docker compose availability
+if ! $COMPOSE_CMD version >/dev/null 2>&1; then
+  err "'$COMPOSE_CMD' is not available. Install Docker Compose v2 (docker CLI plugin)."
   exit 1
-}
+fi
 
-main() {
-  log "检查依赖..."
-  need_cmd docker
+if ! command -v curl >/dev/null 2>&1 && [[ "$SKIP_HEALTH" -eq 0 ]]; then
+  warn "curl not found; health check will be skipped."
+  SKIP_HEALTH=1
+fi
 
-  local DC
-  DC=$(detect_compose)
-  log "使用 compose 命令: $DC"
+setup_permissions() {
+  local perm_uid=${PERM_UID:-1001}
+  local perm_gid=${PERM_GID:-1001}
+  local dirs=(
+    "$PROJECT_ROOT/server/uploads"
+    "$PROJECT_ROOT/server/uploads/wallpapers"
+    "$PROJECT_ROOT/server/uploads/apps"
+    "$PROJECT_ROOT/server/uploads/apps/icons"
+    "$PROJECT_ROOT/server/uploads/files"
+    "$PROJECT_ROOT/server/uploads/novels"
+    "$PROJECT_ROOT/server/data"
+    "$PROJECT_ROOT/server/logs"
+  )
 
-  # 定义一个包装函数以正确调用 compose（避免 "docker compose" 含空格的问题）
-  dcompose() {
-    if [ "$DC" = "docker compose" ]; then
-      docker compose "$@"
-    else
-      docker-compose "$@"
-    fi
-  }
+  log "Fixing permissions for server writable directories (uid=${perm_uid} gid=${perm_gid})"
 
-  # 跳过自动拉取远程仓库的逻辑，改为由用户手动决定是否更新代码
-  # 原因: 部署脚本不应在没有人工确认的情况下自动更改工作树或切换分支
-  log "已跳过自动拉取仓库更新。若需要更新，请在部署前手动执行 'git fetch && git pull'。"
-
-  # 若存在根目录 Dockerfile，可选择先构建镜像；否则交由 compose 构建
-  if [ -f Dockerfile ]; then
-    log "检测到 Dockerfile，镜像将由 compose 在 up --build 时构建（无需手动 docker build）"
-  else
-    log "未检测到根目录 Dockerfile，若 compose 指定了其他路径将由其处理"
-  fi
-
-  # 在使用 docker compose 构建 frontend 镜像之前，确保 client/.env.production 存在并包含 VITE_API_BASE
-  # 这样在 Dockerfile.client 的构建阶段，Vite 会读取正确的 API 根路径
-  if [ -n "${DEPLOY_VITE_API_BASE:-}" ]; then
-    log "为 frontend 构建创建 client/.env.production with VITE_API_BASE=${DEPLOY_VITE_API_BASE}"
-    mkdir -p client
-    cat > client/.env.production <<EOF
-VITE_API_BASE=${DEPLOY_VITE_API_BASE}
-EOF
-  else
-    if [ ! -f client/.env.production ]; then
-      log "创建 client/.env.production with default VITE_API_BASE=/api"
-      mkdir -p client
-      cat > client/.env.production <<EOF
-VITE_API_BASE=/api
-EOF
-    fi
-  fi
-
-  log "启动/更新服务: $APP_NAME (使用 $COMPOSE_FILE)"
-  
-  # 决定是否执行本地目录创建/权限设置：
-  # 默认跳过（使用命名卷一般不需要），如需强制设置，设置 SKIP_LOCAL_DIR_SETUP=false
-  # 否则根据 compose 文件中是否存在针对 server 目录的 host bind mount 来决定
-  SKIP_LOCAL_DIR_SETUP=${SKIP_LOCAL_DIR_SETUP:-true}
-  if [ "$SKIP_LOCAL_DIR_SETUP" = "true" ]; then
-    log "已通过 SKIP_LOCAL_DIR_SETUP=true 跳过本地目录创建与权限设置"
-  else
-    # 粗略检测：仅当 compose 存在 server 目录的 host bind mount 时才设置权限
-    if [ -f "$COMPOSE_FILE" ]; then
-      if grep -E "^[[:space:]]*-[[:space:]]+(\./|/).*/server/(uploads|data|logs)" -q "$COMPOSE_FILE"; then
-        log "检测到 compose 中存在 server 目录的 host bind mount，执行本地目录权限设置"
-        setup_permissions || {
-          err "权限设置失败，部署终止"
-          exit 1
-        }
+  for dir in "${dirs[@]}"; do
+    mkdir -p "$dir"
+    if ! chown -R "${perm_uid}:${perm_gid}" "$dir" 2>/dev/null; then
+      if command -v sudo >/dev/null 2>&1; then
+        sudo chown -R "${perm_uid}:${perm_gid}" "$dir"
       else
-        log "未检测到 server 目录的 host bind mount，跳过本地目录权限设置（使用 Docker 命名卷）"
+        warn "Failed to chown $dir (sudo unavailable). Continuing without adjusting owner."
       fi
-    else
-      log "未找到 $COMPOSE_FILE，默认执行本地目录权限设置"
-      setup_permissions || {
-        err "权限设置失败，部署终止"
-        exit 1
-      }
     fi
-  fi
-  
-  # 启动服务（构建镜像并启动容器）
-  log "启动容器与服务（首次启动会自动进行 schema 初始化与 ensure 兜底）..."
-  # 控制是否删除 orphan 容器：默认不删除，可通过环境变量 REMOVE_ORPHANS=true 启用
-  if [ "${REMOVE_ORPHANS:-false}" = "true" ]; then
-    log "使用 --remove-orphans（环境变量 REMOVE_ORPHANS=true）"
-    dcompose -f "$COMPOSE_FILE" "${COMPOSE_PROFILE_ARGS[@]}" up -d --build --remove-orphans
-  else
-    log "不使用 --remove-orphans（默认），保留现有未在 compose 文件中的容器"
-    dcompose -f "$COMPOSE_FILE" "${COMPOSE_PROFILE_ARGS[@]}" up -d --build
-  fi
+    if ! chmod -R 775 "$dir" 2>/dev/null; then
+      if command -v sudo >/dev/null 2>&1; then
+        sudo chmod -R 775 "$dir"
+      else
+        warn "Failed to chmod $dir (sudo unavailable)."
+      fi
+    fi
+  done
 
-  # 检查数据库状态（由后端 initDatabase 执行 schema+ensure 初始化）
-  log "检查数据库状态..."
-  # 注意：容器内为 npm workspaces 结构，需要 -w server 执行 server 脚本
-  dcompose -f "$COMPOSE_FILE" "${COMPOSE_PROFILE_ARGS[@]}" exec -T myweb npm run -w server db:check || {
-    err "数据库检查失败"
-    dcompose -f "$COMPOSE_FILE" "${COMPOSE_PROFILE_ARGS[@]}" logs --tail 50 myweb || true
-    exit 1
-  }
-  ok "数据库检查通过"
-
-  log "等待服务就绪..."
-  sleep 3
-  dcompose -f "$COMPOSE_FILE" "${COMPOSE_PROFILE_ARGS[@]}" ps || true
-  # 健康检查
-  health_check || {
-    warn "健康检查未通过，正在输出关键容器日志以供排查："
-  dcompose -f "$COMPOSE_FILE" "${COMPOSE_PROFILE_ARGS[@]}" logs --tail 200 --no-color || true
-    exit 1
-  }
+  ok "Writable directories ensured"
 }
 
-main "$@"
+ensure_client_env() {
+  local client_env="$PROJECT_ROOT/client/.env.production"
+  local api_base_default="/api"
+
+  if [[ -n "${DEPLOY_VITE_API_BASE:-}" ]]; then
+    api_base_default="$DEPLOY_VITE_API_BASE"
+  elif [[ -f "$client_env" ]]; then
+    return
+  fi
+
+  mkdir -p "$(dirname "$client_env")"
+  cat >"$client_env" <<EOF
+VITE_API_BASE=$api_base_default
+EOF
+  log "client/.env.production updated (VITE_API_BASE=$api_base_default)"
+}
+
+compose_args=(-f "$COMPOSE_FILE")
+if [[ -n "$ENV_FILE" ]]; then
+  if [[ ! -f "$ENV_FILE" ]]; then
+    err "Specified env file '$ENV_FILE' does not exist."
+    exit 1
+  fi
+  compose_args+=(--env-file "$ENV_FILE")
+fi
+
+services=(myweb)
+if [[ "$WITH_NGINX" -eq 1 ]]; then
+  CERT_PATH="$PROJECT_ROOT/nginx/ssl/cert.pem"
+  KEY_PATH="$PROJECT_ROOT/nginx/ssl/key.pem"
+  if [[ ! -f "$CERT_PATH" || ! -f "$KEY_PATH" ]]; then
+    err "nginx enabled but certificates not found at nginx/ssl. Provide cert.pem and key.pem or disable nginx."
+    exit 1
+  fi
+  services+=(nginx)
+else
+  log "nginx service will not be started (use --with-nginx to enable)."
+fi
+
+compose_up_flags=(-d)
+if [[ "$NO_BUILD" -eq 0 ]]; then
+  compose_up_flags+=(--build)
+fi
+if [[ "$FORCE_RECREATE" -eq 1 ]]; then
+  compose_up_flags+=(--force-recreate)
+fi
+if [[ "${REMOVE_ORPHANS:-false}" == "true" ]]; then
+  compose_up_flags+=(--remove-orphans)
+fi
+
+SKIP_LOCAL_DIR_SETUP=${SKIP_LOCAL_DIR_SETUP:-true}
+if [[ "$FORCE_SETUP_PERMS" -eq 1 ]]; then
+  setup_permissions
+elif [[ "$SKIP_LOCAL_DIR_SETUP" == "false" ]]; then
+  setup_permissions
+fi
+
+ensure_client_env
+
+export DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-1}
+
+printf '==> Bringing up services: %s\n' "${services[*]}"
+$COMPOSE_CMD "${compose_args[@]}" up "${compose_up_flags[@]}" "${services[@]}"
+
+printf '==> Current container status\n'
+$COMPOSE_CMD "${compose_args[@]}" ps
+
+if [[ "$SKIP_DB_CHECK" -eq 0 ]]; then
+  log "Running database integrity check (server/db:check)..."
+  if ! $COMPOSE_CMD "${compose_args[@]}" exec -T myweb node server/src/utils/db-check.js; then
+    err "Database check failed. Inspecting recent logs..."
+    $COMPOSE_CMD "${compose_args[@]}" logs --tail 80 myweb || true
+    exit 1
+  fi
+  ok "Database check passed"
+fi
+
+if [[ "$SKIP_HEALTH" -eq 1 ]]; then
+  log "Health check was skipped."
+  exit 0
+fi
+
+# Determine health check URL
+if [[ -z "$HEALTH_URL" ]]; then
+  PORT_MAPPING=$($COMPOSE_CMD "${compose_args[@]}" port myweb 3000 2>/dev/null || true)
+  if [[ -n "$PORT_MAPPING" ]]; then
+    # format host:port
+    HOST_PART="${PORT_MAPPING%:*}"
+    PORT_PART="${PORT_MAPPING##*:}"
+    if [[ "$HOST_PART" == "0.0.0.0" || "$HOST_PART" == "::" ]]; then
+      HOST_PART="127.0.0.1"
+    fi
+    HEALTH_URL="http://${HOST_PART}:${PORT_PART}/health"
+  else
+    TARGET_PORT=${PORT:-3000}
+    HEALTH_URL="http://127.0.0.1:${TARGET_PORT}/health"
+  fi
+fi
+
+printf '==> Waiting for health endpoint %s (timeout: %ss)\n' "$HEALTH_URL" "$HEALTH_TIMEOUT"
+DEADLINE=$((SECONDS + HEALTH_TIMEOUT))
+SUCCESS=0
+while (( SECONDS < DEADLINE )); do
+  if curl --fail --silent --show-error --max-time 5 "$HEALTH_URL" >/dev/null; then
+    SUCCESS=1
+    break
+  fi
+  sleep 3
+done
+
+if [[ "$SUCCESS" -eq 1 ]]; then
+  echo "✅ Deployment succeeded and service is healthy."
+else
+  echo "❌ Deployment completed but health check did not pass within ${HEALTH_TIMEOUT}s." >&2
+  echo "   Check container logs with: $COMPOSE_CMD ${compose_args[*]} logs --tail 50 myweb" >&2
+  exit 1
+fi
+
+if [[ "$WITH_NGINX" -eq 1 ]]; then
+  NGINX_HTTP_MAPPING=$($COMPOSE_CMD "${compose_args[@]}" port nginx 80 2>/dev/null || true)
+  if [[ -n "$NGINX_HTTP_MAPPING" ]]; then
+    NGINX_HOST_PART="${NGINX_HTTP_MAPPING%:*}"
+    NGINX_PORT_PART="${NGINX_HTTP_MAPPING##*:}"
+    if [[ "$NGINX_HOST_PART" == "0.0.0.0" || "$NGINX_HOST_PART" == "::" ]]; then
+      NGINX_HOST_PART="127.0.0.1"
+    fi
+  fi
+fi
+
+printf '\nAccess URLs:\n'
+if [[ -n "$PORT_MAPPING" ]]; then
+  echo "  Web UI : http://${HOST_PART}:${PORT_PART}/"
+  echo "  Health : $HEALTH_URL"
+else
+  if [[ -n "${PORT:-}" ]]; then
+    echo "  Web UI : http://127.0.0.1:${PORT}/"
+  else
+    echo "  Web UI : http://127.0.0.1:3000/"
+  fi
+  echo "  Health : $HEALTH_URL"
+fi
+
+if [[ "$WITH_NGINX" -eq 1 ]]; then
+  if [[ -n "$NGINX_HTTP_MAPPING" ]]; then
+    echo "  Nginx  : http://${NGINX_HOST_PART}:${NGINX_PORT_PART}/"
+  else
+    echo "  Nginx  : http://${HOST_PART:-127.0.0.1}:${NGINX_PORT:-80}/"
+  fi
+fi

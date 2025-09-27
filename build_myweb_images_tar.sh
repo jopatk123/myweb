@@ -9,7 +9,7 @@ Build the MyWeb runtime image and export every required image into a single tarb
 for offline usage.
 
 Options:
-  -t, --tag TAG              Tag for the MyWeb image (default: myweb:offline)
+  -t, --tag TAG              Tag for the MyWeb image (default: myweb:latest)
   -o, --output FILE          Target path for the exported archive (default: ./dist/myweb-images-<timestamp>.tar)
       --build-arg KEY=VALUE  Forward additional --build-arg values (repeatable)
       --nginx-image IMAGE    Override the nginx image to bundle (default: nginx:alpine)
@@ -29,7 +29,7 @@ EOF
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-IMAGE_TAG=${IMAGE_TAG:-myweb:offline}
+  IMAGE_TAG=${IMAGE_TAG:-myweb:latest}
 NGINX_IMAGE=${NGINX_IMAGE:-nginx:alpine}
 INCLUDE_NGINX=${INCLUDE_NGINX:-1}
 COMPRESS=${COMPRESS_TAR:-1}
@@ -144,8 +144,8 @@ CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
   done
   echo
   echo "Usage instructions:"
-  echo "  docker load -i $(basename "$FINAL_OUTPUT")"
-  echo "  docker compose up -d"
+    echo "  docker load -i $(basename "$FINAL_OUTPUT")"
+    echo "  docker compose up -d"
 } > "$MANIFEST_PATH"
 
 echo "[4/4] Bundle ready"
