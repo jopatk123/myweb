@@ -19,7 +19,7 @@ wsService.init(server);
 // 将WebSocket服务实例存储到app中，供控制器使用
 app.set('wsServer', wsService);
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`🔌 WebSocket server running on ws://localhost:${PORT}/ws`);
   console.log(`📁 Upload directory: uploads/wallpapers/`);
