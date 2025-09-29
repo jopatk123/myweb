@@ -10,8 +10,8 @@ export default defineConfig({
     },
   },
   server: {
-    // 支持通过 FRONTEND_PORT 或通用 PORT 环境变量覆盖前端端口，默认 3000
-    port: Number(process.env.FRONTEND_PORT || process.env.PORT || 3000),
+    // 支持通过 FRONTEND_PORT 覆盖前端端口，默认使用 Vite 5173，避免与后端冲突
+    port: Number(process.env.FRONTEND_PORT || 5173),
     host: true,
     proxy: (() => {
       const backendPort = process.env.BACKEND_PORT || process.env.PORT || 3000;

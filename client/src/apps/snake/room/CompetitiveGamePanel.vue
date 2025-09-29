@@ -83,7 +83,15 @@ const snakeListSorted = computed(() => [...snakeList.value].sort((a,b)=>b.score-
 const totalScore = computed(()=> snakeList.value.reduce((a,b)=>a + (b.score||0),0));
 const totalFood = computed(()=> totalScore.value / 10);
 
-const isGameFinished = computed(() => !!props.gameState?.gameOver || props.gameState?.winner || props.gameState?.loser || props.gameState?.status==='finished');
+const isGameFinished = computed(() => {
+  const state = props.gameState || {};
+  return (
+    !!state.gameOver ||
+    state.status === 'finished' ||
+    !!state.winner ||
+    !!state.loser
+  );
+});
 const winnerName = computed(() => props.gameState?.winner?.player_name || props.gameState?.winner?.playerName || null);
 const loserName = computed(() => props.gameState?.loser?.player_name || props.gameState?.loser?.playerName || null);
 const durationSec = computed(()=> { const st = props.gameState?.startTime; const et = props.gameState?.endTime; if(!st) return 0; return Math.round(((et||Date.now())-st)/1000); });
