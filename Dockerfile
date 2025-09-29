@@ -1,7 +1,3 @@
-# MyWeb 应用的多阶段构建
-# 此 Dockerfile 支持最小化容器构建时间
-# 支持 SKIP_SERVER_NPM_INSTALL 和 USE_LOCAL_CLIENT 环境变量
-
 # =================== 构建阶段：客户端 ===================
 FROM node:20-alpine AS client-builder
 

@@ -8,28 +8,21 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:cov": "vitest --coverage",
-  "lint": "eslint --ext .js,.vue --fix src --config .eslintrc.cjs",
-  "lint:check": "eslint --ext .js,.vue src --config .eslintrc.cjs"
+    "lint": "eslint --ext .js,.vue --fix src",
+    "lint:check": "eslint --ext .js,.vue src"
   },
   "dependencies": {
     "axios": "^1.6.0",
-  "mammoth": "^1.6.0",
-  "xlsx": "^0.18.5",
-  "dompurify": "^2.4.0",
+    "dompurify": "^2.4.0",
+    "mammoth": "^1.6.0",
     "uuid": "^9.0.1",
     "vue": "^3.3.0",
-    "vue-router": "^4.2.0"
+    "vue-router": "^4.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@babel/core": "^7.28.3",
-    "@babel/eslint-parser": "^7.28.0",
     "@vitejs/plugin-vue": "^4.4.0",
-    "@vue/eslint-config-prettier": "^10.2.0",
-    "eslint": "^9.0.0",
-    "eslint-plugin-vue": "^10.0.0",
-    "prettier": "^3.6.2",
     "vite": "^4.5.0",
-    "vitest": "^0.34.0",
-  "vue-eslint-parser": "^10.2.0"
+    "vitest": "^0.34.0"
   }
 }
