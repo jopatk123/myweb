@@ -32,4 +32,18 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
   },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './tests/setup/vitest.setup.js',
+    env: {
+      VITE_ENABLE_AI_LOGGING: 'true',
+    },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.{js,vue}'],
+      exclude: ['src/main.js'],
+    },
+  },
 });
