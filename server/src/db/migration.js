@@ -278,6 +278,10 @@ export function ensureSnakeMultiplayerColumns(db) {
     // snake_rooms: ensure updated_at exists
     const roomCols = db.prepare("PRAGMA table_info(snake_rooms)").all();
     const roomColNames = new Set(roomCols.map(c => c.name));
+    if (!roomColNames.has('game_type')) {
+      db.prepare("ALTER TABLE snake_rooms ADD COLUMN game_type VARCHAR(20) DEFAULT 'snake'").run();
+      console.log("🛠️ Added column to snake_rooms: game_type VARCHAR(20) DEFAULT 'snake'");
+    }
     if (!roomColNames.has('updated_at')) {
       db.prepare('ALTER TABLE snake_rooms ADD COLUMN updated_at DATETIME').run();
       console.log('🛠️ Added column to snake_rooms: updated_at DATETIME');

@@ -108,6 +108,7 @@ export default [
     languageOptions: {
       globals: {
         ...globals.jest,
+        ...globals.vitest,
         ...globals.node,
       },
     },

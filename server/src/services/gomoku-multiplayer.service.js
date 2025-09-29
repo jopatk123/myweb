@@ -1,6 +1,3 @@
-// 简易五子棋多人服务（内存版）
-import { v4 as uuidv4 } from 'uuid';
-
 export class GomokuMultiplayerService {
   constructor(wsService){
     this.ws = wsService;
@@ -182,7 +179,7 @@ export class GomokuMultiplayerService {
   getActiveRooms() {
     // 只返回处于 "waiting" 或 "playing" 状态的活跃房间，过滤掉已结束/已删除的房间
     const activeRooms = [];
-    for (const [roomCode, room] of this.rooms) {
+  for (const room of this.rooms.values()) {
       if (!room || !room.status) continue;
       if (room.status !== 'waiting' && room.status !== 'playing') continue;
       activeRooms.push({

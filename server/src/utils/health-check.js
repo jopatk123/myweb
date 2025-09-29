@@ -6,11 +6,6 @@
  */
 
 import http from 'http';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const PORT = process.env.PORT || 3000;
 const HEALTH_CHECK_TIMEOUT = 5000;

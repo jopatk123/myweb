@@ -31,9 +31,11 @@ export default function errorHandler(err, req, res, _next) {
     timestamp: new Date().toISOString(),
   };
 
-  // 返回详细错误信息以便调试（在开发环境或短期调试时有用）
-  response.stack = err.stack;
-  response.originalMessage = err.message;
+  // 返回详细错误信息仅在非生产环境使用，避免泄露敏感信息
+  if ((process.env.NODE_ENV || 'development') !== 'production') {
+    response.stack = err.stack;
+    response.originalMessage = err.message;
+  }
 
   res.status(status).json(response);
 }

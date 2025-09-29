@@ -348,6 +348,7 @@ export function initSnakeMultiplayerTables(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       room_code VARCHAR(10) UNIQUE NOT NULL,
       mode VARCHAR(20) NOT NULL DEFAULT 'shared',
+      game_type VARCHAR(20) NOT NULL DEFAULT 'snake',
       max_players INTEGER DEFAULT 8,
       current_players INTEGER DEFAULT 0,
       status VARCHAR(20) DEFAULT 'waiting',
