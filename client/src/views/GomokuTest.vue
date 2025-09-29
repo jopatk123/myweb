@@ -78,7 +78,9 @@
 </template>
 
 <script setup>
-import GomokuApp from '../apps/gomoku/GomokuApp.vue';
+import { getAppComponentBySlug } from '@/apps/registry.js';
+
+const GomokuApp = getAppComponentBySlug('gomoku');
 </script>
 
 <style scoped>

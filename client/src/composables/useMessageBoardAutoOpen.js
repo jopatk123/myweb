@@ -1,10 +1,16 @@
 /**
  * 留言板自动打开功能
  */
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, defineAsyncComponent } from 'vue';
 import { useWebSocket } from './useWebSocket.js';
 import { useWindowManager } from './useWindowManager.js';
-import MessageBoardWindow from '@/components/message-board/MessageBoardWindow.vue';
+import { getAppComponentBySlug } from '@/apps/registry.js';
+
+const messageBoardComponent =
+  getAppComponentBySlug('message-board') ||
+  defineAsyncComponent(() =>
+    import('@/components/message-board/MessageBoardWindow.vue')
+  );
 
 export function useMessageBoardAutoOpen() {
   const isAutoOpenEnabled = ref(false);
@@ -37,7 +43,7 @@ export function useMessageBoardAutoOpen() {
     } else {
       // 窗口不存在：创建新的留言板窗口（可选择不抢占焦点）
       createWindow({
-        component: MessageBoardWindow,
+        component: messageBoardComponent,
         title: '💬 留言板',
         appSlug: 'message-board',
         width: 400,

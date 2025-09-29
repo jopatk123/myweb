@@ -148,8 +148,10 @@ onUnmounted(() => {
   z-index: 10000;
   animation: slideIn 0.3s ease-out;
 }
+</style>
 
-:global(@keyframes slideIn) {
+<style>
+@keyframes slideIn {
   from {
     transform: translateX(100%);
     opacity: 0;
