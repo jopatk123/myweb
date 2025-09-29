@@ -25,7 +25,7 @@
 <script setup>
   import { ref, watch } from 'vue';
 
-  const props = defineProps({
+  defineProps({
     totalBooks: {
       type: Number,
       default: 0,

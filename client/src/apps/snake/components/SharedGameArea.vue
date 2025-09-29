@@ -33,7 +33,7 @@ import SnakeCanvas from '../SnakeCanvas.vue'
 import GameInfoBar from './GameInfoBar.vue'
 import VotingArea from './VotingArea.vue'
 
-const props = defineProps({
+defineProps({
   room: { type: Object, required: true },
   players: { type: Array, required: true },
   gameState: { type: Object, required: true }

@@ -10,7 +10,7 @@
   </div>
 </template>
 <script setup>
-const props = defineProps({ votes: { type:Object, default:()=>({}) } });
+defineProps({ votes: { type:Object, default:()=>({}) } });
 const dirIcon = d => ({up:'⬆️',down:'⬇️',left:'⬅️',right:'➡️'})[d] || d;
 </script>
 <style scoped>

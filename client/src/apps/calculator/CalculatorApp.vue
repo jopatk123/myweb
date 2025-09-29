@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+  import { ref, onMounted, onBeforeUnmount } from 'vue';
   import CalculatorHeader from './CalculatorHeader.vue';
   import CalculatorDisplay from './CalculatorDisplay.vue';
   import CalculatorKeypad from './CalculatorKeypad.vue';

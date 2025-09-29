@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     isConnected: { type: Boolean, required: true },
   });
 </script>

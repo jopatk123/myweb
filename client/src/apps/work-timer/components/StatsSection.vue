@@ -16,7 +16,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     todayWorkTime: { type: String, required: true },
     weekWorkTime: { type: String, required: true },
     totalWorkTime: { type: String, required: true },

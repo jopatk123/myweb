@@ -8,7 +8,7 @@
   import MessageBoard from './MessageBoard.vue';
 
   // 组件事件
-  const emit = defineEmits(['close']);
+  defineEmits(['close']);
 </script>
 
 <style scoped>

@@ -161,7 +161,7 @@ const joinRoomById = async (roomCode) => {
   }
 }
 
-const spectateRoom = (roomCode) => {
+const spectateRoom = (_roomCode) => {
   console.log('观战功能尚未开放。');
   error.value = '观战功能尚未开放。';
 }

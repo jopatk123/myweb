@@ -46,7 +46,7 @@
     formatTime: { type: Function, required: true },
   });
 
-  const emit = defineEmits(['retry']);
+  defineEmits(['retry']);
 
   const internalListRef = ref(null);
   let isUserScrolling = false;
@@ -65,7 +65,7 @@
     if (!el) return;
     try {
       el.scrollTo({ top: el.scrollHeight, behavior });
-    } catch (e) {
+    } catch {
       el.scrollTop = el.scrollHeight;
     }
   };

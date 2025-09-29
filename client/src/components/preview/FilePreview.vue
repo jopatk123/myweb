@@ -30,7 +30,7 @@ export default {
           try {
             htmlPreview.value = await previewDocx(file);
             if (!htmlPreview.value) textPreview.value = await extractTextFromDocx(file);
-          } catch (err) {
+          } catch {
             textPreview.value = await extractTextFromDocx(file);
           }
         } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {

@@ -51,7 +51,7 @@ defineProps({
   loading: Boolean
 });
 
-defineEmits([
+const emit = defineEmits([
   'update:playerName',
   'update:selectedMode',
   'showCreateRoom'

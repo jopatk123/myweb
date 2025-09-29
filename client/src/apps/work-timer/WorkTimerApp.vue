@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, watch, toRef } from 'vue';
+  import { ref, onMounted, watch } from 'vue';
   import { useWorkTimer } from '@/composables/useWorkTimer';
   import TimerHeader from './components/TimerHeader.vue';
   import TimerSettings from './components/TimerSettings.vue';
@@ -67,7 +67,6 @@
     weekWorkTime,
     totalMs,
     // methods
-    setPreset,
     startTimer,
     stopTimer,
     resetTimer,

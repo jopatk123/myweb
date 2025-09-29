@@ -80,7 +80,6 @@
     currentBook,
     currentChapterIndex,
     readingProgress,
-    searchQuery,
     loading,
     showUploadDialog,
     showMenu,
@@ -105,8 +104,6 @@
     showBookInfo,
     initialize,
     handleForceSyncBookmarks,
-    forceSyncBookmarks,
-    getBookmarksByBookId,
   } = useNovelReader();
 
   // 组件引用

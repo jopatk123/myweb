@@ -63,9 +63,9 @@
       .toString()
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9\-\s]/g, '') // 移除非法字符
+  .replace(/[^a-z0-9\s-]/g, '') // 移除非法字符
       .replace(/\s+/g, '-') // 空白转为连字符
-      .replace(/\-+/g, '-') // 合并连续连字符
+  .replace(/-+/g, '-') // 合并连续连字符
       .replace(/^-|-$/g, ''); // 移除首尾连字符
   }
 
@@ -123,7 +123,7 @@
         alert('URL 必须以 http:// 或 https:// 开头');
         return;
       }
-    } catch (e) {
+    } catch {
       alert('URL 格式不正确，请输入有效的 URL，例如：https://example.com');
       return;
     }

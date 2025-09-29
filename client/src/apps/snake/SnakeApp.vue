@@ -70,17 +70,12 @@
     level,
     difficulty,
     snake,
-    dir,
     food,
     specialFood,
     particles,
     speed,
     gridSize,
-    randomFood,
-    createSpecialFood,
-    addParticles,
     updateParticles,
-    checkCollision,
     step: gameStep,
     startGame,
     pauseGame,
@@ -138,7 +133,7 @@
   };
 
   // 处理多人游戏更新
-  const handleMultiplayerGameUpdate = (data) => {
+  const handleMultiplayerGameUpdate = (_data) => {
   // multiplayer game update received — debug log removed
   };
 

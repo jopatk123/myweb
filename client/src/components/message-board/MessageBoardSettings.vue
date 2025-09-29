@@ -68,7 +68,7 @@
   const isEqual = (a, b) => {
     try {
       return JSON.stringify(a) === JSON.stringify(b);
-    } catch (e) {
+    } catch {
       return false;
     }
   };

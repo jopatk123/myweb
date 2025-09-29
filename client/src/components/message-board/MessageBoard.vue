@@ -49,7 +49,7 @@
   import ConfirmDialog from './ConfirmDialog.vue';
 
   // 组件事件
-  const emit = defineEmits(['close']);
+  defineEmits(['close']);
 
   // 使用留言板功能
   const {
@@ -98,7 +98,7 @@
       nextTick(() => {
         scrollToBottom();
       });
-    } catch (err) {
+    } catch {
       // 错误已在组合式函数中处理
     }
   };
@@ -132,7 +132,7 @@
     try {
       await updateUserSettings(tempSettings.value);
       showSettings.value = false;
-    } catch (err) {
+    } catch {
       // 错误已在组合式函数中处理
     }
   };

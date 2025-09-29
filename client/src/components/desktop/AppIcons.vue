@@ -12,7 +12,7 @@
       class="icon-item"
       :class="{ selected: selectedId === app.id || selectedIds.has(app.id) }"
       :data-id="app.id"
-      @click="onClick(app, $event)"
+  @click="onClick(app)"
       @dblclick="onDblClick(app)"
       @mousedown="onMouseDown(app, $event)"
       @contextmenu.prevent.stop="onContextMenu(app, $event)"
@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-  import { ref, shallowRef, computed, onMounted, watch } from 'vue';
+  import { ref, computed, onMounted, watch } from 'vue';
   import { useApps } from '@/composables/useApps.js';
   import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
   import { useWindowManager } from '@/composables/useWindowManager.js';
@@ -46,10 +46,7 @@
   import useDesktopGrid from '@/composables/useDesktopGrid.js';
   const {
     GRID,
-    positionToCell,
     cellToPosition,
-    getOccupiedCellKeys,
-    findNextFreeCell,
     finalizeDragForPositions,
     savePositionsToStorage: gridSavePositionsToStorage,
     loadPositionsFromStorage: gridLoadPositionsToStorage,
@@ -99,7 +96,9 @@
       try {
         window.open(url, '_blank');
         return;
-      } catch {}
+      } catch (error) {
+        void error;
+      }
     }
 
     // 检查应用是否已经打开，如果是则激活现有窗口
@@ -126,7 +125,7 @@
     }
   }
 
-  function onClick(app, e) {
+  function onClick(app) {
     // 单击只选中（清除其他选中）
     selectedId.value = app.id;
     selectedIds.value = new Set([app.id]);
@@ -165,7 +164,9 @@
       try {
         await setVisible(app.id, !(app.isVisible ?? app.is_visible));
         await fetchApps({ visible: true }, true);
-      } catch {}
+      } catch (error) {
+        void error;
+      }
     }
   }
 
@@ -332,7 +333,6 @@
         visibleApps.value
       );
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error('AppIcons.savePositionsToStorage error', e);
     }
   }
@@ -343,7 +343,6 @@
         ? gridLoadPositionsToStorage(STORAGE_KEY, visibleApps.value)
         : {};
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error('AppIcons.loadPositionsFromStorage error', e);
     }
   }

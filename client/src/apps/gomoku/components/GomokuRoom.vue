@@ -68,7 +68,7 @@ const props = defineProps({
   latestRoomCode: String
 });
 
-const emit = defineEmits(['back']);
+defineEmits(['back']);
 
 // 使用传入的 mp 实例，而不是创建新的
 // const mp = useGomokuMultiplayer();
@@ -106,8 +106,8 @@ const seatSlots = computed(() => {
         console.debug('[GomokuRoom] Updated slot', p.seat - 1, 'with player:', p);
       }
     });
-  } catch (e) {
-    console.error('[GomokuRoom] seatSlots error:', e);
+  } catch (error) {
+    console.error('[GomokuRoom] seatSlots error:', error);
   }
   return slots;
 });
@@ -115,7 +115,7 @@ const seatSlots = computed(() => {
 const playersDebug = computed(() => {
   try {
     return JSON.stringify(unref(mp.players) || []);
-  } catch (e) {
+  } catch {
     return String(unref(mp.players));
   }
 });
@@ -123,7 +123,7 @@ const playersDebug = computed(() => {
 const wsDebug = computed(() => {
   try {
     return `connected=${String(unref(mp.isConnected))} isInRoom=${String(unref(mp.isInRoom))} currentPlayer=${JSON.stringify(unref(mp.currentPlayer) || null)}`;
-  } catch (e) {
+  } catch {
     return '';
   }
 });

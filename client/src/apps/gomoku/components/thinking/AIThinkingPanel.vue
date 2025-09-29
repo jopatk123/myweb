@@ -32,7 +32,7 @@ import { ref } from 'vue';
 import CurrentThinking from './CurrentThinking.vue';
 import ThinkingHistory from './ThinkingHistory.vue';
 
-const props = defineProps({
+defineProps({
   currentThinking: Object,
   isThinking: {
     type: Boolean,
@@ -44,7 +44,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['clear-history']);
+defineEmits(['clear-history']);
 
 const isExpanded = ref(true);
 

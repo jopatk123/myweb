@@ -32,7 +32,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['clear-history']);
+defineEmits(['clear-history']);
 
 const historyContainer = ref(null);
 

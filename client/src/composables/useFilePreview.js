@@ -37,7 +37,7 @@ export function useFilePreview() {
     if (!file) return '';
     try {
       return await file.text();
-    } catch (_) {
+    } catch {
       return '';
     }
   };

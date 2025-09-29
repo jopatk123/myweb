@@ -28,7 +28,7 @@
 </template>
 
 <script setup>
-  import { ref, watch, onMounted, nextTick, computed } from 'vue';
+  import { ref, watch } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
 

@@ -116,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onScopeDispose } from 'vue';
 import LobbyHeader from './LobbyHeader.vue';
 import ErrorMessage from './ErrorMessage.vue';
 import ConnectionStatus from './ConnectionStatus.vue';
@@ -373,12 +373,9 @@ onMounted(() => {
 });
 
 // 清理定时器
-const { scope } = getCurrentScope?.() || {};
-if (scope) {
-  scope.stop = () => {
-    stopAutoRefresh();
-  };
-}
+onScopeDispose(() => {
+  stopAutoRefresh();
+});
 
 // 暴露给父组件的方法
 defineExpose({

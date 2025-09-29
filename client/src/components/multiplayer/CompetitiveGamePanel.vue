@@ -19,7 +19,7 @@
   </div>
 </template>
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 const props = defineProps({
   gameState: Object,
   boardSize: { type: Number, default: 20 },
@@ -35,7 +35,7 @@ const draw = () => {
   ctx.fillStyle = '#000';
   ctx.fillRect(0,0,boardSize*cellSize,boardSize*cellSize);
   // 画每条蛇与其食物
-  Object.entries(snakes.value).forEach(([sid, snake])=>{
+  Object.entries(snakes.value).forEach(([, snake])=>{
     if(!snake) return;
     ctx.fillStyle = snake.player?.player_color || '#fff';
     snake.body.forEach(seg=>ctx.fillRect(seg.x*cellSize, seg.y*cellSize, cellSize, cellSize));

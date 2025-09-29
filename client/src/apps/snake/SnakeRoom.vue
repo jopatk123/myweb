@@ -50,7 +50,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSnakeMultiplayer } from '../../composables/useSnakeMultiplayer.js'
 
 // 组件导入
@@ -125,10 +125,6 @@ const leaveRoom = () => {
   emit('leaveRoom')
 }
 
-const formatTime = (timestamp) => {
-  return new Date(timestamp).toLocaleTimeString()
-}
-
 // 生命周期
 onMounted(() => {
   init()
@@ -138,16 +134,16 @@ onMounted(() => {
     emit('gameUpdate', data)
   })
   
-  onPlayerJoin((player) => {
+  onPlayerJoin(() => {
   })
   
-  onPlayerLeave((player) => {
+  onPlayerLeave(() => {
   })
   
-  onPlayerReady((data) => {
+  onPlayerReady(() => {
   })
   
-  onVoteUpdate((data) => {
+  onVoteUpdate(() => {
   })
 })
 

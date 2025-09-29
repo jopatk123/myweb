@@ -82,7 +82,6 @@
 </template>
 
 <script setup>
-  import { computed } from 'vue';
   import { getAppIconUrl } from '@/composables/useApps.js'; // Assuming this can be static
 
   const props = defineProps({

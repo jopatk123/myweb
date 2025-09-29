@@ -16,7 +16,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, nextTick, watch } from 'vue';
+  import { computed, watch } from 'vue';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
 
   const props = defineProps({
@@ -26,7 +26,7 @@
     storageKey: { type: String, default: '' },
   });
 
-  const emit = defineEmits(['update:modelValue']);
+  defineEmits(['update:modelValue']);
 
   const finalStorageKey = computed(() =>
     props.storageKey ? `launcherPos:${props.storageKey}` : 'launcherPos:default'

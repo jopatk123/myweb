@@ -93,7 +93,7 @@ export class WebSocketService {
             const ws = this.clients.get(sessionId);
             if(ws) ws._clientSessionId = provided;
           }
-        }catch(e){}
+  }catch(e){ void e; }
         console.log(`Client ${sessionId} joined message board (mapped clientId=${this.serverToClient.get(sessionId)||sessionId})`);
         break;
       

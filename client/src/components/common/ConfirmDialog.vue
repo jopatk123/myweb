@@ -16,7 +16,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     modelValue: { type: Boolean, default: false },
     title: { type: String, default: '确认操作' },
     message: { type: String, default: '是否继续？' },

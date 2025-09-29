@@ -28,7 +28,7 @@
       <div class="template-actions">
         <button @click="saveTemplate" class="btn btn-success btn-sm">保存模板</button>
         <button @click="resetTemplate" class="btn btn-muted btn-sm">重置</button>
-        <button @click="addCustomTemplate" class="btn btn-info btn-sm">添加自定义</button>
+  <button @click="openCustomTemplateForm" class="btn btn-info btn-sm">添加自定义</button>
       </div>
     </div>
 
@@ -149,7 +149,7 @@ function resetTemplate() {
 }
 
 // 添加自定义模板
-function addCustomTemplate() {
+function openCustomTemplateForm() {
   showCustomForm.value = true;
   customTemplate.value = {
     id: '',

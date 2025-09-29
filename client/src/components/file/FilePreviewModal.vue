@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-  import { computed, ref, onMounted, watch, nextTick } from 'vue';
+  import { computed, ref, watch, nextTick } from 'vue';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
 
   const props = defineProps({
@@ -48,7 +48,7 @@
     onHeaderPointerDown,
   } = useDraggableModal(storageKey.value);
 
-  watch(storageKey, newKey => {
+  watch(storageKey, () => {
     // A proper implementation would re-initialize the composable or have it react to key changes.
     // For now, this refactor simplifies the code but doesn't fully handle dynamic keys.
     // The primary benefit of code reduction is still achieved.
@@ -163,7 +163,7 @@
         const DOMPurify = (await import('dompurify')).default;
         previewHtml.value = DOMPurify.sanitize(rawHtml);
       }
-    } catch (e) {
+    } catch {
       // 预览失败，previewHtml 保持空以触发 fallback UI
       // console.error(e);
       previewHtml.value = '';
@@ -179,7 +179,7 @@
   // 当文件或模态打开时尝试生成预览（自动降级为不可预览提示）
   watch(
     [() => props.file, () => props.modelValue],
-    ([file, open]) => {
+  ([_file, open]) => {
       if (open && (isWord.value || isExcel.value)) {
         // 异步生成
         generatePreview().catch(() => {});

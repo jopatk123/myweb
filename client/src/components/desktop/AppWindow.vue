@@ -74,7 +74,7 @@
 </template>
 
 <script setup>
-  import { computed, inject, ref, onMounted, onUnmounted } from 'vue';
+  import { computed, ref, onUnmounted } from 'vue';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
   import { useWindowManager } from '@/composables/useWindowManager.js';
 
@@ -105,7 +105,7 @@
     try {
       const settings = localStorage.getItem('novel-reader-settings');
       return settings ? JSON.parse(settings) : { autoMinimize: false };
-    } catch (e) {
+  } catch {
       return { autoMinimize: false };
     }
   };
@@ -230,7 +230,7 @@
         props.window.width = parsed.width;
       if (parsed && typeof parsed.height === 'number')
         props.window.height = parsed.height;
-    } catch (e) {
+  } catch {
       // ignore
     }
   }
@@ -246,7 +246,7 @@
         height: Number(props.window.height || 0),
       };
       localStorage.setItem(key, JSON.stringify(obj));
-    } catch (e) {
+  } catch {
       // ignore
     }
   }
@@ -322,7 +322,7 @@
     persistSize();
     try {
       savePosition();
-    } catch (e) {
+  } catch {
       // ignore
     }
   }

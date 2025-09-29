@@ -92,10 +92,6 @@ const showSummary = ref(false);
 watch(isGameFinished, v=> { if (v) showSummary.value = true; });
 watch(()=> props.gameState?.status, v=> { if (v==='playing') showSummary.value = false; });
 
-function fallbackColor(i){
-  return ['#4ade80','#60a5fa','#f472b6','#facc15'][i % 4];
-}
-
 const emit = defineEmits(['move','restart'])
 
 watch(() => props.gameState, () => {

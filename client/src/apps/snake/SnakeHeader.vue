@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     score: { type: Number, required: true },
     snakeLength: { type: Number, required: true },
     level: { type: Number, required: true },

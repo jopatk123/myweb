@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-const props = defineProps({
+defineProps({
   modelValue: {
     type: String,
     default: 'human_vs_ai'

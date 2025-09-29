@@ -45,7 +45,11 @@ export function useGomokuMultiplayer(){
     const handlers = registerHandlers._handlers;
     if(!handlers) return;
     Object.entries(handlers).forEach(([type, h])=> {
-      try{ offMessage(type, h); }catch(e){}
+      try{
+        offMessage(type, h);
+      }catch (err){
+        console.debug('[GomokuMP] Failed to remove handler', type, err);
+      }
     });
     registerHandlers._registered = false;
     registerHandlers._handlers = null;
@@ -59,21 +63,29 @@ export function useGomokuMultiplayer(){
     try { 
       const code = currentRoom.value?.room_code || currentRoom.value?.roomCode; 
       if(code) { 
-        try{ api.leaveRoom(code); }catch(e){} 
+        try{ 
+          api.leaveRoom(code); 
+        }catch (err){
+          console.debug('[GomokuMP] Failed during unmount leaveRoom call', err);
+        }
       }
-    } catch(e) {}
+    } catch (err) {
+      console.debug('[GomokuMP] Error while cleaning up on unmount', err);
+    }
     unregisterHandlers(); 
   });
 
   // 如果用户关闭或刷新页面，尽量发送离开房间请求，减少服务器端残留房间
   if (typeof window !== 'undefined') {
-    const beforeUnloadHandler = (e) => {
+    const beforeUnloadHandler = () => {
       try {
         const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
         if (code) {
           api.leaveRoom(code);
         }
-      } catch (err) {}
+      } catch (err){
+        console.debug('[GomokuMP] beforeunload leaveRoom failed', err);
+      }
     };
     window.addEventListener('beforeunload', beforeUnloadHandler);
     // 清理 listener（当组合式函数被销毁时）

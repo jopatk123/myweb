@@ -170,11 +170,12 @@
     totalBytes,
     currentFileName,
     uploadQueue,
-    fetchList,
-    upload,
-    remove,
-    getDownloadUrl,
-    setPage,
+  fetchList,
+  upload,
+  remove,
+  getDownloadUrl,
+  setPage,
+  setLimit,
   } = useFiles();
 
   onMounted(fetchList);

@@ -50,7 +50,7 @@
 </template>
 
 <script setup>
-  import { ref, reactive, onMounted, watch, nextTick, computed } from 'vue';
+  import { ref, reactive } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
 

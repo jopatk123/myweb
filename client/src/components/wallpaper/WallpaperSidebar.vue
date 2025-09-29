@@ -63,7 +63,7 @@
     },
   });
 
-  const emit = defineEmits([
+  defineEmits([
     'select-group',
     'create-group',
     'delete-group',

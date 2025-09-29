@@ -134,7 +134,7 @@
         const DOMPurify = (await import('dompurify')).default;
         previewHtml.value = DOMPurify.sanitize(rawHtml);
       }
-    } catch (e) {
+    } catch {
       previewHtml.value = '';
     } finally {
       loading.value = false;

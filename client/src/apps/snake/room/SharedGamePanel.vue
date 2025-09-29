@@ -131,7 +131,7 @@ const durationSec = computed(()=> {
 })
 const playerCount = computed(()=> props.players?.length || 0)
 
-watch(()=> props.gameState?.status, (val, old)=>{
+watch(()=> props.gameState?.status, (val)=>{
   if (val === 'finished') { showSummary.value = true; finishedAt.value = Date.now(); }
   if (val === 'playing') { showSummary.value = false; }
 })

@@ -6,7 +6,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     currentTime: { type: String, required: true },
   });
 </script>

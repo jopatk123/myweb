@@ -40,8 +40,8 @@ export default function useSnakeController({
       // draw after logic update
       try {
         snakeCanvasRef.value?.draw();
-      } catch (e) {
-        // swallow render errors to avoid breaking loop
+      } catch (error) {
+        console.debug('snake render draw error', error);
       }
 
       // schedule next tick if still running

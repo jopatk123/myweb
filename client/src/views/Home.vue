@@ -117,7 +117,7 @@
   const selectedFile = ref(null);
   const showPreview = ref(false);
   const previewFile = ref(null);
-  const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
+  const { createWindow } = useWindowManager();
   const { manualOpenMessageBoard } = useMessageBoardAutoOpen();
   const fileTypeIcons = computed(() => ({
     image: '/apps/icons/image-128.svg',

@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     endTime: { type: String, required: true },
     isTimerActive: { type: Boolean, required: true },
   });

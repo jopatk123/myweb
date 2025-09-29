@@ -259,10 +259,6 @@ export function useGomokuApp() {
     }
   }
 
-  function handleAnalyzeGame() {
-    handleRestartGame();
-  }
-
   function getPlayerName(playerNumber) {
     const player = gameModeService.getPlayer(playerNumber);
     return player ? player.name : `玩家${playerNumber}`;

@@ -23,14 +23,14 @@
 <script setup>
 import { useImagePreview } from '@/composables/useImagePreview';
 
-const props = defineProps({
+defineProps({
   images: {
     type: Array,
     default: () => [],
   },
 });
 
-const emit = defineEmits(['image-click', 'context-menu']);
+defineEmits(['image-click', 'context-menu']);
 
 const { getImageUrl, onImageLoad, onImageError } = useImagePreview();
 </script>

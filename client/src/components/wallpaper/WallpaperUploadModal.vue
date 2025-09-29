@@ -94,18 +94,18 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, watch, nextTick, computed } from 'vue';
+  import { ref } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { processImageFile } from '@/composables/useImageProcessing.js';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
   import FileDropzone from '@/components/wallpaper/upload/FileDropzone.vue';
   import FilePreviewList from '@/components/wallpaper/upload/FilePreviewList.vue';
 
-  const props = defineProps({
+  defineProps({
     groups: { type: Array, default: () => [] },
   });
 
-  const emit = defineEmits(['close', 'uploaded', 'open-bulk']);
+  const emit = defineEmits(['close', 'uploaded']);
 
   const { uploadWallpaper } = useWallpaper();
 
@@ -145,12 +145,6 @@
 
   const removeFile = index => {
     selectedFiles.value.splice(index, 1);
-  };
-
-  const openBulk = () => {
-    // 先关闭当前上传对话框，再通知父组件打开批量上传
-    emit('close');
-    emit('open-bulk');
   };
 
   const handleUpload = async () => {

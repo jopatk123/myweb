@@ -64,8 +64,6 @@ const {
   applyPresetConfig,
   testAIConnection,
   validateGameConfig,
-  getPlayerInfo,
-  isAIPlayer,
   resetConfig,
   loadConfigFromStorage,
   saveConfigToStorage

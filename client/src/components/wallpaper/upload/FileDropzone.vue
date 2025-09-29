@@ -26,7 +26,7 @@
 <script setup>
   import { ref } from 'vue';
 
-  const props = defineProps({
+  defineProps({
     accept: { type: String, default: 'image/*' },
     multiple: { type: Boolean, default: true },
   });

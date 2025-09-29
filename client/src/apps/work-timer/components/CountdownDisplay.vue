@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     displayTime: { type: String, required: true },
     timeLabel: { type: String, required: true },
     isOvertime: { type: Boolean, required: true },

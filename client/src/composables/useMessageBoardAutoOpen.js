@@ -9,7 +9,7 @@ import MessageBoardWindow from '@/components/message-board/MessageBoardWindow.vu
 export function useMessageBoardAutoOpen() {
   const isAutoOpenEnabled = ref(false);
   const { onMessage } = useWebSocket();
-  const { createWindow, findWindowByApp, findWindowByAppAll, setActiveWindow, showWindowWithoutFocus } = useWindowManager();
+  const { createWindow, findWindowByAppAll, setActiveWindow, showWindowWithoutFocus } = useWindowManager();
 
   // NOTE: 为满足“只要有新消息就强制打开留言板”的需求，
   // 我们在收到 newMessage 时总是打开/激活留言板窗口，而不再根据用户设置或会话列表做条件判断。
@@ -28,7 +28,7 @@ export function useMessageBoardAutoOpen() {
         // 恢复/显示窗口但不改变当前活动窗口
         try {
           showWindowWithoutFocus(existingWindow.id);
-        } catch (e) {
+        } catch {
           // 回退：直接设置可见并取消最小化
           existingWindow.minimized = false;
           existingWindow.visible = true;
@@ -50,7 +50,7 @@ export function useMessageBoardAutoOpen() {
   };
 
   // 处理新消息事件（收到任何 newMessage 都强制打开并激活留言板）
-  const handleNewMessage = /* istanbul ignore next */ data => {
+  const handleNewMessage = /* istanbul ignore next */ _data => {
     // 收到新消息时展示/恢复留言板窗口，但不抢占当前活动窗口（不改变焦点）
     openMessageBoard({ activate: false });
   };

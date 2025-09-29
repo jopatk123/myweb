@@ -53,7 +53,7 @@ const showLobby = computed(() => {
     const room = unref(props.mp.currentRoom);
     const players = unref(props.mp.players) || [];
     return !inRoom && (!room || players.length === 0);
-  } catch (e) {
+  } catch {
     return true;
   }
 });
@@ -62,7 +62,7 @@ const showGameBoard = computed(() => {
   try {
     const status = unref(props.mp.gameStatus);
     return status === 'playing' || status === 'finished';
-  } catch (e) {
+  } catch {
     return false;
   }
 });

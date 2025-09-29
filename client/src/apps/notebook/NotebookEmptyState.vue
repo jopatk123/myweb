@@ -42,15 +42,6 @@
     return '没有符合条件的笔记';
   });
 
-  const emptyMessage = computed(() => {
-    if (!props.hasNotes) {
-      return '开始记录你的想法和待办事项吧！';
-    }
-    if (props.searchQuery) {
-      return `没有找到包含"${props.searchQuery}"的笔记，试试其他关键词？`;
-    }
-    return '尝试调整筛选条件查看其他笔记';
-  });
 </script>
 
 <style scoped>

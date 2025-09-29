@@ -52,7 +52,7 @@
   import SnakeCanvas from '../SnakeCanvas.vue';
   import SnakeOverlays from '../SnakeOverlays.vue';
 
-  const props = defineProps({
+  defineProps({
     boardSize: { type: Number, required: true },
     cell: { type: Number, required: true },
     gameStarted: { type: Boolean, required: true },

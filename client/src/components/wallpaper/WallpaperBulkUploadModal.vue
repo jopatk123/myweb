@@ -76,14 +76,14 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, watch, nextTick } from 'vue';
+  import { ref, computed } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { processImageFile } from '@/composables/useImageProcessing.js';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
   import FileDropzone from '@/components/wallpaper/upload/FileDropzone.vue';
   import FilePreviewList from '@/components/wallpaper/upload/FilePreviewList.vue';
 
-  const props = defineProps({ groups: { type: Array, default: () => [] } });
+  defineProps({ groups: { type: Array, default: () => [] } });
   const emit = defineEmits(['close', 'uploaded']);
 
   const { uploadWallpaper } = useWallpaper();

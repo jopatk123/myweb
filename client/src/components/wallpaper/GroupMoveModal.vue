@@ -32,7 +32,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, watch, nextTick, computed } from 'vue';
+  import { ref } from 'vue';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
 
   defineProps({

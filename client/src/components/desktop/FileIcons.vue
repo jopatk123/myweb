@@ -12,7 +12,7 @@
       class="icon-item"
       :class="{ selected: selectedId === f.id || selectedIds.has(f.id) }"
       :data-id="f.id"
-      @click="onClick(f, $event)"
+  @click="onClick(f)"
       @dblclick="onDblClick(f)"
       @mousedown="onMouseDown(f, $event)"
       @contextmenu.prevent.stop="onContextMenu(f, $event)"
@@ -49,10 +49,7 @@
   import useDesktopGrid from '@/composables/useDesktopGrid.js';
   const {
     GRID,
-    positionToCell,
     cellToPosition,
-    getOccupiedCellKeys,
-    findNextFreeCell,
     finalizeDragForPositions,
     savePositionsToStorage: gridSavePositionsToStorage,
     loadPositionsFromStorage: gridLoadPositionsFromStorage,
@@ -137,7 +134,9 @@
     try {
       await remove(f.id);
       location.reload();
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   }
 
   function onMouseDown(file, e) {
@@ -215,7 +214,7 @@
   function onMouseUp() {
     // 释放时吸附到网格并避免与同组图标重叠
     if (dragState?.dragging)
-      finalizeDrag(dragState.ids ? dragState.ids : dragState.id);
+      finalizeDragForPositions(positions, dragState.ids ? dragState.ids : dragState.id);
     cleanupDrag();
   }
   function cancelIfNotDrag() {
@@ -271,7 +270,6 @@
     try {
       gridSavePositionsToStorage(STORAGE_KEY, positions.value, props.files);
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error('FileIcons.savePositionsToStorage error', e);
     }
   }
@@ -282,25 +280,20 @@
         ? gridLoadPositionsFromStorage(STORAGE_KEY, props.files)
         : {};
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error('FileIcons.loadPositionsFromStorage error', e);
     }
   }
 
   // 初次载入时尝试恢复位置（在组件挂载后，确保 props.files 已可用）
   onMounted(() => {
-    positions.value = gridLoadPositionsFromStorage
-      ? gridLoadPositionsFromStorage(STORAGE_KEY, props.files)
-      : {};
+    loadPositionsFromStorage();
   });
 
   // 当父组件传入的 files 变化时，重新加载位置（例如异步 fetch 完成后）
   watch(
     () => props.files,
     () => {
-      positions.value = gridLoadPositionsFromStorage
-        ? gridLoadPositionsFromStorage(STORAGE_KEY, props.files)
-        : {};
+      loadPositionsFromStorage();
     }
   );
 </script>

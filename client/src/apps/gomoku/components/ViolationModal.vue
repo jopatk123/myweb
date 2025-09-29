@@ -39,9 +39,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-
-const props = defineProps({
+defineProps({
   violationData: {
     type: Object,
     required: true
@@ -62,21 +60,6 @@ const handleOverlayClick = () => {
   close();
 };
 
-// 违规类型对应的图标
-const violationIcon = computed(() => {
-  switch (props.violationData?.violationType) {
-    case 'invalid_format':
-      return '📝';
-    case 'occupied_position':
-      return '⚫';
-    case 'out_of_bounds':
-      return '📐';
-    case 'parsing_error':
-      return '💻';
-    default:
-      return '🚫';
-  }
-});
 </script>
 
 <style scoped>

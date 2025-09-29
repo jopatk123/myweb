@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     note: {
       type: Object,
       required: true,
@@ -277,6 +277,7 @@
     line-height: 1.3;
     word-break: break-word;
     display: -webkit-box;
+    line-clamp: 2; /* Added line-clamp property */
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;

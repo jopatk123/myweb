@@ -1,5 +1,4 @@
 /* eslint-env jest */
-/* global beforeAll, afterAll, test, expect */
 import { initDatabase } from '../src/config/database.js';
 import { WallpaperService } from '../src/services/wallpaper.service.js';
 

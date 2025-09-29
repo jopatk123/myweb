@@ -51,7 +51,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, watch } from 'vue';
+  import { ref, watch } from 'vue';
 
   const props = defineProps({
     modelValue: String, // 当前选中的图标路径或文件名
@@ -151,7 +151,9 @@
         URL.revokeObjectURL(objectUrl.value);
         objectUrl.value = '';
       }
-    } catch (_) {}
+    } catch (error) {
+      void error;
+    }
     objectUrl.value = URL.createObjectURL(file);
     uploadedIcon.value = objectUrl.value;
     selectedIcon.value = uploadedIcon.value;
@@ -172,7 +174,9 @@
           URL.revokeObjectURL(objectUrl.value);
           objectUrl.value = '';
         }
-      } catch (_) {}
+      } catch (error) {
+        void error;
+      }
     },
   });
 </script>

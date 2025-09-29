@@ -31,7 +31,7 @@ import SharedGamePanel from './SharedGamePanel.vue'
 import CompetitiveGamePanel from './CompetitiveGamePanel.vue'
 // no local computed properties required
 
-const props = defineProps({
+defineProps({
   room: { type: Object, required: true },
   gameState: { type: Object, required: true },
   players: { type: Array, default: () => [] },
@@ -42,8 +42,6 @@ const props = defineProps({
 })
 
 defineEmits(['vote', 'move', 'restart'])
-
-function fallbackColor(i){ return ['#4ade80','#60a5fa','#f472b6','#facc15'][i % 4]; }
 </script>
 
 <style scoped>

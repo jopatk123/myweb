@@ -35,7 +35,6 @@
 </template>
 
 <script setup>
-  import { computed } from 'vue';
   import { useWindowManager } from '@/composables/useWindowManager.js';
   import AppWindow from './AppWindow.vue';
 
@@ -48,11 +47,6 @@
     restoreWindow,
     toggleMaximize,
   } = useWindowManager();
-
-  // 只显示可见的窗口
-  const visibleWindows = computed(() =>
-    windows.value.filter(w => w.visible && !w.minimized)
-  );
 
   function onTaskbarItemClick(window) {
     if (window.minimized) {

@@ -79,13 +79,13 @@ export function useMessageBoard() {
         // 消息会通过WebSocket实时推送，这里不需要手动添加
         // 同步打开/激活留言板窗口（发送者本地立即可见）
         try {
-          const { findWindowByAppAll, setActiveWindow, createWindow, showWindowWithoutFocus } = useWindowManager();
+          const { findWindowByAppAll, createWindow, showWindowWithoutFocus } = useWindowManager();
           const existingWindow = findWindowByAppAll('message-board');
           if (existingWindow) {
             // 如果窗口已经存在，尝试以不改变焦点的方式显示它
             try {
               showWindowWithoutFocus(existingWindow.id);
-            } catch (e) {
+            } catch {
               // 回退到设置可见但不激活
               existingWindow.minimized = false;
               existingWindow.visible = true;
@@ -103,9 +103,8 @@ export function useMessageBoard() {
               activate: false,
             });
           }
-        } catch (e) {
+        } catch {
           // 忽略打开窗口时的任何错误
-          void e;
         }
 
         return response.data;

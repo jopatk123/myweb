@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     gameStarted: { type: Boolean, required: true },
     gameOver: { type: Boolean, required: true },
     score: { type: Number, required: true },

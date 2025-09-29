@@ -62,7 +62,7 @@ const safeRoomList = computed(() => {
   try {
     const list = unref(mp.roomList);
     return Array.isArray(list) ? list.filter(r => r && typeof r === 'object') : [];
-  } catch (e) {
+  } catch {
     return [];
   }
 });

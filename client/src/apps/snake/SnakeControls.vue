@@ -36,7 +36,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     gameStarted: { type: Boolean, required: true },
     paused: { type: Boolean, required: true },
     gameOver: { type: Boolean, required: true },

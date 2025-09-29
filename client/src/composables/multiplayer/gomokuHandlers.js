@@ -22,7 +22,7 @@ export function createGomokuHandlers(ctx){
       currentPlayer.value = data.player;
       players.value = [data.player];
       gameStatus.value = data.room?.status || 'waiting';
-      try{ state.isInRoom.value = true; }catch(e){}
+  try{ state.isInRoom.value = true; }catch(e){ void e; }
       console.debug('[GomokuHandlers] Entered room as creator:', data.room?.room_code);
       
       // 触发房间创建成功事件
@@ -54,7 +54,7 @@ export function createGomokuHandlers(ctx){
         players.value.push(data.player);
       }
       gameStatus.value = data.room?.status || 'waiting';
-      try{ state.isInRoom.value = true; }catch(e){}
+  try{ state.isInRoom.value = true; }catch(e){ void e; }
       console.debug('[GomokuHandlers] Successfully joined room:', data.room?.room_code);
       
       // 触发房间加入成功事件
@@ -68,7 +68,7 @@ export function createGomokuHandlers(ctx){
             console.debug('[GomokuHandlers] Another player joined our room:', data.player.player_name);
           }
         }
-      }catch(e){}
+      }catch(e){ void e; }
     }
   }
 
@@ -83,13 +83,13 @@ export function createGomokuHandlers(ctx){
       currentRoom.value = data.room;
       players.value = playersList;
       gameState.value = data.game_state || (data.room && data.room.game_state) || gameState.value;
-      try { gameStatus.value = data.room?.status || gameStatus.value || 'waiting'; } catch(e){}
-      try{ state.isInRoom.value = true; }catch(e){}
+  try { gameStatus.value = data.room?.status || gameStatus.value || 'waiting'; } catch(e){ void e; }
+  try{ state.isInRoom.value = true; }catch(e){ void e; }
       // set currentPlayer if present in players
       try{ 
         const me = players.value.find(p=>p && p.session_id===sid); 
         if(me) currentPlayer.value = me; 
-      }catch(e){}
+      }catch(e){ void e; }
       console.debug('[GomokuHandlers] Room info updated for participant:', data.room?.room_code, 'Status:', gameStatus.value);
     } else {
       // not a participant: ignore detailed room info for UI (could be used for lobby list)
@@ -103,8 +103,8 @@ export function createGomokuHandlers(ctx){
       players.value.push(data.player);
     }
     // update room/game status if provided
-    try { if(data.room && data.room.status) gameStatus.value = data.room.status; } catch(e){}
-    try{ state.isInRoom.value = true; }catch(e){}
+  try { if(data.room && data.room.status) gameStatus.value = data.room.status; } catch(e){ void e; }
+  try{ state.isInRoom.value = true; }catch(e){ void e; }
     // try to set currentPlayer for this client
     try{ 
       const sid = localStorage.getItem('sessionId'); 
@@ -112,7 +112,7 @@ export function createGomokuHandlers(ctx){
         currentPlayer.value = data.player;
         console.debug('[GomokuHandlers] Updated current player:', data.player.player_name);
       }
-    }catch(e){}
+    }catch(e){ void e; }
     events.emitPlayerJoin(data);
   }
   function handlePlayerLeft(data){ if(data.player){ players.value = players.value.filter(p=>p.session_id!==data.player.session_id);} events.emitPlayerLeave(data); }
