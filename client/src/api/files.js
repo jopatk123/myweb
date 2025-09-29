@@ -1,8 +1,6 @@
-import axios from 'axios';
+import { createAxiosClient, buildApiUrl } from './httpClient.js';
 
-const apiBase = import.meta.env.VITE_API_BASE || '/api';
-
-const api = axios.create({ baseURL: apiBase, timeout: 300000 });
+const api = createAxiosClient({ timeout: 300000 });
 
 api.interceptors.response.use(
   resp => resp.data,
@@ -51,8 +49,6 @@ export const filesApi = {
   },
 
   downloadUrl(id) {
-    // 文件下载应该通过API接口，所以使用API路径
-    const base = import.meta.env.VITE_API_BASE || '/api';
-    return `${base}/files/${id}/download`;
+    return buildApiUrl(`/files/${id}/download`);
   },
 };

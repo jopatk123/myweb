@@ -1,7 +1,6 @@
-import axios from 'axios';
+import { createAxiosClient } from './httpClient.js';
 
-const apiBase = import.meta.env.VITE_API_BASE || '/api';
-const api = axios.create({ baseURL: apiBase, timeout: 120000 });
+const api = createAxiosClient({ timeout: 120000 });
 
 api.interceptors.response.use(
   resp => resp.data,

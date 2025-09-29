@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { apiFetch } from '@/api/httpClient.js';
 
 // Module-level state -> singleton across imports
 const apps = ref([]);
@@ -19,7 +20,7 @@ async function fetchApps(
     loading.value = true;
     error.value = '';
     lastError.value = null;
-    const params = new URLSearchParams();
+  const params = new URLSearchParams();
     if (groupId) params.append('groupId', groupId);
     if (visible !== null && visible !== undefined)
       params.append('visible', visible ? '1' : '0');
@@ -27,7 +28,7 @@ async function fetchApps(
       params.append('page', String(page.value));
       params.append('limit', String(limit.value));
     }
-    const resp = await fetch(`/api/myapps?${params.toString()}`);
+  const resp = await apiFetch(`/myapps?${params.toString()}`);
     const json = await resp.json();
     if (resp.ok && json?.data) {
       if (withPagination && json.data.items) {
@@ -52,7 +53,7 @@ async function fetchApps(
 async function fetchGroups() {
   try {
     lastError.value = null;
-    const resp = await fetch('/api/myapps/groups/all');
+  const resp = await apiFetch('/myapps/groups/all');
     const json = await resp.json();
     if (resp.ok && json?.data) groups.value = json.data;
     else throw new Error(json?.message || '加载分组失败');
@@ -67,7 +68,7 @@ async function fetchGroups() {
 async function createGroup(payload) {
   try {
     lastError.value = null;
-    const resp = await fetch('/api/myapps/groups', {
+    const resp = await apiFetch('/myapps/groups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -87,7 +88,7 @@ async function createGroup(payload) {
 async function updateGroup(id, payload) {
   try {
     lastError.value = null;
-    const resp = await fetch(`/api/myapps/groups/${id}`, {
+    const resp = await apiFetch(`/myapps/groups/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -106,7 +107,7 @@ async function updateGroup(id, payload) {
 async function deleteGroup(id) {
   try {
     lastError.value = null;
-    const resp = await fetch(`/api/myapps/groups/${id}`, { method: 'DELETE' });
+  const resp = await apiFetch(`/myapps/groups/${id}`, { method: 'DELETE' });
     const json = await resp.json();
     if (!resp.ok) throw new Error(json?.message || '删除分组失败');
     await fetchGroups();
@@ -122,7 +123,7 @@ async function createApp(payload) {
   try {
     lastError.value = null;
     
-    const resp = await fetch('/api/myapps', {
+    const resp = await apiFetch('/myapps', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -140,7 +141,7 @@ async function createApp(payload) {
 async function updateApp(id, payload) {
   try {
     lastError.value = null;
-    const resp = await fetch(`/api/myapps/${id}`, {
+    const resp = await apiFetch(`/myapps/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -158,7 +159,7 @@ async function updateApp(id, payload) {
 async function deleteApp(id) {
   try {
     lastError.value = null;
-    const resp = await fetch(`/api/myapps/${id}`, { method: 'DELETE' });
+  const resp = await apiFetch(`/myapps/${id}`, { method: 'DELETE' });
     const json = await resp.json();
     if (!resp.ok) throw new Error(json?.message || '删除失败');
     return true;
@@ -172,7 +173,7 @@ async function deleteApp(id) {
 async function setVisible(id, visible) {
   try {
     lastError.value = null;
-    const resp = await fetch(`/api/myapps/${id}/visible`, {
+    const resp = await apiFetch(`/myapps/${id}/visible`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ visible }),
@@ -190,7 +191,7 @@ async function setVisible(id, visible) {
 async function setVisibleBulk(ids, visible) {
   try {
     lastError.value = null;
-    const resp = await fetch('/api/myapps/bulk/visible', {
+    const resp = await apiFetch('/myapps/bulk/visible', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids, visible }),
@@ -212,8 +213,8 @@ async function setAutostart(id, autostart) {
       throw new Error('invalid id');
     }
     // 使用明确的 autostart 路由，兼容数字 id 与非数字 slug
-    const url = `/api/myapps/${encodeURIComponent(id)}/autostart`;
-    const resp = await fetch(url, {
+    const url = `/myapps/${encodeURIComponent(id)}/autostart`;
+    const resp = await apiFetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_autostart: !!autostart }),
@@ -237,7 +238,7 @@ async function moveApps(ids, targetGroupId) {
   try {
     lastError.value = null;
     
-    const resp = await fetch('/api/myapps/move', {
+    const resp = await apiFetch('/myapps/move', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids, targetGroupId }),

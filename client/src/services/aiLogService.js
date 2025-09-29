@@ -2,17 +2,23 @@
  * AI对话日志服务
  * 负责将AI的输入输出发送到服务器进行记录
  */
+import { getApiBase, buildServerUrl } from '@/api/httpClient.js';
+
 export class AILogService {
   constructor() {
     // 基础API地址
-    this.apiBase = import.meta.env.VITE_API_BASE || '/api';
+    this.apiBase = getApiBase();
     
     // 日志队列，用于批量发送或重试
     this.logQueue = [];
     
     // 是否在生产环境禁用日志
-    this.enabled = process.env.NODE_ENV !== 'production' || 
-                   import.meta.env.VITE_ENABLE_AI_LOGGING === 'true';
+    const mode = import.meta.env?.MODE || 'development';
+    this.enabled =
+      mode !== 'production' ||
+      import.meta.env.VITE_ENABLE_AI_LOGGING === 'true';
+
+    this._buildServerUrl = buildServerUrl;
   }
 
   /**
@@ -88,7 +94,7 @@ export class AILogService {
    * @private
    */
   async sendToServer(logEntry) {
-    const response = await fetch(`/internal/logs/ai`, {
+  const response = await fetch(this._buildServerUrl('/internal/logs/ai'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

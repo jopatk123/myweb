@@ -39,6 +39,7 @@
 <script setup>
   import { ref, watch } from 'vue';
   import IconSelector from './IconSelector.vue';
+  import { apiFetch } from '@/api/httpClient.js';
 
   const props = defineProps({
     show: Boolean,
@@ -144,7 +145,7 @@
       try {
         const formData = new FormData();
         formData.append('file', pendingFile.value);
-        const resp = await fetch('/api/myapps/icons/upload', {
+        const resp = await apiFetch('/myapps/icons/upload', {
           method: 'POST',
           body: formData,
         });

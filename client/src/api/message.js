@@ -1,24 +1,11 @@
 /**
  * 留言板API
  */
-import axios from 'axios';
+import { createAxiosClient, getApiBase } from './httpClient.js';
 
 // 处理API基础URL
-const getApiBase = () => {
-  const apiBase = import.meta.env.VITE_API_BASE || '/api';
-  // 如果是相对路径，直接使用
-  if (apiBase.startsWith('/')) {
-    return apiBase;
-  }
-  // 如果是完整URL，添加/api路径
-  return apiBase.endsWith('/') ? `${apiBase}api` : `${apiBase}/api`;
-};
-
-const API_BASE = getApiBase();
-
-// 创建axios实例
-const messageApi = axios.create({
-  baseURL: `${API_BASE}/messages`,
+const messageApi = createAxiosClient({
+  baseURL: `${getApiBase()}/messages`,
   timeout: 10000,
 });
 
@@ -42,7 +29,7 @@ export const messageAPI = {
    * 获取留言列表
    */
   async getMessages(params = {}) {
-    const response = await messageApi.get('/', { params });
+  const response = await messageApi.get('/', { params });
     return response.data;
   },
 
@@ -50,7 +37,7 @@ export const messageAPI = {
    * 发送留言
    */
   async sendMessage(data) {
-    const response = await messageApi.post('/', data);
+  const response = await messageApi.post('/', data);
     return response.data;
   },
 
@@ -58,7 +45,7 @@ export const messageAPI = {
    * 删除留言
    */
   async deleteMessage(id) {
-    const response = await messageApi.delete(`/${id}`);
+  const response = await messageApi.delete(`/${id}`);
     return response.data;
   },
 
@@ -66,7 +53,7 @@ export const messageAPI = {
    * 获取用户设置
    */
   async getUserSettings() {
-    const response = await messageApi.get('/user-settings');
+  const response = await messageApi.get('/user-settings');
     return response.data;
   },
 
@@ -74,7 +61,7 @@ export const messageAPI = {
    * 更新用户设置
    */
   async updateUserSettings(data) {
-    const response = await messageApi.put('/user-settings', data);
+  const response = await messageApi.put('/user-settings', data);
     return response.data;
   },
 
@@ -87,7 +74,7 @@ export const messageAPI = {
       formData.append('images', files[i]);
     }
 
-    const response = await messageApi.post('/upload-image', formData, {
+  const response = await messageApi.post('/upload-image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -99,7 +86,7 @@ export const messageAPI = {
    * 清除所有留言
    */
   async clearAllMessages() {
-    const response = await messageApi.delete('/clear-all', {
+  const response = await messageApi.delete('/clear-all', {
       data: { confirm: true },
     });
     return response.data;

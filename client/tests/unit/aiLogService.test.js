@@ -27,9 +27,9 @@ describe('AILogService', () => {
 
     await service.logConversation(baseLogPayload);
 
-    expect(fetch).toHaveBeenCalledTimes(1);
-    const [url, options] = fetch.mock.calls[0];
-    expect(url).toBe('/internal/logs/ai');
+  expect(fetch).toHaveBeenCalledTimes(1);
+  const [url, options] = fetch.mock.calls[0];
+  expect(url).toBe(service._buildServerUrl('/internal/logs/ai'));
     expect(options.method).toBe('POST');
     expect(options.headers['Content-Type']).toBe('application/json');
     const body = JSON.parse(options.body);

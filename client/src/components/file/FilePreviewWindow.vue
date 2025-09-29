@@ -27,6 +27,7 @@
 
 <script setup>
   import { computed, ref, watch } from 'vue';
+  import { buildServerUrl } from '@/api/httpClient';
 
   const props = defineProps({
     file: { type: Object, default: null },
@@ -85,20 +86,8 @@
     if (!raw) return '';
     if (/^https?:\/\//i.test(raw)) return raw;
 
-    // 对于uploads路径的文件，应该直接使用相对路径
-    if (raw.startsWith('uploads/')) {
-      return `/${raw}`;
-    }
-
-    // 其他情况使用完整的base URL
-    const base = (
-      import.meta.env.VITE_API_BASE ||
-      window.location.origin ||
-      ''
-    ).toString();
-    const prefix = base.replace(/\/+\$/g, '') + '/';
-    const path = raw.replace(/^\/+/, '').replace(/\\/g, '/');
-    return `${prefix}${path}`;
+    const normalized = raw.startsWith('/') ? raw : `/${raw}`;
+    return buildServerUrl(normalized.replace(/\\/g, '/'));
   });
 
   const loading = ref(false);

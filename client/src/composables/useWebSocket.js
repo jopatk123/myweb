@@ -2,6 +2,7 @@
  * WebSocket组合式函数
  */
 import { ref, onMounted } from 'vue';
+import { getServerOrigin } from '@/api/httpClient.js';
 
 // --- 单例状态（模块级） ---
 let _wsRef;          // WebSocket 实例 ref
@@ -34,37 +35,17 @@ export function useWebSocket() {
 
   // 获取WebSocket URL
   const getWebSocketUrl = () => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-
-    // 处理 VITE_API_BASE 的情况
-    let host;
-    if (import.meta.env.VITE_API_BASE) {
-      const apiBase = import.meta.env.VITE_API_BASE;
-      // 如果是相对路径（以 / 开头），使用当前域名
-      if (apiBase.startsWith('/')) {
-        host = window.location.host;
-      } else {
-        // 如果是完整URL，提取host
-        try {
-          host = new URL(apiBase).host;
-        } catch (error) {
-          void error;
-          console.warn('Invalid VITE_API_BASE URL:', apiBase);
-          host = window.location.host;
-        }
-      }
-    } else {
-      // 如果没有 VITE_API_BASE，尝试从环境变量或当前 host 推导后端 host:port
-      const backendPort = import.meta.env.VITE_BACKEND_PORT || import.meta.env.VITE_PORT || import.meta.env.VITE_BE_PORT;
-      if (backendPort) {
-        host = window.location.host.replace(/:\d+$/, `:${backendPort}`);
-      } else {
-        // 默认假设后端与前端相同主机但端口为 3000（常见开发配置），保持相对路径
-        host = window.location.host;
-      }
+    const origin = getServerOrigin();
+    try {
+      const parsed = origin ? new URL(origin) : new URL(window.location.origin);
+      const wsProtocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${wsProtocol}//${parsed.host}/ws`;
+    } catch (error) {
+      void error;
+      const fallbackProtocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const fallbackHost = typeof window !== 'undefined' ? window.location.host : 'localhost:3000';
+      return `${fallbackProtocol}//${fallbackHost}/ws`;
     }
-
-    return `${protocol}//${host}/ws`;
   };
 
   // 连接WebSocket

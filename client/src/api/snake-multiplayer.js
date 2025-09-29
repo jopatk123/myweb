@@ -1,9 +1,9 @@
 /**
  * 贪吃蛇多人游戏API服务
  */
-import axios from 'axios';
+import { createAxiosClient } from './httpClient.js';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const client = createAxiosClient();
 
 export const snakeMultiplayerApi = {
   /**
@@ -11,7 +11,7 @@ export const snakeMultiplayerApi = {
    */
   async getActiveRooms() {
     try {
-      const response = await axios.get(`${API_BASE}/snake-multiplayer/rooms`);
+  const response = await client.get('/snake-multiplayer/rooms');
       const raw = response.data.data || [];
       // 兼容：如果服务端（或某层拦截器）把 snake_case 转成了 camelCase，则这里统一补齐 snake_case，前端其它组件仍可使用 room.room_code
       return raw.map(r => ({
@@ -33,7 +33,7 @@ export const snakeMultiplayerApi = {
    */
   async getRoomDetail(roomCode) {
     try {
-      const response = await axios.get(`${API_BASE}/snake-multiplayer/rooms/${roomCode.toUpperCase()}`);
+  const response = await client.get(`/snake-multiplayer/rooms/${roomCode.toUpperCase()}`);
       return response.data.data;
     } catch (error) {
       console.error('获取房间详情失败:', error);
@@ -49,13 +49,15 @@ export const snakeMultiplayerApi = {
    */
   async cleanupOfflinePlayers(timeoutMinutes = 10) {
     try {
-      const response = await axios.post(`${API_BASE}/snake-multiplayer/cleanup`, null, {
+      const response = await client.post('/snake-multiplayer/cleanup', null, {
         params: { timeoutMinutes }
       });
       return response.data.data;
     } catch (error) {
       console.error('清理离线玩家失败:', error);
-      throw new Error(error.response?.data?.message || '清理离线玩家失败');
+      throw new Error(
+        error.response?.data?.message || '清理离线玩家失败'
+      );
     }
   }
 };

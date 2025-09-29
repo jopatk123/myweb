@@ -82,6 +82,7 @@
 
 <script setup>
   import { ref, computed, watch } from 'vue';
+  import { buildServerUrl } from '@/api/httpClient.js';
 
   const props = defineProps({
     wallpapers: {
@@ -138,19 +139,12 @@
   const getWallpaperUrl = wallpaper => {
     if (!wallpaper) return null;
     const fp = wallpaper.filePath || wallpaper.file_path || '';
+    if (!fp) return null;
 
-    // 对于图片文件，应该直接使用相对路径，不经过API
-  // 图片由后端静态服务直接提供
-    if (fp.startsWith('uploads/')) {
-      return `/${fp}`;
-    }
+    if (/^https?:/i.test(fp)) return fp;
 
-    // 兼容其他情况
-    const base = import.meta.env.VITE_API_BASE || '';
-    if (base) {
-      return `${String(base).replace(/\/+$/g, '')}/${String(fp).replace(/^\/+/, '')}`;
-    }
-    return fp.startsWith('/') ? fp : `/${fp}`;
+    const normalized = fp.startsWith('/') ? fp : `/${fp}`;
+    return buildServerUrl(normalized.replace(/\\/g, '/'));
   };
 
   const formatFileSize = bytes => {

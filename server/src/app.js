@@ -77,12 +77,47 @@ app.use(
 );
 
 // CORS配置
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || '*',
+const resolveCorsOptions = () => {
+  const raw = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim());
+  const configuredOrigins = raw.filter(Boolean);
+
+  const defaultOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ];
+
+  const allowAll = configuredOrigins.includes('*');
+  const allowlist = allowAll
+    ? []
+    : configuredOrigins.length > 0
+      ? configuredOrigins
+      : defaultOrigins;
+
+  return {
     credentials: true,
-  })
-);
+    origin(origin, callback) {
+      if (!origin) {
+        // 无 Origin（如同源请求或 curl）默认放行
+        return callback(null, true);
+      }
+
+      if (allowAll) {
+        return callback(null, true);
+      }
+
+      if (allowlist.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.warn(`CORS origin denied: ${origin}`);
+      return callback(null, false);
+    },
+  };
+};
+
+app.use(cors(resolveCorsOptions()));
 
 // 请求体解析 - 放开大小限制
 app.use(express.json({ limit: '100mb' }));

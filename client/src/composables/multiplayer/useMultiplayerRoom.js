@@ -4,6 +4,7 @@
  */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useWebSocket } from '../useWebSocket';
+import { getApiBase } from '@/api/httpClient.js';
 
 /**
  * 多人游戏房间管理钩子
@@ -18,11 +19,21 @@ import { useWebSocket } from '../useWebSocket';
 export function useMultiplayerRoom(options = {}) {
   const {
     gameType = 'default',
-    apiPrefix = `/api/${gameType}-multiplayer`,
+    apiPrefix,
     autoConnect = true,
     reconnectDelay = 1000,
     defaultConfig = {}
   } = options;
+
+  const rawPrefix = apiPrefix ?? `/${gameType}-multiplayer`;
+  const normalizedApiPrefix = (() => {
+    if (/^https?:/i.test(rawPrefix)) {
+      return rawPrefix.replace(/\/+$/, '');
+    }
+    const base = getApiBase();
+    const suffix = rawPrefix.startsWith('/') ? rawPrefix : `/${rawPrefix}`;
+    return `${base}${suffix}`.replace(/\/+$/, '');
+  })();
 
   // 基础状态管理
   const isConnected = ref(false);
@@ -292,7 +303,8 @@ export function useMultiplayerRoom(options = {}) {
 
   // API 请求封装
   const apiRequest = async (endpoint, options = {}) => {
-    const url = `${apiPrefix}${endpoint}`;
+  const suffix = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${normalizedApiPrefix}${suffix}`;
     const config = {
       headers: {
         'Content-Type': 'application/json',
