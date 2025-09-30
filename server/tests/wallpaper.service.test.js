@@ -3,7 +3,7 @@ import { jest } from '@jest/globals';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { initDatabase } from '../src/config/database.js';
+import { createTestDatabase, closeTestDatabase } from './helpers/test-db.js';
 import { WallpaperService } from '../src/services/wallpaper.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,24 +15,14 @@ let service;
 
 beforeAll(async () => {
   // Use in-memory sqlite for tests
-  process.env.DB_PATH = ':memory:';
-  db = await initDatabase({
-    dbPath: ':memory:',
-    silent: true,
-    seedBuiltinApps: false,
-  });
+  db = await createTestDatabase();
   service = new WallpaperService(db);
   await fs.rm(tempDir, { recursive: true, force: true });
   await fs.mkdir(tempDir, { recursive: true });
 });
 
 afterAll(() => {
-  try {
-    db.close();
-  } catch (error) {
-    // ignore close errors in teardown
-    void error;
-  }
+  closeTestDatabase(db);
 });
 
 afterEach(async () => {

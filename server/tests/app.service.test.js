@@ -2,7 +2,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { initDatabase } from '../src/config/database.js';
+import { createTestDatabase, closeTestDatabase } from './helpers/test-db.js';
 import { AppService } from '../src/services/app.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,21 +13,12 @@ let db;
 let service;
 
 beforeAll(async () => {
-  process.env.DB_PATH = ':memory:';
-  db = await initDatabase({
-    dbPath: ':memory:',
-    silent: true,
-    seedBuiltinApps: false,
-  });
+  db = await createTestDatabase();
   service = new AppService(db);
 });
 
 afterAll(() => {
-  try {
-    db.close();
-  } catch (error) {
-    void error;
-  }
+  closeTestDatabase(db);
 });
 
 beforeEach(async () => {
