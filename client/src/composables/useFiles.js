@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, onScopeDispose } from 'vue';
 import { filesApi } from '@/api/files.js';
 
 export function useFiles() {
@@ -16,6 +16,8 @@ export function useFiles() {
   const uploadQueue = ref([]);
   const error = ref('');
   const lastError = ref(null);
+  let cleanupTimer = null;
+  let isDisposed = false;
 
   const totalPages = computed(() =>
     Math.ceil(((total.value || 0) ) / (limit.value || 1))
@@ -34,6 +36,7 @@ export function useFiles() {
   }
 
   async function fetchList() {
+    if (isDisposed) return;
     try {
       error.value = '';
       lastError.value = null;
@@ -54,6 +57,8 @@ export function useFiles() {
   }
 
   async function upload(files) {
+    if (isDisposed) return;
+
     uploading.value = true;
     uploadProgress.value = 0;
     uploadedBytes.value = 0;
@@ -81,6 +86,7 @@ export function useFiles() {
         currentFileName.value = file.name;
 
         await filesApi.upload([file], progress => {
+          if (isDisposed) return;
           // 计算当前文件的已上传字节数
           const currentFileUploaded = Math.round((progress / 100) * file.size);
           // 累积总上传字节数
@@ -98,35 +104,47 @@ export function useFiles() {
 
         // 当前文件上传完成，更新队列进度为100%并累积字节数
         totalUploadedBytes += file.size;
-        uploadedBytes.value = totalUploadedBytes;
-        uploadProgress.value = Math.round(
-          (uploadedBytes.value / totalBytes.value) * 100
-        );
+        if (!isDisposed) {
+          uploadedBytes.value = totalUploadedBytes;
+          uploadProgress.value = Math.round(
+            (uploadedBytes.value / totalBytes.value) * 100
+          );
 
-        if (uploadQueue.value[i]) {
-          uploadQueue.value[i].progress = 100;
+          if (uploadQueue.value[i]) {
+            uploadQueue.value[i].progress = 100;
+          }
         }
       }
 
-      await fetchList();
+      if (!isDisposed) {
+        await fetchList();
+      }
     } catch (e) {
       lastError.value = e;
       error.value = e.message || '上传失败';
       throw e;
     } finally {
-      uploading.value = false;
-      // 延迟清除进度信息，让用户看到完成状态
-      setTimeout(() => {
-        uploadProgress.value = 0;
-        uploadedBytes.value = 0;
-        totalBytes.value = 0;
-        currentFileName.value = '';
-        uploadQueue.value = [];
-      }, 2000);
+      if (!isDisposed) {
+        uploading.value = false;
+        // 延迟清除进度信息，让用户看到完成状态
+        if (cleanupTimer) {
+          clearTimeout(cleanupTimer);
+        }
+        cleanupTimer = setTimeout(() => {
+          if (isDisposed) return;
+          uploadProgress.value = 0;
+          uploadedBytes.value = 0;
+          totalBytes.value = 0;
+          currentFileName.value = '';
+          uploadQueue.value = [];
+          cleanupTimer = null;
+        }, 2000);
+      }
     }
   }
 
   async function remove(id) {
+    if (isDisposed) return;
     try {
       lastError.value = null;
       await filesApi.delete(id);
@@ -141,6 +159,14 @@ export function useFiles() {
   function getDownloadUrl(id) {
     return filesApi.downloadUrl(id);
   }
+
+  onScopeDispose(() => {
+    isDisposed = true;
+    if (cleanupTimer) {
+      clearTimeout(cleanupTimer);
+      cleanupTimer = null;
+    }
+  });
 
   return {
     items,

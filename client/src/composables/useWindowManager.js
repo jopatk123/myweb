@@ -1,4 +1,10 @@
-import { ref, reactive, nextTick as _nextTick, markRaw } from 'vue';
+import {
+  ref,
+  reactive,
+  nextTick as _nextTick,
+  markRaw,
+  onScopeDispose,
+} from 'vue';
 
 // 全局窗口管理器
 const windows = ref([]);
@@ -9,7 +15,9 @@ let baseZIndex = 1000;
 /**
  * 窗口管理器 - 管理多个应用窗口
  */
-export function useWindowManager() {
+export function useWindowManager(options = {}) {
+  const { autoCleanup = true } = options;
+  const ownedWindowIds = new Set();
   void _nextTick;
   /**
    * 创建新窗口
@@ -49,6 +57,9 @@ export function useWindowManager() {
     });
 
     windows.value.push(window);
+    if (autoCleanup) {
+      ownedWindowIds.add(windowId);
+    }
     // 允许传入 options.activate = false 来避免创建时抢占焦点
     if (options.activate !== false) {
       setActiveWindow(windowId);
@@ -79,6 +90,9 @@ export function useWindowManager() {
     if (index === -1) return;
 
     windows.value.splice(index, 1);
+    if (autoCleanup) {
+      ownedWindowIds.delete(windowId);
+    }
 
     // 如果关闭的是活动窗口，激活最后一个窗口
     if (activeWindowId.value === windowId) {
@@ -146,6 +160,14 @@ export function useWindowManager() {
     }
   }
 
+  onScopeDispose(() => {
+    if (!autoCleanup) return;
+    for (const windowId of ownedWindowIds) {
+      closeWindow(windowId);
+    }
+    ownedWindowIds.clear();
+  });
+
   /**
    * 检查应用是否已经打开
    */
@@ -189,4 +211,11 @@ export function useWindowManager() {
     getActiveWindow,
     showWindowWithoutFocus,
   };
+}
+
+export function resetWindowManagerState() {
+  windows.value = [];
+  activeWindowId.value = null;
+  nextWindowId = 1;
+  baseZIndex = 1000;
 }
