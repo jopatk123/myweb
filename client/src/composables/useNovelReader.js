@@ -4,6 +4,7 @@ import { useNovelParser } from './useNovelParser.js';
 import { useNovelSync } from './useNovelSync.js';
 import { useNovelBookmarks } from './useNovelBookmarks.js';
 import { filesApi } from '@/api/files.js';
+import { normalizeSettings } from '@/apps/novel-reader/composables/useReaderSettings.js';
 
 export function useNovelReader() {
   // 响应式数据
@@ -18,15 +19,7 @@ export function useNovelReader() {
   const showSettings = ref(false);
 
   // 阅读器设置
-  const readerSettings = ref({
-    fontSize: 16,
-    lineHeight: 1.6,
-    fontFamily: 'serif',
-    theme: 'sepia', // 默认使用护眼主题
-    pageWidth: 800,
-    autoSave: true,
-    autoMinimize: false, // 鼠标移出窗口自动最小化，默认关闭
-  });
+  const readerSettings = ref(normalizeSettings());
 
   // 使用其他 composables
   const {
@@ -77,12 +70,12 @@ export function useNovelReader() {
     loading.value = true;
     try {
       // 上传到后端（小说专用端点）
-    const resp = await filesApi.uploadNovels(files, p => void p); // Keep the parameter as is
+      const resp = await filesApi.uploadNovels(files, p => void p); // Keep the parameter as is
       // 后端现在返回 { code, success, data, novels? }
       const created = resp && resp.data ? resp.data : null;
       // 支持两种后端返回：单个 file 对象或数组；并兼容后端新增的 novels 字段
-  let uploadedFiles = [];
-  // no-op placeholder for potential server-side novel metadata
+      let uploadedFiles = [];
+      // no-op placeholder for potential server-side novel metadata
       if (created) {
         if (Array.isArray(created)) {
           uploadedFiles = created;
@@ -93,11 +86,11 @@ export function useNovelReader() {
           uploadedFiles = [created];
         }
       }
-  // ignore resp.novels metadata on client side for now
+      // ignore resp.novels metadata on client side for now
 
       const uploaded = uploadedFiles;
 
-    for (const f of uploaded) {
+      for (const f of uploaded) {
         try {
           const id = f.id || f.ID || f.id;
           const downloadUrl = filesApi.downloadUrl(id);
@@ -199,7 +192,7 @@ export function useNovelReader() {
       }
     }
 
-  // 更新最后阅读时间并保存元数据/内容（如果已加载）
+    // 更新最后阅读时间并保存元数据/内容（如果已加载）
     book.lastRead = new Date().toISOString();
     saveBooks(books.value);
   }
@@ -261,6 +254,18 @@ export function useNovelReader() {
     }
   }
 
+  async function deleteBookmark(bookId, bookmarkId) {
+    try {
+      await deleteBookmarkFromStorage(bookId, bookmarkId);
+      if (currentBook.value && currentBook.value.id === bookId) {
+        currentBook.value.bookmarks = getBookmarksByBookId(bookId);
+      }
+    } catch (error) {
+      console.error('删除书签失败:', error);
+      throw error;
+    }
+  }
+
   async function deleteBook(bookId) {
     const index = books.value.findIndex(book => book.id === bookId);
     if (index === -1) return;
@@ -318,9 +323,10 @@ export function useNovelReader() {
 
   // 初始化函数
   async function initialize() {
-  loadBooks(books);
+    loadBooks(books);
     loadProgress(readingProgress);
     loadSettings(readerSettings);
+    readerSettings.value = normalizeSettings(readerSettings.value);
     // 从后端加载小说（适配多浏览器/多设备同步）
     await syncServerNovels(books, readingProgress, saveBooks);
     // 同步书签
@@ -383,7 +389,7 @@ export function useNovelReader() {
     bookmarksData,
     bookmarksLoading,
     getBookmarksByBookId,
-    deleteBookmark: deleteBookmarkFromStorage,
+    deleteBookmark,
     updateBookmark: updateBookmarkInStorage,
     handleForceSyncBookmarks,
   };
