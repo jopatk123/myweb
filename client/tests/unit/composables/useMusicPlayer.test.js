@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
+import { SETTINGS_KEY } from '@/composables/music/utils.js';
 
 const listTracks = vi.fn();
 const streamUrl = vi.fn();
@@ -24,6 +25,7 @@ describe('useMusicPlayer', () => {
   beforeEach(async () => {
     vi.resetModules();
     vi.clearAllMocks();
+    window.localStorage?.clear?.();
     streamUrl.mockReturnValue('/stream/1');
     listTracks.mockResolvedValue({
       data: {
@@ -186,6 +188,49 @@ describe('useMusicPlayer', () => {
 
     expect(state.uploadingState.progress).toBe(0);
     expect(state.uploadingState.filename).toBe('');
+
+    wrapper.unmount();
+  });
+
+  it('initialize restores persisted settings from storage', async () => {
+    window.localStorage?.setItem?.(
+      SETTINGS_KEY,
+      JSON.stringify({ volume: 0.4, shuffle: true, repeatMode: 'all' })
+    );
+
+    const { state, wrapper } = await createPlayer();
+
+    await state.initialize();
+    await nextTick();
+
+    expect(state.volume.value).toBeCloseTo(0.4);
+    expect(state.shuffle.value).toBe(true);
+    expect(state.repeatMode.value).toBe('all');
+
+    wrapper.unmount();
+  });
+
+  it('renameTrack preserves existing duration when API omits it', async () => {
+    const { state, wrapper } = await createPlayer();
+    await state.initialize();
+    await nextTick();
+
+    updateTrack.mockResolvedValue({
+      data: {
+        id: 1,
+        title: 'Renamed Track',
+      },
+    });
+
+    await state.renameTrack(1, { title: 'Renamed Track' });
+    await nextTick();
+
+    expect(updateTrack).toHaveBeenCalledWith(1, { title: 'Renamed Track' });
+    expect(state.tracks.value[0]).toMatchObject({
+      id: 1,
+      title: 'Renamed Track',
+      durationSeconds: 123,
+    });
 
     wrapper.unmount();
   });
