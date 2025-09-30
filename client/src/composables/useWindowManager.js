@@ -4,6 +4,7 @@ import {
   nextTick as _nextTick,
   markRaw,
   onScopeDispose,
+  getCurrentScope,
 } from 'vue';
 
 // 全局窗口管理器
@@ -160,13 +161,21 @@ export function useWindowManager(options = {}) {
     }
   }
 
-  onScopeDispose(() => {
-    if (!autoCleanup) return;
-    for (const windowId of ownedWindowIds) {
+  const cleanupOwnedWindows = () => {
+    if (!autoCleanup || ownedWindowIds.size === 0) {
+      return;
+    }
+    for (const windowId of Array.from(ownedWindowIds)) {
       closeWindow(windowId);
     }
     ownedWindowIds.clear();
-  });
+  };
+
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      cleanupOwnedWindows();
+    });
+  }
 
   /**
    * 检查应用是否已经打开
@@ -210,6 +219,7 @@ export function useWindowManager(options = {}) {
     getAllWindows,
     getActiveWindow,
     showWindowWithoutFocus,
+    cleanupOwnedWindows,
   };
 }
 
