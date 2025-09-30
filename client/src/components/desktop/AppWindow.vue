@@ -16,32 +16,16 @@
     @focusin="onFocusIn"
     @focusout="onFocusOut"
   >
-    <div
-      class="window-header"
-      @pointerdown.stop.prevent="onHeaderPointerDown"
-      @dblclick="onHeaderDoubleClick"
-    >
-      <div class="window-title">{{ window.title }}</div>
-      <div class="window-controls">
-        <button
-          class="control-btn minimize"
-          @click.stop="onMinimize"
-          title="最小化"
-        >
-          ─
-        </button>
-        <button
-          class="control-btn maximize"
-          @click.stop="onMaximize"
-          :title="window.maximized ? '还原' : '最大化'"
-        >
-          {{ window.maximized ? '❐' : '□' }}
-        </button>
-        <button class="control-btn close" @click.stop="onClose" title="关闭">
-          ✖
-        </button>
-      </div>
-    </div>
+    <AppWindowHeader
+      :title="window.title"
+      :maximized="window.maximized"
+      :active="isActive"
+      @pointerdown="onHeaderPointerDown"
+      @doubleclick="onHeaderDoubleClick"
+      @minimize="onMinimize"
+      @maximize="onMaximize"
+      @close="onClose"
+    />
 
     <div class="window-body">
       <component
@@ -51,32 +35,46 @@
       />
       <div v-else class="empty">未找到应用组件</div>
     </div>
-      <!-- 底部可拖动条：高度为顶部的一半，仅作拖动用 -->
-      <div
-        class="window-footer-drag"
-        @pointerdown.stop.prevent="onHeaderPointerDown"
-        aria-hidden="true"
-      />
+    <!-- 底部可拖动条：高度为顶部的一半，仅作拖动用 -->
+    <div
+      class="window-footer-drag"
+      @pointerdown.stop.prevent="onHeaderPointerDown"
+      aria-hidden="true"
+    />
     <!-- 四角缩放把手 -->
-    <div class="resize-handle tl" @pointerdown.prevent="(e)=>onResizeStart(e,'tl')">
+    <div
+      class="resize-handle tl"
+      @pointerdown.prevent="e => onResizeStart(e, 'tl')"
+    >
       <div class="resize-corner" />
     </div>
-    <div class="resize-handle tr" @pointerdown.prevent="(e)=>onResizeStart(e,'tr')">
+    <div
+      class="resize-handle tr"
+      @pointerdown.prevent="e => onResizeStart(e, 'tr')"
+    >
       <div class="resize-corner" />
     </div>
-    <div class="resize-handle bl" @pointerdown.prevent="(e)=>onResizeStart(e,'bl')">
+    <div
+      class="resize-handle bl"
+      @pointerdown.prevent="e => onResizeStart(e, 'bl')"
+    >
       <div class="resize-corner" />
     </div>
-    <div class="resize-handle br" @pointerdown.prevent="(e)=>onResizeStart(e,'br')">
+    <div
+      class="resize-handle br"
+      @pointerdown.prevent="e => onResizeStart(e, 'br')"
+    >
       <div class="resize-corner" />
     </div>
   </div>
 </template>
 
 <script setup>
-  import { computed, ref, onUnmounted } from 'vue';
+  import { computed, toRef } from 'vue';
+  import AppWindowHeader from '@/components/desktop/AppWindowHeader.vue';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
-  import { useWindowManager } from '@/composables/useWindowManager.js';
+  import { useAppWindowResize } from '@/composables/useAppWindowResize.js';
+  import { useNovelReaderAutoMinimize } from '@/composables/useNovelReaderAutoMinimize.js';
 
   const props = defineProps({
     window: {
@@ -91,92 +89,33 @@
 
   const emit = defineEmits(['close', 'minimize', 'maximize', 'activate']);
 
-  // 使用现有的拖拽功能
+  const windowRef = toRef(props, 'window');
+  const isActiveRef = toRef(props, 'isActive');
+
   const { modalRef, modalStyle, onHeaderPointerDown, pos, savePosition } =
     useDraggableModal(props.window.storageKey);
 
-  // 小说阅读器自动最小化功能
-  const { minimizeWindow } = useWindowManager();
-  const minimizeTimer = ref(null);
-  const isNovelReader = computed(() => props.window.appSlug === 'novel-reader');
+  const { onMouseEnter, onMouseLeave, onFocusIn, onFocusOut } =
+    useNovelReaderAutoMinimize(windowRef, isActiveRef);
 
-  // 获取小说阅读器设置
-  const getNovelReaderSettings = () => {
-    try {
-      const settings = localStorage.getItem('novel-reader-settings');
-      return settings ? JSON.parse(settings) : { autoMinimize: false };
-  } catch {
-      return { autoMinimize: false };
-    }
-  };
-
-  // 检查是否启用自动最小化
-  const isAutoMinimizeEnabled = computed(() => {
-    if (!isNovelReader.value) return false;
-    const settings = getNovelReaderSettings();
-    return settings.autoMinimize === true;
-  });
-
-  // 鼠标进入窗口
-  function onMouseEnter() {
-    if (isNovelReader.value && isAutoMinimizeEnabled.value) {
-      cancelMinimize();
-    }
-  }
-
-  // 鼠标离开窗口
-  function onMouseLeave() {
-    if (isNovelReader.value && props.isActive && isAutoMinimizeEnabled.value) {
-      scheduleMinimize();
-    }
-  }
-
-  // 窗口获得焦点
-  function onFocusIn() {
-    if (isNovelReader.value && isAutoMinimizeEnabled.value) {
-      cancelMinimize();
-    }
-  }
-
-  // 窗口失去焦点
-  function onFocusOut() {
-    if (isNovelReader.value && props.isActive && isAutoMinimizeEnabled.value) {
-      scheduleMinimize(0); // 立即最小化
-    }
-  }
-
-  // 安排最小化
-  function scheduleMinimize(delay = 100) {
-    cancelMinimize();
-    minimizeTimer.value = setTimeout(() => {
-      if (!props.window.minimized) {
-        minimizeWindow(props.window.id);
-      }
-    }, delay);
-  }
-
-  // 取消最小化
-  function cancelMinimize() {
-    if (minimizeTimer.value) {
-      clearTimeout(minimizeTimer.value);
-      minimizeTimer.value = null;
-    }
-  }
+  const { onResizeStart } = useAppWindowResize(windowRef, pos, savePosition);
 
   const windowStyle = computed(() => {
     const baseStyle = {
-      zIndex: props.window.zIndex,
-      width: props.window.maximized ? '100vw' : `${props.window.width}px`,
-      height: props.window.maximized ? '100vh' : `${props.window.height}px`,
+      zIndex: windowRef.value.zIndex,
+      width: windowRef.value.maximized ? '100vw' : `${windowRef.value.width}px`,
+      height: windowRef.value.maximized
+        ? '100vh'
+        : `${windowRef.value.height}px`,
       ...modalStyle.value,
     };
 
-    if (props.window.maximized) {
+    if (windowRef.value.maximized) {
       baseStyle.left = '0px';
       baseStyle.top = '0px';
     }
 
-    if (props.window.minimized) {
+    if (windowRef.value.minimized) {
       baseStyle.display = 'none';
     }
 
@@ -184,159 +123,25 @@
   });
 
   function onWindowClick() {
-    emit('activate', props.window.id);
+    emit('activate', windowRef.value.id);
   }
 
   function onClose() {
-    emit('close', props.window.id);
+    emit('close', windowRef.value.id);
   }
 
   function onMinimize() {
-  // 将最小化的行为改为关闭窗口（与关闭按钮相同）
-  onClose();
+    // 将最小化的行为改为关闭窗口（与关闭按钮相同）
+    onClose();
   }
 
   function onMaximize() {
-    emit('maximize', props.window.id);
+    emit('maximize', windowRef.value.id);
   }
 
   function onHeaderDoubleClick() {
-    emit('maximize', props.window.id);
+    emit('maximize', windowRef.value.id);
   }
-
-  // 窗口缩放支持（右下角把手）
-  const MIN_WIDTH = 300;
-  const MIN_HEIGHT = 200;
-
-  let resizing = false;
-  let startX = 0;
-  let startY = 0;
-  let startWidth = 0;
-  let startHeight = 0;
-  let startLeft = 0;
-  let startTop = 0;
-  let resizeCorner = 'br'; // 'br'|'bl'|'tr'|'tl'
-
-  function loadPersistedSize() {
-    try {
-      const key = props.window.storageKey
-        ? `${props.window.storageKey}:size`
-        : null;
-      if (!key) return;
-      const raw = localStorage.getItem(key);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.width === 'number')
-        props.window.width = parsed.width;
-      if (parsed && typeof parsed.height === 'number')
-        props.window.height = parsed.height;
-  } catch {
-      // ignore
-    }
-  }
-
-  function persistSize() {
-    try {
-      const key = props.window.storageKey
-        ? `${props.window.storageKey}:size`
-        : null;
-      if (!key) return;
-      const obj = {
-        width: Number(props.window.width || 0),
-        height: Number(props.window.height || 0),
-      };
-      localStorage.setItem(key, JSON.stringify(obj));
-  } catch {
-      // ignore
-    }
-  }
-
-  function onResizeStart(e, corner = 'br') {
-    e.stopPropagation();
-    e.preventDefault();
-    if (props.window.maximized) return; // 禁止在最大化时缩放
-    resizing = true;
-    resizeCorner = corner;
-    startX = e.clientX;
-    startY = e.clientY;
-    startWidth = Number(props.window.width || 520);
-    startHeight = Number(props.window.height || 400);
-    // 记录当前窗口左上位置（来自 pos）
-    startLeft = Number(pos?.value?.x ?? 0);
-    startTop = Number(pos?.value?.y ?? 0);
-    document.addEventListener('pointermove', onResizing);
-    document.addEventListener('pointerup', onResizeEnd, { once: true });
-  }
-
-  function onResizing(e) {
-    if (!resizing) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-
-    let newW = startWidth;
-    let newH = startHeight;
-    let newLeft = startLeft;
-    let newTop = startTop;
-
-    switch (resizeCorner) {
-      case 'br':
-        newW = Math.max(MIN_WIDTH, Math.round(startWidth + dx));
-        newH = Math.max(MIN_HEIGHT, Math.round(startHeight + dy));
-        break;
-      case 'bl':
-        // 左下：宽度随鼠标向右减少，左边随之移动；高度随下拉增加
-        newW = Math.round(startWidth - dx);
-        if (newW < MIN_WIDTH) newW = MIN_WIDTH;
-        newLeft = startLeft + (startWidth - newW);
-        newH = Math.max(MIN_HEIGHT, Math.round(startHeight + dy));
-        break;
-      case 'tr':
-        // 右上：宽度随右移增加；高度随上移减少，top 需要移动
-        newW = Math.max(MIN_WIDTH, Math.round(startWidth + dx));
-        newH = Math.round(startHeight - dy);
-        if (newH < MIN_HEIGHT) newH = MIN_HEIGHT;
-        newTop = startTop + (startHeight - newH);
-        break;
-      case 'tl':
-        // 左上：宽度和高度都随移动减少，左/top 需要更新
-        newW = Math.round(startWidth - dx);
-        if (newW < MIN_WIDTH) newW = MIN_WIDTH;
-        newLeft = startLeft + (startWidth - newW);
-        newH = Math.round(startHeight - dy);
-        if (newH < MIN_HEIGHT) newH = MIN_HEIGHT;
-        newTop = startTop + (startHeight - newH);
-        break;
-    }
-
-    props.window.width = newW;
-    props.window.height = newH;
-    // 如果 left/top 发生变化，更新 pos（会在 onResizeEnd 时持久化）
-    if (typeof newLeft === 'number') pos.value.x = Math.round(newLeft);
-    if (typeof newTop === 'number') pos.value.y = Math.round(newTop);
-  }
-
-  function onResizeEnd() {
-    resizing = false;
-    document.removeEventListener('pointermove', onResizing);
-    // 持久化尺寸与位置
-    persistSize();
-    try {
-      savePosition();
-  } catch {
-      // ignore
-    }
-  }
-
-  // 初始化时尝试加载持久化尺寸
-  if (typeof window !== 'undefined') {
-    // 在下一个事件循环调用以确保 props.window 已就绪
-    setTimeout(() => loadPersistedSize(), 0);
-  }
-
-  // 组件卸载时清理定时器
-  onUnmounted(() => {
-    cancelMinimize();
-  });
 </script>
 
 <style scoped>
@@ -357,78 +162,6 @@
 
   .app-window.maximized {
     border-radius: 0;
-  }
-
-  .window-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-bottom: 1px solid #dee2e6;
-    cursor: move;
-    user-select: none;
-  }
-
-  .app-window.active .window-header {
-    background: linear-gradient(135deg, #007acc 0%, #005a9e 100%);
-    color: white;
-  }
-
-  .window-title {
-    font-weight: 600;
-    font-size: 14px;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .window-controls {
-    display: flex;
-    gap: 4px;
-  }
-
-  .control-btn {
-    width: 24px;
-    height: 24px;
-    border: none;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease;
-  }
-
-  .control-btn:hover {
-    background: rgba(0, 0, 0, 0.2);
-  }
-
-  .control-btn.close:hover {
-    background: #e74c3c;
-    color: white;
-  }
-
-  .control-btn.minimize:hover {
-    background: #f39c12;
-    color: white;
-  }
-
-  .control-btn.maximize:hover {
-    background: #27ae60;
-    color: white;
-  }
-
-  .app-window.active .control-btn {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-  }
-
-  .app-window.active .control-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
   }
 
   .window-body {
