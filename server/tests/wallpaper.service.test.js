@@ -8,7 +8,11 @@ let service;
 beforeAll(async () => {
   // Use in-memory sqlite for tests
   process.env.DB_PATH = ':memory:';
-  db = await initDatabase();
+  db = await initDatabase({
+    dbPath: ':memory:',
+    silent: true,
+    seedBuiltinApps: false,
+  });
   service = new WallpaperService(db);
 });
 

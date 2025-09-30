@@ -19,19 +19,33 @@ import { ensureBuiltinApps, seedAppsIfEmpty } from '../db/seeding.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function initDatabase() {
-  const dbPath =
-    process.env.DB_PATH || path.join(__dirname, '../../data/myweb.db');
+export async function initDatabase(options = {}) {
+  const {
+    dbPath: overridePath,
+    seedBuiltinApps = true,
+    silent = false,
+  } = options;
 
-  // 确保数据目录存在
-  const dataDir = path.dirname(dbPath);
-  try {
-    await fs.access(dataDir);
-  } catch {
-    await fs.mkdir(dataDir, { recursive: true });
+  const resolvedPath =
+    overridePath ||
+    process.env.DB_PATH ||
+    path.join(__dirname, '../../data/myweb.db');
+
+  if (overridePath) {
+    process.env.DB_PATH = overridePath;
   }
 
-  const db = new Database(dbPath);
+  // 确保数据目录存在
+  const dataDir = path.dirname(resolvedPath);
+  if (resolvedPath !== ':memory:') {
+    try {
+      await fs.access(dataDir);
+    } catch {
+      await fs.mkdir(dataDir, { recursive: true });
+    }
+  }
+
+  const db = new Database(resolvedPath);
 
   // 启用外键约束
   db.pragma('foreign_keys = ON');
@@ -94,17 +108,23 @@ export async function initDatabase() {
   }
   // 迁移: 确保贪吃蛇多人游戏表包含必要列
   try {
-    const { ensureSnakeMultiplayerColumns } = await import('../db/migration.js');
+    const { ensureSnakeMultiplayerColumns } = await import(
+      '../db/migration.js'
+    );
     ensureSnakeMultiplayerColumns(db);
   } catch (e) {
     console.warn('snake multiplayer 列迁移检查失败（非致命）:', e.message || e);
   }
   // 确保内置应用存在（用于恢复误删或旧库缺失）
-  ensureBuiltinApps(db);
-  // 数据种子：仅当 apps 表为空时插入示例应用（兼容旧逻辑）
-  seedAppsIfEmpty(db);
+  if (seedBuiltinApps) {
+    ensureBuiltinApps(db);
+    // 数据种子：仅当 apps 表为空时插入示例应用（兼容旧逻辑）
+    seedAppsIfEmpty(db);
+  }
 
-  console.log(`📊 Database initialized: ${dbPath}`);
+  if (!silent) {
+    console.log(`📊 Database initialized: ${resolvedPath}`);
+  }
 
   return db;
 }
