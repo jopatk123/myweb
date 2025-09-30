@@ -5,13 +5,16 @@ import globals from 'globals';
 import vueEslintParser from 'vue-eslint-parser';
 
 const vueRecommended = pluginVue.configs['flat/vue3-recommended'] ?? [];
-const vueConfigArray = Array.isArray(vueRecommended) ? vueRecommended : [vueRecommended];
+const vueConfigArray = Array.isArray(vueRecommended)
+  ? vueRecommended
+  : [vueRecommended];
 
 export default [
   {
     ignores: [
       '**/node_modules/**',
       '**/dist/**',
+      '**/coverage/**',
       'client/public/**',
       'server/logs/**',
       'server/data/**',
@@ -116,7 +119,10 @@ export default [
   {
     files: ['**/*.{js,vue}'],
     rules: {
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
+      'no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
     },
   },
   eslintConfigPrettier,

@@ -1,0 +1,192 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, nextTick } from 'vue';
+import { mount } from '@vue/test-utils';
+
+const listTracks = vi.fn();
+const streamUrl = vi.fn();
+const deleteTrack = vi.fn();
+const uploadTracks = vi.fn();
+const updateTrack = vi.fn();
+
+vi.mock('@/api/music.js', () => ({
+  musicApi: {
+    listTracks,
+    streamUrl,
+    deleteTrack,
+    uploadTracks,
+    updateTrack,
+  },
+}));
+
+describe('useMusicPlayer', () => {
+  let useMusicPlayer;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    streamUrl.mockReturnValue('/stream/1');
+    listTracks.mockResolvedValue({
+      data: {
+        tracks: [
+          {
+            id: 1,
+            title: 'Track One',
+            artist: 'Artist',
+            duration: 123,
+            updatedAt: 1700000000000,
+          },
+          {
+            id: 2,
+            title: 'Track Two',
+            duration: 321,
+          },
+        ],
+      },
+    });
+    const module = await import('@/composables/useMusicPlayer.js');
+    useMusicPlayer = module.useMusicPlayer;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function createPlayer() {
+    const TestHost = defineComponent({
+      setup(_, { expose }) {
+        const state = useMusicPlayer();
+        expose({ state });
+        return () => null;
+      },
+    });
+    const wrapper = mount(TestHost);
+    await nextTick();
+    return { state: wrapper.vm.state, wrapper };
+  }
+
+  it('initialise loads tracks and selects the first entry', async () => {
+    const { state, wrapper } = await createPlayer();
+
+    await state.initialize();
+    await nextTick();
+
+    expect(listTracks).toHaveBeenCalledTimes(1);
+    expect(state.tracks.value).toHaveLength(2);
+    expect(state.tracks.value[0]).toMatchObject({
+      id: 1,
+      title: 'Track One',
+      durationSeconds: 123,
+    });
+    expect(state.currentTrackId.value).toBe(1);
+    expect(state.currentTrack.value.title).toBe('Track One');
+    expect(state.loading.value).toBe(false);
+    expect(state.error.value).toBe('');
+
+    wrapper.unmount();
+  });
+
+  it('playTrack wires audio element, updates stream url and marks playing', async () => {
+    const { state, wrapper } = await createPlayer();
+    await state.initialize();
+    await nextTick();
+
+    const audioMock = {
+      src: '',
+      paused: true,
+      volume: 0,
+      muted: false,
+      preload: '',
+      crossOrigin: '',
+      play: vi.fn().mockImplementation(() => {
+        audioMock.paused = false;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+
+    state.setAudioElement(audioMock);
+
+    await state.playTrack(1);
+
+    expect(streamUrl).toHaveBeenCalledWith(1);
+    expect(audioMock.src).toContain('/stream/1?v=');
+    expect(audioMock.play).toHaveBeenCalled();
+    expect(state.isPlaying.value).toBe(true);
+    expect(state.currentTrackId.value).toBe(1);
+
+    wrapper.unmount();
+  });
+
+  it('deleteTrack removes current track and resets playback target', async () => {
+    const { state, wrapper } = await createPlayer();
+    await state.initialize();
+    await nextTick();
+
+    deleteTrack.mockResolvedValue({});
+
+    const audioMock = {
+      src: '',
+      paused: true,
+      volume: 0.5,
+      muted: false,
+      play: vi.fn().mockResolvedValue(undefined),
+      pause: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+
+    state.setAudioElement(audioMock);
+
+    await state.deleteTrack(1);
+
+    expect(deleteTrack).toHaveBeenCalledWith(1);
+    expect(state.tracks.value.map(track => track.id)).toEqual([2]);
+    expect(state.currentTrackId.value).toBe(2);
+    expect(audioMock.pause).toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('uploadTracks merges new tracks and resets upload state after delay', async () => {
+    const { state, wrapper } = await createPlayer();
+    await state.initialize();
+    await nextTick();
+
+    vi.useFakeTimers();
+
+    uploadTracks.mockImplementation(async (_files, onProgress) => {
+      onProgress?.(55, 550, 1000);
+      return {
+        data: [
+          {
+            id: 10,
+            title: 'New Upload',
+            durationSeconds: 210,
+          },
+        ],
+      };
+    });
+
+    const dummyFile = { name: 'song.mp3', size: 1 };
+
+    await state.uploadTracks([dummyFile]);
+
+    expect(uploadTracks).toHaveBeenCalled();
+    expect(state.tracks.value[0]).toMatchObject({
+      id: 10,
+      title: 'New Upload',
+      durationSeconds: 210,
+    });
+    expect(state.uploadingState.uploading).toBe(false);
+    expect(state.uploadingState.progress).toBe(55);
+
+    vi.runAllTimers();
+
+    expect(state.uploadingState.progress).toBe(0);
+    expect(state.uploadingState.filename).toBe('');
+
+    wrapper.unmount();
+  });
+});
