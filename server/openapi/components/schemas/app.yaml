@@ -1,0 +1,24 @@
+AppCreate:
+  type: object
+  properties:
+    name:
+      type: string
+    slug:
+      type: string
+    description:
+      type: string
+    icon_filename:
+      type: string
+  required:
+    - name
+    - slug
+
+AppUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+    slug:
+      type: string
+    description:
+      type: string

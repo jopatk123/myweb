@@ -1,0 +1,56 @@
+list:
+  get:
+    summary: List apps
+    responses:
+      '200':
+        description: OK
+  post:
+    summary: Create app
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/app.yaml#/AppCreate'
+    responses:
+      '201':
+        description: Created
+byId:
+  get:
+    summary: Get app by id
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: OK
+  put:
+    summary: Update app
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/app.yaml#/AppUpdate'
+    responses:
+      '200':
+        description: OK
+  delete:
+    summary: Delete app
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Deleted

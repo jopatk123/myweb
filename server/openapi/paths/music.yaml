@@ -1,0 +1,112 @@
+upload:
+  post:
+    summary: Upload music files (mp3/flac/etc)
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              file:
+                type: array
+                items:
+                  type: string
+                  format: binary
+    responses:
+      '201':
+        description: Created
+        content:
+          application/json:
+            schema:
+              $ref: '../../components/schemas/music.yaml#/ResponseMusicTracks'
+tracks:
+  get:
+    summary: List all uploaded music tracks
+    parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+      - in: query
+        name: search
+        schema:
+          type: string
+    responses:
+      '200':
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: '../../components/schemas/music.yaml#/ResponseMusicTrackList'
+trackById:
+  get:
+    summary: Get a specific music track
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: '../../components/schemas/music.yaml#/ResponseMusicTrack'
+  patch:
+    summary: Update music metadata (title/artist/album)
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/music.yaml#/MusicTrackUpdate'
+    responses:
+      '200':
+        description: Updated
+        content:
+          application/json:
+            schema:
+              $ref: '../../components/schemas/music.yaml#/ResponseMusicTrack'
+  delete:
+    summary: Delete a music track and its file
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Deleted
+trackStream:
+  get:
+    summary: Stream audio data (supports Range header)
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Audio stream
+        content:
+          audio/mpeg:
+            schema:
+              type: string
+              format: binary

@@ -1,0 +1,49 @@
+Wallpaper:
+  type: object
+  properties:
+    id:
+      type: integer
+    mimeType:
+      type: string
+    groupId:
+      type: integer
+    name:
+      type: string
+    isActive:
+      type: boolean
+    filePath:
+      type: string
+
+ResponseWallpaper:
+  type: object
+  properties:
+    code:
+      type: integer
+    data:
+      $ref: '#/Wallpaper'
+    message:
+      type: string
+
+WallpaperUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+
+GroupCreate:
+  type: object
+  properties:
+    name:
+      type: string
+    isDefault:
+      type: boolean
+  required:
+    - name
+
+GroupUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+    isCurrent:
+      type: boolean
