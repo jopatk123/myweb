@@ -23,6 +23,7 @@ export const up = async knex => {
   const db = new Database(filename);
 
   try {
+    db.pragma('busy_timeout = 5000');
     db.pragma('foreign_keys = ON');
 
     initWallpaperTables(db);
@@ -47,4 +48,8 @@ export const up = async knex => {
 
 export const down = async () => {
   // 不执行回滚：核心表结构不应被删除
+};
+
+export const config = {
+  transaction: false,
 };
