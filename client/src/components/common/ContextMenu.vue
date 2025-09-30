@@ -1,5 +1,11 @@
 <template>
-  <div v-if="modelValue" class="ctx-root" @contextmenu.prevent>
+  <div
+    v-if="modelValue"
+    class="ctx-root"
+    @contextmenu.prevent
+    @mousedown.stop
+    @mouseup.stop
+  >
     <ul
       class="ctx-menu"
       :style="{ left: `${positionX}px`, top: `${positionY}px` }"

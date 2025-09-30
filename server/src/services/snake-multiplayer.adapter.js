@@ -44,11 +44,11 @@ export class SnakeMultiplayerAdapter {
 
   // 旧接口: handleMove (竞技模式暂未在新服务实现，此处占位 保持兼容)
   async handleMove(sessionId, roomCode, direction) {
-  const room = await SnakeRoomModel.findByRoomCode(roomCode);
-  if (!room) return;
-  // 仅竞技模式
-  if (room.mode !== 'competitive') return;
-  this.snakeGame.handleCompetitiveMove(room.id, sessionId, direction);
+    const room = await SnakeRoomModel.findByRoomCode(roomCode);
+    if (!room) return;
+    // 仅竞技模式
+    if (room.mode !== 'competitive') return;
+    this.snakeGame.handleCompetitiveMove(room.id, sessionId, direction);
   }
 
   // 旧接口: leaveRoom(sessionId, roomCode)

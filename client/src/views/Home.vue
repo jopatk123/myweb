@@ -21,7 +21,7 @@
       ref="fileIconsRef"
       :files="desktopFiles"
       :icons="fileTypeIcons"
-      @open="onOpenFile"
+      @open="openFile"
     />
 
     <!-- 文件上传进度面板 -->
@@ -42,7 +42,7 @@
       :downloadUrl="selectedDownloadUrl"
       :showPreview="canPreviewSelected"
       :file="selectedFile"
-      @preview="onPreviewFromConfirm"
+      @preview="handlePreviewFromConfirm"
     />
 
     <FilePreviewModal v-model="showPreview" :file="previewFile" />
@@ -91,13 +91,16 @@
   import ContextMenu from '@/components/common/ContextMenu.vue';
   import FloatingControls from '@/components/common/FloatingControls.vue';
   import FilePreviewWindow from '@/components/file/FilePreviewWindow.vue';
+  import { useDesktopDropZone } from '@/composables/useDesktopDropZone.js';
+  import { useDesktopFileActions } from '@/composables/useDesktopFileActions.js';
+  import { useDesktopContextMenu } from '@/composables/useDesktopContextMenu.js';
 
   const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
     useWallpaper();
   const current = ref(null);
   const appIconsRef = ref(null);
   const fileIconsRef = ref(null);
-  // 文件上传 & 列表
+
   const {
     items: files,
     fetchList: fetchFiles,
@@ -110,15 +113,58 @@
     uploadQueue,
     getDownloadUrl,
   } = useFiles();
-  const dragOver = ref(false);
-  const showConfirm = ref(false);
-  const selectedFileName = ref('');
-  const selectedDownloadUrl = ref('');
-  const selectedFile = ref(null);
-  const showPreview = ref(false);
-  const previewFile = ref(null);
+
+  const onRandom = async () => {
+    const wallpaper = await randomWallpaper();
+    if (wallpaper) current.value = wallpaper;
+    ensurePreloaded(2).catch(() => {});
+  };
+
+  const { dragOver, onDragOver, onDragLeave, onDrop } = useDesktopDropZone({
+    upload: filesToUpload => upload(filesToUpload),
+    onError: () => {},
+  });
+
   const { createWindow } = useWindowManager();
+  const {
+    showConfirm,
+    selectedFileName,
+    selectedDownloadUrl,
+    selectedFile,
+    showPreview,
+    previewFile,
+    canPreviewSelected,
+    openFile,
+    handlePreviewFromConfirm,
+  } = useDesktopFileActions({
+    getDownloadUrl,
+    openFilePreviewWindow,
+    createWindow,
+    FilePreviewWindow,
+  });
+
   const { manualOpenMessageBoard } = useMessageBoardAutoOpen();
+  const openMessageBoard = () => {
+    manualOpenMessageBoard();
+  };
+
+  const { desktopMenu, openMenu, handleSelect, closeMenu } =
+    useDesktopContextMenu({
+      appIconsRef,
+      fileIconsRef,
+      onRandom,
+    });
+
+  const {
+    selectionRect,
+    onMouseDown: selectionOnMouseDown,
+    onMouseMove: selectionOnMouseMove,
+    onMouseUp: selectionOnMouseUp,
+    getSelectedIconIds,
+  } = useDesktopSelection();
+
+  useAutostartApps();
+
   const fileTypeIcons = computed(() => ({
     image: '/apps/icons/image-128.svg',
     video: '/apps/icons/video-128.svg',
@@ -128,177 +174,48 @@
     other: '/apps/icons/file-128.svg',
   }));
 
-  // 仅用于桌面显示：过滤掉被标记为小说（novel）的上传文件
   const desktopFiles = computed(() => {
     const list = unref(files) || [];
     return Array.isArray(list)
       ? list.filter(
-          f =>
-            String(f.type_category || f.typeCategory || '').toLowerCase() !==
+          file =>
+            String(file.type_category || file.typeCategory || '').toLowerCase() !==
             'novel'
         )
       : [];
   });
 
-  // 矩形选框（使用 composable 管理）
-  const {
-    selectionRect,
-    onMouseDown: selOnMouseDown,
-    onMouseMove: selOnMouseMove,
-    onMouseUp: selOnMouseUp,
-    getSelectedIconIds,
-  } = useDesktopSelection();
-
-  // 页面挂载时触发预加载（保持 2 张缓存）
   fetchCurrentGroup().then(() => {
-    // 不阻塞渲染，异步补充缓存
     ensurePreloaded(2).catch(() => {});
   });
-  // 初始加载文件列表（用于在桌面显示图标）
   fetchFiles().catch(() => {});
 
-  // autostart: 使用 composable 管理自动启动应用
-  useAutostartApps();
-
-  const onRandom = async () => {
-    const w = await randomWallpaper();
-    if (w) current.value = w;
-    // 点击切换后确保缓存维持在 2 张
-    ensurePreloaded(2).catch(() => {});
-  };
-
-  const openMessageBoard = () => {
-    manualOpenMessageBoard();
-  };
-
-  function onDragOver() {
-    dragOver.value = true;
-  }
-  function onDragLeave() {
-    dragOver.value = false;
-  }
-  function onDrop(e) {
-    dragOver.value = false;
-    const files = Array.from(e.dataTransfer?.files || []);
-    if (!files.length) return;
-    upload(files).catch(() => {});
+  function onDesktopContextmenu(event) {
+    openMenu(event);
   }
 
-  // 供未来在桌面展示文件图标时使用的打开回调
-  function onOpenFile(f) {
-    if (f && f.__preview) {
-      // 使用封装好的 helper 打开预览窗口
-      openFilePreviewWindow(f);
-      return;
-    }
-
-    selectedFile.value = f;
-    selectedFileName.value = f.originalName || f.original_name;
-    selectedDownloadUrl.value = getDownloadUrl(f.id);
-    showConfirm.value = true;
-  }
-
-  const canPreviewSelected = computed(() => {
-    const f = selectedFile.value || {};
-    const t = String(f.type_category || '');
-    if (t === 'image' || t === 'video' || t === 'word' || t === 'excel')
-      return true;
-    const name = String(
-      f.originalName ||
-        f.original_name ||
-        f.storedName ||
-        f.stored_name ||
-        f.filePath ||
-        f.file_path ||
-        ''
-    );
-    return /(\.(png|jpe?g|gif|bmp|webp|svg|avif|mp4|webm|ogg|ogv|mov|mkv|docx?|xlsx?|xlsm|xlsb))$/i.test(
-      name
-    );
-  });
-
-  function onPreviewFromConfirm(f) {
-    // 从确认下载弹窗中打开为独立窗口预览（允许多开）
-    if (f) {
-      createWindow({
-        component: FilePreviewWindow,
-        title: f.originalName || f.original_name || '文件预览',
-        appSlug: 'filePreview',
-        width: Math.min(1200, window.innerWidth * 0.9),
-        height: Math.min(800, window.innerHeight * 0.9),
-        props: { file: f },
-        storageKey: `previewPos:${f.id}`,
-      });
-      return;
-    }
-
-    previewFile.value = f;
-    showPreview.value = true;
-  }
-
-  // 桌面空白区右键菜单
-  const desktopMenu = ref({ visible: false, x: 0, y: 0, items: [] });
-  function onDesktopContextmenu(e) {
-    // 仅在点击空白处时展示（排除有最近的图标项）
-    const icon = e.target.closest('.icon-item');
-    if (icon) return; // 交给子组件
-    desktopMenu.value.x = e.clientX;
-    desktopMenu.value.y = e.clientY;
-    desktopMenu.value.items = [
-      { key: 'switch', label: '切换壁纸' },
-      { key: 'manage', label: '管理后台' },
-      { key: 'refresh', label: '刷新' },
-      { key: 'autoArrange', label: '自动排列图标' },
-    ];
-    desktopMenu.value.visible = true;
-  }
   function onDesktopMenuSelect(key) {
-    if (key === 'switch') return onRandom();
-    if (key === 'manage') {
-      window.open('/wallpapers', '_blank', 'noopener');
-      return;
-    }
-    if (key === 'refresh') {
-      location.reload();
-      return;
-    }
-    if (key === 'autoArrange') {
-      // 先排列应用图标，再承接列偏移排列文件图标
-      const nextCol = appIconsRef.value?.autoArrange
-        ? appIconsRef.value.autoArrange(0)
-        : 0;
-      Promise.resolve(nextCol)
-        .then(col => fileIconsRef.value?.autoArrange?.(col))
-        .catch(() => {});
-      return;
-    }
+    handleSelect(key);
   }
 
-  // 桌面矩形选框逻辑
-  function onDesktopMouseDown(e) {
-    selOnMouseDown(e);
+  function onDesktopMouseDown(event) {
+    closeMenu();
+    selectionOnMouseDown(event);
   }
 
-  function onDesktopMouseMove(e) {
-    selOnMouseMove(e);
+  function onDesktopMouseMove(event) {
+    selectionOnMouseMove(event);
   }
 
-  function onDesktopMouseUp(/* e */) {
-    // 在 composable 隐藏选框之前先计算选中项
+  function onDesktopMouseUp() {
     if (selectionRect.value.visible) {
       const selectedIds = getSelectedIconIds();
-      if (appIconsRef.value?.setSelectedIds) {
-        appIconsRef.value.setSelectedIds(selectedIds.apps);
-      }
-      if (fileIconsRef.value?.setSelectedIds) {
-        fileIconsRef.value.setSelectedIds(selectedIds.files);
-      }
+      appIconsRef.value?.setSelectedIds?.(selectedIds.apps);
+      fileIconsRef.value?.setSelectedIds?.(selectedIds.files);
     }
 
-    selOnMouseUp();
+    selectionOnMouseUp();
   }
-
-  // 矩形选框的具体实现已移到 composable：getSelectedIconIds / rectIntersect 在 composable 中定义
 </script>
 
 <style scoped>
