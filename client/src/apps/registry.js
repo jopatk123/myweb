@@ -47,6 +47,14 @@ export const internalApps = [
     ),
   },
   {
+    slug: 'music-player',
+    name: '音乐播放器',
+    preferredSize: { width: 960, height: 720 },
+    component: defineAsyncComponent(
+      () => import('./music-player/MusicPlayerApp.vue')
+    ),
+  },
+  {
     slug: 'gomoku',
     name: '五子棋',
     preferredSize: { width: 600, height: 800 },

@@ -87,6 +87,34 @@ export function seedAppsIfEmpty(db) {
           '🟢 Notebook app already exists, skipping seed for notebook'
         );
       }
+
+      const hasMusic = db
+        .prepare('SELECT id FROM apps WHERE slug = ? AND is_deleted = 0')
+        .get('music-player');
+      if (!hasMusic) {
+        try {
+          insert.run(
+            '音乐播放器',
+            'music-player',
+            '上传并播放本地音乐，支持播放列表管理',
+            'music.svg',
+            gid,
+            1,
+            1,
+            null
+          );
+          console.log('🌱 Seeded example app: music-player');
+        } catch (e) {
+          console.warn(
+            'seedAppsIfEmpty: failed to seed music-player app:',
+            e?.message || e
+          );
+        }
+      } else {
+        console.log(
+          '🟢 Music-player app already exists, skipping seed for music-player'
+        );
+      }
     }
   } catch (e) {
     console.warn('seedAppsIfEmpty warning:', e?.message || e);
@@ -156,6 +184,15 @@ export function ensureBuiltinApps(db) {
         description: '用于站内留言与通知展示',
         icon_filename: 'message-board-128.svg',
         is_visible: 0,
+        is_builtin: 1,
+        target_url: null,
+      },
+      {
+        name: '音乐播放器',
+        slug: 'music-player',
+        description: '上传并播放本地音乐，支持播放列表管理',
+        icon_filename: 'music.svg',
+        is_visible: 1,
         is_builtin: 1,
         target_url: null,
       },

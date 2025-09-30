@@ -92,6 +92,7 @@ server/uploads/files/*
 server/uploads/wallpapers/*
 server/uploads/novels/*
 server/uploads/message-images/*
+server/uploads/music/*
 
 # Keep .gitkeep files
 !.gitkeep

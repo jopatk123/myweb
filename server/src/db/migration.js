@@ -177,14 +177,15 @@ export function ensureFilesTypeCategoryIncludesNovel(db) {
     // If table creation SQL contains the CHECK and already includes 'novel', nothing to do
     if (
       /CHECK\s*\(type_category\s+IN/i.test(createSql) &&
-      /'novel'/.test(createSql)
+      /'novel'/.test(createSql) &&
+      /'music'/.test(createSql)
     ) {
       return;
     }
 
-    // Otherwise, recreate the table with the extended CHECK including 'novel'
+    // Otherwise, recreate the table with the extended CHECK including 'novel' and 'music'
     console.log(
-      '🛠️ Migrating files table to include \u2018novel\u2019 in type_category CHECK'
+      '🛠️ Migrating files table to include “novel” and “music” in type_category CHECK'
     );
 
     const migrateFiles = db.transaction(() => {
@@ -196,7 +197,7 @@ export function ensureFilesTypeCategoryIncludesNovel(db) {
           file_path TEXT NOT NULL,
           mime_type TEXT NOT NULL,
           file_size INTEGER NOT NULL,
-          type_category TEXT NOT NULL CHECK(type_category IN ('image','video','word','excel','archive','other','novel')),
+          type_category TEXT NOT NULL CHECK(type_category IN ('image','video','word','excel','archive','other','novel','music')),
           file_url TEXT,
           uploader_id TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

@@ -151,8 +151,15 @@ chmod +x build_myweb_images_tar.sh
 
 - `GET /api/wallpapers` — 获取壁纸列表
 - `POST /api/files/upload` — 上传普通文件/小说
+- `GET /api/music/tracks` — 列出已上传的音乐并获取播放信息
+- `POST /api/music/upload` — 批量上传音频文件，持久化并生成播放列表
 - `GET /api/myapps` — 获取已注册的桌面应用
 - `POST /internal/logs` — 收集客户端 AI 日志
+
+### 内置应用亮点
+
+- **音乐播放器**：支持上传本地音频（mp3/flac 等），自动提取基础元数据，提供播放/循环/随机/音量等控制，并可持久化播放列表。
+- 小说阅读器、笔记本、贪吃蛇、下班计时器等应用依旧可用，支持桌面化窗口体验。
 
 ---
 

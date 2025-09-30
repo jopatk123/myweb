@@ -13,6 +13,7 @@ import {
   initMessageTables,
   initSnakeMultiplayerTables,
   initWorkTimerTables,
+  initMusicTables,
 } from '../db/schema.js';
 import {
   ensureWallpaperColumns,
@@ -89,6 +90,7 @@ export async function initDatabase(options = {}) {
     initAppTables(db);
     initFileTables(db);
     initNovelTables(db);
+    initMusicTables(db);
     try {
       initNovelBookmarkTables(db);
     } catch (e) {
@@ -138,6 +140,11 @@ export async function initDatabase(options = {}) {
     ensureSnakeMultiplayerColumns(db);
   } catch (e) {
     console.warn('snake multiplayer 列迁移检查失败（非致命）:', e.message || e);
+  }
+  try {
+    initMusicTables(db);
+  } catch (e) {
+    console.warn('无法初始化 music_tracks 表（非致命）:', e.message || e);
   }
   // 确保内置应用存在（用于恢复误删或旧库缺失）
   if (seedBuiltinApps) {

@@ -317,6 +317,122 @@ paths:
         '201':
           description: Created
 
+  /api/music/upload:
+    post:
+      summary: Upload music files (mp3/flac/etc)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseMusicTracks'
+
+  /api/music/tracks:
+    get:
+      summary: List all uploaded music tracks
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseMusicTrackList'
+
+  /api/music/tracks/{id}:
+    get:
+      summary: Get a specific music track
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseMusicTrack'
+    patch:
+      summary: Update music metadata (title/artist/album)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MusicTrackUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseMusicTrack'
+    delete:
+      summary: Delete a music track and its file
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+
+  /api/music/tracks/{id}/stream:
+    get:
+      summary: Stream audio data (supports Range header)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Audio stream
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+
 components:
   schemas:
     Wallpaper:
@@ -389,4 +505,108 @@ components:
         slug:
           type: string
         description:
+          type: string
+
+    MusicTrack:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+        genre:
+          type: string
+        durationSeconds:
+          type: integer
+        bitrate:
+          type: integer
+        sampleRate:
+          type: integer
+        fileUrl:
+          type: string
+        streamUrl:
+          type: string
+        downloadUrl:
+          type: string
+        fileId:
+          type: integer
+        originalName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MusicTrackUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+        genre:
+          type: string
+
+    ResponseMusicTrack:
+      type: object
+      properties:
+        code:
+          type: integer
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/MusicTrack'
+        message:
+          type: string
+
+    ResponseMusicTrackList:
+      type: object
+      properties:
+        code:
+          type: integer
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            tracks:
+              type: array
+              items:
+                $ref: '#/components/schemas/MusicTrack'
+            pagination:
+              type: object
+              properties:
+                page:
+                  type: integer
+                limit:
+                  type: integer
+                total:
+                  type: integer
+                totalPages:
+                  type: integer
+        message:
+          type: string
+
+    ResponseMusicTracks:
+      type: object
+      properties:
+        code:
+          type: integer
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/MusicTrack'
+            - type: array
+              items:
+                $ref: '#/components/schemas/MusicTrack'
+        message:
           type: string

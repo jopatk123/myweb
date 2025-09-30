@@ -10,6 +10,13 @@ const __dirname = path.dirname(__filename);
 
 function detectTypeCategory(mimeType, originalName = '') {
   const mt = String(mimeType || '').toLowerCase();
+  if (mt.startsWith('audio/')) return 'music';
+  if (
+    /(\.mp3|\.wav|\.flac|\.aac|\.ogg|\.m4a|\.wma|\.aiff|\.alac)$/i.test(
+      originalName
+    )
+  )
+    return 'music';
   if (mt.startsWith('image/')) return 'image';
   if (mt.startsWith('video/')) return 'video';
   if (
