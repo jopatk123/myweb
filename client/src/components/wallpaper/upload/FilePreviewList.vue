@@ -17,6 +17,22 @@
           </span>
         </p>
         <p v-if="item.wasCompressed" class="compression-notice">已自动压缩</p>
+
+        <div
+          v-if="showProgress && typeof item.progress === 'number'"
+          class="progress-wrapper"
+        >
+          <div class="progress-track">
+            <div
+              class="progress-value"
+              role="presentation"
+              :style="{ width: progressValue(item.progress) + '%' }"
+            ></div>
+          </div>
+          <span class="progress-label"
+            >{{ progressValue(item.progress) }}%</span
+          >
+        </div>
       </div>
       <button type="button" @click="$emit('remove', index)" class="remove-btn">
         &times;
@@ -28,9 +44,16 @@
 <script setup>
   import { formatFileSize } from '@/composables/useImageProcessing.js';
 
-  defineProps({
+  const { items, showProgress } = defineProps({
     items: { type: Array, default: () => [] },
+    showProgress: { type: Boolean, default: false },
   });
+
+  const progressValue = value => {
+    const n = Number(value);
+    if (Number.isNaN(n)) return 0;
+    return Math.max(0, Math.min(100, Math.round(n)));
+  };
 
   defineEmits(['remove']);
 </script>
@@ -82,6 +105,30 @@
     font-size: 11px;
     color: #28a745;
     font-weight: 500;
+  }
+  .progress-wrapper {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    background: #e6ebf0;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-value {
+    height: 100%;
+    background: #007bff;
+    transition: width 0.2s ease;
+  }
+  .progress-label {
+    font-size: 12px;
+    color: #6c7a89;
+    min-width: 32px;
+    text-align: right;
   }
   .remove-btn {
     background: #dc3545;

@@ -1,103 +1,84 @@
 <template>
-  <div class="modal-overlay" @click="$emit('close')">
-    <div class="modal-content" ref="modalRef" :style="modalStyle" @click.stop>
-      <div class="modal-header" @pointerdown.stop.prevent="onHeaderPointerDown">
-        <h3>上传壁纸</h3>
-        <button @click="$emit('close')" class="close-btn">&times;</button>
+  <WallpaperUploadModalShell
+    title="上传壁纸"
+    storage-key="wallpaperUploadPos"
+    @close="handleClose"
+  >
+    <form @submit.prevent="handleUpload">
+      <div class="form-group">
+        <label>选择分组：</label>
+        <select v-model="selectedGroupId">
+          <option value="">默认分组</option>
+          <option v-for="group in groups" :key="group.id" :value="group.id">
+            {{ group.name }}
+          </option>
+        </select>
       </div>
 
-      <div class="modal-body">
-        <form @submit.prevent="handleUpload">
-          <!-- 分组选择 -->
-          <div class="form-group">
-            <label>选择分组：</label>
-            <select v-model="selectedGroupId">
-              <option value="">默认分组</option>
-              <option v-for="group in groups" :key="group.id" :value="group.id">
-                {{ group.name }}
-              </option>
-            </select>
-          </div>
-
-          <!-- 名称输入 -->
-          <div class="form-group">
-            <label for="wallpaper-name">名称：</label>
-            <input
-              type="text"
-              id="wallpaper-name"
-              v-model="wallpaperName"
-              placeholder="请输入壁纸名称"
-            />
-          </div>
-
-          <!-- 描述已移除 -->
-
-          <!-- 文件选择 -->
-          <div class="form-group">
-            <label>选择图片：</label>
-            <FileDropzone
-              class="dropzone"
-              accept="image/*"
-              :multiple="false"
-              @files-selected="handleFiles"
-            >
-              <span v-if="selectedFiles.length === 0">
-                点击选择图片文件<br />
-                <small
-                  >最小分辨率：800x600，超过7680x4320会自动压缩；请保护文件大小
-                  &lt;= 10MB</small
-                >
-              </span>
-              <span v-else
-                >已选择 <strong>{{ selectedFiles.length }}</strong> 个文件</span
-              >
-            </FileDropzone>
-          </div>
-
-          <!-- 文件预览 -->
-          <FilePreviewList :items="selectedFiles" @remove="removeFile" />
-
-          <!-- 错误提示 -->
-          <div v-if="error" class="error-message">{{ error }}</div>
-
-          <!-- 上传进度 -->
-          <div v-if="uploading" class="upload-progress">
-            <div class="progress-bar">
-              <div
-                class="progress-fill"
-                :style="{ width: uploadProgress + '%' }"
-              ></div>
-            </div>
-            <p>上传中... {{ uploadProgress }}%</p>
-          </div>
-
-          <div class="modal-actions">
-            <button
-              type="button"
-              @click="$emit('close')"
-              class="btn btn-secondary"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              :disabled="selectedFiles.length === 0 || uploading"
-              class="btn btn-primary"
-            >
-              {{ uploading ? '上传中...' : '上传' }}
-            </button>
-          </div>
-        </form>
+      <div class="form-group">
+        <label for="wallpaper-name">名称：</label>
+        <input
+          type="text"
+          id="wallpaper-name"
+          v-model="wallpaperName"
+          placeholder="请输入壁纸名称"
+        />
       </div>
-    </div>
-  </div>
+
+      <div class="form-group">
+        <label>选择图片：</label>
+        <FileDropzone
+          class="dropzone"
+          accept="image/*"
+          :multiple="false"
+          @files-selected="handleFiles"
+        >
+          <span v-if="!hasFiles">
+            点击选择图片文件<br />
+            <small
+              >最小分辨率：800x600，超过7680x4320会自动压缩；请保护文件大小
+              &lt;= 10MB</small
+            >
+          </span>
+          <span v-else
+            >已选择 <strong>{{ files.length }}</strong> 个文件</span
+          >
+        </FileDropzone>
+      </div>
+
+      <FilePreviewList :items="files" @remove="removeFile" />
+
+      <div v-if="error" class="error-message">{{ error }}</div>
+
+      <div v-if="uploading" class="upload-progress">
+        <div class="progress-bar">
+          <div
+            class="progress-fill"
+            :style="{ width: overallProgress + '%' }"
+          ></div>
+        </div>
+        <p>上传中... {{ overallProgress }}%</p>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" @click="handleClose">
+          取消
+        </button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          :disabled="!hasFiles || uploading"
+        >
+          {{ uploading ? '上传中...' : '上传' }}
+        </button>
+      </div>
+    </form>
+  </WallpaperUploadModalShell>
 </template>
 
 <script setup>
-  import { ref } from 'vue';
-  import { useWallpaper } from '@/composables/useWallpaper.js';
-  import { processImageFile } from '@/composables/useImageProcessing.js';
-  import { useDraggableModal } from '@/composables/useDraggableModal.js';
+  import WallpaperUploadModalShell from '@/components/wallpaper/WallpaperUploadModalShell.vue';
+  import { useWallpaperUploader } from '@/composables/useWallpaperUploader.js';
   import FileDropzone from '@/components/wallpaper/upload/FileDropzone.vue';
   import FilePreviewList from '@/components/wallpaper/upload/FilePreviewList.vue';
 
@@ -107,131 +88,38 @@
 
   const emit = defineEmits(['close', 'uploaded']);
 
-  const { uploadWallpaper } = useWallpaper();
-
-  const selectedGroupId = ref('');
-  const wallpaperName = ref('');
-  const selectedFiles = ref([]);
-  const uploading = ref(false);
-  const uploadProgress = ref(0);
-  const error = ref('');
-
-  const { modalRef, modalStyle, onHeaderPointerDown } =
-    useDraggableModal('wallpaperUploadPos');
-
-  const handleFiles = async filesArray => {
-    const files = Array.from(filesArray || []);
-    if (files.length === 0) return;
-
-    const file = files[0];
-    selectedFiles.value = [];
-    error.value = '';
-    wallpaperName.value = file.name.split('.').slice(0, -1).join('.');
-
-    try {
-      const item = await processImageFile(file, {
-        minWidth: 800,
-        minHeight: 600,
-        maxWidth: 7680,
-        maxHeight: 4320,
-        maxSizeMB: 10,
-      });
-      selectedFiles.value.push(item);
-    } catch (err) {
-      console.error('处理图片时出错:', err);
-      error.value = err.message || '处理图片时出错，请重试';
-    }
-  };
-
-  const removeFile = index => {
-    selectedFiles.value.splice(index, 1);
-  };
+  const {
+    selectedGroupId,
+    files,
+    wallpaperName,
+    uploading,
+    error,
+    hasFiles,
+    overallProgress,
+    handleFiles,
+    removeFile,
+    upload,
+    reset,
+  } = useWallpaperUploader({ multiple: false });
 
   const handleUpload = async () => {
-    if (selectedFiles.value.length === 0) return;
-    uploading.value = true;
-    uploadProgress.value = 0;
-    error.value = '';
+    if (!hasFiles.value) return;
     try {
-      const fileItem = selectedFiles.value[0];
-      await uploadWallpaper(
-        fileItem.file,
-        selectedGroupId.value || null,
-        wallpaperName.value,
-        progress => {
-          uploadProgress.value = progress;
-        }
-      );
+      await upload();
       emit('uploaded');
+      reset();
     } catch (err) {
-      error.value = err.message || '上传失败';
-    } finally {
-      uploading.value = false;
-      uploadProgress.value = 0;
+      // 错误已在组合函数中处理
     }
+  };
+
+  const handleClose = () => {
+    reset();
+    emit('close');
   };
 </script>
 
 <style scoped>
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-
-  .modal-content {
-    background: white;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-    cursor: move;
-    user-select: none;
-  }
-
-  .modal-header h3 {
-    margin: 0;
-    color: #333;
-  }
-
-  .close-btn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #666;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .close-btn:hover {
-    color: #333;
-  }
-
-  .modal-body {
-    padding: 20px;
-  }
-
   .form-group {
     margin-bottom: 20px;
   }
@@ -267,23 +155,16 @@
       border-color 0.15s ease,
       box-shadow 0.15s ease;
   }
+
   .dropzone:hover {
     border-color: #9fb0c7;
     box-shadow: 0 6px 18px rgba(16, 24, 40, 0.06);
   }
+
   .dropzone small {
     display: block;
     color: #6c7a89;
     margin-top: 6px;
-  }
-
-  .preview-wrap {
-    margin-top: 12px;
-  }
-  .preview-wrap img {
-    max-width: 140px;
-    border-radius: 6px;
-    box-shadow: 0 6px 18px rgba(16, 24, 40, 0.06);
   }
 
   .error-message {
@@ -311,48 +192,5 @@
     height: 100%;
     background: #007bff;
     transition: width 0.3s ease;
-  }
-
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-  }
-
-  .btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s ease;
-  }
-
-  .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: #007bff;
-    color: white;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: #0056b3;
-  }
-
-  .btn {
-    box-shadow: 0 2px 6px rgba(16, 24, 40, 0.06);
-  }
-
-  .btn-secondary {
-    background: #6c757d;
-    color: white;
-  }
-
-  .btn-secondary:hover {
-    background: #545b62;
   }
 </style>
