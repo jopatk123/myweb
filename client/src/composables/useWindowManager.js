@@ -184,9 +184,9 @@ export function useWindowManager() {
     restoreWindow,
     toggleMaximize,
     findWindowByApp,
-  findWindowByAppAll,
+    findWindowByAppAll,
     getAllWindows,
     getActiveWindow,
-  showWindowWithoutFocus,
+    showWindowWithoutFocus,
   };
 }

@@ -20,7 +20,8 @@
     "format:check": "prettier --check \"**/*.{js,vue,css,md,json,yml,yaml}\"",
     "lint": "eslint --fix \"**/*.{js,vue}\"",
     "lint:check": "eslint \"**/*.{js,vue}\"",
-    "contract-test": "spectral lint openapi.yaml --format json > contract-report.json"
+    "contract-test": "spectral lint openapi.yaml --format json > contract-report.json",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@babel/core": "^7.28.3",

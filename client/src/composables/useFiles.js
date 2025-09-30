@@ -80,7 +80,7 @@ export function useFiles() {
         const file = fileArray[i];
         currentFileName.value = file.name;
 
-    await filesApi.upload([file], (progress) => {
+        await filesApi.upload([file], progress => {
           // 计算当前文件的已上传字节数
           const currentFileUploaded = Math.round((progress / 100) * file.size);
           // 累积总上传字节数
