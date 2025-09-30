@@ -15,7 +15,8 @@ export default defineConfig({
     host: true,
     proxy: (() => {
       const backendPort = process.env.BACKEND_PORT || process.env.PORT || 3000;
-      const backendHost = process.env.BACKEND_HOST || `localhost:${backendPort}`;
+      const backendHost =
+        process.env.BACKEND_HOST || `localhost:${backendPort}`;
       const httpTarget = `http://${backendHost}`;
       const wsTarget = `ws://${backendHost}`;
       return {
