@@ -47,19 +47,29 @@ export class NovelBookmarkModel {
   create({
     bookId,
     fileId = null,
+    novelId = null,
     title,
     chapterIndex = 0,
     scrollPosition = 0,
     note = null,
     deviceId = null,
   }) {
+    let resolvedNovelId = novelId;
+    if (resolvedNovelId == null && fileId != null) {
+      const row = this.db
+        .prepare('SELECT id FROM novels WHERE file_id = ?')
+        .get(fileId);
+      resolvedNovelId = row ? row.id : null;
+    }
+
     const stmt = this.db.prepare(`
-      INSERT INTO novel_bookmarks (book_id, file_id, title, chapter_index, scroll_position, note, device_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO novel_bookmarks (book_id, file_id, novel_id, title, chapter_index, scroll_position, note, device_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const res = stmt.run(
       bookId,
       fileId,
+      resolvedNovelId,
       title,
       chapterIndex,
       scrollPosition,
@@ -127,6 +137,21 @@ export class NovelBookmarkModel {
       .run(bookId);
   }
 
+  deleteByFileId(fileId) {
+    return this.db
+      .prepare(
+        `
+      DELETE FROM novel_bookmarks
+      WHERE file_id = ?
+         OR (
+           CAST(file_id AS INTEGER) = CAST(? AS INTEGER)
+           AND file_id IS NOT NULL
+         )
+    `
+      )
+      .run(fileId, fileId);
+  }
+
   // 获取所有书签（用于同步）
   findAll() {
     return this.db
@@ -139,16 +164,24 @@ export class NovelBookmarkModel {
   // 批量创建书签（用于同步）
   batchCreate(bookmarks) {
     const stmt = this.db.prepare(`
-      INSERT INTO novel_bookmarks (book_id, file_id, title, chapter_index, scroll_position, note, device_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO novel_bookmarks (book_id, file_id, novel_id, title, chapter_index, scroll_position, note, device_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const transaction = this.db.transaction(bookmarks => {
       const results = [];
       for (const bookmark of bookmarks) {
+        let resolvedNovelId = bookmark.novelId ?? null;
+        if (resolvedNovelId == null && bookmark.fileId != null) {
+          const row = this.db
+            .prepare('SELECT id FROM novels WHERE file_id = ?')
+            .get(bookmark.fileId);
+          resolvedNovelId = row ? row.id : null;
+        }
         const res = stmt.run(
           bookmark.bookId,
           bookmark.fileId,
+          resolvedNovelId,
           bookmark.title,
           bookmark.chapterIndex,
           bookmark.scrollPosition,

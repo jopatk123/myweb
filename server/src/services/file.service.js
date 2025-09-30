@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { FileModel } from '../models/file.model.js';
 import { NovelModel } from '../models/novel.model.js';
+import { NovelBookmarkModel } from '../models/novel-bookmark.model.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +40,7 @@ export class FileService {
   constructor(db) {
     this.model = new FileModel(db);
     this.novelModel = new NovelModel(db);
+    this.bookmarkModel = new NovelBookmarkModel(db);
   }
 
   list({ page = 1, limit = 20, type = null, search = null } = {}) {
@@ -95,13 +97,24 @@ export class FileService {
 
     // 1) 事务：删除 files 记录与 novels 关联记录
     const transaction = db.transaction(() => {
+      const normalizedCategory = (file.type_category || file.typeCategory || '')
+        .toLowerCase()
+        .trim();
+      const novelRow =
+        normalizedCategory === 'novel'
+          ? this.novelModel.findByFilePath(filePath)
+          : null;
+
       this.model.delete(id);
-      if (
-        (file.type_category || file.typeCategory || '').toLowerCase() ===
-        'novel'
-      ) {
+
+      if (normalizedCategory === 'novel') {
         this.novelModel.deleteByFilePath(filePath);
+        if (novelRow) {
+          this.bookmarkModel.deleteByBookId(novelRow.id);
+        }
       }
+
+      this.bookmarkModel.deleteByFileId(id);
     });
 
     transaction();

@@ -2,22 +2,47 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
+import knex from 'knex';
 import {
   initWallpaperTables,
   initAppTables,
   initFileTables,
   initNovelTables,
-  initNotebookTables,
   initNovelBookmarkTables,
+  initNotebookTables,
   initMessageTables,
   initSnakeMultiplayerTables,
+  initWorkTimerTables,
 } from '../db/schema.js';
-import { ensureWallpaperColumns, ensureAppsColumns } from '../db/migration.js';
-import { ensureFilesTypeCategoryIncludesNovel } from '../db/migration.js';
+import {
+  ensureWallpaperColumns,
+  ensureAppsColumns,
+  ensureNovelRelations,
+  ensureFilesTypeCategoryIncludesNovel,
+  ensureSnakeMultiplayerColumns,
+} from '../db/migration.js';
 import { ensureBuiltinApps, seedAppsIfEmpty } from '../db/seeding.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+async function runMigrations(resolvedPath) {
+  const knexConfig = {
+    client: 'better-sqlite3',
+    connection: { filename: resolvedPath },
+    migrations: {
+      directory: path.join(__dirname, '../migrations'),
+    },
+    useNullAsDefault: true,
+  };
+
+  const migrator = knex(knexConfig);
+  try {
+    await migrator.migrate.latest();
+  } finally {
+    await migrator.destroy();
+  }
+}
 
 export async function initDatabase(options = {}) {
   const {
@@ -45,6 +70,12 @@ export async function initDatabase(options = {}) {
     }
   }
 
+  const useInMemory = resolvedPath === ':memory:';
+
+  if (!useInMemory) {
+    await runMigrations(resolvedPath);
+  }
+
   const db = new Database(resolvedPath);
 
   // 启用外键约束
@@ -53,40 +84,31 @@ export async function initDatabase(options = {}) {
   // 设置WAL模式以提高并发性能
   db.pragma('journal_mode = WAL');
 
-  // 创建表
-  initWallpaperTables(db);
-  initAppTables(db);
-  initFileTables(db);
-  // 新增 novels 表初始化
-  initNovelTables(db);
-  // 新增 novel_bookmarks 表初始化
-  try {
-    initNovelBookmarkTables(db);
-  } catch (e) {
-    console.warn('无法初始化 novel_bookmarks 表（非致命）:', e.message || e);
-  }
-  // 新增 notebook 表初始化
-  initNotebookTables(db);
-  // 新增 work-timer 表初始化
-  try {
-    const { initWorkTimerTables } = await import('../db/schema.js');
+  if (useInMemory) {
+    initWallpaperTables(db);
+    initAppTables(db);
+    initFileTables(db);
+    initNovelTables(db);
+    try {
+      initNovelBookmarkTables(db);
+    } catch (e) {
+      console.warn('无法初始化 novel_bookmarks 表（非致命）:', e.message || e);
+    }
+    initNotebookTables(db);
     initWorkTimerTables(db);
-  } catch (e) {
-    console.warn('无法初始化 work-timer 表（非致命）:', e.message || e);
-  }
-
-  // 新增 message board 表初始化
-  try {
-    initMessageTables(db);
-  } catch (e) {
-    console.warn('无法初始化 message board 表（非致命）:', e.message || e);
-  }
-
-  // 新增 snake multiplayer 表初始化
-  try {
-    initSnakeMultiplayerTables(db);
-  } catch (e) {
-    console.warn('无法初始化 snake multiplayer 表（非致命）:', e.message || e);
+    try {
+      initMessageTables(db);
+    } catch (e) {
+      console.warn('无法初始化 message board 表（非致命）:', e.message || e);
+    }
+    try {
+      initSnakeMultiplayerTables(db);
+    } catch (e) {
+      console.warn(
+        '无法初始化 snake multiplayer 表（非致命）:',
+        e.message || e
+      );
+    }
   }
 
   // 迁移: 确保缺失列存在
@@ -106,11 +128,13 @@ export async function initDatabase(options = {}) {
   } catch (e) {
     console.warn('文件类型分类迁移检查失败（非致命）:', e.message || e);
   }
+  try {
+    ensureNovelRelations(db);
+  } catch (e) {
+    console.warn('小说相关表迁移失败（非致命）:', e.message || e);
+  }
   // 迁移: 确保贪吃蛇多人游戏表包含必要列
   try {
-    const { ensureSnakeMultiplayerColumns } = await import(
-      '../db/migration.js'
-    );
     ensureSnakeMultiplayerColumns(db);
   } catch (e) {
     console.warn('snake multiplayer 列迁移检查失败（非致命）:', e.message || e);

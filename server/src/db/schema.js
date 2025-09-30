@@ -163,10 +163,14 @@ export function initNovelTables(db) {
       file_size INTEGER NOT NULL,
       file_url TEXT,
       uploader_id TEXT,
+      file_id INTEGER UNIQUE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
     );
 
+    CREATE INDEX IF NOT EXISTS idx_novels_file_path ON novels(file_path);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_novels_file_id ON novels(file_id) WHERE file_id IS NOT NULL;
     CREATE INDEX IF NOT EXISTS idx_novels_created_at ON novels(created_at);
     CREATE INDEX IF NOT EXISTS idx_novels_uploader_id ON novels(uploader_id);
   `;
@@ -184,7 +188,8 @@ export function initNovelBookmarkTables(db) {
     CREATE TABLE IF NOT EXISTS novel_bookmarks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       book_id TEXT NOT NULL,
-      file_id TEXT,
+      novel_id INTEGER,
+      file_id INTEGER,
       title TEXT NOT NULL,
       chapter_index INTEGER NOT NULL DEFAULT 0,
       scroll_position INTEGER DEFAULT 0,
@@ -192,11 +197,14 @@ export function initNovelBookmarkTables(db) {
       device_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      deleted_at DATETIME DEFAULT NULL
+      deleted_at DATETIME DEFAULT NULL,
+      FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
+      FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
     );
 
     CREATE INDEX IF NOT EXISTS idx_novel_bookmarks_book_id ON novel_bookmarks(book_id);
     CREATE INDEX IF NOT EXISTS idx_novel_bookmarks_file_id ON novel_bookmarks(file_id);
+    CREATE INDEX IF NOT EXISTS idx_novel_bookmarks_novel_id ON novel_bookmarks(novel_id);
     CREATE INDEX IF NOT EXISTS idx_novel_bookmarks_device_id ON novel_bookmarks(device_id);
     CREATE INDEX IF NOT EXISTS idx_novel_bookmarks_created_at ON novel_bookmarks(created_at);
   `;

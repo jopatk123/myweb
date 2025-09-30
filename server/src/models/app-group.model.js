@@ -131,11 +131,17 @@ export class AppGroupModel {
       );
     }
 
-    // 删除分组记录（物理删除）
-    const sql = `DELETE FROM app_groups WHERE id = ?`;
+    // 标记软删除
+    const sql = `
+      UPDATE app_groups
+      SET deleted_at = CURRENT_TIMESTAMP,
+          is_default = CASE WHEN is_default = 1 THEN 0 ELSE is_default END,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
     const info = this.db.prepare(sql).run(id);
     console.log(
-      '[AppGroupModel.softDelete] deleted id=',
+      '[AppGroupModel.softDelete] soft-deleted id=',
       id,
       'changes=',
       info.changes

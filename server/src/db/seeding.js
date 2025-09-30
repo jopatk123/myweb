@@ -155,20 +155,20 @@ export function ensureBuiltinApps(db) {
         slug: 'message-board',
         description: '用于站内留言与通知展示',
         icon_filename: 'message-board-128.svg',
-  is_visible: 0,
+        is_visible: 0,
         is_builtin: 1,
         target_url: null,
       },
     ];
 
     const findStmt = db.prepare(
-      'SELECT id, is_deleted FROM apps WHERE slug = ?'
+      'SELECT id, is_deleted, is_builtin, description, icon_filename, target_url, is_visible FROM apps WHERE slug = ?'
     );
     const insertStmt = db.prepare(
       `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_builtin, target_url, is_deleted) VALUES (?,?,?,?,?,?,?,?,?)`
     );
-    const updateStmt = db.prepare(
-      `UPDATE apps SET name = ?, description = ?, icon_filename = ?, is_visible = ?, is_builtin = ?, target_url = ?, is_deleted = 0, updated_at = CURRENT_TIMESTAMP WHERE slug = ?`
+    const restoreStmt = db.prepare(
+      `UPDATE apps SET is_deleted = 0, is_builtin = 1, updated_at = CURRENT_TIMESTAMP WHERE slug = ?`
     );
 
     // ensure default group id exists
@@ -194,29 +194,40 @@ export function ensureBuiltinApps(db) {
           0
         );
         console.log(`🌱 Inserted builtin app: ${b.slug}`);
-      } else if (row.is_deleted === 1) {
-        updateStmt.run(
-          b.name,
-          b.description,
-          b.icon_filename,
-          b.is_visible,
-          b.is_builtin,
-          b.target_url,
-          b.slug
-        );
+        continue;
+      }
+
+      if (row.is_deleted === 1) {
+        restoreStmt.run(b.slug);
         console.log(`♻️ Restored builtin app: ${b.slug}`);
-      } else {
-        // ensure it is marked as builtin and visible
-        db.prepare(
-          'UPDATE apps SET is_builtin = ?, is_visible = ?, icon_filename = ?, description = ?, target_url = ? WHERE slug = ?'
-        ).run(
-          b.is_builtin,
-          b.is_visible,
-          b.icon_filename,
-          b.description,
-          b.target_url,
-          b.slug
-        );
+      }
+
+      const patch = [];
+      const params = [];
+
+      if (!row.is_builtin) {
+        patch.push('is_builtin = 1');
+      }
+
+      if (!row.icon_filename && b.icon_filename) {
+        patch.push('icon_filename = ?');
+        params.push(b.icon_filename);
+      }
+
+      if (!row.description && b.description) {
+        patch.push('description = ?');
+        params.push(b.description);
+      }
+
+      if (row.target_url === null && b.target_url !== null) {
+        patch.push('target_url = ?');
+        params.push(b.target_url);
+      }
+
+      if (patch.length > 0) {
+        patch.push('updated_at = CURRENT_TIMESTAMP');
+        const sql = `UPDATE apps SET ${patch.join(', ')} WHERE slug = ?`;
+        db.prepare(sql).run(...params, b.slug);
       }
     }
   } catch (e) {
