@@ -1,11 +1,11 @@
-import { apiFetch, buildApiUrl } from './httpClient.js';
+import { apiFetch } from './httpClient.js';
 
 const API_BASE = '/novel-bookmarks';
 
 export const bookmarksApi = {
   // 创建书签
   async create(bookmarkData) {
-  const response = await apiFetch(buildApiUrl(API_BASE), {
+    const response = await apiFetch(API_BASE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -23,7 +23,7 @@ export const bookmarksApi = {
   // 获取指定书籍的所有书签
   async getByBookId(bookId) {
     const response = await apiFetch(
-      buildApiUrl(`${API_BASE}/book/${encodeURIComponent(bookId)}`)
+      `${API_BASE}/book/${encodeURIComponent(bookId)}`
     );
 
     if (!response.ok) {
@@ -36,7 +36,7 @@ export const bookmarksApi = {
   // 获取指定文件的所有书签
   async getByFileId(fileId) {
     const response = await apiFetch(
-      buildApiUrl(`${API_BASE}/file/${encodeURIComponent(fileId)}`)
+      `${API_BASE}/file/${encodeURIComponent(fileId)}`
     );
 
     if (!response.ok) {
@@ -48,7 +48,7 @@ export const bookmarksApi = {
 
   // 更新书签
   async update(id, updates) {
-  const response = await apiFetch(buildApiUrl(`${API_BASE}/${id}`), {
+    const response = await apiFetch(`${API_BASE}/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -65,7 +65,7 @@ export const bookmarksApi = {
 
   // 删除书签
   async delete(id) {
-  const response = await apiFetch(buildApiUrl(`${API_BASE}/${id}`), {
+    const response = await apiFetch(`${API_BASE}/${id}`, {
       method: 'DELETE',
     });
 
@@ -79,7 +79,7 @@ export const bookmarksApi = {
   // 删除指定书籍的所有书签
   async deleteByBookId(bookId) {
     const response = await apiFetch(
-      buildApiUrl(`${API_BASE}/book/${encodeURIComponent(bookId)}`),
+      `${API_BASE}/book/${encodeURIComponent(bookId)}`,
       {
         method: 'DELETE',
       }
@@ -94,7 +94,7 @@ export const bookmarksApi = {
 
   // 同步书签
   async sync(deviceId, bookmarks) {
-  const response = await apiFetch(buildApiUrl(`${API_BASE}/sync`), {
+    const response = await apiFetch(`${API_BASE}/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -111,7 +111,7 @@ export const bookmarksApi = {
 
   // 获取所有书签（管理员功能）
   async getAll() {
-  const response = await apiFetch(buildApiUrl(API_BASE));
+    const response = await apiFetch(API_BASE);
 
     if (!response.ok) {
       throw new Error(`获取所有书签失败: ${response.status}`);
