@@ -2,402 +2,129 @@
   <div class="ai-logs-viewer">
     <div class="header">
       <h2>AI对话日志查看器（已禁用文件存储）</h2>
-      <div class="controls" v-if="!disabled">
-        <button @click="refreshLogs" :disabled="loading">
-          <span v-if="loading">刷新中...</span>
-          <span v-else>刷新</span>
-        </button>
-        <button @click="clearLogs" :disabled="loading" class="danger">
-          清空日志
-        </button>
-      </div>
-    </div>
-
-    <div class="disabled-tip" v-if="disabled">
-      已取消将 AI 对话写入服务器文件，只保留控制台输出。此页面显示空数据。
-    </div>
-
-    <div class="stats" v-if="stats && !disabled">
-      <div class="stat-item">
-        <label>日志条目:</label>
-        <span>{{ stats.entries }}</span>
-      </div>
-      <div class="stat-item">
-        <label>文件大小:</label>
-        <span>{{ stats.sizeFormatted }}</span>
-      </div>
-      <div class="stat-item">
-        <label>最后修改:</label>
-        <span>{{ formatDate(stats.lastModified) }}</span>
-      </div>
-    </div>
-
-  <div class="filters" v-if="!disabled">
-      <input
-        v-model="searchQuery"
-        @input="debouncedSearch"
-        placeholder="搜索日志内容..."
-        class="search-input"
+      <LogsViewerToolbar
+        v-if="!disabled"
+        :loading="loading"
+        @refresh="handleRefresh"
+        @clear="handleClear"
       />
-      <select v-model="selectedLines" @change="refreshLogs">
-        <option value="50">显示 50 条</option>
-        <option value="100">显示 100 条</option>
-        <option value="200">显示 200 条</option>
-        <option value="500">显示 500 条</option>
-      </select>
     </div>
 
-    <div class="logs-container">
-      <div v-if="loading" class="loading">
-        正在加载日志...
-      </div>
-      <div v-else-if="logs.length === 0" class="empty">
-        {{ disabled ? '文件日志功能已禁用' : '暂无日志记录' }}
-      </div>
-      <div v-else class="logs-list" v-if="!disabled">
-        <div
-          v-for="(log, index) in logs"
-          :key="index"
-          class="log-entry"
-          :class="`player-${log.playerType}`"
-        >
-          <div class="log-header">
-            <span class="timestamp">{{ formatDate(log.timestamp) }}</span>
-            <span class="model">{{ log.model }}</span>
-            <span class="player">玩家 {{ log.playerType }}</span>
-          </div>
-          <div class="log-content">
-            <div class="request">
-              <h4>请求:</h4>
-              <pre>{{ log.requestText }}</pre>
-            </div>
-            <div class="response">
-              <h4>响应:</h4>
-              <pre>{{ log.responseText }}</pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <DisabledHint v-if="disabled" />
+
+    <template v-else>
+      <LogsStats v-if="stats" :stats="stats" />
+      <LogsFilters
+        :search-query="localSearch"
+        :selected-lines="String(selectedLines)"
+        @update:search-query="handleSearch"
+        @update:selected-lines="handleLinesChange"
+      />
+    </template>
+
+    <LogsList
+      ref="logsListRef"
+      :logs="logs"
+      :loading="loading"
+      :empty-message="disabled ? '文件日志功能已禁用' : '暂无日志记录'"
+    />
   </div>
 </template>
 
-<script>
-import { ref, onMounted } from 'vue';
-import { logsApi } from '../../api/logs.js';
+<script setup>
+  import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+  import LogsViewerToolbar from './ai-logs/LogsViewerToolbar.vue';
+  import LogsStats from './ai-logs/LogsStats.vue';
+  import LogsFilters from './ai-logs/LogsFilters.vue';
+  import LogsList from './ai-logs/LogsList.vue';
+  import DisabledHint from './ai-logs/DisabledHint.vue';
+  import { useAILogs } from '@/composables/useAILogs.js';
+  import { useConfirm } from '@/composables/useConfirm.js';
 
-export default {
-  name: 'AILogsViewer',
-  setup() {
-  const logs = ref([]);
-  const stats = ref(null);
-  const loading = ref(false);
-  const disabled = ref(false);
-    const searchQuery = ref('');
-    const selectedLines = ref(100);
+  const { confirmAction, notify } = useConfirm();
 
-    const loadStats = async () => {
-      try {
-        const result = await logsApi.getAILogStats();
-        stats.value = result.data;
-        if (result.data?.disabled) disabled.value = true;
-      } catch (error) {
-        console.error('获取日志统计失败:', error);
-      }
-    };
+  const {
+    logs,
+    stats,
+    loading,
+    disabled,
+    searchQuery,
+    selectedLines,
+    refresh,
+    clearLogs,
+    updateSearchQuery,
+    updateSelectedLines,
+  } = useAILogs({
+    confirmAction,
+    notify,
+  });
 
-    const loadLogs = async () => {
-      loading.value = true;
-      try {
-        const params = {
-          format: 'json',
-          lines: selectedLines.value,
-          search: searchQuery.value.trim()
-        };
-        
-        const result = await logsApi.getAILogs(params);
-        if (result.data?.disabled) {
-          disabled.value = true;
-          logs.value = [];
-        } else {
-          logs.value = result.data.logs || [];
-        }
-        
-        // 同时更新统计信息
-        await loadStats();
-      } catch (error) {
-        console.error('获取日志失败:', error);
-        logs.value = [];
-      } finally {
-        loading.value = false;
-      }
-    };
+  const logsListRef = ref(null);
+  const localSearch = ref(searchQuery.value);
+  let searchTimer = null;
 
-    const refreshLogs = () => {
-      loadLogs();
-    };
+  const scrollToTop = () => {
+    logsListRef.value?.scrollToTop?.();
+  };
 
-    const clearLogs = async () => {
-      if (!confirm('确定要清空所有AI对话日志吗？此操作不可恢复。')) {
-        return;
-      }
-      
-      loading.value = true;
-      try {
-        await logsApi.clearAILogs();
-        logs.value = [];
-        stats.value = null;
-        alert('日志已清空');
-      } catch (error) {
-        console.error('清空日志失败:', error);
-        alert('清空日志失败');
-      } finally {
-        loading.value = false;
-      }
-    };
+  const triggerRefresh = async () => {
+    await refresh();
+    scrollToTop();
+  };
 
-    const formatDate = (dateString) => {
-      if (!dateString) return '';
-      return new Date(dateString).toLocaleString('zh-CN');
-    };
+  const handleRefresh = () => {
+    triggerRefresh();
+  };
 
-    // 防抖搜索
-    let searchTimeout = null;
-    const debouncedSearch = () => {
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
-        loadLogs();
-      }, 500);
-    };
+  const handleClear = async () => {
+    const cleared = await clearLogs();
+    if (cleared) {
+      updateSearchQuery('');
+      localSearch.value = '';
+      scrollToTop();
+    }
+  };
 
-    onMounted(() => {
-      loadLogs();
-    });
+  const handleSearch = value => {
+    localSearch.value = value;
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      updateSearchQuery(value);
+      triggerRefresh();
+    }, 500);
+  };
 
-    return {
-      logs,
-      stats,
-      loading,
-      searchQuery,
-      selectedLines,
-      refreshLogs,
-      clearLogs,
-      formatDate,
-  debouncedSearch,
-  disabled
-    };
-  }
-};
+  const handleLinesChange = value => {
+    updateSelectedLines(value);
+    triggerRefresh();
+  };
+
+  watch(searchQuery, value => {
+    if (value !== localSearch.value) {
+      localSearch.value = value;
+    }
+  });
+
+  onMounted(async () => {
+    await triggerRefresh();
+  });
+
+  onBeforeUnmount(() => {
+    if (searchTimer) clearTimeout(searchTimer);
+  });
 </script>
 
 <style scoped>
-.ai-logs-viewer {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.controls {
-  display: flex;
-  gap: 10px;
-}
-
-.controls button {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  background: #f5f5f5;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.controls button:hover {
-  background: #e0e0e0;
-}
-
-.controls button.danger {
-  background: #ff4444;
-  color: white;
-  border-color: #cc0000;
-}
-
-.controls button.danger:hover {
-  background: #cc0000;
-}
-
-.disabled-tip {
-  background: #fffbe6;
-  border: 1px solid #ffe58f;
-  color: #ad8b00;
-  padding: 12px 16px;
-  border-radius: 4px;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.controls button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.stats {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  padding: 15px;
-  background: #f9f9f9;
-  border-radius: 6px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stat-item label {
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.filters {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
-  align-items: center;
-}
-
-.search-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.filters select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
-}
-
-.logs-container {
-  max-height: 600px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-}
-
-.loading,
-.empty {
-  text-align: center;
-  padding: 40px;
-  color: #666;
-}
-
-.logs-list {
-  padding: 0;
-}
-
-.log-entry {
-  border-bottom: 1px solid #eee;
-  padding: 15px;
-  margin: 0;
-}
-
-.log-entry:last-child {
-  border-bottom: none;
-}
-
-.log-entry.player-1 {
-  border-left: 4px solid #333;
-  background: #fafafa;
-}
-
-.log-entry.player-2 {
-  border-left: 4px solid #666;
-  background: #f5f5f5;
-}
-
-.log-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  font-size: 12px;
-  color: #666;
-}
-
-.timestamp {
-  font-weight: bold;
-}
-
-.model {
-  color: #007acc;
-}
-
-.player {
-  color: #cc6600;
-}
-
-.log-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.request,
-.response {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 10px;
-}
-
-.request h4,
-.response h4 {
-  margin: 0 0 8px 0;
-  font-size: 13px;
-  color: #333;
-}
-
-.request h4 {
-  color: #006600;
-}
-
-.response h4 {
-  color: #0066cc;
-}
-
-.request pre,
-.response pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  font-size: 12px;
-  line-height: 1.4;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-@media (max-width: 768px) {
-  .log-content {
-    grid-template-columns: 1fr;
+  .ai-logs-viewer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
   }
-  
-  .filters {
-    flex-direction: column;
-    align-items: stretch;
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
   }
-  
-  .stats {
-    flex-direction: column;
-  }
-}
 </style>
