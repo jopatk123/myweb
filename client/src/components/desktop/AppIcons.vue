@@ -12,7 +12,7 @@
       class="icon-item"
       :class="{ selected: selectedId === app.id || selectedIds.has(app.id) }"
       :data-id="app.id"
-  @click="onClick(app)"
+      @click="onClick(app)"
       @dblclick="onDblClick(app)"
       @mousedown="onMouseDown(app, $event)"
       @contextmenu.prevent.stop="onContextMenu(app, $event)"
@@ -171,6 +171,9 @@
   }
 
   function onMouseDown(app, e) {
+    // 忽略右键点击，避免干扰右键菜单
+    if (e.button === 2) return;
+
     // 长按触发拖动（>150ms）
     const id = app.id;
     const rect = e.currentTarget.getBoundingClientRect();

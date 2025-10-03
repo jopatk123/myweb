@@ -12,7 +12,7 @@
       class="icon-item"
       :class="{ selected: selectedId === f.id || selectedIds.has(f.id) }"
       :data-id="f.id"
-  @click="onClick(f)"
+      @click="onClick(f)"
       @dblclick="onDblClick(f)"
       @mousedown="onMouseDown(f, $event)"
       @contextmenu.prevent.stop="onContextMenu(f, $event)"
@@ -140,6 +140,9 @@
   }
 
   function onMouseDown(file, e) {
+    // 忽略右键点击，避免干扰右键菜单
+    if (e.button === 2) return;
+
     // 长按触发拖动（>150ms）
     const id = file.id;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -214,7 +217,10 @@
   function onMouseUp() {
     // 释放时吸附到网格并避免与同组图标重叠
     if (dragState?.dragging)
-      finalizeDragForPositions(positions, dragState.ids ? dragState.ids : dragState.id);
+      finalizeDragForPositions(
+        positions,
+        dragState.ids ? dragState.ids : dragState.id
+      );
     cleanupDrag();
   }
   function cancelIfNotDrag() {
