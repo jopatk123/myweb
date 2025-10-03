@@ -92,6 +92,20 @@ export class AppController {
   async update(req, res, next) {
     try {
       const id = Number(req.params.id);
+
+      // 检查应用是否存在且不是内置应用
+      const existingApp = await this.service.getAppById(id);
+      if (!existingApp) {
+        const err = new Error('应用不存在');
+        err.status = 404;
+        throw err;
+      }
+      if (existingApp.is_builtin) {
+        const err = new Error('内置应用不允许编辑');
+        err.status = 400;
+        throw err;
+      }
+
       // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
       const { mapToSnake } = await import('../utils/field-mapper.js');
       const bodySnake = mapToSnake(req.body || {});
@@ -100,6 +114,15 @@ export class AppController {
       const payload = await appSchema
         .fork(['name', 'slug'], s => s.optional())
         .validateAsync(bodySnake, { convert: true });
+
+      // 处理预选图标：如果使用预选图标，将其复制到uploads目录并设置icon_filename
+      if (payload.preset_icon && !payload.icon_filename) {
+        const iconFilename = await this.service.copyPresetIcon(
+          payload.preset_icon
+        );
+        payload.icon_filename = iconFilename;
+        delete payload.preset_icon; // 移除临时字段
+      }
 
       // 禁止将应用改为内置
       if (payload.is_builtin) delete payload.is_builtin;
