@@ -188,8 +188,17 @@ export function useAudioController(state, { settings } = {}) {
     }
     try {
       if (audioEl.value.paused) {
+        const targetTrack =
+          currentTrack.value || (tracks.value.length ? tracks.value[0] : null);
+        if (!currentStreamUrl.value || !audioEl.value.src) {
+          if (targetTrack) {
+            await playTrack(targetTrack);
+          }
+          return;
+        }
         await audioEl.value.play();
         isPlaying.value = true;
+        isBuffering.value = false;
       } else {
         audioEl.value.pause();
         isPlaying.value = false;

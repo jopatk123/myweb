@@ -176,12 +176,14 @@
 
   const desktopFiles = computed(() => {
     const list = unref(files) || [];
+    const hiddenCategories = new Set(['novel', 'music']);
     return Array.isArray(list)
-      ? list.filter(
-          file =>
-            String(file.type_category || file.typeCategory || '').toLowerCase() !==
-            'novel'
-        )
+      ? list.filter(file => {
+          const category = String(file.type_category || file.typeCategory || '')
+            .toLowerCase()
+            .trim();
+          return !hiddenCategories.has(category);
+        })
       : [];
   });
 

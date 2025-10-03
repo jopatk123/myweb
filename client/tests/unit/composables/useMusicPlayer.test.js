@@ -234,4 +234,38 @@ describe('useMusicPlayer', () => {
 
     wrapper.unmount();
   });
+
+  it('togglePlay loads stream when audio element has no source yet', async () => {
+    const { state, wrapper } = await createPlayer();
+    await state.initialize();
+    await nextTick();
+
+    const audioMock = {
+      src: '',
+      paused: true,
+      volume: 0.5,
+      muted: false,
+      preload: '',
+      crossOrigin: '',
+      play: vi.fn().mockImplementation(() => {
+        audioMock.paused = false;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+
+    state.setAudioElement(audioMock);
+    state.currentStreamUrl.value = '';
+
+    await state.togglePlay();
+
+    expect(streamUrl).toHaveBeenCalledWith(1);
+    expect(audioMock.play).toHaveBeenCalledTimes(1);
+    expect(state.isPlaying.value).toBe(true);
+    expect(state.currentStreamUrl.value).toContain('/stream/1');
+
+    wrapper.unmount();
+  });
 });
