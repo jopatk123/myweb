@@ -22,9 +22,9 @@
         <button
           @click="confirmMove"
           class="btn btn-primary"
-          :disabled="loading"
+          :disabled="isLoading"
         >
-          {{ loading ? '移动中...' : '确认移动' }}
+          {{ isLoading ? '移动中...' : '确认移动' }}
         </button>
       </div>
     </div>
@@ -32,10 +32,10 @@
 </template>
 
 <script setup>
-  import { ref } from 'vue';
+  import { ref, computed } from 'vue';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
 
-  defineProps({
+  const props = defineProps({
     count: {
       type: Number,
       required: true,
@@ -43,6 +43,10 @@
     groups: {
       type: Array,
       required: true,
+    },
+    loading: {
+      type: Boolean,
+      default: false,
     },
   });
 
@@ -52,10 +56,9 @@
     useDraggableModal('groupMovePos');
 
   const targetGroupId = ref(null);
-  const loading = ref(false);
+  const isLoading = computed(() => props.loading);
 
   const confirmMove = () => {
-    loading.value = true;
     emit('confirm', targetGroupId.value);
   };
 </script>

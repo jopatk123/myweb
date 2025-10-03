@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { processImageFile } from '@/composables/useImageProcessing.js';
-import { useWallpaper } from '@/composables/useWallpaper.js';
+import { wallpaperApi } from '@/api/wallpaper.js';
 
 const DEFAULT_LIMITS = Object.freeze({
   minWidth: 800,
@@ -26,8 +26,9 @@ export function useWallpaperUploader(options = {}) {
   } = options;
 
   const resolvedLimits = { ...DEFAULT_LIMITS, ...limits };
-  const { uploadWallpaper } = useWallpaper();
-  const uploadFn = injectedUploadFn || uploadWallpaper;
+  const defaultUploadFn = (file, groupId, name, onUploadProgress) =>
+    wallpaperApi.uploadWallpaper(file, groupId, name, onUploadProgress);
+  const uploadFn = injectedUploadFn || defaultUploadFn;
 
   const selectedGroupId = ref('');
   const files = ref([]);

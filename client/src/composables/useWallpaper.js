@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, unref } from 'vue';
 import { wallpaperApi } from '@/api/wallpaper.js';
 
 export function useWallpaper() {
@@ -32,12 +32,13 @@ export function useWallpaper() {
 
   // 获取所有壁纸，默认使用分页（向后兼容也可传 false）
   const fetchWallpapers = async (groupId = null, usePaging = true) => {
+    const resolvedGroupId = unref(groupId);
     loading.value = true;
     error.value = null;
 
     try {
       const raw = await wallpaperApi.getWallpapers(
-        groupId,
+        resolvedGroupId,
         usePaging ? page.value : null,
         usePaging ? limit.value : null
       );
@@ -110,18 +111,19 @@ export function useWallpaper() {
     name,
     onUploadProgress
   ) => {
+    const resolvedGroupId = unref(groupId);
     loading.value = true;
     error.value = null;
 
     try {
       const raw = await wallpaperApi.uploadWallpaper(
         file,
-        groupId,
+        resolvedGroupId,
         name,
         onUploadProgress
       );
       const data = unwrap(raw);
-      await fetchWallpapers(groupId); // 刷新列表
+      await fetchWallpapers(resolvedGroupId); // 刷新列表
       return data;
     } catch (err) {
       error.value = err.message || '上传失败';
@@ -144,9 +146,10 @@ export function useWallpaper() {
 
   // 删除壁纸
   const deleteWallpaper = async (id, groupId = null) => {
+    const resolvedGroupId = unref(groupId);
     try {
       await wallpaperApi.deleteWallpaper(id);
-      await fetchWallpapers(groupId); // 刷新列表
+      await fetchWallpapers(resolvedGroupId); // 刷新列表
 
       // 如果删除的是当前活跃壁纸，重新获取
       if (activeWallpaper.value?.id === id) {
@@ -282,9 +285,17 @@ export function useWallpaper() {
 
   // 批量删除壁纸
   const deleteMultipleWallpapers = async (ids, currentGroupId) => {
+    const resolvedGroupId = unref(currentGroupId);
     try {
       await wallpaperApi.deleteWallpapers(ids);
-      await fetchWallpapers(currentGroupId); // 刷新列表
+      await fetchWallpapers(resolvedGroupId); // 刷新列表
+      if (activeWallpaper.value?.id) {
+        const activeId = Number(activeWallpaper.value.id);
+        const removed = (ids || []).some(id => Number(id) === activeId);
+        if (removed) {
+          await fetchActiveWallpaper();
+        }
+      }
     } catch (err) {
       error.value = err.message || '批量删除失败';
       throw err;
@@ -293,9 +304,11 @@ export function useWallpaper() {
 
   // 批量移动壁纸
   const moveMultipleWallpapers = async (ids, targetGroupId, currentGroupId) => {
+    const resolvedTargetGroupId = unref(targetGroupId);
+    const resolvedCurrentGroupId = unref(currentGroupId);
     try {
-      await wallpaperApi.moveWallpapers(ids, targetGroupId);
-      await fetchWallpapers(currentGroupId); // 刷新列表
+      await wallpaperApi.moveWallpapers(ids, resolvedTargetGroupId);
+      await fetchWallpapers(resolvedCurrentGroupId); // 刷新列表
     } catch (err) {
       error.value = err.message || '批量移动失败';
       throw err;
@@ -335,8 +348,8 @@ export function useWallpaper() {
     if (!wallpaper) return null;
     const fp = wallpaper.filePath || wallpaper.file_path || '';
 
-  // 对于图片文件，应该直接使用相对路径，不经过API
-  // 图片由后端静态服务直接提供
+    // 对于图片文件，应该直接使用相对路径，不经过API
+    // 图片由后端静态服务直接提供
     if (fp.startsWith('uploads/')) {
       return `/${fp}`;
     }

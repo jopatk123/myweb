@@ -163,17 +163,39 @@ export class WallpaperService {
   }
 
   getRandomWallpaper(groupId) {
-    if (!groupId) {
+    let resolvedGroupId = groupId;
+
+    if (
+      resolvedGroupId !== null &&
+      resolvedGroupId !== undefined &&
+      resolvedGroupId !== ''
+    ) {
+      const numeric = Number(resolvedGroupId);
+      if (!Number.isNaN(numeric)) {
+        resolvedGroupId = numeric;
+      }
+    } else {
+      resolvedGroupId = null;
+    }
+
+    if (resolvedGroupId === null) {
       // 优先使用当前分组；若未设置，则退回默认分组
       const current = this.groupModel.getCurrent();
       const fallback = this.groupModel.getDefault();
-      groupId = current?.id || fallback?.id || null;
+      resolvedGroupId = current?.id || fallback?.id || null;
     }
 
-    const wallpaper = this.wallpaperModel.getRandomByGroup(groupId);
+    let wallpaper = this.wallpaperModel.getRandomByGroup(resolvedGroupId);
+
+    if (!wallpaper && resolvedGroupId !== null) {
+      // 指定分组无壁纸时退回到全局集合
+      wallpaper = this.wallpaperModel.getRandomByGroup(null);
+    }
+
     if (wallpaper) {
       this.wallpaperModel.setActive(wallpaper.id);
     }
+
     return wallpaper;
   }
 

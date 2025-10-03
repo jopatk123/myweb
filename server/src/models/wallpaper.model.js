@@ -169,6 +169,16 @@ export class WallpaperModel {
   }
 
   getRandomByGroup(groupId) {
+    if (groupId === null || groupId === undefined) {
+      const sql = `
+        SELECT * FROM wallpapers
+        WHERE deleted_at IS NULL
+        ORDER BY RANDOM()
+        LIMIT 1
+      `;
+      return this.db.prepare(sql).get();
+    }
+
     const sql = `
       SELECT * FROM wallpapers
       WHERE group_id = ? AND deleted_at IS NULL

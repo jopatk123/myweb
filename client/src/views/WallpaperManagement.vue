@@ -53,7 +53,7 @@
         :wallpapers="filteredWallpapers"
         :active-wallpaper="activeWallpaper"
         @set-active="handleSetActive"
-        @delete="deleteWallpaper($event, selectedGroupId)"
+        @delete="deleteWallpaper($event, selectedGroupId.value || null)"
         @edit="openEditModal"
       />
 
@@ -106,7 +106,8 @@
         v-if="showMoveModal"
         :count="selectedIds.length"
         :groups="groups"
-        @close="showMoveModal = false"
+        :loading="bulkMoveLoading"
+        @close="closeMoveModal"
         @confirm="handleBulkMove"
       />
       <WallpaperEditModal
@@ -166,28 +167,48 @@
   const showMoveModal = ref(false);
   const showEditModal = ref(false);
   const editingWallpaper = ref(null);
+  const bulkMoveLoading = ref(false);
   const keyword = ref('');
   const selectedIds = ref([]);
+
+  const closeMoveModal = () => {
+    bulkMoveLoading.value = false;
+    showMoveModal.value = false;
+  };
 
   // 批量删除
   const handleBulkDelete = async () => {
     if (selectedIds.value.length === 0) return;
-    if (confirm(`确定要删除选中的 ${selectedIds.value.length} 张壁纸吗？`)) {
+    if (!confirm(`确定要删除选中的 ${selectedIds.value.length} 张壁纸吗？`))
+      return;
+
+    try {
       await deleteMultipleWallpapers(selectedIds.value, selectedGroupId.value);
       selectedIds.value = []; // 清空选择
+      displayToast('批量删除成功');
+    } catch (err) {
+      alert(err.message || '批量删除失败');
     }
   };
 
   // 批量移动
   const handleBulkMove = async targetGroupId => {
     if (selectedIds.value.length === 0) return;
-    await moveMultipleWallpapers(
-      selectedIds.value,
-      targetGroupId,
-      selectedGroupId.value
-    );
-    selectedIds.value = []; // 清空选择
-    showMoveModal.value = false;
+    bulkMoveLoading.value = true;
+    try {
+      await moveMultipleWallpapers(
+        selectedIds.value,
+        targetGroupId,
+        selectedGroupId.value
+      );
+      selectedIds.value = []; // 清空选择
+      displayToast('移动成功');
+      showMoveModal.value = false;
+    } catch (err) {
+      alert(err.message || '批量移动失败');
+    } finally {
+      bulkMoveLoading.value = false;
+    }
   };
 
   // 侧栏分组选择

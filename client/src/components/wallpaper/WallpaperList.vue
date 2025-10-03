@@ -42,17 +42,14 @@
               :src="getWallpaperUrl(wallpaper)"
               :alt="wallpaper.name"
               class="thumbnail"
+              @error="onThumbnailError"
             />
           </td>
           <td>
             {{ formatFileSize(wallpaper.fileSize || wallpaper.file_size) }}
           </td>
           <td>
-            {{
-              new Date(
-                wallpaper.createdAt || wallpaper.created_at
-              ).toLocaleString()
-            }}
+            {{ formatDate(wallpaper.createdAt || wallpaper.created_at) }}
           </td>
           <td>
             <button
@@ -148,11 +145,29 @@
   };
 
   const formatFileSize = bytes => {
-    if (bytes === 0) return '0 B';
+    const numeric = Number(bytes);
+    if (!Number.isFinite(numeric) || numeric < 0) return '-';
+    if (numeric === 0) return '0 B';
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(
+      sizes.length - 1,
+      Math.floor(Math.log(numeric) / Math.log(k))
+    );
+    const value = numeric / Math.pow(k, i);
+    return `${value.toFixed(value >= 10 || i === 0 ? 0 : 2)} ${sizes[i]}`;
+  };
+
+  const formatDate = value => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString();
+  };
+
+  const onThumbnailError = event => {
+    event.target.src = '/apps/icons/image-128.svg';
+    event.target.onerror = null;
   };
 </script>
 

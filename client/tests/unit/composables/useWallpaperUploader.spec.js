@@ -1,10 +1,10 @@
 const uploadWallpaperMock = vi.hoisted(() => vi.fn());
 const processImageFileMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/composables/useWallpaper.js', () => ({
-  useWallpaper: () => ({
+vi.mock('@/api/wallpaper.js', () => ({
+  wallpaperApi: {
     uploadWallpaper: uploadWallpaperMock,
-  }),
+  },
 }));
 
 vi.mock('@/composables/useImageProcessing.js', () => ({
