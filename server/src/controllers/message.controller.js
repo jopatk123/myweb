@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
+import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +24,9 @@ if (!fs.existsSync(imagesDir)) {
     // 尝试使用当前用户权限创建
     try {
       const { execSync } = await import('child_process');
-      execSync(`mkdir -p "${imagesDir}" && chmod 755 "${imagesDir}"`, { stdio: 'inherit' });
+      execSync(`mkdir -p "${imagesDir}" && chmod 755 "${imagesDir}"`, {
+        stdio: 'inherit',
+      });
       console.log('✅ 使用系统命令创建目录成功');
     } catch (cmdError) {
       console.error('❌ 系统命令创建目录也失败:', cmdError.message);
@@ -41,11 +44,25 @@ if (!fs.existsSync(imagesDir)) {
     console.log('✅ message-images 目录权限正常');
   } catch (permError) {
     console.error('❌ message-images 目录权限问题:', permError.message);
-    console.log('💡 请手动修复目录权限: sudo chown -R $USER:$USER uploads/message-images/');
+    console.log(
+      '💡 请手动修复目录权限: sudo chown -R $USER:$USER uploads/message-images/'
+    );
   }
 }
 
 // 配置图片上传
+const DEFAULT_MESSAGE_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const DEFAULT_MESSAGE_IMAGE_FILES = 5;
+
+export const MESSAGE_IMAGE_MAX_SIZE = parseEnvByteSize(
+  'MESSAGE_IMAGE_MAX_SIZE',
+  DEFAULT_MESSAGE_IMAGE_SIZE
+);
+export const MESSAGE_IMAGE_MAX_FILES = Math.max(
+  1,
+  parseEnvNumber('MESSAGE_IMAGE_MAX_FILES', DEFAULT_MESSAGE_IMAGE_FILES)
+);
+
 const imageStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, imagesDir);
@@ -69,8 +86,8 @@ const uploadImage = multer({
   storage: imageStorage,
   fileFilter: imageFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
-    files: 5, // 最多5张图片
+    fileSize: MESSAGE_IMAGE_MAX_SIZE,
+    files: MESSAGE_IMAGE_MAX_FILES,
   },
 });
 
@@ -223,7 +240,7 @@ export class MessageController {
         return res.status(500).json({
           code: 500,
           message: '服务器配置错误：上传目录权限不足',
-          error: 'UPLOAD_PERMISSION_ERROR'
+          error: 'UPLOAD_PERMISSION_ERROR',
         });
       }
 

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import { FileService } from '../services/file.service.js';
 import { NovelModel } from '../models/novel.model.js';
 import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
+import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +18,15 @@ const __dirname = path.dirname(__filename);
 const uploadsRoot = path.join(__dirname, '../../uploads');
 const filesDir = path.join(uploadsRoot, 'files');
 const novelsDir = path.join(uploadsRoot, 'novels');
-const MAX_UPLOAD_SIZE = 1000 * 1024 * 1024; // 1GB
+const DEFAULT_MAX_UPLOAD_SIZE = 1000 * 1024 * 1024; // 1GB
+const MAX_UPLOAD_SIZE = parseEnvByteSize(
+  'FILE_MAX_UPLOAD_SIZE',
+  DEFAULT_MAX_UPLOAD_SIZE
+);
+const MAX_UPLOAD_FILES = Math.max(
+  1,
+  parseEnvNumber('FILE_MAX_UPLOAD_FILES', 10)
+);
 
 const allowedMimePatterns = [
   /^image\//i,
@@ -160,7 +169,7 @@ export function createFileRoutes(db) {
   router.post(
     '/upload',
     adminGuard,
-    upload.array('file', 10),
+    upload.array('file', MAX_UPLOAD_FILES),
     async (req, res, next) => {
       try {
         const baseUrl = resolveBaseUrl(req);
@@ -214,7 +223,7 @@ export function createFileRoutes(db) {
   router.post(
     '/upload/novel',
     adminGuard,
-    uploadNovels.array('file', 10),
+    uploadNovels.array('file', MAX_UPLOAD_FILES),
     async (req, res, next) => {
       try {
         const baseUrl = resolveBaseUrl(req);

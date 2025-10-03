@@ -6,6 +6,7 @@ import fsPromises from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { MusicService } from '../services/music.service.js';
+import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,18 @@ if (!fs.existsSync(musicDir)) {
   }
 }
 
+const DEFAULT_MUSIC_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1GB
+const DEFAULT_MUSIC_UPLOAD_FILES = 20;
+
+const MUSIC_UPLOAD_SIZE = parseEnvByteSize(
+  'MUSIC_MAX_UPLOAD_SIZE',
+  DEFAULT_MUSIC_UPLOAD_SIZE
+);
+const MUSIC_UPLOAD_FILES = Math.max(
+  1,
+  parseEnvNumber('MUSIC_MAX_UPLOAD_FILES', DEFAULT_MUSIC_UPLOAD_FILES)
+);
+
 const storageMusic = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, musicDir);
@@ -31,7 +44,7 @@ const storageMusic = multer.diskStorage({
 
 const uploadMusic = multer({
   storage: storageMusic,
-  limits: { fileSize: 1024 * 1024 * 1024 }, // 1GB
+  limits: { fileSize: MUSIC_UPLOAD_SIZE },
 });
 
 function serializeTrack(track, req) {
@@ -55,7 +68,7 @@ export function createMusicRoutes(db) {
 
   router.post(
     '/upload',
-    uploadMusic.array('file', 20),
+    uploadMusic.array('file', MUSIC_UPLOAD_FILES),
     async (req, res, next) => {
       try {
         const baseUrl = (req.get('x-api-base') || '').trim();

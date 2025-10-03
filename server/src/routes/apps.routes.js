@@ -4,6 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
+import { parseEnvByteSize } from '../utils/env.js';
 
 export function createAppRoutes(db) {
   const router = express.Router();
@@ -12,6 +13,12 @@ export function createAppRoutes(db) {
   const __dirname = path.dirname(__filename);
 
   // 图标上传配置：保存到 uploads/apps/icons
+  const DEFAULT_APP_ICON_UPLOAD_SIZE = 500 * 1024 * 1024;
+  const APP_ICON_UPLOAD_SIZE = parseEnvByteSize(
+    'APP_ICON_MAX_UPLOAD_SIZE',
+    DEFAULT_APP_ICON_UPLOAD_SIZE
+  );
+
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       cb(null, path.join(__dirname, '../../uploads/apps/icons'));
@@ -21,7 +28,10 @@ export function createAppRoutes(db) {
       cb(null, `${uuidv4()}${ext}`);
     },
   });
-  const upload = multer({ storage, limits: { fileSize: 500 * 1024 * 1024 } }); // 500MB - 放开限制
+  const upload = multer({
+    storage,
+    limits: { fileSize: APP_ICON_UPLOAD_SIZE },
+  });
 
   // 应用
   router.get('/', (req, res, next) => controller.list(req, res, next));

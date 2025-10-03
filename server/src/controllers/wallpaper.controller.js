@@ -4,6 +4,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { normalizeKeys } from '../utils/case-helper.js';
+import { parseEnvByteSize } from '../utils/env.js';
 
 // 解析当前模块目录（ESM 无 __dirname）
 const __filename = fileURLToPath(import.meta.url);
@@ -21,10 +22,16 @@ const storage = multer.diskStorage({
   },
 });
 
+const DEFAULT_WALLPAPER_UPLOAD_SIZE = 500 * 1024 * 1024; // 500MB
+const WALLPAPER_UPLOAD_SIZE = parseEnvByteSize(
+  'WALLPAPER_MAX_UPLOAD_SIZE',
+  DEFAULT_WALLPAPER_UPLOAD_SIZE
+);
+
 const upload = multer({
   storage,
   limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB - 放开限制供私人使用
+    fileSize: WALLPAPER_UPLOAD_SIZE,
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {

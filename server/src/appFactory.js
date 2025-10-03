@@ -126,8 +126,10 @@ export async function createApp(options = {}) {
 
   app.use(cors(resolveCorsOptions()));
 
-  app.use(express.json({ limit: '100mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+  const bodyLimit = process.env.BODY_LIMIT || '100mb';
+
+  app.use(express.json({ limit: bodyLimit }));
+  app.use(express.urlencoded({ extended: true, limit: bodyLimit }));
 
   app.use(normalizeRequestKeys);
   app.use(normalizeResponseMiddleware);

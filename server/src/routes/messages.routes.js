@@ -5,6 +5,7 @@ import express from 'express';
 import {
   MessageController,
   uploadImage,
+  MESSAGE_IMAGE_MAX_FILES,
 } from '../controllers/message.controller.js';
 
 const router = express.Router();
@@ -24,7 +25,7 @@ router.put('/user-settings', MessageController.updateUserSettings);
 // 上传图片
 router.post(
   '/upload-image',
-  uploadImage.array('images', 5),
+  uploadImage.array('images', MESSAGE_IMAGE_MAX_FILES),
   MessageController.uploadImage
 );
 
