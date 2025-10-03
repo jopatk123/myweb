@@ -36,9 +36,9 @@ export class AppController {
         page: page ? Number(page) : null,
         limit: limit ? Number(limit) : null,
       };
-  const result = await this.service.getApps(query);
-  void result;
-  res.json({ code: 200, data: result, message: '获取成功' });
+      const result = await this.service.getApps(query);
+      void result;
+      res.json({ code: 200, data: result, message: '获取成功' });
     } catch (error) {
       next(error);
     }
@@ -134,7 +134,10 @@ export class AppController {
 
   async setAutostart(req, res, next) {
     try {
-      const id = Number(req.params.id);
+      const paramRaw = (req.params.id ?? '').toString().trim();
+      if (!paramRaw) {
+        return res.status(400).json({ code: 400, message: '缺少应用标识' });
+      }
       // 兼容前端可能发送的字段名：autostart / is_autostart / isAutostart
       const body = req.body || {};
       const autostartRaw =
@@ -147,7 +150,7 @@ export class AppController {
       const autostart = !!(autostartRaw === '0' || autostartRaw === 0
         ? false
         : autostartRaw);
-      const app = await this.service.setAppAutostart(id, autostart);
+      const app = this.service.setAppAutostart(paramRaw, autostart);
       res.json({ code: 200, data: app, message: '设置成功' });
     } catch (error) {
       next(error);
@@ -179,8 +182,8 @@ export class AppController {
           .status(400)
           .json({ code: 400, message: 'ids 必须为非空数组' });
       }
-  await this.service.moveApps(ids.map(Number), Number(targetGroupId));
-  res.json({ code: 200, message: '移动成功' });
+      await this.service.moveApps(ids.map(Number), Number(targetGroupId));
+      res.json({ code: 200, message: '移动成功' });
     } catch (error) {
       next(error);
     }

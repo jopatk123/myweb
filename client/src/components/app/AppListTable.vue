@@ -28,7 +28,7 @@
           </td>
           <td>
             <img
-              v-if="app.icon_filename"
+              v-if="app.icon_filename || app.iconFilename"
               :src="getAppIconUrl(app)"
               alt="icon"
               class="icon"
@@ -120,7 +120,8 @@
   };
 
   const displayGroupName = groupId => {
-    const g = props.groups.find(x => x.id === groupId);
+    if (groupId === null || groupId === undefined || groupId === '') return '';
+    const g = props.groups.find(x => String(x.id) === String(groupId));
     return g ? g.name : '';
   };
 

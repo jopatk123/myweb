@@ -38,7 +38,7 @@ export class AppService {
     } catch (error) {
       void error;
       // 回退：若动态 import 失败，则直接传入 payload（model 层会兼容）
-    return this.appModel.create(payload);
+      return this.appModel.create(payload);
     }
   }
 
@@ -72,7 +72,7 @@ export class AppService {
       } catch (e) {
         void e;
         // 清理失败不影响删除流程，仅日志提示
-    console.warn('[AppService.deleteApp] 清理图标失败:');
+        console.warn('[AppService.deleteApp] 清理图标失败:', e?.message || e);
       }
     }
 
@@ -83,8 +83,35 @@ export class AppService {
     return this.appModel.setVisible(id, visible);
   }
 
-  setAppAutostart(id, autostart) {
-    return this.appModel.setAutostart(id, autostart);
+  setAppAutostart(idOrSlug, autostart) {
+    if (idOrSlug === undefined || idOrSlug === null || idOrSlug === '') {
+      const err = new Error('缺少应用标识');
+      err.status = 400;
+      throw err;
+    }
+
+    const raw = typeof idOrSlug === 'string' ? idOrSlug.trim() : idOrSlug;
+    const numericCandidate =
+      typeof raw === 'number'
+        ? raw
+        : /^\d+$/.test(String(raw))
+          ? Number(raw)
+          : NaN;
+
+    let app;
+    if (!Number.isNaN(numericCandidate)) {
+      app = this.appModel.setAutostart(numericCandidate, autostart);
+    } else {
+      app = this.appModel.setAutostartBySlug(String(raw), autostart);
+    }
+
+    if (!app) {
+      const err = new Error('应用不存在');
+      err.status = 404;
+      throw err;
+    }
+
+    return app;
   }
 
   moveApps(ids, targetGroupId) {

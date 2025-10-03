@@ -25,17 +25,19 @@ export class AppModel {
       ? `WHERE ${whereClauses.join(' AND ')}`
       : '';
 
-    if (page && limit) {
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    if (Number.isFinite(pageNum) && Number.isFinite(limitNum) && limitNum > 0) {
       const totalRow = this.db
         .prepare(`SELECT COUNT(1) AS total FROM apps ${where}`)
         .get(...params);
       const total = totalRow ? totalRow.total : 0;
-      const offset = (Number(page) - 1) * Number(limit);
+      const offset = (Math.max(1, pageNum) - 1) * limitNum;
       const items = this.db
         .prepare(
           `SELECT * FROM apps ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
         )
-        .all(...params, Number(limit), offset);
+        .all(...params, limitNum, offset);
       return { items, total };
     }
 
@@ -47,6 +49,11 @@ export class AppModel {
   findById(id) {
     const sql = `SELECT * FROM apps WHERE id = ? AND is_deleted = 0`;
     return this.db.prepare(sql).get(id);
+  }
+
+  findBySlug(slug) {
+    const sql = `SELECT * FROM apps WHERE slug = ? AND is_deleted = 0`;
+    return this.db.prepare(sql).get(slug);
   }
 
   create({
@@ -128,6 +135,12 @@ export class AppModel {
     const sql = `UPDATE apps SET is_autostart = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
     this.db.prepare(sql).run(autostart ? 1 : 0, id);
     return this.findById(id);
+  }
+
+  setAutostartBySlug(slug, autostart) {
+    const sql = `UPDATE apps SET is_autostart = ?, updated_at = CURRENT_TIMESTAMP WHERE slug = ? AND is_deleted = 0`;
+    this.db.prepare(sql).run(autostart ? 1 : 0, slug);
+    return this.findBySlug(slug);
   }
 
   softDelete(id) {

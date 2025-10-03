@@ -96,7 +96,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from 'vue';
+  import { ref, computed, onMounted, watch } from 'vue';
   import { useApps } from '@/composables/useApps.js';
   import AppSidebar from '@/components/app/AppSidebar.vue';
   import PaginationControls from '@/components/common/PaginationControls.vue';
@@ -160,14 +160,19 @@
     }
   }
 
+  function clearSelection() {
+    selectedIds.value = [];
+  }
+
   async function reloadApps() {
     await fetchApps({ groupId: selectedGroupId.value || null }, true);
   }
 
-  function selectGroup(id) {
+  async function selectGroup(id) {
     selectedGroupId.value = id === '' ? '' : Number(id);
     setPage(1);
-    reloadApps();
+    clearSelection();
+    await reloadApps();
   }
 
   function onEditSelectedGroup() {
@@ -182,20 +187,23 @@
     if (!confirm(`确定删除分组 「${g.name}」？`)) return;
     try {
       await deleteGroup(g.id);
-      if (selectedGroupId.value === g.id) selectGroup('');
+      if (selectedGroupId.value === g.id) await selectGroup('');
     } catch (e) {
       alert(e?.message || '删除失败');
     }
   }
 
   async function remove(id) {
+    selectedIds.value = selectedIds.value.filter(
+      item => Number(item) !== Number(id)
+    );
     await deleteApp(id);
-    reloadApps();
+    await reloadApps();
   }
 
   async function onToggleVisible(app, checked) {
     await setVisible(app.id, checked);
-    reloadApps();
+    await reloadApps();
   }
 
   async function onToggleAutostart(app, checked) {
@@ -205,7 +213,7 @@
         checked,
       });
       await setAutostart(app.id, checked);
-      reloadApps();
+      await reloadApps();
     } catch (e) {
       console.error('[AppManagement] onToggleAutostart error', e);
       alert(e?.message || '设置自启动失败');
@@ -219,7 +227,7 @@
   async function prevPage() {
     if (page.value <= 1) return;
     setPage(page.value - 1);
-    reloadApps();
+    await reloadApps();
   }
   async function nextPage() {
     const totalPages = Math.max(
@@ -228,12 +236,12 @@
     );
     if (page.value >= totalPages) return;
     setPage(page.value + 1);
-    reloadApps();
+    await reloadApps();
   }
   async function onLimitChange(newLImit) {
     setPage(1);
     setLimit(newLImit);
-    reloadApps();
+    await reloadApps();
   }
 
   onMounted(async () => {
@@ -268,12 +276,22 @@
 
   async function submitMove(targetGroupId) {
     try {
-      const ids = (selectedIds.value || []).map(i => Number(i));
+      const ids = (selectedIds.value || [])
+        .map(i => Number(i))
+        .filter(n => Number.isFinite(n));
+      if (ids.length === 0) {
+        alert('请选择要移动的应用');
+        return;
+      }
       const gid = Number(targetGroupId);
+      if (!Number.isFinite(gid)) {
+        alert('目标分组无效');
+        return;
+      }
       await moveApps(ids, gid);
       selectedIds.value = [];
       showMoveModal.value = false;
-      reloadApps();
+      await reloadApps();
     } catch (e) {
       alert(e?.message || '移动失败');
     }
@@ -283,11 +301,32 @@
     try {
       await createApp(payload);
       showCreateModal.value = false;
-      reloadApps();
+      await reloadApps();
     } catch (e) {
       alert(e?.message || '创建失败');
     }
   }
+
+  watch(
+    apps,
+    newList => {
+      if (!Array.isArray(newList)) return;
+      const validIds = new Set(newList.map(item => Number(item.id)));
+      if (selectedIds.value.some(id => !validIds.has(Number(id)))) {
+        selectedIds.value = selectedIds.value.filter(id =>
+          validIds.has(Number(id))
+        );
+      }
+    },
+    { immediate: true }
+  );
+
+  defineExpose({
+    selectGroup,
+    selectedIds,
+    apps,
+    reloadApps,
+  });
 </script>
 
 <style scoped>

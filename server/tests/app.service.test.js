@@ -107,3 +107,29 @@ test('deleteIconFileIfExists handles existing and missing files', async () => {
     false
   );
 });
+
+test('setAppAutostart supports both numeric ids and slugs', async () => {
+  const created = await service.createApp({
+    name: '自动启动测试',
+    slug: 'autostart-test',
+    description: null,
+  });
+
+  const bySlug = service.setAppAutostart('autostart-test', true);
+  expect(bySlug.is_autostart).toBe(1);
+
+  const byId = service.setAppAutostart(created.id, false);
+  expect(byId.is_autostart).toBe(0);
+
+  const byNumericString = service.setAppAutostart(String(created.id), true);
+  expect(byNumericString.is_autostart).toBe(1);
+});
+
+test('setAppAutostart validates identifier and existence', () => {
+  expect(() => service.setAppAutostart('', true)).toThrow('缺少应用标识');
+  expect(() => service.setAppAutostart(null, true)).toThrow('缺少应用标识');
+  expect(() => service.setAppAutostart('missing-slug', true)).toThrow(
+    '应用不存在'
+  );
+  expect(() => service.setAppAutostart(9999, true)).toThrow('应用不存在');
+});
