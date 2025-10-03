@@ -60,6 +60,7 @@
         v-model:selectedIds="selectedIds"
         @toggle-visible="onToggleVisible"
         @toggle-autostart="onToggleAutostart"
+        @edit="onEdit"
         @delete="remove"
         @update:all-selected="toggleAll"
       />
@@ -80,6 +81,11 @@
       v-model:show="showCreateModal"
       :group-id="selectedGroupId"
       @submit="submitCreate"
+    />
+    <AppEditModal
+      v-model:show="showEditModal"
+      :app="editingApp"
+      @submit="submitEdit"
     />
     <AppGroupModal
       v-model:show="showGroupModal"
@@ -102,6 +108,7 @@
   import PaginationControls from '@/components/common/PaginationControls.vue';
   import AppListTable from '@/components/app/AppListTable.vue';
   import AppCreateModal from '@/components/app/AppCreateModal.vue';
+  import AppEditModal from '@/components/app/AppEditModal.vue';
   import AppGroupModal from '@/components/app/AppGroupModal.vue';
   import AppMoveModal from '@/components/app/AppMoveModal.vue';
 
@@ -119,6 +126,7 @@
     setVisible,
     setAutostart,
     createApp,
+    updateApp,
     createGroup,
     updateGroup,
     deleteGroup,
@@ -131,10 +139,12 @@
 
   // 模态框状态
   const showCreateModal = ref(false);
+  const showEditModal = ref(false);
   const showMoveModal = ref(false);
   const showGroupModal = ref(false);
   const groupModalMode = ref('create'); // 'create' | 'edit'
   const editingGroup = ref(null);
+  const editingApp = ref(null);
 
   const filteredApps = computed(() => {
     const k = (keyword.value || '').trim().toLowerCase();
@@ -304,6 +314,26 @@
       await reloadApps();
     } catch (e) {
       alert(e?.message || '创建失败');
+    }
+  }
+
+  function onEdit(app) {
+    editingApp.value = app;
+    showEditModal.value = true;
+  }
+
+  async function submitEdit(payload) {
+    if (!editingApp.value?.id) {
+      alert('无法确定要编辑的应用');
+      return;
+    }
+    try {
+      await updateApp(editingApp.value.id, payload);
+      showEditModal.value = false;
+      editingApp.value = null;
+      await reloadApps();
+    } catch (e) {
+      alert(e?.message || '更新失败');
     }
   }
 

@@ -117,4 +117,38 @@ describe('useApps composable', () => {
     );
     expect(getAppIconUrl({})).toBe('');
   });
+
+  it('updateApp sends PUT request and returns updated app', async () => {
+    const updatedApp = { id: 1, name: 'Updated App', slug: 'updated-app' };
+    apiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: updatedApp }),
+    });
+
+    const payload = { name: 'Updated App', target_url: 'https://example.com' };
+    const result = await state.updateApp(1, payload);
+
+    expect(apiFetch).toHaveBeenCalledWith('/myapps/1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    expect(result).toEqual(updatedApp);
+    expect(state.error.value).toBe('');
+    expect(state.lastError.value).toBeNull();
+  });
+
+  it('updateApp handles errors for builtin apps', async () => {
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ message: '内置应用不允许编辑' }),
+    });
+
+    await expect(
+      state.updateApp(1, { name: 'Try to update builtin' })
+    ).rejects.toThrow('内置应用不允许编辑');
+    expect(state.error.value).toBe('内置应用不允许编辑');
+    expect(state.lastError.value).toBeInstanceOf(Error);
+  });
 });

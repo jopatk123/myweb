@@ -62,7 +62,9 @@
           <td>
             <button
               class="btn btn-sm btn-secondary"
-              @click="$emit('edit', app)"
+              :disabled="isBuiltin(app)"
+              :title="isBuiltin(app) ? '内置应用不可编辑' : '编辑'"
+              @click="!isBuiltin(app) && $emit('edit', app)"
             >
               编辑
             </button>
