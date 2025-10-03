@@ -8,6 +8,7 @@ export function useFiles() {
   const total = ref(0);
   const type = ref('');
   const search = ref('');
+  const loading = ref(false);
   const uploading = ref(false);
   const uploadProgress = ref(0);
   const uploadedBytes = ref(0);
@@ -20,7 +21,7 @@ export function useFiles() {
   let isDisposed = false;
 
   const totalPages = computed(() =>
-    Math.ceil(((total.value || 0) ) / (limit.value || 1))
+    Math.ceil((total.value || 0) / (limit.value || 1))
   );
 
   function unwrap(resp) {
@@ -37,6 +38,7 @@ export function useFiles() {
 
   async function fetchList() {
     if (isDisposed) return;
+    loading.value = true;
     try {
       error.value = '';
       lastError.value = null;
@@ -44,7 +46,7 @@ export function useFiles() {
         page: page.value,
         limit: limit.value,
         type: type.value || undefined,
-        search: search.value || undefined,
+        search: (search.value || '').trim() || undefined,
       });
       const data = unwrap(raw);
       items.value = data.files || [];
@@ -53,6 +55,10 @@ export function useFiles() {
       lastError.value = e;
       error.value = e.message || '加载失败';
       throw e;
+    } finally {
+      if (!isDisposed) {
+        loading.value = false;
+      }
     }
   }
 
@@ -177,6 +183,7 @@ export function useFiles() {
     type,
     search,
     uploading,
+    loading,
     uploadProgress,
     uploadedBytes,
     totalBytes,
@@ -190,5 +197,7 @@ export function useFiles() {
     getDownloadUrl,
     setPage: p => (page.value = Number(p) || 1),
     setLimit: l => (limit.value = Number(l) || 20),
+    setType: v => (type.value = v ?? ''),
+    setSearch: v => (search.value = v ?? ''),
   };
 }

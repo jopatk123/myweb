@@ -4,16 +4,31 @@ export class FileModel {
   }
 
   findAll({ page = 1, limit = 20, type = null, search = null } = {}) {
+    const allowedTypes = new Set([
+      'image',
+      'video',
+      'word',
+      'excel',
+      'archive',
+      'other',
+      'novel',
+      'music',
+    ]);
+
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
+    const normalizedSearch = (search || '').trim();
+
     const whereClauses = [];
     const params = [];
 
-    if (type) {
+    if (type && allowedTypes.has(String(type).toLowerCase())) {
       whereClauses.push('type_category = ?');
-      params.push(type);
+      params.push(String(type).toLowerCase());
     }
-    if (search) {
+    if (normalizedSearch) {
       whereClauses.push('(original_name LIKE ? OR stored_name LIKE ?)');
-      params.push(`%${search}%`, `%${search}%`);
+      params.push(`%${normalizedSearch}%`, `%${normalizedSearch}%`);
     }
 
     const where = whereClauses.length
@@ -24,14 +39,14 @@ export class FileModel {
       .prepare(`SELECT COUNT(*) AS total FROM files ${where}`)
       .get(...params);
     const total = totalRow?.total || 0;
-    const offset = (Number(page) - 1) * Number(limit);
+    const offset = (safePage - 1) * safeLimit;
     const rows = this.db
       .prepare(
         `SELECT * FROM files ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
       )
-      .all(...params, Number(limit), offset);
+      .all(...params, safeLimit, offset);
 
-    return { items: rows, total };
+    return { items: rows, total, page: safePage, limit: safeLimit };
   }
 
   findById(id) {

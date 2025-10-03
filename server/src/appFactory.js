@@ -21,6 +21,7 @@ import {
   normalizeResponseMiddleware,
 } from './utils/case-helper.js';
 import { setDb } from './utils/dbPool.js';
+import { createUploadDirs } from './utils/file-helper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,6 +98,8 @@ export async function createApp(options = {}) {
   const app = express();
 
   app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
+
+  await createUploadDirs();
 
   const enableHttpsSecurity = process.env.ENABLE_HTTPS_SECURITY === '1';
   const contentSecurityPolicyDirectives =

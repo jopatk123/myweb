@@ -7,6 +7,7 @@ import { NovelBookmarkModel } from '../models/novel-bookmark.model.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const uploadsRoot = path.resolve(__dirname, '../../uploads');
 
 function detectTypeCategory(mimeType, originalName = '') {
   const mt = String(mimeType || '').toLowerCase();
@@ -43,6 +44,28 @@ function detectTypeCategory(mimeType, originalName = '') {
   return 'other';
 }
 
+function buildFileUrl(baseUrl, relativePath) {
+  const normalizedPath = relativePath.replace(/^\/+/, '');
+  const trimmedBase = (baseUrl || '').trim();
+  if (!trimmedBase) {
+    return normalizedPath;
+  }
+
+  const sanitizedBase = trimmedBase.replace(/\/+$/, '');
+  if (/^https?:\/\//i.test(sanitizedBase)) {
+    try {
+      const base = sanitizedBase.endsWith('/')
+        ? sanitizedBase
+        : `${sanitizedBase}/`;
+      return new URL(normalizedPath, base).toString();
+    } catch {
+      return `${sanitizedBase}/${normalizedPath}`;
+    }
+  }
+
+  return `${sanitizedBase}/${normalizedPath}`;
+}
+
 export class FileService {
   constructor(db) {
     this.model = new FileModel(db);
@@ -77,10 +100,7 @@ export class FileService {
     const typeCategory =
       explicitTypeCategory || detectTypeCategory(mimeType, originalName);
     const normalizedPath = filePath.replace(/\\/g, '/');
-    const fileUrl = `${baseUrl ? `${baseUrl}/` : ''}${normalizedPath}`.replace(
-      /\/+/g,
-      '/'
-    );
+    const fileUrl = buildFileUrl(baseUrl, normalizedPath);
 
     const payload = {
       originalName,
@@ -94,6 +114,15 @@ export class FileService {
     };
     // FileModel.create expects camelCase keys; pass payload directly
     return this.model.create(payload);
+  }
+
+  createMany(entries = []) {
+    const items = Array.isArray(entries) ? entries : [entries];
+    if (!items.length) return [];
+    const txn = this.model.db.transaction(data =>
+      data.map(item => this.create(item))
+    );
+    return txn(items);
   }
 
   async remove(id) {
@@ -128,11 +157,12 @@ export class FileService {
 
     // 2) 尝试删除磁盘文件（失败仅记录，不影响已完成的 DB 状态）
     try {
-      let diskPath = filePath;
-      if (!path.isAbsolute(diskPath)) {
-        diskPath = path.join(__dirname, '../../', filePath);
+      const absolutePath = path.resolve(__dirname, '../../', filePath);
+      if (!absolutePath.startsWith(uploadsRoot)) {
+        console.warn('拒绝删除非上传目录文件:', absolutePath);
+        return true;
       }
-      await fs.unlink(diskPath);
+      await fs.unlink(absolutePath);
     } catch (err) {
       if (err.code !== 'ENOENT') {
         console.warn('删除磁盘文件失败（已忽略）:', err && err.message);
