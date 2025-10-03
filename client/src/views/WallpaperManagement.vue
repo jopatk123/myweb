@@ -27,7 +27,6 @@
         :selected-count="selectedIds.length"
         @upload-wallpaper="showUploadModal = true"
         @open-bulk-upload="showBulkUploadModal = true"
-        @random-wallpaper="handleRandomWallpaper"
         @bulk-delete="handleBulkDelete"
         @bulk-move="showMoveModal = true"
         @open-main-window="openMainWindow"
@@ -149,7 +148,6 @@
     setActiveWallpaper,
     deleteWallpaper,
     deleteGroup,
-    randomWallpaper,
     deleteMultipleWallpapers,
     moveMultipleWallpapers,
     applyCurrentGroup,
@@ -272,21 +270,6 @@
   // 打开主窗口
   const openMainWindow = () => {
     window.open('/', '_blank');
-  };
-
-  // 在管理页触发随机切换并应用为当前壁纸
-  const handleRandomWallpaper = async () => {
-    try {
-      const w = await randomWallpaper(selectedGroupId.value || null);
-      if (!w || !w.id) {
-        alert('未找到可用壁纸');
-        return;
-      }
-      await setActiveWallpaper(w.id);
-      displayToast('已随机切换并应用');
-    } catch (err) {
-      alert(err?.message || '随机切换失败');
-    }
   };
 
   // 无需确认的成功提示（toast）状态

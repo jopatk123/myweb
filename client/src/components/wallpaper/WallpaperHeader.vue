@@ -24,9 +24,6 @@
           上传壁纸
         </button>
       </div>
-      <button @click="$emit('random-wallpaper')" class="btn btn-accent">
-        随机切换
-      </button>
       <button @click="$emit('open-main-window')" class="btn btn-info">
         打开桌面
       </button>
@@ -46,7 +43,6 @@
     'open-main-window',
     'upload-wallpaper',
     'open-bulk-upload',
-    'random-wallpaper',
     'bulk-delete',
     'bulk-move',
   ]);
