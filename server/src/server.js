@@ -2,6 +2,9 @@ import http from 'http';
 import app from './app.js';
 import { createUploadDirs } from './utils/file-helper.js';
 import { WebSocketService } from './services/websocket.service.js';
+import logger from './utils/logger.js';
+
+const bootstrapLogger = logger.child('ServerBootstrap');
 
 // 端口优先级：PORT（通用） > BACKEND_PORT（专用） > 默认 3000
 const PORT = Number(process.env.PORT || process.env.BACKEND_PORT || 3000);
@@ -20,8 +23,10 @@ wsService.init(server);
 app.set('wsServer', wsService);
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`🔌 WebSocket server running on ws://localhost:${PORT}/ws`);
-  console.log(`📁 Upload directory: uploads/wallpapers/`);
-  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+  bootstrapLogger.info('HTTP server started', {
+    httpUrl: `http://localhost:${PORT}`,
+    wsUrl: `ws://localhost:${PORT}/ws`,
+    uploadDir: 'uploads/wallpapers/',
+    environment: process.env.NODE_ENV || 'development',
+  });
 });

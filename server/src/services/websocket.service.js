@@ -3,6 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { ConnectionStore } from './websocket/connection-store.js';
 import { SnakeMessageHandler } from './websocket/handlers/snake-handler.js';
 import { GomokuMessageHandler } from './websocket/handlers/gomoku-handler.js';
+import logger from '../utils/logger.js';
+
+const wsLogger = logger.child('WebSocketService');
 
 export class WebSocketService {
   constructor() {
@@ -43,26 +46,42 @@ export class WebSocketService {
       try {
         message = JSON.parse(raw.toString());
       } catch (error) {
-        console.error('WebSocket message parse error:', error);
+        wsLogger.warn('WebSocket message parse error', {
+          serverSessionId,
+          error,
+        });
         return;
       }
 
       this.handleMessage(serverSessionId, message).catch(err => {
-        console.error('WebSocket message handling failed:', err);
+        wsLogger.error('WebSocket message handling failed', {
+          serverSessionId,
+          messageType: message?.type,
+          error: err,
+        });
       });
     });
 
     socket.on('close', () => {
       this.handleDisconnect(serverSessionId).catch(err => {
-        console.error('WebSocket disconnect handling failed:', err);
+        wsLogger.error('WebSocket disconnect handling failed', {
+          serverSessionId,
+          error: err,
+        });
       });
-      console.log(`WebSocket client disconnected: ${serverSessionId}`);
+      wsLogger.info('WebSocket client disconnected', { serverSessionId });
     });
 
     socket.on('error', error => {
-      console.error(`WebSocket error for ${serverSessionId}:`, error);
+      wsLogger.error('WebSocket socket error', {
+        serverSessionId,
+        error,
+      });
       this.handleDisconnect(serverSessionId).catch(err => {
-        console.error('WebSocket disconnect handling failed:', err);
+        wsLogger.error('WebSocket disconnect handling failed', {
+          serverSessionId,
+          error: err,
+        });
       });
     });
   }
@@ -99,9 +118,10 @@ export class WebSocketService {
       socket._clientSessionId = providedSessionId;
     }
 
-    console.log(
-      `Client ${serverSessionId} joined (mapped clientId=${providedSessionId})`
-    );
+    wsLogger.info('Client joined websocket session', {
+      serverSessionId,
+      clientSessionId: providedSessionId,
+    });
   }
 
   async handleDisconnect(serverSessionId) {

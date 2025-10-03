@@ -1,7 +1,17 @@
+import logger from '../utils/logger.js';
+
+const errorLogger = logger.child('ErrorHandler');
+
 export default function errorHandler(err, req, res, _next) {
   void _next;
   // 日志记录
-  console.error(`[${new Date().toISOString()}] ${err.stack}`);
+  errorLogger.error('Unhandled error caught by Express middleware', {
+    path: req?.path,
+    method: req?.method,
+    status: err?.status || 500,
+    requestId: req?.headers?.['x-request-id'],
+    error: err,
+  });
 
   // 分类错误处理
   let status = err.status || 500;

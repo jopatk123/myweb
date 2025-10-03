@@ -23,9 +23,12 @@ import {
   ensureSnakeMultiplayerColumns,
 } from '../db/migration.js';
 import { ensureBuiltinApps, seedAppsIfEmpty } from '../db/seeding.js';
+import logger from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const dbLogger = logger.child('Database');
 
 async function runMigrations(resolvedPath) {
   const knexConfig = {
@@ -94,22 +97,25 @@ export async function initDatabase(options = {}) {
     try {
       initNovelBookmarkTables(db);
     } catch (e) {
-      console.warn('无法初始化 novel_bookmarks 表（非致命）:', e.message || e);
+      dbLogger.warn('无法初始化 novel_bookmarks 表（非致命）', {
+        error: e,
+      });
     }
     initNotebookTables(db);
     initWorkTimerTables(db);
     try {
       initMessageTables(db);
     } catch (e) {
-      console.warn('无法初始化 message board 表（非致命）:', e.message || e);
+      dbLogger.warn('无法初始化 message board 表（非致命）', {
+        error: e,
+      });
     }
     try {
       initSnakeMultiplayerTables(db);
     } catch (e) {
-      console.warn(
-        '无法初始化 snake multiplayer 表（非致命）:',
-        e.message || e
-      );
+      dbLogger.warn('无法初始化 snake multiplayer 表（非致命）', {
+        error: e,
+      });
     }
   }
 
@@ -119,7 +125,9 @@ export async function initDatabase(options = {}) {
   try {
     ensureAppsColumns(db);
   } catch (e) {
-    console.warn('apps 表列迁移失败（非致命）:', e.message || e);
+    dbLogger.warn('apps 表列迁移失败（非致命）', {
+      error: e,
+    });
   }
   // 迁移: 初始化应用管理相关表与缺失列
   // ensureAppTablesAndColumns 的列检查逻辑直接放在 migration.js 的后续版本
@@ -128,23 +136,31 @@ export async function initDatabase(options = {}) {
   try {
     ensureFilesTypeCategoryIncludesNovel(db);
   } catch (e) {
-    console.warn('文件类型分类迁移检查失败（非致命）:', e.message || e);
+    dbLogger.warn('文件类型分类迁移检查失败（非致命）', {
+      error: e,
+    });
   }
   try {
     ensureNovelRelations(db);
   } catch (e) {
-    console.warn('小说相关表迁移失败（非致命）:', e.message || e);
+    dbLogger.warn('小说相关表迁移失败（非致命）', {
+      error: e,
+    });
   }
   // 迁移: 确保贪吃蛇多人游戏表包含必要列
   try {
     ensureSnakeMultiplayerColumns(db);
   } catch (e) {
-    console.warn('snake multiplayer 列迁移检查失败（非致命）:', e.message || e);
+    dbLogger.warn('snake multiplayer 列迁移检查失败（非致命）', {
+      error: e,
+    });
   }
   try {
     initMusicTables(db);
   } catch (e) {
-    console.warn('无法初始化 music_tracks 表（非致命）:', e.message || e);
+    dbLogger.warn('无法初始化 music_tracks 表（非致命）', {
+      error: e,
+    });
   }
   // 确保内置应用存在（用于恢复误删或旧库缺失）
   if (seedBuiltinApps) {
@@ -154,7 +170,10 @@ export async function initDatabase(options = {}) {
   }
 
   if (!silent) {
-    console.log(`📊 Database initialized: ${resolvedPath}`);
+    dbLogger.info('Database initialized', {
+      path: resolvedPath,
+      inMemory: useInMemory,
+    });
   }
 
   return db;
