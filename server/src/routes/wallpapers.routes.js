@@ -22,6 +22,9 @@ export function createWallpaperRoutes(db) {
   router.get('/random', (req, res, next) =>
     controller.getRandomWallpaper(req, res, next)
   );
+  router.get('/:id(\\d+)/thumbnail', (req, res, next) =>
+    controller.getWallpaperThumbnail(req, res, next)
+  );
   router.get('/:id(\\d+)', (req, res, next) =>
     controller.getWallpaper(req, res, next)
   );

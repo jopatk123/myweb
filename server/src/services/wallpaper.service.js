@@ -4,10 +4,26 @@ import { mapToSnake } from '../utils/field-mapper.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import sharp from 'sharp';
+
+const THUMBNAIL_DEFAULT_WIDTH = 320;
+const THUMBNAIL_MIN_SIZE = 50;
+const THUMBNAIL_MAX_SIZE = 3840;
+const SUPPORTED_THUMBNAIL_FORMATS = new Set([
+  'webp',
+  'jpeg',
+  'jpg',
+  'png',
+  'avif',
+]);
 
 // ESM 下没有 __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const THUMBNAIL_DIR = path.join(
+  __dirname,
+  '../../uploads/wallpapers/thumbnails'
+);
 
 export class WallpaperService {
   constructor(db) {
@@ -89,9 +105,17 @@ export class WallpaperService {
     }
   }
 
-  updateWallpaper(id, data) {
-    this.getWallpaperById(id); // 验证壁纸存在
-    return this.wallpaperModel.update(id, data);
+  async updateWallpaper(id, data) {
+    const existing = this.getWallpaperById(id); // 验证壁纸存在
+    const updated = this.wallpaperModel.update(id, data);
+
+    const existingPath = existing?.file_path;
+    const updatedPath = updated?.file_path;
+    if (existingPath && updatedPath && existingPath !== updatedPath) {
+      await this.#purgeThumbnailCache(existingPath);
+    }
+
+    return updated;
   }
 
   async deleteWallpaper(id) {
@@ -113,6 +137,8 @@ export class WallpaperService {
         console.warn('删除壁纸物理文件失败（已忽略）:', error && error.message);
       }
     }
+
+    await this.#purgeThumbnailCache(wallpaper.file_path);
 
     return dbResult;
   }
@@ -140,6 +166,8 @@ export class WallpaperService {
           );
         }
       }
+
+      await this.#purgeThumbnailCache(wallpaper.file_path);
     }
 
     return dbResult;
@@ -160,6 +188,94 @@ export class WallpaperService {
 
   getActiveWallpaper() {
     return this.wallpaperModel.getActive();
+  }
+
+  async getWallpaperThumbnail(id, options = {}) {
+    const { width: rawWidth, height: rawHeight, format: rawFormat } = options;
+
+    const wallpaper = this.getWallpaperById(id);
+    let originalPath = wallpaper.file_path;
+    if (!originalPath) {
+      const err = new Error('壁纸文件路径不存在');
+      err.status = 404;
+      throw err;
+    }
+
+    if (!path.isAbsolute(originalPath)) {
+      originalPath = path.join(__dirname, '../../', originalPath);
+    }
+
+    let stats;
+    try {
+      stats = await fs.stat(originalPath);
+    } catch (error) {
+      const err = new Error('壁纸原始文件不存在');
+      err.status = 404;
+      throw err;
+    }
+
+    const sanitizedWidth = this.#sanitizeDimension(rawWidth);
+    const sanitizedHeight = this.#sanitizeDimension(rawHeight, true);
+    const normalizedFormat = this.#sanitizeFormat(rawFormat);
+    const outputExtension =
+      normalizedFormat === 'jpg' ? 'jpeg' : normalizedFormat;
+
+    const parsed = path.parse(originalPath);
+    const suffix = `${sanitizedWidth || 'auto'}x${sanitizedHeight || 'auto'}.${outputExtension}`;
+    const cachedFilename = `${parsed.name}-${suffix}`;
+    const cachedPath = path.join(THUMBNAIL_DIR, cachedFilename);
+
+    let regenerate = true;
+    try {
+      const cacheStats = await fs.stat(cachedPath);
+      regenerate = cacheStats.mtimeMs < stats.mtimeMs;
+    } catch {
+      regenerate = true;
+    }
+
+    if (regenerate) {
+      await fs.mkdir(THUMBNAIL_DIR, { recursive: true });
+      const pipeline = sharp(originalPath).rotate();
+
+      if (sanitizedWidth || sanitizedHeight) {
+        pipeline.resize({
+          width: sanitizedWidth || null,
+          height: sanitizedHeight || null,
+          fit: sanitizedHeight ? 'cover' : 'inside',
+          withoutEnlargement: true,
+        });
+      }
+
+      switch (outputExtension) {
+        case 'jpeg':
+          pipeline.jpeg({ quality: 75, mozjpeg: true });
+          break;
+        case 'png':
+          pipeline.png({ compressionLevel: 8, adaptiveFiltering: true });
+          break;
+        case 'avif':
+          pipeline.avif({ quality: 45 });
+          break;
+        default:
+          pipeline.webp({ quality: 70, smartSubsample: true });
+      }
+
+      await pipeline.toFile(cachedPath);
+      // 将缩略图的 mtime 与原图保持一致，方便比较
+      const timestamp = stats.mtime;
+      await fs.utimes(cachedPath, timestamp, timestamp);
+    }
+
+    const thumbStats = await fs.stat(cachedPath);
+    const etag = `W/"${thumbStats.size}-${Math.round(thumbStats.mtimeMs)}"`;
+
+    return {
+      filePath: cachedPath,
+      mimeType: `image/${outputExtension}`,
+      etag,
+      lastModified: thumbStats.mtime.toUTCString(),
+      size: thumbStats.size,
+    };
   }
 
   getRandomWallpaper(groupId) {
@@ -197,6 +313,75 @@ export class WallpaperService {
     }
 
     return wallpaper;
+  }
+
+  #sanitizeDimension(value, allowNull = false) {
+    if (value === undefined || value === null || value === '') {
+      return allowNull ? null : THUMBNAIL_DEFAULT_WIDTH;
+    }
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      return allowNull ? null : THUMBNAIL_DEFAULT_WIDTH;
+    }
+    const clamped = Math.max(
+      THUMBNAIL_MIN_SIZE,
+      Math.min(THUMBNAIL_MAX_SIZE, Math.round(numeric))
+    );
+    return clamped;
+  }
+
+  #sanitizeFormat(value) {
+    if (!value) return 'webp';
+    const normalized = String(value).toLowerCase();
+    if (!SUPPORTED_THUMBNAIL_FORMATS.has(normalized)) {
+      return 'webp';
+    }
+    if (normalized === 'jpg') return 'jpg';
+    return normalized;
+  }
+
+  async #purgeThumbnailCache(filePath) {
+    if (!filePath) return;
+
+    const parsed = path.parse(filePath);
+    const baseName = parsed.name;
+    if (!baseName) return;
+
+    let entries;
+    try {
+      entries = await fs.readdir(THUMBNAIL_DIR);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') {
+        console.warn(
+          '读取缩略图缓存目录失败（已忽略）:',
+          error?.message || error
+        );
+      }
+      return;
+    }
+
+    if (!entries || entries.length === 0) return;
+
+    const prefix = `${baseName}-`;
+    const targets = entries.filter(name => name.startsWith(prefix));
+    if (targets.length === 0) return;
+
+    await Promise.allSettled(
+      targets.map(async name => {
+        const targetPath = path.join(THUMBNAIL_DIR, name);
+        try {
+          await fs.unlink(targetPath);
+        } catch (error) {
+          if (error?.code !== 'ENOENT') {
+            console.warn(
+              '删除缩略图缓存失败（已忽略）:',
+              targetPath,
+              error?.message || error
+            );
+          }
+        }
+      })
+    );
   }
 
   // 分组相关方法

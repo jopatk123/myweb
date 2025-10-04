@@ -39,7 +39,7 @@
           </td>
           <td>
             <img
-              :src="getWallpaperUrl(wallpaper)"
+              :src="getWallpaperThumbnailUrl(wallpaper)"
               :alt="wallpaper.name"
               class="thumbnail"
               @error="onThumbnailError"
@@ -142,6 +142,28 @@
 
     const normalized = fp.startsWith('/') ? fp : `/${fp}`;
     return buildServerUrl(normalized.replace(/\\/g, '/'));
+  };
+
+  const getWallpaperThumbnailUrl = wallpaper => {
+    if (!wallpaper || !wallpaper.id) {
+      return getWallpaperUrl(wallpaper);
+    }
+
+    const params = new URLSearchParams();
+    params.set('w', '320');
+    params.set('format', 'webp');
+
+    const updatedAt = wallpaper.updatedAt || wallpaper.updated_at;
+    if (updatedAt) {
+      const ts = new Date(updatedAt).getTime();
+      if (!Number.isNaN(ts)) {
+        params.set('v', String(ts));
+      }
+    }
+
+    const basePath = `/api/wallpapers/${wallpaper.id}/thumbnail`;
+    const query = params.toString();
+    return buildServerUrl(query ? `${basePath}?${query}` : basePath);
   };
 
   const formatFileSize = bytes => {

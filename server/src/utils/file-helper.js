@@ -12,6 +12,7 @@ export async function createUploadDirs() {
   const uploadDirs = [
     path.join(__dirname, '../../uploads'),
     path.join(__dirname, '../../uploads/wallpapers'),
+    path.join(__dirname, '../../uploads/wallpapers/thumbnails'),
     path.join(__dirname, '../../uploads/apps'),
     path.join(__dirname, '../../uploads/apps/icons'),
     path.join(__dirname, '../../uploads/files'),

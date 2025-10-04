@@ -1,6 +1,7 @@
 import { WallpaperService } from '../services/wallpaper.service.js';
 import multer from 'multer';
 import path from 'path';
+import { createReadStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { normalizeKeys } from '../utils/case-helper.js';
@@ -67,6 +68,49 @@ export class WallpaperController {
         const wallpapers = await this.service.getAllWallpapers(groupId);
         res.json({ code: 200, data: wallpapers, message: '获取成功' });
       }
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // 按需生成并返回缩略图
+  async getWallpaperThumbnail(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { w, width, h, height, format, f } = req.query;
+
+      const options = {
+        width: w ?? width,
+        height: h ?? height,
+        format: format ?? f,
+      };
+
+      const result = await this.service.getWallpaperThumbnail(id, options);
+      const { filePath, mimeType, etag, lastModified, size } = result;
+
+      const cacheControl = 'public, max-age=2592000, immutable';
+      const ifNoneMatch = req.headers['if-none-match'];
+
+      if (ifNoneMatch && ifNoneMatch.split(/,\s*/).includes(etag)) {
+        res.set({
+          'Cache-Control': cacheControl,
+          ETag: etag,
+          'Last-Modified': lastModified,
+        });
+        return res.status(304).end();
+      }
+
+      res.set({
+        'Content-Type': mimeType,
+        'Content-Length': size,
+        'Cache-Control': cacheControl,
+        ETag: etag,
+        'Last-Modified': lastModified,
+      });
+
+      const stream = createReadStream(filePath);
+      stream.on('error', error => next(error));
+      return stream.pipe(res);
     } catch (error) {
       next(error);
     }
