@@ -21,7 +21,7 @@
     "lint": "eslint --fix \"**/*.{js,vue}\"",
     "lint:check": "eslint \"**/*.{js,vue}\"",
     "contract-test": "spectral lint openapi.yaml --format json > contract-report.json",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "@babel/core": "^7.28.3",

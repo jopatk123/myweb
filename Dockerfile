@@ -57,9 +57,13 @@ COPY package*.json ./
 COPY server/package*.json ./server/
 COPY client/package*.json ./client/
 
-# 安装所有依赖（工作区模式）
+# 在构建环境中禁用 husky 的 prepare 钩子，避免在无 git 或未安装 husky 时失败
+ENV HUSKY=0
+ENV SKIP_HUSKY=1
+
+# 安装 server workspace 的依赖，避免执行根目录的 prepare（husky）脚本
 RUN if [ "$SKIP_SERVER_NPM_INSTALL" = "0" ]; then \
-        npm install --omit=dev; \
+        npm install --workspace=server --omit=dev; \
     fi
 
 # =================== 运行时阶段 ===================

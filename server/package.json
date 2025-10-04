@@ -25,7 +25,7 @@
     "joi": "^17.11.0",
     "jschardet": "^3.0.0",
     "knex": "^2.5.1",
-    "music-metadata": "^7.14.4",
+    "music-metadata": "^7.14.0",
     "multer": "^1.4.4",
     "uuid": "^9.0.0",
     "ws": "^8.18.3"
