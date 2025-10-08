@@ -27,120 +27,20 @@
             </tr>
           </thead>
           <tbody>
-            <tr
+            <MusicLibraryRow
               v-for="(track, index) in group.tracks"
               :key="track.id"
-              :class="{ active: track.id === currentTrackId }"
-            >
-              <td>{{ index + 1 }}</td>
-              <td>
-                <div v-if="editingRow === track.id" class="edit-fields">
-                  <input
-                    v-model="editDraft.title"
-                    type="text"
-                    placeholder="标题"
-                  />
-                  <small>文件名：{{ track.originalName || '未知文件' }}</small>
-                </div>
-                <div v-else class="title-cell">
-                  <span class="title">{{ track.title || '未命名' }}</span>
-                </div>
-              </td>
-              <td>
-                <div v-if="editingRow === track.id" class="edit-fields">
-                  <input
-                    v-model="editDraft.artist"
-                    type="text"
-                    placeholder="歌手"
-                  />
-                </div>
-                <span v-else>{{ track.artist || '未知艺术家' }}</span>
-              </td>
-              <td>
-                <div v-if="editingRow === track.id" class="edit-fields">
-                  <input
-                    v-model="editDraft.album"
-                    type="text"
-                    placeholder="专辑"
-                  />
-                </div>
-                <span v-else>{{ track.album || '—' }}</span>
-              </td>
-              <td>
-                <span>{{ getGroupName(track) }}</span>
-              </td>
-              <td>
-                {{ formatDuration(track.durationSeconds || track.duration) }}
-              </td>
-              <td class="col-actions">
-                <div class="action-buttons">
-                  <button
-                    class="icon-button play"
-                    type="button"
-                    @click="$emit('play-track', track.id)"
-                  >
-                    {{ track.id === currentTrackId && isPlaying ? '⏸' : '▶️' }}
-                  </button>
-                  <button
-                    v-if="editingRow !== track.id"
-                    class="icon-button"
-                    type="button"
-                    @click="startEditing(track)"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    v-else
-                    class="icon-button confirm"
-                    type="button"
-                    @click="confirmEdit(track.id)"
-                  >
-                    ✅
-                  </button>
-                  <button
-                    v-if="editingRow === track.id"
-                    class="icon-button"
-                    type="button"
-                    @click="cancelEdit"
-                  >
-                    ❌
-                  </button>
-                  <button
-                    class="icon-button"
-                    type="button"
-                    :disabled="movableGroups(track).length === 0"
-                    @click="startMove(track)"
-                  >
-                    🗂
-                  </button>
-                  <button
-                    class="icon-button danger"
-                    type="button"
-                    :disabled="deletingIds.has(track.id)"
-                    @click="$emit('delete-track', track.id)"
-                  >
-                    {{ deletingIds.has(track.id) ? '…' : '🗑' }}
-                  </button>
-                </div>
-                <div v-if="movingTrackId === track.id" class="move-panel">
-                  <select v-model="moveTargetGroupId">
-                    <option
-                      v-for="groupOption in movableGroups(track)"
-                      :key="groupOption.id"
-                      :value="groupOption.id"
-                    >
-                      {{ groupOption.name }}
-                    </option>
-                  </select>
-                  <div class="move-actions">
-                    <button type="button" @click="confirmMove(track.id)">
-                      移动
-                    </button>
-                    <button type="button" @click="cancelMove">取消</button>
-                  </div>
-                </div>
-              </td>
-            </tr>
+              :track="track"
+              :index="index"
+              :current-track-id="currentTrackId"
+              :is-playing="isPlaying"
+              :groups="groups"
+              :deleting-ids="deletingIds"
+              @play-track="$emit('play-track', $event)"
+              @delete-track="$emit('delete-track', $event)"
+              @rename-track="$emit('rename-track', $event)"
+              @move-track="$emit('move-track', $event)"
+            />
           </tbody>
         </table>
         <div v-else class="empty-group">暂无歌曲</div>
@@ -150,7 +50,8 @@
 </template>
 
 <script setup>
-  import { ref, computed, toRefs } from 'vue';
+  import { computed, toRefs } from 'vue';
+  import MusicLibraryRow from './components/MusicLibraryRow.vue';
 
   const props = defineProps({
     tracks: {
@@ -205,57 +106,6 @@
     'move-track',
   ]);
 
-  const editingRow = ref(null);
-  const editDraft = ref({ title: '', artist: '', album: '' });
-  const movingTrackId = ref(null);
-  const moveTargetGroupId = ref(null);
-
-  function startEditing(track) {
-    editingRow.value = track.id;
-    editDraft.value = {
-      title: track.title || '',
-      artist: track.artist || '',
-      album: track.album || '',
-    };
-  }
-
-  function cancelEdit() {
-    editingRow.value = null;
-    editDraft.value = { title: '', artist: '', album: '' };
-  }
-
-  function getGroupName(track) {
-    return (
-      track.group?.name ||
-      groups.value?.find(g => g.id === (track.group?.id ?? track.group_id))
-        ?.name ||
-      '默认歌单'
-    );
-  }
-
-  function movableGroups(track) {
-    const currentId = track.group?.id ?? track.group_id ?? null;
-    return (groups.value || []).filter(group => group.id !== currentId);
-  }
-
-  function startMove(track) {
-    const options = movableGroups(track);
-    if (!options.length) return;
-    movingTrackId.value = track.id;
-    moveTargetGroupId.value = options[0]?.id ?? null;
-  }
-
-  function cancelMove() {
-    movingTrackId.value = null;
-    moveTargetGroupId.value = null;
-  }
-
-  function confirmMove(id) {
-    if (!moveTargetGroupId.value) return;
-    emit('move-track', { id, groupId: moveTargetGroupId.value });
-    cancelMove();
-  }
-
   const displayBuckets = computed(() => {
     if (activeGroupId.value === 'all') {
       return groupedTracks.value.length
@@ -277,23 +127,6 @@
       },
     ];
   });
-
-  function confirmEdit(id) {
-    emit('rename-track', {
-      id,
-      title: editDraft.value.title.trim(),
-      artist: editDraft.value.artist.trim(),
-      album: editDraft.value.album.trim(),
-    });
-    cancelEdit();
-  }
-
-  function formatDuration(seconds) {
-    const total = Number(seconds) || 0;
-    const mins = Math.floor(total / 60);
-    const secs = Math.floor(total % 60);
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  }
 </script>
 
 <style scoped>
@@ -364,112 +197,13 @@
     opacity: 0.75;
   }
 
-  tr:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  tr.active {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  .title-cell .title {
-    font-weight: 500;
-  }
-
   .col-actions {
     width: 160px;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .move-panel {
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .move-panel select {
-    flex: 1;
-    border-radius: 8px;
-    padding: 6px 8px;
-    border: none;
-  }
-
-  .move-actions {
-    display: flex;
-    gap: 6px;
-  }
-
-  .move-actions button {
-    border: none;
-    border-radius: 8px;
-    padding: 6px 12px;
-    cursor: pointer;
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-  }
-
-  .move-actions button:hover {
-    background: rgba(255, 255, 255, 0.3);
   }
 
   .empty-group {
     padding: 16px;
     text-align: center;
     opacity: 0.65;
-  }
-
-  .icon-button {
-    border: none;
-    background: rgba(255, 255, 255, 0.12);
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s ease;
-  }
-
-  .icon-button:hover {
-    background: rgba(255, 255, 255, 0.25);
-  }
-
-  .icon-button.danger {
-    background: rgba(255, 138, 128, 0.3);
-  }
-
-  .icon-button.danger:hover {
-    background: rgba(255, 138, 128, 0.45);
-  }
-
-  .icon-button:disabled {
-    cursor: progress;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .edit-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .edit-fields input {
-    border: none;
-    border-radius: 8px;
-    padding: 6px 8px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #333;
-  }
-
-  .edit-fields small {
-    font-size: 11px;
-    opacity: 0.7;
   }
 </style>

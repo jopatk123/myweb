@@ -1,92 +1,28 @@
 <template>
   <div class="music-player-app">
-    <header class="app-header">
-      <div class="header-left">
-        <h2>音乐播放器</h2>
-        <span class="track-count">{{ tracks.length }} 首曲目</span>
-        <span
-          v-if="prefetching.status === 'running'"
-          class="prefetch-indicator"
-        >
-          ⚡ 正在预加载下一首
-        </span>
-        <span
-          v-else-if="prefetching.status === 'success'"
-          class="prefetch-indicator ok"
-        >
-          ✅ 下一首已缓存
-        </span>
-        <span
-          v-else-if="prefetching.status === 'error'"
-          class="prefetch-indicator error"
-        >
-          ⚠️ 预加载失败
-        </span>
-      </div>
-      <div class="header-actions">
-        <div class="group-selector" v-if="groupOptions.length">
-          <label for="music-group-select">歌单</label>
-          <select
-            id="music-group-select"
-            v-model="selectedGroup"
-            :disabled="groupsLoading"
-            @change="onGroupChange"
-          >
-            <option value="all">全部歌曲</option>
-            <option
-              v-for="group in groupOptions"
-              :key="group.id"
-              :value="group.id"
-            >
-              {{ group.name }} ({{ group.trackCount }})
-            </option>
-          </select>
-          <button
-            class="icon-button"
-            type="button"
-            :disabled="groupsLoading"
-            @click="createGroup"
-          >
-            ➕
-          </button>
-          <button
-            class="icon-button"
-            type="button"
-            :disabled="groupsLoading || !currentGroup || currentGroup.isDefault"
-            @click="renameCurrentGroup"
-          >
-            ✏️
-          </button>
-          <button
-            class="icon-button danger"
-            type="button"
-            :disabled="groupsLoading || !currentGroup || currentGroup.isDefault"
-            @click="deleteCurrentGroup"
-          >
-            🗑
-          </button>
-        </div>
-        <label class="search-box">
-          <span class="icon">🔍</span>
-          <input
-            v-model="searchModel"
-            type="search"
-            placeholder="搜索歌曲、歌手或专辑"
-          />
-        </label>
-        <button class="upload-button" type="button" @click="triggerUpload">
-          上传音乐
-        </button>
-        <input
-          ref="fileInputEl"
-          type="file"
-          class="hidden"
-          accept="audio/*"
-          multiple
-          @change="handleFilesSelected"
-        />
-      </div>
-    </header>
+    <MusicPlayerHeader
+      :track-count="tracks.length"
+      :prefetching="prefetching"
+      :group-options="groupOptions"
+      :selected-group="selectedGroup"
+      :groups-loading="groupsLoading"
+      :current-group="currentGroup"
+      :search="searchModel.value"
+      @update:search="value => (searchModel.value = value)"
+      @group-change="handleGroupChange"
+      @create-group="createGroup"
+      @rename-group="renameCurrentGroup"
+      @delete-group="deleteCurrentGroup"
+      @request-upload="triggerUpload"
+    />
+    <input
+      ref="fileInputEl"
+      type="file"
+      class="hidden"
+      accept="audio/*"
+      multiple
+      @change="handleFilesSelected"
+    />
 
     <section v-if="error.value" class="error-banner">
       {{ error.value }}
@@ -136,24 +72,7 @@
 
     <audio ref="audioEl" class="audio-element" preload="auto"></audio>
 
-    <transition name="fade">
-      <div v-if="uploadingState.uploading" class="upload-progress">
-        <div class="progress-card">
-          <p>正在上传：{{ uploadingState.filename }}</p>
-          <div class="progress-bar">
-            <div
-              class="progress-inner"
-              :style="{ width: `${uploadingState.progress}%` }"
-            ></div>
-          </div>
-          <p class="progress-meta">
-            {{ uploadingState.progress }}% ({{
-              formatBytes(uploadingState.loaded)
-            }}/ {{ formatBytes(uploadingState.total) }})
-          </p>
-        </div>
-      </div>
-    </transition>
+    <UploadProgressOverlay :uploading-state="uploadingState" />
   </div>
 </template>
 
@@ -162,6 +81,8 @@
   import MusicLibrary from './MusicLibrary.vue';
   import MusicPlayerControls from './MusicPlayerControls.vue';
   import MusicNowPlaying from './MusicNowPlaying.vue';
+  import MusicPlayerHeader from './components/MusicPlayerHeader.vue';
+  import UploadProgressOverlay from './components/UploadProgressOverlay.vue';
   import { useMusicPlayer } from '@/composables/useMusicPlayer.js';
 
   const fileInputEl = ref(null);
@@ -285,8 +206,9 @@
     player.cycleRepeatMode();
   }
 
-  function onGroupChange() {
-    setActiveGroup(selectedGroup.value);
+  function handleGroupChange(value) {
+    selectedGroup.value = value;
+    setActiveGroup(value);
   }
 
   async function createGroup() {
@@ -346,17 +268,6 @@
   onBeforeUnmount(() => {
     player.teardown();
   });
-
-  function formatBytes(bytes) {
-    if (!bytes) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const index = Math.min(
-      Math.floor(Math.log(bytes) / Math.log(1024)),
-      units.length - 1
-    );
-    const value = bytes / Math.pow(1024, index);
-    return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
-  }
 </script>
 
 <style scoped>
@@ -369,135 +280,7 @@
     color: #fff;
     gap: 12px;
     overflow: hidden;
-  }
-
-  .app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-  }
-
-  .header-left h2 {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 600;
-  }
-
-  .track-count {
-    font-size: 14px;
-    opacity: 0.75;
-  }
-
-  .prefetch-indicator {
-    font-size: 13px;
-    padding: 2px 6px;
-    border-radius: 999px;
-    background-color: rgba(255, 255, 255, 0.12);
-    color: #fff;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .prefetch-indicator.ok {
-    background-color: rgba(76, 175, 80, 0.2);
-  }
-
-  .prefetch-indicator.error {
-    background-color: rgba(244, 67, 54, 0.2);
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .group-selector {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.85);
-  }
-
-  .group-selector label {
-    font-size: 12px;
-    opacity: 0.9;
-  }
-
-  .group-selector select {
-    border: none;
-    border-radius: 999px;
-    padding: 4px 8px;
-    background: rgba(0, 0, 0, 0.25);
-    color: inherit;
-    outline: none;
-  }
-
-  .group-selector .icon-button {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(255, 255, 255, 0.18);
-    color: inherit;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s ease;
-  }
-
-  .group-selector .icon-button:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.28);
-  }
-
-  .group-selector .icon-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .search-box {
-    display: flex;
-    align-items: center;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    gap: 6px;
-    color: rgba(255, 255, 255, 0.75);
-  }
-
-  .search-box input {
-    border: none;
-    background: transparent;
-    color: inherit;
-    outline: none;
-    min-width: 220px;
-  }
-
-  .upload-button {
-    padding: 8px 18px;
-    border-radius: 999px;
-    border: none;
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s ease;
-  }
-
-  .upload-button:hover {
-    background: rgba(255, 255, 255, 0.3);
+    position: relative;
   }
 
   .hidden {
@@ -514,58 +297,5 @@
 
   .audio-element {
     display: none;
-  }
-
-  .upload-progress {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    pointer-events: none;
-  }
-
-  .progress-card {
-    width: 320px;
-    margin-bottom: 24px;
-    padding: 16px;
-    border-radius: 16px;
-    background: rgba(15, 15, 22, 0.85);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    pointer-events: auto;
-  }
-
-  .progress-card p {
-    margin: 0;
-  }
-
-  .progress-bar {
-    height: 6px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.18);
-    overflow: hidden;
-    margin-top: 8px;
-  }
-
-  .progress-inner {
-    height: 100%;
-    background: linear-gradient(90deg, #ff8a65, #ffd54f);
-    transition: width 0.2s ease;
-  }
-
-  .progress-meta {
-    margin-top: 6px;
-    font-size: 12px;
-    opacity: 0.7;
-  }
-
-  .fade-enter-active,
-  .fade-leave-active {
-    transition: opacity 0.2s ease;
-  }
-
-  .fade-enter-from,
-  .fade-leave-to {
-    opacity: 0;
   }
 </style>

@@ -1,6 +1,7 @@
 import { musicApi } from '@/api/music.js';
 import { buildServerUrl } from '@/api/httpClient.js';
 import { clamp } from './utils.js';
+import { usePlaybackQueue } from './usePlaybackQueue.js';
 
 export function useAudioController(state, { settings, preloader } = {}) {
   const {
@@ -21,6 +22,7 @@ export function useAudioController(state, { settings, preloader } = {}) {
     currentIndex,
   } = state;
 
+  const queue = usePlaybackQueue(state);
   let currentObjectUrl = null;
   let prefetchTimer = null;
 
@@ -183,53 +185,17 @@ export function useAudioController(state, { settings, preloader } = {}) {
     }
   }
 
-  function getNextIndex() {
-    if (!tracks.value.length) return -1;
-    if (shuffle.value) {
-      if (tracks.value.length === 1) return 0;
-      const candidates = tracks.value
-        .map((_, idx) => idx)
-        .filter(idx => idx !== currentIndex.value && tracks.value[idx]);
-      if (!candidates.length) return -1;
-      const randomIdx = Math.floor(Math.random() * candidates.length);
-      return candidates[randomIdx];
-    }
-
-    const nextIdx = currentIndex.value + 1;
-    if (nextIdx >= tracks.value.length) {
-      return repeatMode.value === 'all' ? 0 : -1;
-    }
-    return nextIdx;
-  }
-
-  function getPreviousIndex() {
-    if (!tracks.value.length) return -1;
-    if (shuffle.value) {
-      return getNextIndex();
-    }
-    const prevIdx = currentIndex.value - 1;
-    if (prevIdx < 0) {
-      return repeatMode.value === 'all' ? tracks.value.length - 1 : -1;
-    }
-    return prevIdx;
-  }
-
   function autoAdvance() {
     if (!tracks.value.length) return;
-    if (repeatMode.value === 'one') {
+    if (queue.shouldRepeatCurrent()) {
       seekTo(0);
       playCurrent();
       return;
     }
 
-    const nextIndex = getNextIndex();
-    if (nextIndex === -1) {
-      if (repeatMode.value === 'all' && tracks.value.length) {
-        playTrack(tracks.value[0]);
-      }
-      return;
-    }
-    playTrack(tracks.value[nextIndex]);
+    const nextTrack = queue.nextTrack();
+    if (!nextTrack) return;
+    playTrack(nextTrack);
   }
 
   async function playTrack(trackOrId) {
@@ -357,15 +323,15 @@ export function useAudioController(state, { settings, preloader } = {}) {
   }
 
   function playNext() {
-    const nextIdx = getNextIndex();
-    if (nextIdx === -1) return;
-    playTrack(tracks.value[nextIdx]);
+    const nextTrack = queue.nextTrack();
+    if (!nextTrack) return;
+    playTrack(nextTrack);
   }
 
   function playPrevious() {
-    const prevIdx = getPreviousIndex();
-    if (prevIdx === -1) return;
-    playTrack(tracks.value[prevIdx]);
+    const previousTrack = queue.previousTrack();
+    if (!previousTrack) return;
+    playTrack(previousTrack);
   }
 
   function setVolume(value) {
@@ -407,19 +373,16 @@ export function useAudioController(state, { settings, preloader } = {}) {
   }
 
   function schedulePrefetch() {
-    if (!preloader || shuffle.value || !tracks.value.length) {
+    if (!preloader || queue.isShuffleEnabled() || !tracks.value.length) {
       preloader?.release(undefined, { force: true });
       return;
     }
 
-    const nextIdx = getNextIndex();
-    if (nextIdx === -1) {
+    const nextTrack = queue.nextTrack();
+    if (!nextTrack) {
       preloader.release(undefined, { force: true });
       return;
     }
-
-    const nextTrack = tracks.value[nextIdx];
-    if (!nextTrack) return;
 
     clearPrefetchTimer();
     prefetchTimer = setTimeout(() => {
