@@ -36,7 +36,7 @@ function buildContentSecurityPolicy(enableHttpsSecurity) {
     fontSrc: ["'self'", 'https:', 'data:'],
     connectSrc: ["'self'", 'ws:', 'wss:'],
     objectSrc: ["'none'"],
-    mediaSrc: ["'self'"],
+    mediaSrc: ["'self'", 'blob:'],
     frameSrc: ["'none'"],
     baseUri: ["'self'"],
     formAction: ["'self'"],

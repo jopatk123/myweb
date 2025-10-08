@@ -42,11 +42,7 @@ export function useTrackPreloader(state) {
     state.prefetching.trackId = track.id;
 
     try {
-      const url = musicApi.streamUrl(track.id, {
-        format: options.format || 'opus',
-        download: false,
-        quality: options.quality,
-      });
+      const url = musicApi.streamUrl(track.id);
       const response = await fetch(url, {
         signal: fetchController.signal,
         cache: 'force-cache',

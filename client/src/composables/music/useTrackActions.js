@@ -1,8 +1,4 @@
 import { musicApi } from '@/api/music.js';
-import {
-  prepareCompressedFiles,
-  shouldCompressFile,
-} from '@/services/audioCompression.js';
 
 function normaliseTrack(track) {
   const groupId = track.group?.id ?? track.group_id ?? track.groupId ?? null;
@@ -37,7 +33,6 @@ export function useTrackActions(state, { preloader } = {}) {
     uploadingState,
     searchQuery,
     audioEl,
-    compressionState,
   } = state;
 
   async function fetchTracks({ refreshGroups = false } = {}) {
@@ -266,65 +261,22 @@ export function useTrackActions(state, { preloader } = {}) {
   async function uploadTracks(files, options = {}) {
     if (!files || !files.length) return;
     const fileArray = Array.isArray(files) ? Array.from(files) : [files];
-    compressionState.running = false;
-    compressionState.progress = 0;
-    compressionState.currentFile = '';
+
     uploadingState.uploading = true;
     uploadingState.progress = 0;
     uploadingState.loaded = 0;
     uploadingState.total = 0;
     uploadingState.filename = fileArray[0]?.name || '';
+
     try {
-      let processedFiles = fileArray;
-      let compressionMeta = null;
-      const requiresCompression = fileArray.some(shouldCompressFile);
-
-      if (requiresCompression) {
-        compressionState.running = true;
-        compressionState.progress = 0;
-        compressionState.currentFile = '';
-        try {
-          const result = await prepareCompressedFiles(fileArray, {
-            onFileStart: ({ file, index, total }) => {
-              compressionState.currentFile = file.name;
-              compressionState.progress = Math.round((index / total) * 100);
-            },
-            onProgress: ({ ratio = 0, index, total }) => {
-              const value = ((index + ratio) / total) * 100;
-              compressionState.progress = Math.min(100, Math.round(value));
-            },
-          });
-          processedFiles = result.files;
-          compressionMeta = result.compression;
-        } catch (err) {
-          console.warn(
-            '音频压缩失败，将使用原始文件上传:',
-            err?.message || err
-          );
-          processedFiles = fileArray;
-          compressionMeta = null;
-        } finally {
-          compressionState.running = false;
-          compressionState.progress = 0;
-          compressionState.currentFile = '';
-        }
-      }
-
-      const requestOptions = {
-        ...options,
-      };
-      if (compressionMeta) {
-        requestOptions.compression = compressionMeta;
-      }
-
       const resp = await musicApi.uploadTracks(
-        processedFiles,
+        fileArray,
         (progress, loaded, total) => {
           uploadingState.progress = progress;
           uploadingState.loaded = loaded;
           uploadingState.total = total;
         },
-        requestOptions
+        options
       );
       const data = resp?.data;
       const newTracks = Array.isArray(data) ? data : data ? [data] : [];

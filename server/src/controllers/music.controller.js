@@ -104,6 +104,20 @@ function computeEtag(stat, extraSeed = '') {
   return `"${hash}"`;
 }
 
+function resolveMimeType(track, filePath) {
+  const stored = track?.mime_type || track?.mimeType || '';
+  const ext = path.extname(filePath || track?.file_path || '').toLowerCase();
+  if (ext === '.opus') return 'audio/ogg; codecs=opus';
+  if (ext === '.ogg') return 'audio/ogg';
+  if (ext === '.webm') return 'audio/webm';
+  if (ext === '.wav') return 'audio/wav';
+  if (ext === '.flac') return 'audio/flac';
+  if (ext === '.aac' || ext === '.m4a') return 'audio/aac';
+  if (ext === '.mp3') return 'audio/mpeg';
+  if (stored) return stored;
+  return 'application/octet-stream';
+}
+
 function serializeTrack(track, req) {
   if (!track) return track;
   const baseUrl = req.baseUrl || '/api/music';
@@ -390,7 +404,7 @@ export function createMusicRoutes(db) {
 
       const total = stat.size;
       const range = req.headers.range;
-      const mimeType = track.mime_type || 'audio/mpeg';
+      const mimeType = resolveMimeType(track, filePath);
 
       if (range) {
         const match = /bytes=(\d+)-(\d*)/.exec(range);

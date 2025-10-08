@@ -1,4 +1,5 @@
 import { musicApi } from '@/api/music.js';
+import { buildServerUrl } from '@/api/httpClient.js';
 import { clamp } from './utils.js';
 
 export function useAudioController(state, { settings, preloader } = {}) {
@@ -35,6 +36,11 @@ export function useAudioController(state, { settings, preloader } = {}) {
       clearTimeout(prefetchTimer);
       prefetchTimer = null;
     }
+  }
+
+  function resolveStreamUrl(value) {
+    if (!value) return '';
+    return /^https?:/i.test(value) ? value : buildServerUrl(value);
   }
 
   function attachAudioEvents(el) {
@@ -252,9 +258,15 @@ export function useAudioController(state, { settings, preloader } = {}) {
 
     clearPrefetchTimer();
     const prefetched = preloader?.consume(target.id) || null;
-    const nextSource = prefetched
-      ? prefetched.objectUrl
-      : `${stream}?v=${versionKey}`;
+
+    let nextSource;
+    if (prefetched) {
+      nextSource = prefetched.objectUrl;
+    } else {
+      const streamUrl = resolveStreamUrl(stream);
+      const separator = streamUrl.includes('?') ? '&' : '?';
+      nextSource = `${streamUrl}${separator}v=${versionKey}`;
+    }
 
     currentTrackId.value = target.id;
     currentStreamUrl.value = stream;
@@ -278,6 +290,23 @@ export function useAudioController(state, { settings, preloader } = {}) {
       syncDurationFromElement();
       schedulePrefetch();
     } catch (err) {
+      if (!prefetched) {
+        const fallbackSource = resolveStreamUrl(stream);
+        if (fallbackSource && audioEl.value.src !== fallbackSource) {
+          try {
+            cleanupCurrentObjectUrl();
+            audioEl.value.src = fallbackSource;
+            await audioEl.value.play();
+            isPlaying.value = true;
+            isBuffering.value = false;
+            syncDurationFromElement();
+            schedulePrefetch();
+            return;
+          } catch (fallbackErr) {
+            console.error('播放失败(回退源):', fallbackErr);
+          }
+        }
+      }
       console.error('播放失败:', err);
       error.value = err?.message || '无法播放该音频';
       if (prefetched && !currentObjectUrl) {

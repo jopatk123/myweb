@@ -1,6 +1,8 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegPath from 'ffmpeg-static';
 import { MusicTrackModel } from '../models/music-track.model.js';
 import { MusicGroupModel } from '../models/music-group.model.js';
 import { FileService } from './file.service.js';
@@ -9,6 +11,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsRoot = path.join(__dirname, '../../uploads');
 const musicDir = path.join(uploadsRoot, 'music');
+
+if (ffmpegPath) {
+  ffmpeg.setFfmpegPath(ffmpegPath);
+}
 
 function ensureAbsolutePath(relativePath) {
   if (!relativePath) return null;
@@ -24,6 +30,29 @@ export class MusicService {
     this.fileService = new FileService(db);
     this.parseFileLoader = null;
     this.metadataWarningLogged = false;
+  }
+
+  guessMimeFromExtension(filename) {
+    const ext = path.extname(String(filename || '').trim()).toLowerCase();
+    switch (ext) {
+      case '.mp3':
+        return 'audio/mpeg';
+      case '.wav':
+        return 'audio/wav';
+      case '.flac':
+        return 'audio/flac';
+      case '.ogg':
+        return 'audio/ogg';
+      case '.opus':
+        return 'audio/ogg; codecs=opus';
+      case '.m4a':
+      case '.aac':
+        return 'audio/aac';
+      case '.webm':
+        return 'audio/webm';
+      default:
+        return null;
+    }
   }
 
   async ensureUploadsDir() {
@@ -139,6 +168,12 @@ export class MusicService {
       : normalizedPath;
     const fileUrl = rawUrl.replace(/\/{2,}/g, '/');
 
+    const inferredMime =
+      file.mimetype ||
+      format?.mimeType ||
+      this.guessMimeFromExtension(file.originalname || file.filename) ||
+      null;
+
     return {
       title: (common.title || titleFromFile || '未命名').trim(),
       artist: artists || '未知艺术家',
@@ -153,7 +188,7 @@ export class MusicService {
       originalName: file.originalname,
       storedName: file.filename,
       filePath: normalizedPath,
-      mimeType: file.mimetype,
+      mimeType: inferredMime || 'application/octet-stream',
       fileSize: file.size,
       fileUrl,
       uploaderId: null,
@@ -169,11 +204,16 @@ export class MusicService {
 
   createFileRecord({ file, baseUrl }) {
     const webPath = path.posix.join('uploads', 'music', file.filename);
+    const inferredMime =
+      file.mimetype ||
+      this.guessMimeFromExtension(file.originalname || file.filename) ||
+      'application/octet-stream';
+
     return this.fileService.create({
       originalName: file.originalname,
       storedName: file.filename,
       filePath: webPath,
-      mimeType: file.mimetype,
+      mimeType: inferredMime,
       fileSize: file.size,
       uploaderId: null,
       baseUrl,
@@ -288,22 +328,136 @@ export class MusicService {
     return this.model.findById(track.id);
   }
 
+  async compressAudioIfNeeded(inputPath, originalFile) {
+    const MIN_SIZE_FOR_COMPRESSION = 4 * 1024 * 1024; // 4MB
+    const TARGET_BITRATE = 128; // kbps
+    const originalMime = originalFile?.mimetype || null;
+
+    const stats = await fs.stat(inputPath);
+    if (stats.size < MIN_SIZE_FOR_COMPRESSION) {
+      return {
+        compressed: false,
+        path: inputPath,
+        metadata: null,
+        mimeType: originalMime,
+      };
+    }
+
+    const ext = path.extname(originalFile.originalname || '').toLowerCase();
+    const shouldCompress =
+      ['.flac', '.wav', '.ape', '.alac'].includes(ext) ||
+      stats.size >= MIN_SIZE_FOR_COMPRESSION;
+
+    if (!shouldCompress) {
+      return {
+        compressed: false,
+        path: inputPath,
+        metadata: null,
+        mimeType: originalMime,
+      };
+    }
+
+    try {
+      const compressedName = `${path.basename(inputPath, path.extname(inputPath))}_compressed.opus`;
+      const compressedPath = path.join(musicDir, compressedName);
+
+      await new Promise((resolve, reject) => {
+        ffmpeg(inputPath)
+          .toFormat('opus')
+          .audioBitrate(TARGET_BITRATE)
+          .audioCodec('libopus')
+          .outputOptions(['-vn', '-vbr on'])
+          .on('end', resolve)
+          .on('error', reject)
+          .save(compressedPath);
+      });
+
+      const compressedStats = await fs.stat(compressedPath);
+      if (compressedStats.size < stats.size * 0.9) {
+        try {
+          await fs.unlink(inputPath);
+        } catch (err) {
+          console.warn('删除原始文件失败:', err?.message || err);
+        }
+
+        return {
+          compressed: true,
+          path: compressedPath,
+          metadata: {
+            strategy: 'server-ffmpeg-opus-128k',
+            originalBitrate: null,
+            transcodeProfile: `opus@${TARGET_BITRATE}k`,
+          },
+          mimeType: 'audio/ogg; codecs=opus',
+        };
+      }
+
+      try {
+        await fs.unlink(compressedPath);
+      } catch (err) {
+        console.warn('删除压缩文件失败:', err?.message || err);
+      }
+      return {
+        compressed: false,
+        path: inputPath,
+        metadata: null,
+        mimeType: originalMime,
+      };
+    } catch (err) {
+      console.warn('音频压缩失败，使用原始文件:', err?.message || err);
+      return {
+        compressed: false,
+        path: inputPath,
+        metadata: null,
+        mimeType: originalMime,
+      };
+    }
+  }
+
   async createTrackFromUpload(
     file,
     { baseUrl = '', groupId = null, compression = null } = {}
   ) {
     await this.ensureUploadsDir();
     const absolutePath = path.join(musicDir, file.filename);
-    const metadata = await this.parseMetadata(absolutePath);
+
+    const compressionResult = await this.compressAudioIfNeeded(
+      absolutePath,
+      file
+    );
+    const finalPath = compressionResult.path;
+    const finalFilename = path.basename(finalPath);
+    const compressionMeta = compressionResult.metadata || compression;
+
+    const inferredMime =
+      compressionResult.mimeType ||
+      file.mimetype ||
+      this.guessMimeFromExtension(finalFilename) ||
+      this.guessMimeFromExtension(file.originalname) ||
+      null;
+
+    const updatedFile = {
+      ...file,
+      filename: finalFilename,
+      path: finalPath,
+      size: (await fs.stat(finalPath)).size,
+      mimetype: inferredMime,
+    };
+
+    const metadata = await this.parseMetadata(finalPath);
     const group = await this.getGroupOrDefault(groupId ?? metadata?.groupId);
     const payload = this.buildTrackPayload({
-      file,
-      metadata: { ...metadata, compression, groupId: group.id },
+      file: updatedFile,
+      metadata: {
+        ...metadata,
+        compression: compressionMeta,
+        groupId: group.id,
+      },
       baseUrl,
     });
 
     const transaction = this.db.transaction(() => {
-      const fileRow = this.createFileRecord({ file, baseUrl });
+      const fileRow = this.createFileRecord({ file: updatedFile, baseUrl });
       const trackRow = this.model.create({
         ...payload,
         fileId: fileRow.id,

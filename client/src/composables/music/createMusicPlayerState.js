@@ -31,11 +31,6 @@ export function createMusicPlayerState() {
     status: 'idle',
     trackId: null,
   });
-  const compressionState = reactive({
-    running: false,
-    progress: 0,
-    currentFile: '',
-  });
 
   const currentTrack = computed(
     () => tracks.value.find(track => track.id === currentTrackId.value) || null
@@ -124,6 +119,5 @@ export function createMusicPlayerState() {
     error,
     currentIndex,
     prefetching,
-    compressionState,
   };
 }

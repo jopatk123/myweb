@@ -137,21 +137,6 @@
     <audio ref="audioEl" class="audio-element" preload="auto"></audio>
 
     <transition name="fade">
-      <div v-if="compressionState.running" class="upload-progress">
-        <div class="progress-card">
-          <p>正在压缩：{{ compressionState.currentFile || '音频文件' }}</p>
-          <div class="progress-bar">
-            <div
-              class="progress-inner"
-              :style="{ width: `${compressionState.progress}%` }"
-            ></div>
-          </div>
-          <p class="progress-meta">{{ compressionState.progress }}%</p>
-        </div>
-      </div>
-    </transition>
-
-    <transition name="fade">
       <div v-if="uploadingState.uploading" class="upload-progress">
         <div class="progress-card">
           <p>正在上传：{{ uploadingState.filename }}</p>
@@ -202,7 +187,6 @@
     shuffle,
     deletingIds,
     uploadingState,
-    compressionState,
     prefetching,
     error,
     activeGroupId,
