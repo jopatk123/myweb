@@ -275,6 +275,16 @@
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
   }
 
+  /* 防止浮动控件在点击桌面时显示文本插入光标 */
+  .floating-controls,
+  .control-btn {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    caret-color: transparent;
+  }
+
   /* 矩形选框样式 */
   .selection-rect {
     position: fixed;

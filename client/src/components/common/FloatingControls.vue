@@ -50,6 +50,16 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
+  /* 防止被意外选中/显示文本插入点 */
+  .floating-controls,
+  .control-btn {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    caret-color: transparent; /* 隐藏光标 */
+  }
+
   .control-btn:hover {
     background: rgba(0, 0, 0, 0.9);
     transform: scale(1.1);
