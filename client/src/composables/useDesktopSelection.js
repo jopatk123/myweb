@@ -15,6 +15,9 @@ export default function useDesktopSelection() {
   let isSelecting = false;
 
   function onMouseDown(e) {
+    if (e.button !== 0) {
+      return;
+    }
     // 只在空白区域开始选框
     if (e.target.closest('.icon-item')) return;
 
