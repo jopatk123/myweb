@@ -1,7 +1,7 @@
 import { musicApi } from '@/api/music.js';
 import { clamp } from './utils.js';
 
-export function useAudioController(state, { settings } = {}) {
+export function useAudioController(state, { settings, preloader } = {}) {
   const {
     tracks,
     currentTrack,
@@ -20,11 +20,29 @@ export function useAudioController(state, { settings } = {}) {
     currentIndex,
   } = state;
 
+  let currentObjectUrl = null;
+  let prefetchTimer = null;
+
+  function cleanupCurrentObjectUrl() {
+    if (currentObjectUrl) {
+      URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = null;
+    }
+  }
+
+  function clearPrefetchTimer() {
+    if (prefetchTimer) {
+      clearTimeout(prefetchTimer);
+      prefetchTimer = null;
+    }
+  }
+
   function attachAudioEvents(el) {
     if (!el) return;
 
     el.addEventListener('timeupdate', handleTimeUpdate);
     el.addEventListener('loadedmetadata', handleLoadedMetadata);
+    el.addEventListener('durationchange', handleDurationChange);
     el.addEventListener('pause', handlePause);
     el.addEventListener('playing', handlePlaying);
     el.addEventListener('waiting', handleWaiting);
@@ -36,20 +54,88 @@ export function useAudioController(state, { settings } = {}) {
 
     el.removeEventListener('timeupdate', handleTimeUpdate);
     el.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    el.removeEventListener('durationchange', handleDurationChange);
     el.removeEventListener('pause', handlePause);
     el.removeEventListener('playing', handlePlaying);
     el.removeEventListener('waiting', handleWaiting);
     el.removeEventListener('ended', handleEnded);
   }
 
+  function normaliseDurationValue(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || Number.isNaN(numeric) || numeric <= 0) {
+      return null;
+    }
+    return Math.round(numeric);
+  }
+
+  function extractTrackDuration(track) {
+    if (!track) return null;
+    const candidates = [
+      track.durationSeconds,
+      track.duration,
+      track.duration_seconds,
+      track.meta?.duration,
+    ];
+    for (const candidate of candidates) {
+      const value = normaliseDurationValue(candidate);
+      if (value !== null) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  function resolveElementDuration(el) {
+    const direct = normaliseDurationValue(el?.duration);
+    if (direct !== null) {
+      return direct;
+    }
+
+    if (el?.seekable && el.seekable.length) {
+      try {
+        const end = el.seekable.end(el.seekable.length - 1);
+        const fromSeekable = normaliseDurationValue(end);
+        if (fromSeekable !== null) {
+          return fromSeekable;
+        }
+      } catch (err) {
+        console.debug('解析音频 seekable 时长失败', err);
+      }
+    }
+
+    return extractTrackDuration(currentTrack.value);
+  }
+
+  function syncDurationFromElement() {
+    if (!audioEl.value) return;
+    const resolved = resolveElementDuration(audioEl.value);
+    if (resolved !== null) {
+      duration.value = resolved;
+    } else if (currentTime.value > duration.value) {
+      duration.value = currentTime.value;
+    } else if (
+      !Number.isFinite(duration.value) ||
+      Number.isNaN(duration.value)
+    ) {
+      duration.value = 0;
+    }
+  }
+
   function handleTimeUpdate() {
     if (!audioEl.value) return;
     currentTime.value = Math.floor(audioEl.value.currentTime || 0);
+    if (currentTime.value > duration.value) {
+      duration.value = currentTime.value;
+    }
   }
 
   function handleLoadedMetadata() {
-    if (!audioEl.value) return;
-    duration.value = Math.floor(audioEl.value.duration || 0);
+    syncDurationFromElement();
+  }
+
+  function handleDurationChange() {
+    syncDurationFromElement();
   }
 
   function handlePause() {
@@ -79,6 +165,7 @@ export function useAudioController(state, { settings } = {}) {
     if (audioEl.value === el) return;
     if (audioEl.value) {
       detachAudioEvents(audioEl.value);
+      cleanupCurrentObjectUrl();
     }
     audioEl.value = el;
     if (audioEl.value) {
@@ -150,6 +237,10 @@ export function useAudioController(state, { settings } = {}) {
       return;
     }
 
+    const trackDuration = extractTrackDuration(target);
+    duration.value = trackDuration ?? 0;
+    currentTime.value = 0;
+
     const stream = musicApi.streamUrl(target.id);
     const versionKey =
       target.updatedAt ??
@@ -159,18 +250,39 @@ export function useAudioController(state, { settings } = {}) {
       Date.now();
     const shouldReload = currentStreamUrl.value !== stream;
 
+    clearPrefetchTimer();
+    const prefetched = preloader?.consume(target.id) || null;
+    const nextSource = prefetched
+      ? prefetched.objectUrl
+      : `${stream}?v=${versionKey}`;
+
     currentTrackId.value = target.id;
     currentStreamUrl.value = stream;
     try {
       if (shouldReload) {
-        audioEl.value.src = `${stream}?v=${versionKey}`;
+        cleanupCurrentObjectUrl();
+        audioEl.value.src = nextSource;
+      } else if (audioEl.value.src !== nextSource) {
+        cleanupCurrentObjectUrl();
+        audioEl.value.src = nextSource;
+      }
+      if (prefetched) {
+        currentObjectUrl = prefetched.objectUrl;
+      }
+      if (!shouldReload && audioEl.value.src !== nextSource) {
+        audioEl.value.src = nextSource;
       }
       await audioEl.value.play();
       isPlaying.value = true;
       isBuffering.value = false;
+      syncDurationFromElement();
+      schedulePrefetch();
     } catch (err) {
       console.error('播放失败:', err);
       error.value = err?.message || '无法播放该音频';
+      if (prefetched && !currentObjectUrl) {
+        URL.revokeObjectURL(prefetched.objectUrl);
+      }
     }
   }
 
@@ -265,12 +377,37 @@ export function useAudioController(state, { settings } = {}) {
     if (settings) settings.repeatMode = repeatMode.value;
   }
 
+  function schedulePrefetch() {
+    if (!preloader || shuffle.value || !tracks.value.length) {
+      preloader?.release(undefined, { force: true });
+      return;
+    }
+
+    const nextIdx = getNextIndex();
+    if (nextIdx === -1) {
+      preloader.release(undefined, { force: true });
+      return;
+    }
+
+    const nextTrack = tracks.value[nextIdx];
+    if (!nextTrack) return;
+
+    clearPrefetchTimer();
+    prefetchTimer = setTimeout(() => {
+      preloader
+        .prefetch(nextTrack, { retainCurrent: false })
+        .catch(err => console.debug('预加载下一首失败', err));
+    }, 2000);
+  }
+
   function teardown() {
+    clearPrefetchTimer();
     if (audioEl.value) {
       detachAudioEvents(audioEl.value);
       audioEl.value.pause?.();
       audioEl.value.src = '';
     }
+    cleanupCurrentObjectUrl();
   }
 
   return {

@@ -32,8 +32,9 @@ export const down = async knex => {
     }
   } catch (e) {
     // 如果无法 dropColumn （SQLite 限制），忽略以避免迁移回滚失败
-    console.warn('down migration: dropColumn not supported, skipping', e && e.message);
+    console.warn(
+      'down migration: dropColumn not supported, skipping',
+      e && e.message
+    );
   }
 };
-
-

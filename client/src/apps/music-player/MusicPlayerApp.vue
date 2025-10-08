@@ -4,8 +4,68 @@
       <div class="header-left">
         <h2>音乐播放器</h2>
         <span class="track-count">{{ tracks.length }} 首曲目</span>
+        <span
+          v-if="prefetching.status === 'running'"
+          class="prefetch-indicator"
+        >
+          ⚡ 正在预加载下一首
+        </span>
+        <span
+          v-else-if="prefetching.status === 'success'"
+          class="prefetch-indicator ok"
+        >
+          ✅ 下一首已缓存
+        </span>
+        <span
+          v-else-if="prefetching.status === 'error'"
+          class="prefetch-indicator error"
+        >
+          ⚠️ 预加载失败
+        </span>
       </div>
       <div class="header-actions">
+        <div class="group-selector" v-if="groupOptions.length">
+          <label for="music-group-select">歌单</label>
+          <select
+            id="music-group-select"
+            v-model="selectedGroup"
+            :disabled="groupsLoading"
+            @change="onGroupChange"
+          >
+            <option value="all">全部歌曲</option>
+            <option
+              v-for="group in groupOptions"
+              :key="group.id"
+              :value="group.id"
+            >
+              {{ group.name }} ({{ group.trackCount }})
+            </option>
+          </select>
+          <button
+            class="icon-button"
+            type="button"
+            :disabled="groupsLoading"
+            @click="createGroup"
+          >
+            ➕
+          </button>
+          <button
+            class="icon-button"
+            type="button"
+            :disabled="groupsLoading || !currentGroup || currentGroup.isDefault"
+            @click="renameCurrentGroup"
+          >
+            ✏️
+          </button>
+          <button
+            class="icon-button danger"
+            type="button"
+            :disabled="groupsLoading || !currentGroup || currentGroup.isDefault"
+            @click="deleteCurrentGroup"
+          >
+            🗑
+          </button>
+        </div>
         <label class="search-box">
           <span class="icon">🔍</span>
           <input
@@ -34,13 +94,17 @@
 
     <MusicLibrary
       :tracks="filteredTracks"
+      :grouped-tracks="groupedTracks"
       :current-track-id="currentTrack?.id || null"
       :is-playing="isPlaying"
       :deleting-ids="deletingIds"
       :loading="loading"
+      :groups="groups"
+      :active-group-id="activeGroupId"
       @play-track="playTrack"
       @delete-track="deleteTrack"
       @rename-track="renameTrack"
+      @move-track="moveTrack"
     />
 
     <MusicNowPlaying
@@ -73,6 +137,21 @@
     <audio ref="audioEl" class="audio-element" preload="auto"></audio>
 
     <transition name="fade">
+      <div v-if="compressionState.running" class="upload-progress">
+        <div class="progress-card">
+          <p>正在压缩：{{ compressionState.currentFile || '音频文件' }}</p>
+          <div class="progress-bar">
+            <div
+              class="progress-inner"
+              :style="{ width: `${compressionState.progress}%` }"
+            ></div>
+          </div>
+          <p class="progress-meta">{{ compressionState.progress }}%</p>
+        </div>
+      </div>
+    </transition>
+
+    <transition name="fade">
       <div v-if="uploadingState.uploading" class="upload-progress">
         <div class="progress-card">
           <p>正在上传：{{ uploadingState.filename }}</p>
@@ -94,7 +173,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+  import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
   import MusicLibrary from './MusicLibrary.vue';
   import MusicPlayerControls from './MusicPlayerControls.vue';
   import MusicNowPlaying from './MusicNowPlaying.vue';
@@ -108,7 +187,10 @@
   const {
     tracks,
     filteredTracks,
+    groupedTracks,
     loading,
+    groups,
+    groupsLoading,
     currentTrack,
     isPlaying,
     isBuffering,
@@ -120,12 +202,44 @@
     shuffle,
     deletingIds,
     uploadingState,
+    compressionState,
+    prefetching,
     error,
+    activeGroupId,
+    setActiveGroup,
+    createGroup: createGroupApi,
+    renameGroup,
+    deleteGroup,
+    moveTrackToGroup,
   } = player;
 
   const searchModel = computed({
     get: () => player.searchQuery.value,
     set: value => player.setSearch(value),
+  });
+
+  const selectedGroup = ref('all');
+
+  const groupOptions = computed(() =>
+    (groups.value || []).map(group => ({
+      id: group.id,
+      name: group.name,
+      trackCount: group.trackCount ?? 0,
+      isDefault: !!group.isDefault,
+    }))
+  );
+
+  const currentGroup = computed(() => {
+    if (selectedGroup.value === 'all') return null;
+    return groupOptions.value.find(
+      group => Number(group.id) === Number(selectedGroup.value)
+    );
+  });
+
+  const uploadGroupId = computed(() => {
+    if (selectedGroup.value === 'all') return null;
+    const numeric = Number(selectedGroup.value);
+    return Number.isNaN(numeric) ? null : numeric;
   });
 
   function triggerUpload() {
@@ -136,7 +250,9 @@
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
     try {
-      await player.uploadTracks(files);
+      await player.uploadTracks(files, {
+        groupId: uploadGroupId.value,
+      });
     } finally {
       event.target.value = '';
     }
@@ -185,12 +301,63 @@
     player.cycleRepeatMode();
   }
 
+  function onGroupChange() {
+    setActiveGroup(selectedGroup.value);
+  }
+
+  async function createGroup() {
+    const name = window.prompt('请输入新的歌单名称');
+    if (!name) return;
+    const created = await createGroupApi(name);
+    if (created?.id) {
+      selectedGroup.value = created.id;
+      setActiveGroup(created.id);
+    }
+  }
+
+  async function renameCurrentGroup() {
+    if (!currentGroup.value) return;
+    const name = window.prompt('重命名歌单', currentGroup.value.name);
+    if (!name || name.trim() === currentGroup.value.name) return;
+    await renameGroup(currentGroup.value.id, name.trim());
+  }
+
+  async function deleteCurrentGroup() {
+    if (!currentGroup.value) return;
+    if (!window.confirm('确认删除该歌单？其中的歌曲将移动到默认歌单。')) {
+      return;
+    }
+    await deleteGroup(currentGroup.value.id);
+    selectedGroup.value = 'all';
+    setActiveGroup('all');
+  }
+
+  async function moveTrack({ id, groupId }) {
+    await moveTrackToGroup(id, groupId);
+  }
+
   onMounted(async () => {
     if (audioEl.value) {
       player.setAudioElement(audioEl.value);
     }
     await player.initialize();
+    if (activeGroupId.value && activeGroupId.value !== 'all') {
+      selectedGroup.value = activeGroupId.value;
+    } else {
+      selectedGroup.value = 'all';
+    }
   });
+
+  watch(
+    () => activeGroupId.value,
+    value => {
+      if (value === null || value === undefined || value === 'all') {
+        selectedGroup.value = 'all';
+      } else {
+        selectedGroup.value = value;
+      }
+    }
+  );
 
   onBeforeUnmount(() => {
     player.teardown();
@@ -244,10 +411,76 @@
     opacity: 0.75;
   }
 
+  .prefetch-indicator {
+    font-size: 13px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .prefetch-indicator.ok {
+    background-color: rgba(76, 175, 80, 0.2);
+  }
+
+  .prefetch-indicator.error {
+    background-color: rgba(244, 67, 54, 0.2);
+  }
+
   .header-actions {
     display: flex;
     align-items: center;
     gap: 12px;
+  }
+
+  .group-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .group-selector label {
+    font-size: 12px;
+    opacity: 0.9;
+  }
+
+  .group-selector select {
+    border: none;
+    border-radius: 999px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.25);
+    color: inherit;
+    outline: none;
+  }
+
+  .group-selector .icon-button {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.18);
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+  }
+
+  .group-selector .icon-button:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  .group-selector .icon-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .search-box {

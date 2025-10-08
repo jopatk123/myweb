@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { MusicTrackModel } from '../models/music-track.model.js';
+import { MusicGroupModel } from '../models/music-group.model.js';
 import { FileService } from './file.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +20,7 @@ export class MusicService {
   constructor(db) {
     this.db = db;
     this.model = new MusicTrackModel(db);
+    this.groupModel = new MusicGroupModel(db);
     this.fileService = new FileService(db);
     this.parseFileLoader = null;
     this.metadataWarningLogged = false;
@@ -34,8 +36,8 @@ export class MusicService {
     }
   }
 
-  list({ page = 1, limit = 20, search = '' } = {}) {
-    return this.model.findAll({ page, limit, search });
+  list({ page = 1, limit = 20, search = '', groupId = null } = {}) {
+    return this.model.findAll({ page, limit, search, groupId });
   }
 
   get(id) {
@@ -98,6 +100,7 @@ export class MusicService {
   }
 
   buildTrackPayload({ file, metadata, baseUrl }) {
+    const compression = metadata?.compression || null;
     const common = metadata?.common || {};
     const format = metadata?.format || {};
 
@@ -154,6 +157,13 @@ export class MusicService {
       fileSize: file.size,
       fileUrl,
       uploaderId: null,
+      groupId: metadata?.groupId ?? null,
+      compressionStrategy: compression?.strategy ?? null,
+      originalBitrate:
+        compression?.originalBitrate ??
+        compression?.original_bitrate ??
+        bitrate,
+      transcodeProfile: compression?.transcodeProfile ?? null,
     };
   }
 
@@ -171,11 +181,126 @@ export class MusicService {
     });
   }
 
-  async createTrackFromUpload(file, { baseUrl = '' } = {}) {
+  ensureDefaultGroup() {
+    const existing = this.groupModel.findDefault();
+    if (existing) return existing;
+    return this.groupModel.create({ name: '默认歌单', isDefault: true });
+  }
+
+  resolveGroupIdInput(groupId) {
+    if (groupId === undefined || groupId === null || groupId === '') {
+      return null;
+    }
+    const numeric = Number(groupId);
+    if (Number.isNaN(numeric)) {
+      return null;
+    }
+    return numeric;
+  }
+
+  getGroupOrDefault(groupId) {
+    const resolved = this.resolveGroupIdInput(groupId);
+    if (resolved === null) {
+      return this.ensureDefaultGroup();
+    }
+    const group = this.groupModel.findById(resolved);
+    if (!group || group.deleted_at) {
+      const err = new Error('歌单分组不存在');
+      err.status = 400;
+      throw err;
+    }
+    return group;
+  }
+
+  listGroupsWithCounts() {
+    const groups = this.groupModel.findAll();
+    const counts = this.db
+      .prepare(
+        `SELECT group_id AS groupId, COUNT(1) AS total
+         FROM music_tracks
+         GROUP BY group_id`
+      )
+      .all();
+    const countMap = counts.reduce((acc, row) => {
+      acc[row.groupId ?? 'null'] = row.total;
+      return acc;
+    }, {});
+    return groups.map(group => ({
+      ...group,
+      trackCount: countMap[group.id] ?? 0,
+    }));
+  }
+
+  createGroup(name) {
+    const trimmed = String(name || '').trim();
+    if (!trimmed) {
+      const err = new Error('歌单名称不能为空');
+      err.status = 400;
+      throw err;
+    }
+    return this.groupModel.create({ name: trimmed, isDefault: false });
+  }
+
+  renameGroup(id, name) {
+    const group = this.groupModel.findById(id);
+    if (!group || group.deleted_at) {
+      const err = new Error('歌单不存在');
+      err.status = 404;
+      throw err;
+    }
+    if (group.is_default) {
+      const err = new Error('不能修改默认歌单名称');
+      err.status = 400;
+      throw err;
+    }
+    const trimmed = String(name || '').trim();
+    if (!trimmed) {
+      const err = new Error('歌单名称不能为空');
+      err.status = 400;
+      throw err;
+    }
+    return this.groupModel.update(id, { name: trimmed });
+  }
+
+  deleteGroup(id) {
+    const group = this.groupModel.findById(id);
+    if (!group || group.deleted_at) {
+      const err = new Error('歌单不存在');
+      err.status = 404;
+      throw err;
+    }
+    if (group.is_default) {
+      const err = new Error('不能删除默认歌单');
+      err.status = 400;
+      throw err;
+    }
+    const defaultGroup = this.ensureDefaultGroup();
+    this.db
+      .prepare('UPDATE music_tracks SET group_id = ? WHERE group_id = ?')
+      .run(defaultGroup.id, id);
+    return this.groupModel.softDelete(id);
+  }
+
+  moveTrackToGroup(trackId, groupId) {
+    const track = this.get(trackId);
+    const group = this.getGroupOrDefault(groupId);
+    this.model.update(track.id, { groupId: group.id });
+    return this.model.findById(track.id);
+  }
+
+  async createTrackFromUpload(
+    file,
+    { baseUrl = '', groupId = null, compression = null } = {}
+  ) {
     await this.ensureUploadsDir();
     const absolutePath = path.join(musicDir, file.filename);
     const metadata = await this.parseMetadata(absolutePath);
-    const payload = this.buildTrackPayload({ file, metadata, baseUrl });
+    const group = await this.getGroupOrDefault(groupId ?? metadata?.groupId);
+    const payload = this.buildTrackPayload({
+      file,
+      metadata: { ...metadata, compression, groupId: group.id },
+      baseUrl,
+    });
 
     const transaction = this.db.transaction(() => {
       const fileRow = this.createFileRecord({ file, baseUrl });
@@ -191,8 +316,13 @@ export class MusicService {
   }
 
   updateTrack(id, data) {
-    this.get(id); // ensure exists
-    return this.model.update(id, data);
+    const track = this.get(id); // ensure exists
+    let payload = { ...data };
+    if (Object.prototype.hasOwnProperty.call(data, 'groupId')) {
+      const group = this.getGroupOrDefault(data.groupId);
+      payload = { ...payload, groupId: group.id };
+    }
+    return this.model.update(track.id, payload);
   }
 
   async deleteTrack(id) {

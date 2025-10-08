@@ -10,6 +10,9 @@
           {{ track.artist || '未知艺术家' }}
           <template v-if="track.album"> · {{ track.album }}</template>
         </p>
+        <p v-if="track.group?.name" class="group-name">
+          歌单：{{ track.group.name }}
+        </p>
         <p v-if="track.genre" class="genre">{{ track.genre }}</p>
       </div>
       <div class="status">
@@ -110,6 +113,12 @@
     margin: 4px 0 0;
     font-size: 12px;
     opacity: 0.65;
+  }
+
+  .group-name {
+    margin: 4px 0 0;
+    font-size: 12px;
+    opacity: 0.75;
   }
 
   .status {

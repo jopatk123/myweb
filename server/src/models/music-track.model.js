@@ -3,30 +3,40 @@ export class MusicTrackModel {
     this.db = db;
   }
 
-  findAll({ page = 1, limit = 20, search = '' } = {}) {
+  findAll({ page = 1, limit = 20, search = '', groupId = null } = {}) {
     const whereClauses = [];
     const params = [];
 
     if (search && search.trim()) {
       const like = `%${search.trim()}%`;
       whereClauses.push(
-        '(title LIKE ? OR artist LIKE ? OR album LIKE ? OR genre LIKE ? OR original_name LIKE ?)'
+        '(mt.title LIKE ? OR mt.artist LIKE ? OR mt.album LIKE ? OR mt.genre LIKE ? OR mt.original_name LIKE ?)'
       );
       params.push(like, like, like, like, like);
+    }
+
+    if (groupId !== null && groupId !== undefined) {
+      whereClauses.push('mt.group_id = ?');
+      params.push(groupId);
     }
 
     const where = whereClauses.length
       ? `WHERE ${whereClauses.join(' AND ')}`
       : '';
     const totalRow = this.db
-      .prepare(`SELECT COUNT(1) AS total FROM music_tracks ${where}`)
+      .prepare(`SELECT COUNT(1) AS total FROM music_tracks mt ${where}`)
       .get(...params);
     const total = totalRow?.total || 0;
     const offset = (Number(page) - 1) * Number(limit);
 
     const rows = this.db
       .prepare(
-        `SELECT * FROM music_tracks ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+        `SELECT mt.*, mg.name AS group_name, mg.is_default AS group_is_default
+         FROM music_tracks mt
+         LEFT JOIN music_groups mg ON mg.id = mt.group_id
+         ${where}
+         ORDER BY mt.created_at DESC
+         LIMIT ? OFFSET ?`
       )
       .all(...params, Number(limit), offset);
 
@@ -34,12 +44,24 @@ export class MusicTrackModel {
   }
 
   findById(id) {
-    return this.db.prepare('SELECT * FROM music_tracks WHERE id = ?').get(id);
+    return this.db
+      .prepare(
+        `SELECT mt.*, mg.name AS group_name, mg.is_default AS group_is_default
+         FROM music_tracks mt
+         LEFT JOIN music_groups mg ON mg.id = mt.group_id
+         WHERE mt.id = ?`
+      )
+      .get(id);
   }
 
   findByFileId(fileId) {
     return this.db
-      .prepare('SELECT * FROM music_tracks WHERE file_id = ?')
+      .prepare(
+        `SELECT mt.*, mg.name AS group_name, mg.is_default AS group_is_default
+         FROM music_tracks mt
+         LEFT JOIN music_groups mg ON mg.id = mt.group_id
+         WHERE mt.file_id = ?`
+      )
       .get(fileId);
   }
 
@@ -63,9 +85,13 @@ export class MusicTrackModel {
         file_size,
         file_url,
         uploader_id,
-        file_id
+        file_id,
+        group_id,
+        compression_strategy,
+        original_bitrate,
+        transcode_profile
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const res = stmt.run(
@@ -86,7 +112,11 @@ export class MusicTrackModel {
       data.fileSize ?? data.file_size ?? null,
       data.fileUrl || data.file_url || null,
       data.uploaderId || data.uploader_id || null,
-      data.fileId || data.file_id
+      data.fileId || data.file_id,
+      data.groupId ?? data.group_id ?? null,
+      data.compressionStrategy ?? data.compression_strategy ?? null,
+      data.originalBitrate ?? data.original_bitrate ?? null,
+      data.transcodeProfile ?? data.transcode_profile ?? null
     );
 
     return this.findById(res.lastInsertRowid);
@@ -108,6 +138,14 @@ export class MusicTrackModel {
       discNumber: 'disc_number',
       disc_number: 'disc_number',
       year: 'year',
+      groupId: 'group_id',
+      group_id: 'group_id',
+      compressionStrategy: 'compression_strategy',
+      compression_strategy: 'compression_strategy',
+      originalBitrate: 'original_bitrate',
+      original_bitrate: 'original_bitrate',
+      transcodeProfile: 'transcode_profile',
+      transcode_profile: 'transcode_profile',
     };
 
     const sets = [];

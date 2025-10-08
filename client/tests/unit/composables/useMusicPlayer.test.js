@@ -1,4 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { defineComponent, nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 import { SETTINGS_KEY } from '@/composables/music/utils.js';
@@ -8,6 +17,23 @@ const streamUrl = vi.fn();
 const deleteTrack = vi.fn();
 const uploadTracks = vi.fn();
 const updateTrack = vi.fn();
+const listGroups = vi.fn();
+
+const mockPreloader = {
+  prefetch: vi.fn(),
+  consume: vi.fn(),
+  getPrefetched: vi.fn(),
+  release: vi.fn(),
+  abort: vi.fn(),
+  teardown: vi.fn(),
+};
+
+const useTrackPreloader = vi.fn(() => mockPreloader);
+const prepareCompressedFiles = vi.fn(async files => ({
+  files,
+  compression: null,
+}));
+const shouldCompressFile = vi.fn(() => false);
 
 vi.mock('@/api/music.js', () => ({
   musicApi: {
@@ -16,7 +42,17 @@ vi.mock('@/api/music.js', () => ({
     deleteTrack,
     uploadTracks,
     updateTrack,
+    listGroups,
   },
+}));
+
+vi.mock('@/composables/music/useTrackPreloader.js', () => ({
+  useTrackPreloader,
+}));
+
+vi.mock('@/services/audioCompression.js', () => ({
+  prepareCompressedFiles,
+  shouldCompressFile,
 }));
 
 describe('useMusicPlayer', () => {
@@ -27,6 +63,16 @@ describe('useMusicPlayer', () => {
     vi.clearAllMocks();
     window.localStorage?.clear?.();
     streamUrl.mockReturnValue('/stream/1');
+    Object.values(mockPreloader).forEach(fn => fn.mockClear?.());
+    mockPreloader.prefetch.mockResolvedValue(null);
+    mockPreloader.consume.mockReturnValue(null);
+    mockPreloader.release.mockResolvedValue();
+    mockPreloader.teardown.mockResolvedValue();
+    useTrackPreloader.mockReturnValue(mockPreloader);
+    prepareCompressedFiles.mockClear();
+    shouldCompressFile.mockClear();
+    shouldCompressFile.mockReturnValue(false);
+    listGroups.mockResolvedValue({ data: [] });
     listTracks.mockResolvedValue({
       data: {
         tracks: [
@@ -51,6 +97,36 @@ describe('useMusicPlayer', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  const originalCreateObjectURL = globalThis.URL?.createObjectURL;
+  const originalRevokeObjectURL = globalThis.URL?.revokeObjectURL;
+
+  beforeAll(() => {
+    if (!globalThis.URL) {
+      globalThis.URL = class {
+        static createObjectURL() {
+          return 'blob:mock';
+        }
+        static revokeObjectURL() {}
+      };
+      return;
+    }
+    if (!globalThis.URL.createObjectURL) {
+      globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock');
+    }
+    if (!globalThis.URL.revokeObjectURL) {
+      globalThis.URL.revokeObjectURL = vi.fn();
+    }
+  });
+
+  afterAll(() => {
+    if (originalCreateObjectURL) {
+      globalThis.URL.createObjectURL = originalCreateObjectURL;
+    }
+    if (originalRevokeObjectURL) {
+      globalThis.URL.revokeObjectURL = originalRevokeObjectURL;
+    }
   });
 
   async function createPlayer() {
@@ -83,6 +159,20 @@ describe('useMusicPlayer', () => {
     expect(state.currentTrack.value.title).toBe('Track One');
     expect(state.loading.value).toBe(false);
     expect(state.error.value).toBe('');
+
+    wrapper.unmount();
+  });
+
+  it('initialise prefetches the first track for quicker playback', async () => {
+    const { state, wrapper } = await createPlayer();
+
+    await state.initialize();
+    await nextTick();
+
+    expect(mockPreloader.prefetch).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 }),
+      expect.objectContaining({ retainCurrent: true })
+    );
 
     wrapper.unmount();
   });
@@ -121,6 +211,56 @@ describe('useMusicPlayer', () => {
     wrapper.unmount();
   });
 
+  it('playTrack consumes prefetched blob and schedules next track prefetch', async () => {
+    vi.useFakeTimers();
+    const { state, wrapper } = await createPlayer();
+    await state.initialize();
+    await nextTick();
+
+    const audioMock = {
+      src: '',
+      paused: true,
+      volume: 0,
+      muted: false,
+      preload: '',
+      crossOrigin: '',
+      play: vi.fn().mockImplementation(() => {
+        audioMock.paused = false;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+
+    state.setAudioElement(audioMock);
+
+    mockPreloader.prefetch.mockClear();
+    mockPreloader.prefetch.mockResolvedValue(null);
+    mockPreloader.consume.mockReturnValue({
+      trackId: 1,
+      objectUrl: 'blob:track-1',
+      mimeType: 'audio/ogg',
+    });
+
+    await state.playTrack(1);
+
+    expect(mockPreloader.consume).toHaveBeenCalledWith(1);
+    expect(audioMock.src).toBe('blob:track-1');
+    expect(audioMock.play).toHaveBeenCalled();
+
+    vi.advanceTimersByTime(2500);
+    await nextTick();
+
+    expect(mockPreloader.prefetch).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 2 }),
+      expect.objectContaining({ retainCurrent: false })
+    );
+
+    vi.useRealTimers();
+    wrapper.unmount();
+  });
+
   it('deleteTrack removes current track and resets playback target', async () => {
     const { state, wrapper } = await createPlayer();
     await state.initialize();
@@ -144,6 +284,9 @@ describe('useMusicPlayer', () => {
     await state.deleteTrack(1);
 
     expect(deleteTrack).toHaveBeenCalledWith(1);
+    expect(mockPreloader.release).toHaveBeenCalledWith(1, {
+      force: true,
+    });
     expect(state.tracks.value.map(track => track.id)).toEqual([2]);
     expect(state.currentTrackId.value).toBe(2);
     expect(audioMock.pause).toHaveBeenCalled();
@@ -206,6 +349,18 @@ describe('useMusicPlayer', () => {
     expect(state.volume.value).toBeCloseTo(0.4);
     expect(state.shuffle.value).toBe(true);
     expect(state.repeatMode.value).toBe('all');
+
+    wrapper.unmount();
+  });
+
+  it('teardown terminates preloader lifecycle to avoid leaks', async () => {
+    const { state, wrapper } = await createPlayer();
+    await state.initialize();
+    await nextTick();
+
+    state.teardown();
+
+    expect(mockPreloader.teardown).toHaveBeenCalledTimes(1);
 
     wrapper.unmount();
   });
