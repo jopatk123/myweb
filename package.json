@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.28.3",
-    "@stoplight/spectral": "^6.5.0",
+    "@stoplight/spectral-cli": "^6.15.0",
     "commitizen": "^4.3.0",
     "concurrently": "^9.2.1",
     "cz-conventional-changelog": "^3.3.0",
@@ -37,6 +37,12 @@
     "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
     "vue-eslint-parser": "^10.2.0"
+  },
+  "overrides": {
+    "tar-fs": "^2.1.4",
+    "prebuild-install": {
+      "tar-fs": "^2.1.4"
+    }
   },
   "lint-staged": {
     "*.{js,vue,css,md,json,yml,yaml}": [

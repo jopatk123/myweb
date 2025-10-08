@@ -5,14 +5,26 @@ export function createSnakeHandlers(ctx) {
     state,
     events,
     utils: { resetRoomState, clearVoteTimer },
-  refs: { currentRoom, currentPlayer, players, gameState, gameStatus, error, votes, myVote, voteTimeout },
+    refs: {
+      currentRoom,
+      currentPlayer,
+      players,
+      gameState,
+      gameStatus,
+      error,
+      votes,
+      myVote,
+      voteTimeout,
+    },
   } = ctx;
 
   function handleRoomCreated(data) {
     // 双向兼容字段 (room_code <-> roomCode)
     if (data?.room) {
-      if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
-      if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
+      if (data.room.room_code && !data.room.roomCode)
+        data.room.roomCode = data.room.room_code;
+      if (data.room.roomCode && !data.room.room_code)
+        data.room.room_code = data.room.roomCode;
     }
     currentRoom.value = data.room;
     currentPlayer.value = data.player;
@@ -24,14 +36,20 @@ export function createSnakeHandlers(ctx) {
     if (code) {
       localStorage.setItem('snakeCurrentRoomCode', code);
       // 立即再次获取房间信息，确保所有字段齐全（防止早期导航时缺字段）
-  try { ctx.api.getRoomInfo(code); } catch (e) { console.warn('fallback getRoomInfo failed', e); }
+      try {
+        ctx.api.getRoomInfo(code);
+      } catch (e) {
+        console.warn('fallback getRoomInfo failed', e);
+      }
     }
   }
 
   function handleRoomJoined(data) {
     if (data?.room) {
-      if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
-      if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
+      if (data.room.room_code && !data.room.roomCode)
+        data.room.roomCode = data.room.room_code;
+      if (data.room.roomCode && !data.room.room_code)
+        data.room.room_code = data.room.roomCode;
     }
     currentRoom.value = data.room;
     currentPlayer.value = data.player;
@@ -54,8 +72,10 @@ export function createSnakeHandlers(ctx) {
   function handleRoomInfo(data) {
     if (!data) return;
     if (data?.room) {
-      if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
-      if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
+      if (data.room.room_code && !data.room.roomCode)
+        data.room.roomCode = data.room.room_code;
+      if (data.room.roomCode && !data.room.room_code)
+        data.room.room_code = data.room.roomCode;
     }
     currentRoom.value = data.room;
     players.value = data.players || [];
@@ -66,14 +86,19 @@ export function createSnakeHandlers(ctx) {
   }
 
   function handlePlayerJoined(data) {
-    if (data.player && !players.value.find(p => p.session_id === data.player.session_id)) {
+    if (
+      data.player &&
+      !players.value.find(p => p.session_id === data.player.session_id)
+    ) {
       players.value.push(data.player);
     }
     if (data.room) {
-      if (data.room.room_code && !data.room.roomCode) data.room.roomCode = data.room.room_code;
-      if (data.room.roomCode && !data.room.room_code) data.room.room_code = data.room.roomCode;
+      if (data.room.room_code && !data.room.roomCode)
+        data.room.roomCode = data.room.room_code;
+      if (data.room.roomCode && !data.room.room_code)
+        data.room.room_code = data.room.roomCode;
       currentRoom.value = data.room;
-      
+
       // 如果房间正在游戏中，更新游戏状态
       if (data.room.status === 'playing') {
         gameStatus.value = 'playing';
@@ -84,38 +109,50 @@ export function createSnakeHandlers(ctx) {
 
   function handlePlayerLeft(data) {
     if (data.player) {
-      players.value = players.value.filter(p => p.session_id !== data.player.session_id);
+      players.value = players.value.filter(
+        p => p.session_id !== data.player.session_id
+      );
     }
     events.emitPlayerLeave(data);
   }
 
   function handlePlayerReadyChanged(data) {
     if (data.player) {
-      const idx = players.value.findIndex(p => p.session_id === data.player.session_id);
+      const idx = players.value.findIndex(
+        p => p.session_id === data.player.session_id
+      );
       if (idx >= 0) players.value[idx] = data.player;
     }
     if (data.can_start) gameStatus.value = 'starting';
     events.emitPlayerReady(data);
   }
 
-  function handleReadyToggled(data) { currentPlayer.value = data; }
+  function handleReadyToggled(data) {
+    currentPlayer.value = data;
+  }
 
   async function handleGameStarted(data) {
     // 某些情况下服务器可能只广播了事件类型而没有包含完整 payload，做容错处理
     if (!data || !data.game_state) {
       try {
-        const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
+        const code =
+          currentRoom.value?.room_code || currentRoom.value?.roomCode;
         if (code && ctx.api && ctx.api.getRoomInfo) {
           const info = await ctx.api.getRoomInfo(code);
           gameState.value = info?.game_state || null;
           players.value = info?.players || players.value;
         } else {
           // 无法获取 room 信息，则保持现有状态并返回
-          console.warn('handleGameStarted: missing game_state and cannot fetch room info');
+          console.warn(
+            'handleGameStarted: missing game_state and cannot fetch room info'
+          );
           return;
         }
       } catch (e) {
-        console.error('handleGameStarted: fallback getRoomInfo failed', e && e.message);
+        console.error(
+          'handleGameStarted: fallback getRoomInfo failed',
+          e && e.message
+        );
         return;
       }
     } else {
@@ -124,7 +161,9 @@ export function createSnakeHandlers(ctx) {
     }
 
     gameStatus.value = 'playing';
-    votes.value = {}; myVote.value = null; clearVoteTimer();
+    votes.value = {};
+    myVote.value = null;
+    clearVoteTimer();
     events.emitGameUpdate(data);
   }
 
@@ -140,7 +179,9 @@ export function createSnakeHandlers(ctx) {
       if (data.shared_snake) gameState.value.sharedSnake = data.shared_snake;
       if (data.food) gameState.value.food = data.food;
     }
-    votes.value = {}; myVote.value = null; clearVoteTimer();
+    votes.value = {};
+    myVote.value = null;
+    clearVoteTimer();
     events.emitGameUpdate(data);
   }
 
@@ -173,7 +214,11 @@ export function createSnakeHandlers(ctx) {
       }
       gameState.value.status = 'finished';
       gameState.value.gameOver = true;
-      gameState.value.winner = data.winner || data.game_state?.winner || gameState.value.winner || null;
+      gameState.value.winner =
+        data.winner ||
+        data.game_state?.winner ||
+        gameState.value.winner ||
+        null;
       gameState.value.endReason = data.reason;
       if (!gameState.value.endTime) gameState.value.endTime = Date.now();
     }
@@ -183,8 +228,9 @@ export function createSnakeHandlers(ctx) {
   function handleGameReset(data) {
     gameStatus.value = 'waiting';
     gameState.value = data.game_state;
-    votes.value = {}; myVote.value = null; clearVoteTimer();
-    console.log('游戏已重置，可以重新开始');
+    votes.value = {};
+    myVote.value = null;
+    clearVoteTimer();
   }
 
   function handleVoteUpdated(data) {
@@ -193,12 +239,18 @@ export function createSnakeHandlers(ctx) {
   }
 
   function handleVoteTimeout() {
-    voteTimeout.value = 0; clearVoteTimer();
+    voteTimeout.value = 0;
+    clearVoteTimer();
   }
 
-  function handleAutoPopup(data) { events.emitAutoPopup(data); }
+  function handleAutoPopup(data) {
+    events.emitAutoPopup(data);
+  }
 
-  function handleError(data) { error.value = data.message; state.loading.value = false; }
+  function handleError(data) {
+    error.value = data.message;
+    state.loading.value = false;
+  }
 
   // WebSocket 服务端 broadcastToRoom 会自动加前缀 snake_，我们监听的键需要与其一致
   return {
@@ -211,10 +263,10 @@ export function createSnakeHandlers(ctx) {
     snake_player_ready_changed: handlePlayerReadyChanged,
     snake_ready_toggled: handleReadyToggled,
     snake_game_started: handleGameStarted, // game_started
-    snake_game_update: handleGameUpdate,   // game_update
+    snake_game_update: handleGameUpdate, // game_update
     snake_competitive_update: handleCompetitiveUpdate, // competitive_update
-    snake_game_ended: handleGameEnded,     // game_ended
-    snake_game_reset: handleGameReset,     // game_reset
+    snake_game_ended: handleGameEnded, // game_ended
+    snake_game_reset: handleGameReset, // game_reset
     snake_vote_updated: handleVoteUpdated, // vote_updated
     snake_vote_timeout: handleVoteTimeout,
     snake_auto_popup: handleAutoPopup,

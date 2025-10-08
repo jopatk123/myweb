@@ -218,10 +218,6 @@
 
   async function onToggleAutostart(app, checked) {
     try {
-      console.log('[AppManagement] onToggleAutostart', {
-        id: app?.id,
-        checked,
-      });
       await setAutostart(app.id, checked);
       await reloadApps();
     } catch (e) {

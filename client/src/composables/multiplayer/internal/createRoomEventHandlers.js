@@ -11,7 +11,6 @@ export function createRoomEventHandlers({
 }) {
   return {
     room_joined: data => {
-      console.log(`${gameType} 房间加入成功:`, data);
       currentRoom.value = data.room;
       currentPlayer.value = data.player;
       players.value = data.players || [];
@@ -21,7 +20,6 @@ export function createRoomEventHandlers({
     },
 
     room_left: data => {
-      console.log(`${gameType} 房间已离开:`, data);
       currentRoom.value = null;
       currentPlayer.value = null;
       players.value = [];
@@ -30,7 +28,6 @@ export function createRoomEventHandlers({
     },
 
     player_joined: data => {
-      console.log(`${gameType} 玩家加入:`, data.player?.player_name);
       if (
         data.player &&
         !players.value.find(p => p.session_id === data.player.session_id)
@@ -43,7 +40,6 @@ export function createRoomEventHandlers({
     },
 
     player_left: data => {
-      console.log(`${gameType} 玩家离开:`, data.player_name);
       players.value = players.value.filter(
         p => p.session_id !== data.session_id
       );
@@ -54,7 +50,6 @@ export function createRoomEventHandlers({
     },
 
     player_reconnected: data => {
-      console.log(`${gameType} 玩家重连:`, data.player?.player_name);
       const existingIndex = players.value.findIndex(
         p => p.session_id === data.player.session_id
       );
@@ -80,14 +75,12 @@ export function createRoomEventHandlers({
     },
 
     host_changed: data => {
-      console.log(`${gameType} 房主变更:`, data.new_host);
       if (currentRoom.value) {
         currentRoom.value = { ...currentRoom.value, created_by: data.new_host };
       }
     },
 
     game_started: data => {
-      console.log(`${gameType} 游戏开始:`, data);
       gameStatus.value = 'playing';
       gameData.value = { ...gameData.value, ...data.gameData };
       if (currentRoom.value) {
@@ -96,7 +89,6 @@ export function createRoomEventHandlers({
     },
 
     game_ended: data => {
-      console.log(`${gameType} 游戏结束:`, data);
       gameStatus.value = 'finished';
       gameData.value = { ...gameData.value, result: data.result };
       if (currentRoom.value) {
@@ -115,8 +107,6 @@ export function createRoomEventHandlers({
       connecting.value = false;
     },
 
-    [`${gameType}_room_list_updated`]: () => {
-      console.log(`${gameType} 房间列表已更新`);
-    },
+    [`${gameType}_room_list_updated`]: () => {},
   };
 }

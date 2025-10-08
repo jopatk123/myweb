@@ -91,12 +91,6 @@ describe('AppIcons', () => {
         bubbles: true,
       });
 
-      const contextMenuEvent = new MouseEvent('contextmenu', {
-        clientX: 100,
-        clientY: 100,
-        bubbles: true,
-      });
-
       // 添加计时器 spy
       const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
 

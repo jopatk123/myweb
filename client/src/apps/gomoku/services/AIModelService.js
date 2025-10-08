@@ -7,9 +7,9 @@ export class AIModelService {
     this.config = config;
     this.originalApiUrl = config.apiUrl;
     this.apiUrl = this.normalizeApiUrl(config.apiUrl);
-  // 去掉可能复制时带入的前后空白
-  this.apiKey = (config.apiKey || '').trim();
-  this.modelName = config.modelName || 'deepseek-chat';
+    // 去掉可能复制时带入的前后空白
+    this.apiKey = (config.apiKey || '').trim();
+    this.modelName = config.modelName || 'deepseek-chat';
     this.maxTokens = config.maxTokens || 1000;
     this.temperature = config.temperature || 0.1;
     this.playerName = config.playerName || 'AI玩家';
@@ -52,8 +52,8 @@ export class AIModelService {
         temperature: this.temperature,
         messages: [
           { role: 'system', content: this.getSystemPrompt() },
-          { role: 'user', content: prompt }
-        ]
+          { role: 'user', content: prompt },
+        ],
       });
     }
     // OpenAI 兼容风格
@@ -61,10 +61,10 @@ export class AIModelService {
       model: this.modelName,
       messages: [
         { role: 'system', content: this.getSystemPrompt() },
-        { role: 'user', content: prompt }
+        { role: 'user', content: prompt },
       ],
       max_tokens: this.maxTokens,
-      temperature: this.temperature
+      temperature: this.temperature,
     });
   }
 
@@ -74,12 +74,12 @@ export class AIModelService {
       return {
         'Content-Type': 'application/json',
         'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
       };
     }
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.apiKey}`
+      Authorization: `Bearer ${this.apiKey}`,
     };
   }
 
@@ -100,7 +100,7 @@ export class AIModelService {
           playerName: this.playerName,
           steps: ['开始分析棋局...'],
           progress: 10,
-          progressText: '正在分析当前局面'
+          progressText: '正在分析当前局面',
         });
       }
 
@@ -112,7 +112,7 @@ export class AIModelService {
           playerName: this.playerName,
           steps: ['开始分析棋局...', '识别威胁和机会...'],
           progress: 30,
-          progressText: '正在识别关键位置'
+          progressText: '正在识别关键位置',
         });
       }
 
@@ -120,12 +120,12 @@ export class AIModelService {
 
       // Ensure playerType is numeric 1 or 2 (mapping to black/white) when building prompt
       if (typeof playerType !== 'number') {
-        console.warn('[Gomoku][AIModelService] playerType expected number (1 or 2), got:', playerType);
+        console.warn(
+          '[Gomoku][AIModelService] playerType expected number (1 or 2), got:',
+          playerType
+        );
       }
       const prompt = this.buildPrompt(board, gameHistory, playerType);
-
-      // DEBUG: record prompt and playerType
-  try { console.log('[Gomoku][AIModelService] prompt for playerType', playerType, prompt.slice(0, 800)); } catch(e) { console.warn('Console log failed:', e); }
 
       if (onThinkingUpdate) {
         onThinkingUpdate({
@@ -133,7 +133,7 @@ export class AIModelService {
           playerName: this.playerName,
           steps: ['开始分析棋局...', '识别威胁和机会...', '调用AI大模型...'],
           progress: 50,
-          progressText: '正在请求AI模型分析'
+          progressText: '正在请求AI模型分析',
         });
       }
 
@@ -143,7 +143,7 @@ export class AIModelService {
       let response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: this.buildRequestHeaders(),
-        body: payloadString
+        body: payloadString,
       });
 
       if (!response.ok) {
@@ -156,53 +156,65 @@ export class AIModelService {
             const retry = await fetch(this.apiUrl, {
               method: 'POST',
               headers: this.buildRequestHeaders(),
-              body: payloadString
+              body: payloadString,
             });
             if (retry.ok) {
               const rawRetry = await retry.clone().text();
-              
+
               // 记录重试成功的日志
               aiLogService.logConversation({
                 requestText: prompt,
                 responseText: rawRetry,
                 model: this.modelName,
                 playerType: playerType,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
               });
-              
-              console.log('[Gomoku][AI][RawResponse][retry]', rawRetry);
-              return await this.processResponse(retry, playerType, onThinkingUpdate, startTime, board, gameHistory);
+              return await this.processResponse(
+                retry,
+                playerType,
+                onThinkingUpdate,
+                startTime,
+                board,
+                gameHistory
+              );
             }
           }
         }
         if (response.status === 401) {
-          throw new Error(`认证失败(401)，请检查: 1) API Key 是否正确且未过期 2) 是否包含多余空格/换行 3) Endpoint 与提供商是否匹配。原始响应: ${errorText}`);
+          throw new Error(
+            `认证失败(401)，请检查: 1) API Key 是否正确且未过期 2) 是否包含多余空格/换行 3) Endpoint 与提供商是否匹配。原始响应: ${errorText}`
+          );
         }
-        throw new Error(`API请求失败: ${response.status} ${response.statusText} - ${errorText}`);
+        throw new Error(
+          `API请求失败: ${response.status} ${response.statusText} - ${errorText}`
+        );
       }
 
       // 记录成功响应的原始文本并发送到服务器内部日志
       try {
         const rawText = await response.clone().text();
-        const rawResponseData = await response.clone().json().catch(() => null);
-        
+        const rawResponseData = await response
+          .clone()
+          .json()
+          .catch(() => null);
+
         // 构建游戏状态信息
         const gameState = {
           board: board,
           gameHistory: gameHistory,
           currentPlayer: playerType,
           totalMoves: gameHistory.length,
-          boardSize: board.length
+          boardSize: board.length,
         };
-        
+
         // 构建原始请求数据
         const rawRequest = {
           url: this.apiUrl,
           headers: this.buildRequestHeaders(),
           payload: JSON.parse(payloadString),
-          prompt: prompt
+          prompt: prompt,
         };
-        
+
         // 发送完整日志到服务器
         aiLogService.logConversation({
           requestText: prompt,
@@ -212,16 +224,8 @@ export class AIModelService {
           timestamp: new Date().toISOString(),
           rawRequest: rawRequest,
           rawResponse: rawResponseData,
-          gameState: gameState
+          gameState: gameState,
         });
-        
-        // 在浏览器控制台输出：只显示请求文本与回复文本
-        try {
-          console.log('[Gomoku][AI][RequestText]', prompt);
-          console.log('[Gomoku][AI][ResponseText]', rawText);
-        } catch (e) {
-          console.warn('Console write failed:', e);
-        }
       } catch (e) {
         // 忽略读取失败，但记录警告
         console.warn('日志记录失败:', e);
@@ -231,15 +235,27 @@ export class AIModelService {
         onThinkingUpdate({
           player: playerType,
           playerName: this.playerName,
-          steps: ['开始分析棋局...', '识别威胁和机会...', '调用AI大模型...', '解析AI回复...'],
+          steps: [
+            '开始分析棋局...',
+            '识别威胁和机会...',
+            '调用AI大模型...',
+            '解析AI回复...',
+          ],
           progress: 80,
-          progressText: '正在解析AI决策'
+          progressText: '正在解析AI决策',
         });
       }
 
       await this.delay(300);
 
-      const result = await this.processResponse(response, playerType, onThinkingUpdate, startTime, board, gameHistory);
+      const result = await this.processResponse(
+        response,
+        playerType,
+        onThinkingUpdate,
+        startTime,
+        board,
+        gameHistory
+      );
 
       // 记录解析后的结果
       try {
@@ -249,7 +265,7 @@ export class AIModelService {
           model: this.modelName,
           playerType: playerType,
           timestamp: new Date().toISOString(),
-          parsedResult: result
+          parsedResult: result,
         });
       } catch (e) {
         // 记录但不阻塞主流程
@@ -260,9 +276,15 @@ export class AIModelService {
         onThinkingUpdate({
           player: playerType,
           playerName: this.playerName,
-          steps: ['开始分析棋局...', '识别威胁和机会...', '调用AI大模型...', '解析AI回复...', '确定最佳位置'],
+          steps: [
+            '开始分析棋局...',
+            '识别威胁和机会...',
+            '调用AI大模型...',
+            '解析AI回复...',
+            '确定最佳位置',
+          ],
           progress: 100,
-          progressText: '思考完成'
+          progressText: '思考完成',
         });
       }
 
@@ -273,8 +295,16 @@ export class AIModelService {
     }
   }
 
-  async processResponse(response, playerType, onThinkingUpdate, startTime, _board, _gameHistory) {
-  void _board; void _gameHistory;
+  async processResponse(
+    response,
+    playerType,
+    onThinkingUpdate,
+    startTime,
+    _board,
+    _gameHistory
+  ) {
+    void _board;
+    void _gameHistory;
     const data = await response.json();
     // OpenAI / moonshot / ollama 风格
     if (data.choices && data.choices[0]) {
@@ -287,15 +317,17 @@ export class AIModelService {
         playerName: this.playerName,
         thinkingTime,
         analysis: {
-          thinkingTime
-        }
+          thinkingTime,
+        },
       };
     }
     // Anthropic messages 风格（content 可能是数组）
     if (data.content) {
       let contentText = '';
       if (Array.isArray(data.content)) {
-        contentText = data.content.map(p => (p.text || p.content || p)).join('\n');
+        contentText = data.content
+          .map(p => p.text || p.content || p)
+          .join('\n');
       } else {
         contentText = data.content.text || data.content;
       }
@@ -306,8 +338,8 @@ export class AIModelService {
         playerName: this.playerName,
         thinkingTime,
         analysis: {
-          thinkingTime
-        }
+          thinkingTime,
+        },
       };
     }
     throw new Error('API返回数据格式错误');
@@ -330,7 +362,7 @@ export class AIModelService {
     return aiPromptService.buildGamePrompt('gomoku-system', {
       board,
       gameHistory,
-      playerType
+      playerType,
     });
   }
 
@@ -352,16 +384,26 @@ export class AIModelService {
       }
 
       // 进行实际的API调用测试
-      const testBoard = Array(15).fill().map(() => Array(15).fill(0));
+      const testBoard = Array(15)
+        .fill()
+        .map(() => Array(15).fill(0));
       testBoard[7][7] = 1; // 在中心放一个黑子
-      
-      const result = await this.getNextMove(testBoard, [{row: 7, col: 7, player: 1}], 2);
-      
+
+      const result = await this.getNextMove(
+        testBoard,
+        [{ row: 7, col: 7, player: 1 }],
+        2
+      );
+
       // 验证返回结果
-      if (!result || typeof result.row !== 'number' || typeof result.col !== 'number') {
+      if (
+        !result ||
+        typeof result.row !== 'number' ||
+        typeof result.col !== 'number'
+      ) {
         throw new Error('AI返回的移动结果格式不正确');
       }
-      
+
       return { success: true, result };
     } catch (error) {
       return { success: false, error: error.message };

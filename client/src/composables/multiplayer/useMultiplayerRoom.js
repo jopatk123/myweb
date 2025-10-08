@@ -154,8 +154,6 @@ export function useMultiplayerRoom(options = {}) {
       isConnected.value = wsConnected.value;
 
       bindAllListeners();
-
-      console.log(`${gameType} WebSocket连接成功`);
     } catch (err) {
       error.value = '连接服务器失败';
       console.error(`${gameType} WebSocket连接失败:`, err);
@@ -172,7 +170,6 @@ export function useMultiplayerRoom(options = {}) {
       isConnected.value = false;
       resetState();
       connecting.value = false;
-      console.log(`${gameType} WebSocket已断开`);
     } catch (err) {
       console.error(`${gameType} 断开连接失败:`, err);
     }

@@ -108,7 +108,7 @@
       await upload();
       emit('uploaded');
       reset();
-    } catch (err) {
+    } catch {
       // 错误已在组合函数中处理
     }
   };

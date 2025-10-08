@@ -5,13 +5,8 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { appEnv, shouldLogVerbose } from '../config/env.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const DEFAULT_LOG_DIR = appEnv.log.directory;
 const DEFAULT_LOG_FILE = appEnv.log.file;
 
 let sharedFileStream = null;

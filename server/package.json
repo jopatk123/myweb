@@ -16,7 +16,7 @@
     "db:setup": "npm run migrate && npm run db:check"
   },
   "dependencies": {
-    "better-sqlite3": "^9.2.0",
+    "better-sqlite3": "^12.4.1",
     "cors": "^2.8.5",
     "express": "^4.18.0",
     "express-rate-limit": "^7.1.0",
@@ -25,9 +25,10 @@
     "joi": "^17.11.0",
     "jschardet": "^3.0.0",
     "knex": "^2.5.1",
+    "multer": "^2.0.2",
     "music-metadata": "^7.14.0",
-    "multer": "^1.4.4",
     "sharp": "^0.33.4",
+    "tar-fs": "^2.1.4",
     "uuid": "^9.0.0",
     "ws": "^8.18.3"
   },

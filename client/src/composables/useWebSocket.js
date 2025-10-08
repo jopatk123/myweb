@@ -5,8 +5,8 @@ import { ref, onMounted } from 'vue';
 import { getServerOrigin } from '@/api/httpClient.js';
 
 // --- 单例状态（模块级） ---
-let _wsRef;          // WebSocket 实例 ref
-let _isConnected;    // 连接状态 ref
+let _wsRef; // WebSocket 实例 ref
+let _isConnected; // 连接状态 ref
 let _reconnectAttempts;
 let _reconnectTimerRef;
 let _messageHandlers; // Map
@@ -42,8 +42,12 @@ export function useWebSocket() {
       return `${wsProtocol}//${parsed.host}/ws`;
     } catch (error) {
       void error;
-      const fallbackProtocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const fallbackHost = typeof window !== 'undefined' ? window.location.host : 'localhost:3000';
+      const fallbackProtocol =
+        typeof window !== 'undefined' && window.location.protocol === 'https:'
+          ? 'wss:'
+          : 'ws:';
+      const fallbackHost =
+        typeof window !== 'undefined' ? window.location.host : 'localhost:3000';
       return `${fallbackProtocol}//${fallbackHost}/ws`;
     }
   };
@@ -53,7 +57,11 @@ export function useWebSocket() {
     if (!ws.value || ws.value.readyState !== WebSocket.OPEN) return;
     while (_messageQueue.length) {
       const msg = _messageQueue.shift();
-      try { ws.value.send(JSON.stringify(msg)); } catch(e) { console.warn('Queued msg send failed', e); }
+      try {
+        ws.value.send(JSON.stringify(msg));
+      } catch (e) {
+        console.warn('Queued msg send failed', e);
+      }
     }
   };
 
@@ -61,14 +69,17 @@ export function useWebSocket() {
     return new Promise((resolve, reject) => {
       try {
         let sessionId = localStorage.getItem('sessionId');
-        
+
         // 如果没有sessionId，生成一个
         if (!sessionId) {
-          sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          sessionId =
+            'session_' +
+            Date.now() +
+            '_' +
+            Math.random().toString(36).substr(2, 9);
           localStorage.setItem('sessionId', sessionId);
-          console.debug('[WebSocket] Generated new sessionId:', sessionId);
         }
-        
+
         const wsUrl = getWebSocketUrl();
         if (ws.value && ws.value.readyState === WebSocket.OPEN) {
           resolve();
@@ -84,7 +95,6 @@ export function useWebSocket() {
         ws.value.onopen = () => {
           isConnected.value = true;
           reconnectAttempts.value = 0;
-          console.debug('[WebSocket] Connected with sessionId:', sessionId);
           send({ type: 'join', sessionId });
           flushQueue();
           resolve();
@@ -93,12 +103,12 @@ export function useWebSocket() {
         ws.value.onmessage = event => {
           try {
             const data = JSON.parse(event.data);
-        // 原始日志（可注释）
-        // console.debug('[WS][raw]', data);
+            // 原始日志（可注释）
+            // console.debug('[WS][raw]', data);
             handleMessage(data);
-        } catch (_error) {
-          void _error;
-          console.error('WebSocket message parse error');
+          } catch (_error) {
+            void _error;
+            console.error('WebSocket message parse error');
           }
         };
 
@@ -106,11 +116,13 @@ export function useWebSocket() {
           isConnected.value = false;
           if (reconnectAttempts.value < _maxReconnectAttempts) {
             reconnectAttempts.value++;
-            reconnectInterval.value = setTimeout(() => { connect(); }, 3000 * reconnectAttempts.value);
+            reconnectInterval.value = setTimeout(() => {
+              connect();
+            }, 3000 * reconnectAttempts.value);
           }
         };
 
-        ws.value.onerror = (error) => {
+        ws.value.onerror = error => {
           console.error('WebSocket connection error:', error);
           reject(error);
         };
@@ -140,7 +152,7 @@ export function useWebSocket() {
   };
 
   // 发送消息
-  const send = (message) => {
+  const send = message => {
     if (ws.value && ws.value.readyState === WebSocket.OPEN) {
       ws.value.send(JSON.stringify(message));
       return true;
@@ -186,7 +198,9 @@ export function useWebSocket() {
   };
 
   // 组件挂载时连接
-  onMounted(() => { connect(); });
+  onMounted(() => {
+    connect();
+  });
 
   // 组件卸载时不主动断开（保持单例），如需断开请显式调用 disconnect()
 

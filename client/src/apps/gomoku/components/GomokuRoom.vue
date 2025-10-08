@@ -29,7 +29,7 @@
     </div>
 
     <!-- 仅在需要调试时打开以下内容 -->
-    <div v-if="false" style="font-size:12px;color:#bbb;margin-top:8px;">
+    <div v-if="false" style="font-size: 12px; color: #bbb; margin-top: 8px">
       <div>playersDebug: {{ playersDebug }}</div>
       <div>wsDebug: {{ wsDebug }}</div>
     </div>
@@ -38,7 +38,10 @@
       <div class="controls-section">
         <h4>游戏控制</h4>
         <div class="actions">
-          <button @click="toggleReady" :class="['btn-ready', isReady ? 'ready' : 'not-ready']">
+          <button
+            @click="toggleReady"
+            :class="['btn-ready', isReady ? 'ready' : 'not-ready']"
+          >
             {{ isReady ? '❌ 取消准备' : '✅ 准备' }}
           </button>
           <button @click="startGame" :disabled="!canStart" class="btn-start">
@@ -47,7 +50,14 @@
         </div>
         <div class="game-status">
           <span class="status-info">
-            状态: {{ gameStatus === 'waiting' ? '等待开始' : gameStatus === 'playing' ? '游戏进行中' : '大厅' }}
+            状态:
+            {{
+              gameStatus === 'waiting'
+                ? '等待开始'
+                : gameStatus === 'playing'
+                  ? '游戏进行中'
+                  : '大厅'
+            }}
           </span>
           <span class="connection-info">
             连接: {{ isConnected ? '✅ 已连接' : '❌ 断开' }}
@@ -59,269 +69,270 @@
 </template>
 
 <script setup>
-import GomokuPlayerCard from './GomokuPlayerCard.vue';
-// import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
-import { computed, unref } from 'vue';
+  import GomokuPlayerCard from './GomokuPlayerCard.vue';
+  // import { useGomokuMultiplayer } from '@/composables/useGomokuMultiplayer.js';
+  import { computed, unref } from 'vue';
 
-const props = defineProps({
-  mp: Object,
-  latestRoomCode: String
-});
+  const props = defineProps({
+    mp: Object,
+    latestRoomCode: String,
+  });
 
-defineEmits(['back']);
+  defineEmits(['back']);
 
-// 使用传入的 mp 实例，而不是创建新的
-// const mp = useGomokuMultiplayer();
+  // 使用传入的 mp 实例，而不是创建新的
+  // const mp = useGomokuMultiplayer();
 
-// local reference to props.mp to avoid undefined `mp` in template/computeds
-const mp = props.mp;
+  // local reference to props.mp to avoid undefined `mp` in template/computeds
+  const mp = props.mp;
 
-const roomCode = computed(() => {
-  const currentRoom = unref(mp.currentRoom);
-  const code = props.latestRoomCode || currentRoom?.room_code || currentRoom?.roomCode;
-  console.debug('[GomokuRoom] roomCode computed:', code, 'latestRoomCode:', props.latestRoomCode, 'currentRoom:', currentRoom, 'timestamp:', Date.now());
-  return code;
-});
+  const roomCode = computed(() => {
+    const currentRoom = unref(mp.currentRoom);
+    const code =
+      props.latestRoomCode || currentRoom?.room_code || currentRoom?.roomCode;
+    return code;
+  });
 
-const currentPlayerSessionId = computed(() => unref(mp.currentPlayer)?.session_id);
+  const currentPlayerSessionId = computed(
+    () => unref(mp.currentPlayer)?.session_id
+  );
 
-const isInRoom = computed(() => unref(mp.isInRoom));
-const isReady = computed(() => unref(mp.isReady));
-const canStart = computed(() => unref(mp.canStart));
-const gameStatus = computed(() => unref(mp.gameStatus));
-const isConnected = computed(() => unref(mp.isConnected));
+  const isInRoom = computed(() => unref(mp.isInRoom));
+  const isReady = computed(() => unref(mp.isReady));
+  const canStart = computed(() => unref(mp.canStart));
+  const gameStatus = computed(() => unref(mp.gameStatus));
+  const isConnected = computed(() => unref(mp.isConnected));
 
-// 固定两个座位槽位，优先填充来自 mp.players 的数据
-const seatSlots = computed(() => {
-  const slots = [
-    { seat: 1, player_name: null, session_id: null, is_ready: false },
-    { seat: 2, player_name: null, session_id: null, is_ready: false }
-  ];
-  try {
-    const players = unref(mp.players) || [];
-    console.debug('[GomokuRoom] seatSlots update, players:', players);
-    players.forEach(p => {
-      if (p && p.seat && p.seat >= 1 && p.seat <= 2) {
-        slots[p.seat - 1] = { ...slots[p.seat - 1], ...p };
-        console.debug('[GomokuRoom] Updated slot', p.seat - 1, 'with player:', p);
-      }
-    });
-  } catch (error) {
-    console.error('[GomokuRoom] seatSlots error:', error);
+  // 固定两个座位槽位，优先填充来自 mp.players 的数据
+  const seatSlots = computed(() => {
+    const slots = [
+      { seat: 1, player_name: null, session_id: null, is_ready: false },
+      { seat: 2, player_name: null, session_id: null, is_ready: false },
+    ];
+    try {
+      const players = unref(mp.players) || [];
+      players.forEach(p => {
+        if (p && p.seat && p.seat >= 1 && p.seat <= 2) {
+          slots[p.seat - 1] = { ...slots[p.seat - 1], ...p };
+        }
+      });
+    } catch (error) {
+      console.error('[GomokuRoom] seatSlots error:', error);
+    }
+    return slots;
+  });
+
+  const playersDebug = computed(() => {
+    try {
+      return JSON.stringify(unref(mp.players) || []);
+    } catch {
+      return String(unref(mp.players));
+    }
+  });
+
+  const wsDebug = computed(() => {
+    try {
+      return `connected=${String(unref(mp.isConnected))} isInRoom=${String(unref(mp.isInRoom))} currentPlayer=${JSON.stringify(unref(mp.currentPlayer) || null)}`;
+    } catch {
+      return '';
+    }
+  });
+
+  function toggleReady() {
+    mp.toggleReady();
   }
-  return slots;
-});
 
-const playersDebug = computed(() => {
-  try {
-    return JSON.stringify(unref(mp.players) || []);
-  } catch {
-    return String(unref(mp.players));
+  function startGame() {
+    mp.startGame();
   }
-});
 
-const wsDebug = computed(() => {
-  try {
-    return `connected=${String(unref(mp.isConnected))} isInRoom=${String(unref(mp.isInRoom))} currentPlayer=${JSON.stringify(unref(mp.currentPlayer) || null)}`;
-  } catch {
-    return '';
+  function leaveRoom() {
+    mp.leaveRoom();
   }
-});
 
-function toggleReady() {
-  console.debug('[GomokuRoom] toggleReady called');
-  mp.toggleReady();
-}
-
-function startGame() {
-  console.debug('[GomokuRoom] startGame called');
-  mp.startGame();
-}
-
-function leaveRoom() {
-  mp.leaveRoom();
-}
-
-function copyRoomCode() {
-  const code = roomCode.value;
-  if (!code || !navigator?.clipboard) return;
-  navigator.clipboard.writeText(code).then(() => {
-    // 可以添加复制成功的提示
-  }).catch(() => {});
-}
+  function copyRoomCode() {
+    const code = roomCode.value;
+    if (!code || !navigator?.clipboard) return;
+    navigator.clipboard
+      .writeText(code)
+      .then(() => {
+        // 可以添加复制成功的提示
+      })
+      .catch(() => {});
+  }
 </script>
 
 <style scoped>
-.gomoku-room {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
+  .gomoku-room {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
 
-.room-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.12);
-  padding: 16px 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
+  .room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.12);
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
 
-.room-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+  .room-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
 
-.room-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
-  font-family: 'Monaco', 'Menlo', monospace;
-}
+  .room-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    font-family: 'Monaco', 'Menlo', monospace;
+  }
 
-.room-created-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+  .room-created-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-.status-badge {
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
+  .status-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
 
-.status-badge.created {
-  background: rgba(40, 167, 69, 0.2);
-  color: #28a745;
-  border: 1px solid rgba(40, 167, 69, 0.3);
-}
+  .status-badge.created {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+  }
 
-.room-actions {
-  display: flex;
-  gap: 8px;
-}
+  .room-actions {
+    display: flex;
+    gap: 8px;
+  }
 
-.room-actions button {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+  .room-actions button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
 
-.btn-copy {
-  background: rgba(255, 193, 7, 0.4);
-  color: #ffc107;
-  border: 1px solid rgba(255, 193, 7, 0.5);
-}
+  .btn-copy {
+    background: rgba(255, 193, 7, 0.4);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.5);
+  }
 
-.btn-leave {
-  background: rgba(220, 53, 69, 0.2);
-  color: #dc3545;
-  border: 1px solid rgba(220, 53, 69, 0.3);
-}
+  .btn-leave {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+  }
 
-.btn-back {
-  background: rgba(108, 117, 125, 0.2);
-  color: #6c757d;
-  border: 1px solid rgba(108, 117, 125, 0.3);
-}
+  .btn-back {
+    background: rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.3);
+  }
 
-.players-section {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
+  .players-section {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
 
-.players-section h4 {
-  color: #fff;
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  font-weight: 600;
-}
+  .players-section h4 {
+    color: #fff;
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
 
-.players {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
+  .players {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
 
-.game-controls {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
+  .game-controls {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
 
-.controls-section h4 {
-  color: #fff;
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  font-weight: 600;
-}
+  .controls-section h4 {
+    color: #fff;
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
 
-.actions {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
-}
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
 
-.actions button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+  .actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
 
-.btn-ready {
-  border: 2px solid transparent;
-}
+  .btn-ready {
+    border: 2px solid transparent;
+  }
 
-.btn-ready.not-ready {
-  background: rgba(40, 167, 69, 0.2);
-  color: #28a745;
-  border-color: rgba(40, 167, 69, 0.3);
-}
+  .btn-ready.not-ready {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border-color: rgba(40, 167, 69, 0.3);
+  }
 
-.btn-ready.ready {
-  background: rgba(255, 193, 7, 0.2);
-  color: #ffc107;
-  border-color: rgba(255, 193, 7, 0.3);
-}
+  .btn-ready.ready {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border-color: rgba(255, 193, 7, 0.3);
+  }
 
-.btn-start {
-  background: rgba(40, 167, 69, 0.4);
-  color: #28a745;
-  border: 2px solid rgba(40, 167, 69, 0.5);
-}
+  .btn-start {
+    background: rgba(40, 167, 69, 0.4);
+    color: #28a745;
+    border: 2px solid rgba(40, 167, 69, 0.5);
+  }
 
-.btn-start:disabled {
-  background: rgba(108, 117, 125, 0.4);
-  color: rgba(255, 255, 255, 0.5);
-  border-color: rgba(108, 117, 125, 0.5);
-  cursor: not-allowed;
-}
+  .btn-start:disabled {
+    background: rgba(108, 117, 125, 0.4);
+    color: rgba(255, 255, 255, 0.5);
+    border-color: rgba(108, 117, 125, 0.5);
+    cursor: not-allowed;
+  }
 
-.game-status {
-  display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
-}
+  .game-status {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+  }
 
-.status-info,
-.connection-info {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+  .status-info,
+  .connection-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
 </style>

@@ -41,7 +41,7 @@ export default function useSnakeController({
       try {
         snakeCanvasRef.value?.draw();
       } catch (error) {
-        console.debug('snake render draw error', error);
+        console.error('snake render draw error', error);
       }
 
       // schedule next tick if still running
@@ -105,7 +105,12 @@ export default function useSnakeController({
 
   function updateSpeed() {
     // if logic loop is active and game is running, restart with new speed
-    if (timerRef.current && gameStarted.value && !paused.value && !gameOver.value) {
+    if (
+      timerRef.current &&
+      gameStarted.value &&
+      !paused.value &&
+      !gameOver.value
+    ) {
       stopLogicLoop();
       startLogicLoop();
     }

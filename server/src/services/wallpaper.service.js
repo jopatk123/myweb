@@ -208,7 +208,7 @@ export class WallpaperService {
     let stats;
     try {
       stats = await fs.stat(originalPath);
-    } catch (error) {
+    } catch {
       const err = new Error('壁纸原始文件不存在');
       err.status = 404;
       throw err;
