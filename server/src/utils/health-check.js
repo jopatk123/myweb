@@ -6,8 +6,9 @@
  */
 
 import http from 'http';
+import { appEnv } from '../config/env.js';
 
-const PORT = process.env.PORT || 3000;
+const PORT = appEnv.port ?? 3000;
 const HEALTH_CHECK_TIMEOUT = 5000;
 
 function healthCheck() {
@@ -17,10 +18,10 @@ function healthCheck() {
       port: PORT,
       path: '/health',
       method: 'GET',
-      timeout: HEALTH_CHECK_TIMEOUT
+      timeout: HEALTH_CHECK_TIMEOUT,
     };
 
-    const req = http.request(options, (res) => {
+    const req = http.request(options, res => {
       if (res.statusCode === 200) {
         resolve('健康检查通过');
       } else {
@@ -28,7 +29,7 @@ function healthCheck() {
       }
     });
 
-    req.on('error', (err) => {
+    req.on('error', err => {
       reject(new Error(`健康检查请求失败: ${err.message}`));
     });
 
@@ -43,11 +44,11 @@ function healthCheck() {
 
 // 运行健康检查
 healthCheck()
-  .then((message) => {
+  .then(message => {
     console.log(message);
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('健康检查失败:', error.message);
     process.exit(1);
   });

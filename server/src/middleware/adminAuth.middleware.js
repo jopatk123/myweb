@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { getAdminTokenConfig } from '../config/env.js';
 
 function normalizeToken(raw) {
   return (raw || '').trim();
@@ -30,8 +31,8 @@ function verifyToken(expected, provided) {
 }
 
 export function createFilesAdminGuard(envVar = 'FILES_ADMIN_TOKEN') {
-  const configuredToken = process.env[envVar];
-  const hashedToken = process.env[`${envVar}_HASH`];
+  const { token: configuredToken, tokenHash: hashedToken } =
+    getAdminTokenConfig(envVar);
   const expected = hashedToken
     ? `sha256:${normalizeToken(hashedToken)}`
     : hashTokenIfNeeded(configuredToken);

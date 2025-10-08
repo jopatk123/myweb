@@ -1,4 +1,5 @@
 import logger from '../utils/logger.js';
+import { appEnv } from '../config/env.js';
 
 const errorLogger = logger.child('ErrorHandler');
 
@@ -42,7 +43,7 @@ export default function errorHandler(err, req, res, _next) {
   };
 
   // 返回详细错误信息仅在非生产环境使用，避免泄露敏感信息
-  if ((process.env.NODE_ENV || 'development') !== 'production') {
+  if (!appEnv.isProduction) {
     response.stack = err.stack;
     response.originalMessage = err.message;
   }

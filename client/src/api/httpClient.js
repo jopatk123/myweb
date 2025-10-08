@@ -1,18 +1,11 @@
 import axios from 'axios';
+import { appEnv, normalizeApiBase } from '@/constants/env.js';
 
-let cachedBase;
-
-function normalizeBase(base) {
-  if (!base) return '/api';
-  const trimmed = base.trim();
-  if (!trimmed) return '/api';
-  return trimmed.replace(/\/+$/, '') || '/api';
-}
+let cachedBase = appEnv.apiBase;
 
 export function getApiBase() {
   if (cachedBase) return cachedBase;
-  const raw = import.meta.env?.VITE_API_BASE;
-  cachedBase = normalizeBase(raw ?? '/api');
+  cachedBase = normalizeApiBase(appEnv.rawApiBase ?? '/api');
   return cachedBase;
 }
 

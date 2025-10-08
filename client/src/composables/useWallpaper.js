@@ -1,5 +1,6 @@
 import { ref, computed, unref } from 'vue';
 import { wallpaperApi } from '@/api/wallpaper.js';
+import { appEnv } from '@/constants/env.js';
 
 export function useWallpaper() {
   const wallpapers = ref([]);
@@ -355,7 +356,7 @@ export function useWallpaper() {
     }
 
     // 兼容其他情况
-    const base = import.meta.env.VITE_API_BASE || '';
+    const base = appEnv.apiBase || '';
     const pathPart = String(fp).replace(/^\/+/, '');
     if (base) {
       return `${String(base).replace(/\/+$/, '')}/${pathPart}`;

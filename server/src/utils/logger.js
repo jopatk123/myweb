@@ -6,16 +6,13 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { appEnv, shouldLogVerbose } from '../config/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DEFAULT_LOG_DIR = process.env.LOG_DIR
-  ? path.resolve(process.env.LOG_DIR)
-  : path.join(__dirname, '../../logs');
-const DEFAULT_LOG_FILE = process.env.LOG_FILE
-  ? path.resolve(process.env.LOG_FILE)
-  : path.join(DEFAULT_LOG_DIR, 'server.log');
+const DEFAULT_LOG_DIR = appEnv.log.directory;
+const DEFAULT_LOG_FILE = appEnv.log.file;
 
 let sharedFileStream = null;
 
@@ -24,7 +21,6 @@ function ensureLogFileStream(filePath = DEFAULT_LOG_FILE) {
   try {
     fs.mkdirSync(directory, { recursive: true });
   } catch (err) {
-     
     console.error('Failed to ensure log directory:', err);
   }
 
@@ -111,16 +107,13 @@ function serializeMeta(meta) {
   }
 }
 
-const shouldLogToFile =
-  process.env.LOG_TO_FILE !== '0' &&
-  (process.env.NODE_ENV || 'development') !== 'test';
+const shouldLogToFile = appEnv.log.toFile;
 
-const defaultColorsEnabled =
-  process.env.FORCE_COLOR === '1'
-    ? true
-    : process.env.NODE_ENV === 'production'
-      ? false
-      : Boolean(process.stdout && process.stdout.isTTY);
+const defaultColorsEnabled = appEnv.log.forceColor
+  ? true
+  : appEnv.isProduction
+    ? false
+    : Boolean(process.stdout && process.stdout.isTTY);
 
 /**
  * 日志级别枚举
@@ -181,8 +174,12 @@ export class Logger {
     }
 
     // 根据环境变量确定日志级别
-    const env = process.env.NODE_ENV || 'development';
-    const logLevelEnv = process.env.LOG_LEVEL;
+    const env = appEnv.nodeEnv;
+    const logLevelEnv = appEnv.log.level;
+
+    if (shouldLogVerbose()) {
+      return LogLevel.DEBUG;
+    }
 
     if (logLevelEnv) {
       const upperLevel = logLevelEnv.toUpperCase();

@@ -24,6 +24,7 @@ import {
 } from '../db/migration.js';
 import { ensureBuiltinApps, seedAppsIfEmpty } from '../db/seeding.js';
 import logger from '../utils/logger.js';
+import { resolveDatabasePath, applyDatabasePathOverride } from './env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,14 +56,9 @@ export async function initDatabase(options = {}) {
     silent = false,
   } = options;
 
-  const resolvedPath =
-    overridePath ||
-    process.env.DB_PATH ||
-    path.join(__dirname, '../../data/myweb.db');
+  const resolvedPath = resolveDatabasePath(overridePath);
 
-  if (overridePath) {
-    process.env.DB_PATH = overridePath;
-  }
+  applyDatabasePathOverride(overridePath);
 
   // 确保数据目录存在
   const dataDir = path.dirname(resolvedPath);

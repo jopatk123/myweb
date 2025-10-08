@@ -171,6 +171,17 @@
    - Pipeline 顺序：安装依赖 → Lint → Test → Build → Docker Build/Push → 部署/回滚。
    - 所有秘密通过密钥管理服务注入，不写入仓库。
 
+   ***
+
+   ## 全局变量与运行时配置
+
+   为避免隐式依赖与难以测试的全局状态，建议遵循下列约定：
+   - 前端：集中在 `client/src/constants/` 下提供 `env.js`（或 `env.ts`）模块，负责从 `import.meta.env` 读取并归一化所有运行时配置（例如 `VITE_API_BASE`、`VITE_ENABLE_AI_LOGGING` 等），组件/服务通过导入该模块消费配置，避免直接读取 `import.meta.env` 或使用 `window`。对 `window` 的必要使用（事件/localStorage）应封装为可替换的 composable（如 `useSafeLocalStorage`、`useWindowEvent`），便于 SSR 和测试替换。
+
+   - 后端：集中在 `server/src/config/env.js`（或 `config/index.js`）中解析 `process.env`，统一默认值、类型转换与校验（数值、布尔、字节大小等）。其他模块应通过导入该配置对象或注入方式获取配置，避免全仓库散落 `process.env` 访问。对于必须的运行时覆写（例如测试或容器化启动），提供显式 helper（如 `resolveDatabasePath` / `applyDatabasePathOverride`）。
+
+   - 测试：在单元或集成测试中使用模块加载隔离（`jest.resetModules()` / Vitest 的 `vi.resetModules()`）并通过 `vi.stubEnv` / 临时修改 `process.env` 控制环境变量，以免测试间污染真实环境。优先使用注入或工厂函数传递配置以简化测试。
+
 ---
 
 ## AI 协作流程

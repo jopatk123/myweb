@@ -3,20 +3,18 @@
  * 负责将AI的输入输出发送到服务器进行记录
  */
 import { getApiBase, buildServerUrl } from '@/api/httpClient.js';
+import { appEnv } from '@/constants/env.js';
 
 export class AILogService {
   constructor() {
     // 基础API地址
     this.apiBase = getApiBase();
-    
+
     // 日志队列，用于批量发送或重试
     this.logQueue = [];
-    
+
     // 是否在生产环境禁用日志
-    const mode = import.meta.env?.MODE || 'development';
-    this.enabled =
-      mode !== 'production' ||
-      import.meta.env.VITE_ENABLE_AI_LOGGING === 'true';
+    this.enabled = !appEnv.isProduction || appEnv.enableAiLogging;
 
     this._buildServerUrl = buildServerUrl;
   }
@@ -49,12 +47,11 @@ export class AILogService {
         rawRequest: logData.rawRequest || null,
         rawResponse: logData.rawResponse || null,
         gameState: logData.gameState || null,
-        parsedResult: logData.parsedResult || null
+        parsedResult: logData.parsedResult || null,
       };
 
       // 发送到服务器
       await this.sendToServer(logEntry);
-      
     } catch (error) {
       void error;
       // 更详细的错误输出
@@ -94,12 +91,12 @@ export class AILogService {
    * @private
    */
   async sendToServer(logEntry) {
-  const response = await fetch(this._buildServerUrl('/internal/logs/ai'), {
+    const response = await fetch(this._buildServerUrl('/internal/logs/ai'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(logEntry)
+      body: JSON.stringify(logEntry),
     });
 
     if (!response.ok) {

@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDatabase } from './config/database.js';
+import { appEnv, isCorsOriginAllowed } from './config/env.js';
 import { createWallpaperRoutes } from './routes/wallpapers.routes.js';
 import { createAppRoutes } from './routes/apps.routes.js';
 import { createFileRoutes } from './routes/files.routes.js';
@@ -53,23 +54,6 @@ function buildContentSecurityPolicy(enableHttpsSecurity) {
 }
 
 function resolveCorsOptions() {
-  const raw = (process.env.CORS_ORIGIN || '').split(',').map(s => s.trim());
-  const configuredOrigins = raw.filter(Boolean);
-
-  const defaultOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-  ];
-
-  const allowAll = configuredOrigins.includes('*');
-  const allowlist = allowAll
-    ? []
-    : configuredOrigins.length > 0
-      ? configuredOrigins
-      : defaultOrigins;
-
   return {
     credentials: true,
     origin(origin, callback) {
@@ -77,7 +61,7 @@ function resolveCorsOptions() {
         return callback(null, true);
       }
 
-      if (allowAll || allowlist.includes(origin)) {
+      if (appEnv.cors.allowAll || isCorsOriginAllowed(origin)) {
         return callback(null, true);
       }
 
@@ -92,7 +76,7 @@ export async function createApp(options = {}) {
     db: providedDb,
     dbPath,
     seedBuiltinApps = true,
-    silentDbLogs = process.env.NODE_ENV === 'test',
+    silentDbLogs = appEnv.isTest,
   } = options;
 
   const app = express();
@@ -101,7 +85,7 @@ export async function createApp(options = {}) {
 
   await createUploadDirs();
 
-  const enableHttpsSecurity = process.env.ENABLE_HTTPS_SECURITY === '1';
+  const enableHttpsSecurity = appEnv.enableHttpsSecurity;
   const contentSecurityPolicyDirectives =
     buildContentSecurityPolicy(enableHttpsSecurity);
 
@@ -118,7 +102,7 @@ export async function createApp(options = {}) {
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: Number(process.env.RATE_LIMIT || 1000),
+      max: appEnv.rateLimitMax,
       standardHeaders: true,
       legacyHeaders: false,
     })
@@ -126,7 +110,7 @@ export async function createApp(options = {}) {
 
   app.use(cors(resolveCorsOptions()));
 
-  const bodyLimit = process.env.BODY_LIMIT || '100mb';
+  const bodyLimit = appEnv.bodyLimit;
 
   app.use(express.json({ limit: bodyLimit }));
   app.use(express.urlencoded({ extended: true, limit: bodyLimit }));

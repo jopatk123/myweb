@@ -1,3 +1,5 @@
+import { appEnv } from '@/constants/env.js';
+
 // ref not required here
 
 export function useImagePreview() {
@@ -9,7 +11,7 @@ export function useImagePreview() {
         return `/${image.path}`;
       }
       // 其他路径使用API前缀
-      const apiBase = import.meta.env.VITE_API_BASE || '';
+      const apiBase = appEnv.apiBase || '';
       return apiBase.endsWith('/')
         ? `${apiBase}${image.path}`
         : `${apiBase}/${image.path}`;
