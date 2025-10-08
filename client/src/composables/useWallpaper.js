@@ -222,16 +222,21 @@ export function useWallpaper() {
     }
   };
 
+  const consumePreloadedWallpaper = (groupId = null) => {
+    const key = normalizeGroupKey(groupId);
+    const idx = preloadedWallpapers.value.findIndex(p => p.groupKey === key);
+    if (idx === -1) return null;
+    const item = preloadedWallpapers.value.splice(idx, 1)[0];
+    return item?.wallpaper || null;
+  };
+
   // 随机切换壁纸（优先使用预加载队列）
   const randomWallpaper = async (groupId = null) => {
-    const key = normalizeGroupKey(groupId);
-    // 优先从预加载队列取出匹配分组的壁纸
-    const idx = preloadedWallpapers.value.findIndex(p => p.groupKey === key);
-    if (idx !== -1) {
-      const item = preloadedWallpapers.value.splice(idx, 1)[0];
+    const cached = consumePreloadedWallpaper(groupId);
+    if (cached) {
       // 异步补充一张到队列，不阻塞返回
       ensurePreloaded(2, groupId).catch(() => {});
-      return item.wallpaper;
+      return cached;
     }
 
     // 回退到原有逻辑
@@ -400,6 +405,7 @@ export function useWallpaper() {
     randomWallpaper: randomWallpaperThrottled,
     // 允许外部触发预加载（例如在桌面加载时自动补充）
     ensurePreloaded,
+    consumePreloadedWallpaper,
     createGroup,
     deleteGroup,
     getWallpaperUrl,

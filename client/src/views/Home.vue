@@ -73,7 +73,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, unref } from 'vue';
+  import { ref, computed, unref, watch } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { useFiles } from '@/composables/useFiles.js';
   import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
@@ -95,9 +95,29 @@
   import { useDesktopFileActions } from '@/composables/useDesktopFileActions.js';
   import { useDesktopContextMenu } from '@/composables/useDesktopContextMenu.js';
 
-  const { randomWallpaper, ensurePreloaded, fetchCurrentGroup } =
-    useWallpaper();
+  const {
+    randomWallpaper,
+    ensurePreloaded,
+    fetchCurrentGroup,
+    fetchActiveWallpaper,
+    activeWallpaper,
+    consumePreloadedWallpaper,
+  } = useWallpaper();
   const current = ref(null);
+  const LAST_WALLPAPER_STORAGE_KEY = 'desktop:lastWallpaper';
+
+  if (typeof window !== 'undefined') {
+    try {
+      const cachedWallpaper = window.localStorage?.getItem(
+        LAST_WALLPAPER_STORAGE_KEY
+      );
+      if (cachedWallpaper) {
+        current.value = JSON.parse(cachedWallpaper);
+      }
+    } catch (error) {
+      console.warn('[Home] Failed to restore cached wallpaper', error);
+    }
+  }
   const appIconsRef = ref(null);
   const fileIconsRef = ref(null);
 
@@ -118,6 +138,67 @@
     const wallpaper = await randomWallpaper();
     if (wallpaper) current.value = wallpaper;
     ensurePreloaded(2).catch(() => {});
+  };
+
+  watch(
+    current,
+    wallpaper => {
+      if (typeof window === 'undefined') return;
+      try {
+        if (wallpaper) {
+          window.localStorage?.setItem(
+            LAST_WALLPAPER_STORAGE_KEY,
+            JSON.stringify(wallpaper)
+          );
+        } else {
+          window.localStorage?.removeItem(LAST_WALLPAPER_STORAGE_KEY);
+        }
+      } catch (error) {
+        console.warn('[Home] Failed to persist wallpaper cache', error);
+      }
+    },
+    { deep: false }
+  );
+
+  const isRefreshing = ref(false);
+
+  const refreshDesktop = async () => {
+    if (isRefreshing.value) return;
+    isRefreshing.value = true;
+
+    try {
+      let wallpaper = consumePreloadedWallpaper();
+      const usedCachedWallpaper = Boolean(wallpaper);
+
+      if (!wallpaper && current.value) {
+        wallpaper = { ...current.value };
+      }
+
+      if (!wallpaper) {
+        await fetchActiveWallpaper().catch(() => {});
+        wallpaper = activeWallpaper.value || null;
+      }
+
+      if (wallpaper) {
+        current.value = wallpaper;
+      }
+
+      ensurePreloaded(2).catch(() => {});
+
+      await Promise.allSettled([
+        fetchFiles(),
+        fetchCurrentGroup(),
+        fetchActiveWallpaper(),
+      ]);
+
+      if (!usedCachedWallpaper && activeWallpaper.value) {
+        current.value = activeWallpaper.value;
+      }
+    } catch (error) {
+      console.warn('[Home] refreshDesktop failed', error);
+    } finally {
+      isRefreshing.value = false;
+    }
   };
 
   const { dragOver, onDragOver, onDragLeave, onDrop } = useDesktopDropZone({
@@ -153,6 +234,7 @@
       appIconsRef,
       fileIconsRef,
       onRandom,
+      onRefresh: refreshDesktop,
     });
 
   const {
@@ -190,6 +272,13 @@
   fetchCurrentGroup().then(() => {
     ensurePreloaded(2).catch(() => {});
   });
+  fetchActiveWallpaper()
+    .then(() => {
+      if (!current.value && activeWallpaper.value) {
+        current.value = activeWallpaper.value;
+      }
+    })
+    .catch(() => {});
   fetchFiles().catch(() => {});
 
   function onDesktopContextmenu(event) {
