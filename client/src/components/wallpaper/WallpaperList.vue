@@ -53,12 +53,6 @@
           </td>
           <td>
             <button
-              @click="$emit('set-active', wallpaper.id)"
-              class="btn btn-sm btn-primary"
-            >
-              设为背景
-            </button>
-            <button
               @click="$emit('edit', wallpaper)"
               class="btn btn-sm btn-secondary"
             >
@@ -96,12 +90,7 @@
     },
   });
 
-  const emit = defineEmits([
-    'set-active',
-    'delete',
-    'edit',
-    'update:modelValue',
-  ]);
+  const emit = defineEmits(['delete', 'edit', 'update:modelValue']);
 
   const selectedIds = ref([...props.modelValue]);
 

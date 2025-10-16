@@ -134,20 +134,6 @@ export function useWallpaper() {
     }
   };
 
-  // 设置活跃壁纸
-  const setActiveWallpaper = async id => {
-    try {
-      await wallpaperApi.setActiveWallpaper(id);
-      // 立即获取更新后的活跃壁纸数据
-      await fetchActiveWallpaper();
-      // 确保UI能够立即响应，通过一个微任务延迟
-      await new Promise(resolve => setTimeout(resolve, 0));
-    } catch (err) {
-      error.value = err.message || '设置失败';
-      throw err;
-    }
-  };
-
   // 删除壁纸
   const deleteWallpaper = async (id, groupId = null) => {
     const resolvedGroupId = unref(groupId);
@@ -419,7 +405,6 @@ export function useWallpaper() {
     fetchCurrentGroup,
     fetchActiveWallpaper,
     uploadWallpaper,
-    setActiveWallpaper,
     deleteWallpaper,
     updateWallpaper,
     randomWallpaper: randomWallpaperThrottled,

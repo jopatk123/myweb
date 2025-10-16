@@ -76,11 +76,6 @@ export const wallpaperApi = {
     return api.put('/wallpapers/move', { ids, groupId });
   },
 
-  // 设置活跃壁纸
-  setActiveWallpaper(id) {
-    return api.put(`/wallpapers/${id}/active`);
-  },
-
   // 获取当前活跃壁纸
   getActiveWallpaper() {
     return api.get('/wallpapers/active');

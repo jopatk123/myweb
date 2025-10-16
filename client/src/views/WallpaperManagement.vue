@@ -52,7 +52,6 @@
         v-model="selectedIds"
         :wallpapers="filteredWallpapers"
         :active-wallpaper="activeWallpaper"
-        @set-active="handleSetActive"
         @delete="deleteWallpaper($event, selectedGroupId.value || null)"
         @edit="openEditModal"
       />
@@ -146,7 +145,6 @@
     fetchGroups,
     fetchCurrentGroup,
     fetchActiveWallpaper,
-    setActiveWallpaper,
     deleteWallpaper,
     deleteGroup,
     deleteMultipleWallpapers,
@@ -303,16 +301,6 @@
     setTimeout(() => {
       showToast.value = false;
     }, duration);
-  };
-
-  // 包装后的设置背景处理，显示成功提示
-  const handleSetActive = async id => {
-    try {
-      await setActiveWallpaper(id);
-      displayToast('设置成功');
-    } catch (err) {
-      alert(err.message || '设置为背景失败');
-    }
   };
 
   // 计算后的展示数据
