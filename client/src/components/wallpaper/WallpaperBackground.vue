@@ -27,6 +27,8 @@
     useWallpaper();
 
   const currentWallpaper = ref(null);
+  const loadRetries = ref(0);
+  const MAX_RETRIES = 3;
 
   // 监听传入的 wallpaper 或全局活跃壁纸变化
   const sourceWallpaper = ref(props.wallpaper || activeWallpaper.value);
@@ -45,19 +47,55 @@
     }
   });
 
+  const updateWallpaper = wallpaper => {
+    if (!wallpaper) {
+      currentWallpaper.value = null;
+      loadRetries.value = 0;
+      return;
+    }
+
+    // 重置重试计数
+    loadRetries.value = 0;
+
+    // 获取URL（已包含版本参数）
+    let url = getWallpaperUrl(wallpaper);
+    if (!url) {
+      currentWallpaper.value = null;
+      return;
+    }
+
+    // 添加额外的时间戳参数强制刷新（以防版本参数未生效）
+    const separator = url.includes('?') ? '&' : '?';
+    const urlWithTimestamp = `${url}${separator}_refresh=${Date.now()}`;
+
+    // 预加载图片
+    const img = new Image();
+    img.onload = () => {
+      currentWallpaper.value = wallpaper;
+    };
+    img.onerror = () => {
+      // 图片加载失败，重试几次
+      if (loadRetries.value < MAX_RETRIES) {
+        loadRetries.value++;
+        console.warn(
+          `壁纸加载失败，第 ${loadRetries.value}/${MAX_RETRIES} 次重试...`
+        );
+        setTimeout(() => {
+          updateWallpaper(wallpaper);
+        }, 1000 * loadRetries.value);
+      } else {
+        console.warn('壁纸加载失败，已重试', MAX_RETRIES, '次');
+        // 即使失败也显示壁纸，可能是部分加载
+        currentWallpaper.value = wallpaper;
+      }
+    };
+    img.src = urlWithTimestamp;
+  };
+
   watch(
     sourceWallpaper,
     newWallpaper => {
-      if (newWallpaper) {
-        // 预加载图片
-        const img = new Image();
-        img.onload = () => {
-          currentWallpaper.value = newWallpaper;
-        };
-        img.src = getWallpaperUrl(newWallpaper);
-      } else {
-        currentWallpaper.value = null;
-      }
+      updateWallpaper(newWallpaper);
     },
     { immediate: true }
   );

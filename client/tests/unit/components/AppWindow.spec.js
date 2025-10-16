@@ -111,6 +111,22 @@ describe('AppWindow', () => {
     expect(emitted().maximize[0][0]).toBe(windowData.id);
   });
 
+  it('emits minimize event without closing the window', async () => {
+    const windowData = createWindow();
+    const { getByTitle, emitted } = render(AppWindow, {
+      props: {
+        window: windowData,
+        isActive: false,
+      },
+    });
+
+    await fireEvent.click(getByTitle('最小化'));
+
+    expect(emitted().minimize).toBeTruthy();
+    expect(emitted().minimize[0][0]).toBe(windowData.id);
+    expect(emitted().close).toBeUndefined();
+  });
+
   it('emits activate when window is clicked', async () => {
     const windowData = createWindow();
     const { container, emitted } = render(AppWindow, {

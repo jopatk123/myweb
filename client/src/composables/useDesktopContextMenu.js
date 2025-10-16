@@ -7,7 +7,6 @@ export function useDesktopContextMenu({
   appIconsRef,
   fileIconsRef,
   onRandom,
-  onRefresh,
 } = {}) {
   const desktopMenu = ref({ visible: false, x: 0, y: 0, items: [] });
 
@@ -43,13 +42,7 @@ export function useDesktopContextMenu({
         window.open('/wallpapers', '_blank', 'noopener');
         break;
       case 'refresh':
-        if (typeof onRefresh === 'function') {
-          Promise.resolve(onRefresh()).catch(error => {
-            console.warn('[useDesktopContextMenu] refresh failed', error);
-          });
-        } else {
-          window.location.reload();
-        }
+        window.location.reload();
         break;
       case 'autoArrange': {
         const nextCol = appIconsRef?.value?.autoArrange

@@ -3,7 +3,6 @@ import { createMusicPlayerState } from './music/createMusicPlayerState.js';
 import { useMusicSettings } from './music/useMusicSettings.js';
 import { useAudioController } from './music/useAudioController.js';
 import { useTrackActions } from './music/useTrackActions.js';
-import { useTrackPreloader } from './music/useTrackPreloader.js';
 
 export function useMusicPlayer() {
   const state = createMusicPlayerState();
@@ -12,28 +11,20 @@ export function useMusicPlayer() {
     repeatMode: state.repeatMode,
     shuffle: state.shuffle,
   });
-  const preloader = useTrackPreloader(state);
   const audioController = useAudioController(state, {
     settings: settingsManager,
-    preloader,
   });
-  const trackActions = useTrackActions(state, { preloader });
+  const trackActions = useTrackActions(state);
   let disposed = false;
   async function initialize() {
     settingsManager.restoreSettings();
     await trackActions.fetchTracks({ refreshGroups: true });
-    if (state.tracks.value.length) {
-      preloader
-        .prefetch(state.tracks.value[0], { retainCurrent: true })
-        .catch(() => {});
-    }
   }
 
   function teardown() {
     if (disposed) return;
     disposed = true;
     audioController.teardown();
-    preloader.teardown();
   }
 
   onBeforeUnmount(() => {
@@ -65,7 +56,6 @@ export function useMusicPlayer() {
     error: state.error,
     currentIndex: state.currentIndex,
     activeGroupId: state.activeGroupId,
-    prefetching: state.prefetching,
     compressionState: state.compressionState,
 
     // methods

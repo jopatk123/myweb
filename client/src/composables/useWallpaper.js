@@ -138,7 +138,10 @@ export function useWallpaper() {
   const setActiveWallpaper = async id => {
     try {
       await wallpaperApi.setActiveWallpaper(id);
+      // 立即获取更新后的活跃壁纸数据
       await fetchActiveWallpaper();
+      // 确保UI能够立即响应，通过一个微任务延迟
+      await new Promise(resolve => setTimeout(resolve, 0));
     } catch (err) {
       error.value = err.message || '设置失败';
       throw err;
@@ -350,23 +353,40 @@ export function useWallpaper() {
   const hasGroups = computed(() => groups.value.length > 0);
 
   // 获取壁纸URL
-  const getWallpaperUrl = wallpaper => {
+  const getWallpaperUrl = (wallpaper, options = {}) => {
     if (!wallpaper) return null;
     const fp = wallpaper.filePath || wallpaper.file_path || '';
 
     // 对于图片文件，应该直接使用相对路径，不经过API
     // 图片由后端静态服务直接提供
+    let basePath = '';
     if (fp.startsWith('uploads/')) {
-      return `/${fp}`;
+      basePath = `/${fp}`;
+    } else {
+      // 兼容其他情况
+      const base = appEnv.apiBase || '';
+      const pathPart = String(fp).replace(/^\/+/, '');
+      if (base) {
+        basePath = `${String(base).replace(/\/+$/, '')}/${pathPart}`;
+      } else {
+        basePath = `/${pathPart}`;
+      }
     }
 
-    // 兼容其他情况
-    const base = appEnv.apiBase || '';
-    const pathPart = String(fp).replace(/^\/+/, '');
-    if (base) {
-      return `${String(base).replace(/\/+$/, '')}/${pathPart}`;
+    // 添加版本参数以避免浏览器缓存问题
+    // 使用 updatedAt 作为版本标识符
+    if (options.addVersion !== false) {
+      const updatedAt = wallpaper.updatedAt || wallpaper.updated_at;
+      if (updatedAt) {
+        const ts = new Date(updatedAt).getTime();
+        if (!Number.isNaN(ts)) {
+          const separator = basePath.includes('?') ? '&' : '?';
+          return `${basePath}${separator}v=${ts}`;
+        }
+      }
     }
-    return `/${pathPart}`;
+
+    return basePath;
   };
 
   return {

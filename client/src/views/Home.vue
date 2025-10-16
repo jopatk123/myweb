@@ -101,7 +101,6 @@
     fetchCurrentGroup,
     fetchActiveWallpaper,
     activeWallpaper,
-    consumePreloadedWallpaper,
   } = useWallpaper();
   const current = ref(null);
   const LAST_WALLPAPER_STORAGE_KEY = 'desktop:lastWallpaper';
@@ -160,47 +159,6 @@
     { deep: false }
   );
 
-  const isRefreshing = ref(false);
-
-  const refreshDesktop = async () => {
-    if (isRefreshing.value) return;
-    isRefreshing.value = true;
-
-    try {
-      let wallpaper = consumePreloadedWallpaper();
-      const usedCachedWallpaper = Boolean(wallpaper);
-
-      if (!wallpaper && current.value) {
-        wallpaper = { ...current.value };
-      }
-
-      if (!wallpaper) {
-        await fetchActiveWallpaper().catch(() => {});
-        wallpaper = activeWallpaper.value || null;
-      }
-
-      if (wallpaper) {
-        current.value = wallpaper;
-      }
-
-      ensurePreloaded(2).catch(() => {});
-
-      await Promise.allSettled([
-        fetchFiles(),
-        fetchCurrentGroup(),
-        fetchActiveWallpaper(),
-      ]);
-
-      if (!usedCachedWallpaper && activeWallpaper.value) {
-        current.value = activeWallpaper.value;
-      }
-    } catch (error) {
-      console.warn('[Home] refreshDesktop failed', error);
-    } finally {
-      isRefreshing.value = false;
-    }
-  };
-
   const { dragOver, onDragOver, onDragLeave, onDrop } = useDesktopDropZone({
     upload: filesToUpload => upload(filesToUpload),
     onError: () => {},
@@ -234,7 +192,6 @@
       appIconsRef,
       fileIconsRef,
       onRandom,
-      onRefresh: refreshDesktop,
     });
 
   const {

@@ -7,12 +7,15 @@ const filesRef = ref([]);
 vi.mock('@/composables/useWallpaper.js', () => {
   const ensurePreloaded = vi.fn().mockResolvedValue();
   const fetchCurrentGroup = vi.fn().mockResolvedValue();
+  const fetchActiveWallpaper = vi.fn().mockResolvedValue();
   const randomWallpaper = vi.fn().mockResolvedValue(null);
   return {
     useWallpaper: () => ({
       randomWallpaper,
       ensurePreloaded,
       fetchCurrentGroup,
+      fetchActiveWallpaper,
+      activeWallpaper: ref(null),
     }),
   };
 });

@@ -2,7 +2,6 @@
   <div class="music-player-app">
     <MusicPlayerHeader
       :track-count="tracks.length"
-      :prefetching="prefetching"
       :group-options="groupOptions"
       :selected-group="selectedGroup"
       :groups-loading="groupsLoading"
@@ -108,7 +107,6 @@
     shuffle,
     deletingIds,
     uploadingState,
-    prefetching,
     error,
     activeGroupId,
     setActiveGroup,

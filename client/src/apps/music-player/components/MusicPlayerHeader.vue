@@ -3,21 +3,6 @@
     <div class="header-left">
       <h2>音乐播放器</h2>
       <span class="track-count">{{ trackCount }} 首曲目</span>
-      <span v-if="prefetching?.status === 'running'" class="prefetch-indicator">
-        ⚡ 正在预加载下一首
-      </span>
-      <span
-        v-else-if="prefetching?.status === 'success'"
-        class="prefetch-indicator ok"
-      >
-        ✅ 下一首已缓存
-      </span>
-      <span
-        v-else-if="prefetching?.status === 'error'"
-        class="prefetch-indicator error"
-      >
-        ⚠️ 预加载失败
-      </span>
     </div>
 
     <div class="header-actions">
@@ -90,10 +75,6 @@
     trackCount: {
       type: Number,
       default: 0,
-    },
-    prefetching: {
-      type: Object,
-      default: () => ({ status: 'idle' }),
     },
     groupOptions: {
       type: Array,

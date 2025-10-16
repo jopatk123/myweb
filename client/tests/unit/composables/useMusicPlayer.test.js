@@ -46,10 +46,6 @@ vi.mock('@/api/music.js', () => ({
   },
 }));
 
-vi.mock('@/composables/music/useTrackPreloader.js', () => ({
-  useTrackPreloader,
-}));
-
 vi.mock('@/services/audioCompression.js', () => ({
   prepareCompressedFiles,
   shouldCompressFile,
@@ -163,20 +159,6 @@ describe('useMusicPlayer', () => {
     wrapper.unmount();
   });
 
-  it('initialise prefetches the first track for quicker playback', async () => {
-    const { state, wrapper } = await createPlayer();
-
-    await state.initialize();
-    await nextTick();
-
-    expect(mockPreloader.prefetch).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 1 }),
-      expect.objectContaining({ retainCurrent: true })
-    );
-
-    wrapper.unmount();
-  });
-
   it('playTrack wires audio element, updates stream url and marks playing', async () => {
     const { state, wrapper } = await createPlayer();
     await state.initialize();
@@ -211,56 +193,6 @@ describe('useMusicPlayer', () => {
     wrapper.unmount();
   });
 
-  it('playTrack consumes prefetched blob and schedules next track prefetch', async () => {
-    vi.useFakeTimers();
-    const { state, wrapper } = await createPlayer();
-    await state.initialize();
-    await nextTick();
-
-    const audioMock = {
-      src: '',
-      paused: true,
-      volume: 0,
-      muted: false,
-      preload: '',
-      crossOrigin: '',
-      play: vi.fn().mockImplementation(() => {
-        audioMock.paused = false;
-        return Promise.resolve();
-      }),
-      pause: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    };
-
-    state.setAudioElement(audioMock);
-
-    mockPreloader.prefetch.mockClear();
-    mockPreloader.prefetch.mockResolvedValue(null);
-    mockPreloader.consume.mockReturnValue({
-      trackId: 1,
-      objectUrl: 'blob:track-1',
-      mimeType: 'audio/ogg',
-    });
-
-    await state.playTrack(1);
-
-    expect(mockPreloader.consume).toHaveBeenCalledWith(1);
-    expect(audioMock.src).toBe('blob:track-1');
-    expect(audioMock.play).toHaveBeenCalled();
-
-    vi.advanceTimersByTime(2500);
-    await nextTick();
-
-    expect(mockPreloader.prefetch).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 2 }),
-      expect.objectContaining({ retainCurrent: false })
-    );
-
-    vi.useRealTimers();
-    wrapper.unmount();
-  });
-
   it('deleteTrack removes current track and resets playback target', async () => {
     const { state, wrapper } = await createPlayer();
     await state.initialize();
@@ -284,9 +216,6 @@ describe('useMusicPlayer', () => {
     await state.deleteTrack(1);
 
     expect(deleteTrack).toHaveBeenCalledWith(1);
-    expect(mockPreloader.release).toHaveBeenCalledWith(1, {
-      force: true,
-    });
     expect(state.tracks.value.map(track => track.id)).toEqual([2]);
     expect(state.currentTrackId.value).toBe(2);
     expect(audioMock.pause).toHaveBeenCalled();
@@ -349,18 +278,6 @@ describe('useMusicPlayer', () => {
     expect(state.volume.value).toBeCloseTo(0.4);
     expect(state.shuffle.value).toBe(true);
     expect(state.repeatMode.value).toBe('all');
-
-    wrapper.unmount();
-  });
-
-  it('teardown terminates preloader lifecycle to avoid leaks', async () => {
-    const { state, wrapper } = await createPlayer();
-    await state.initialize();
-    await nextTick();
-
-    state.teardown();
-
-    expect(mockPreloader.teardown).toHaveBeenCalledTimes(1);
 
     wrapper.unmount();
   });

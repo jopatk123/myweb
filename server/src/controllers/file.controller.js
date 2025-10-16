@@ -11,6 +11,7 @@ import { FileService } from '../services/file.service.js';
 import { NovelModel } from '../models/novel.model.js';
 import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
+import { normaliseUploadedFileName } from '../utils/upload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,6 +111,7 @@ function isAllowedFile(file) {
 }
 
 const fileFilter = (_req, file, cb) => {
+  normaliseUploadedFileName(file);
   if (isAllowedFile(file)) {
     return cb(null, true);
   }
@@ -148,6 +150,7 @@ const storageNovels = multer.diskStorage({
     cb(null, novelsDir);
   },
   filename: (req, file, cb) => {
+    normaliseUploadedFileName(file);
     const ext = path.extname(file.originalname) || '';
     cb(null, `${uuidv4()}${ext}`);
   },

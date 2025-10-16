@@ -21,7 +21,7 @@
         <tr
           v-for="wallpaper in wallpapers"
           :key="wallpaper.id"
-          :class="{ active: activeWallpaper?.id === wallpaper.id }"
+          :class="{ active: isActiveWallpaper(wallpaper) }"
         >
           <td>
             <input
@@ -124,6 +124,37 @@
       selectedIds.value.length === props.wallpapers.length
     );
   });
+
+  const activeWallpaperId = computed(() => {
+    const candidates = [
+      props.activeWallpaper?.id,
+      props.activeWallpaper?.wallpaperId,
+      props.activeWallpaper?.wallpaper_id,
+    ];
+    const value = candidates.find(
+      id => id !== undefined && id !== null && id !== ''
+    );
+    return value === undefined || value === null ? null : String(value);
+  });
+
+  const isActiveWallpaper = wallpaper => {
+    if (!wallpaper) return false;
+    const candidates = [
+      wallpaper.id,
+      wallpaper.wallpaperId,
+      wallpaper.wallpaper_id,
+    ];
+    const value = candidates.find(
+      id => id !== undefined && id !== null && id !== ''
+    );
+    if (value === undefined || value === null) {
+      return false;
+    }
+    return (
+      activeWallpaperId.value !== null &&
+      String(value) === activeWallpaperId.value
+    );
+  };
 
   const toggleSelectAll = event => {
     if (event.target.checked) {

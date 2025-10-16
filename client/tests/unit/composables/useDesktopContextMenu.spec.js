@@ -2,16 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useDesktopContextMenu } from '@/composables/useDesktopContextMenu.js';
 
 describe('useDesktopContextMenu', () => {
-  it('calls custom onRefresh handler when provided', () => {
-    const onRefresh = vi.fn();
-    const { handleSelect } = useDesktopContextMenu({ onRefresh });
-
-    handleSelect('refresh');
-
-    expect(onRefresh).toHaveBeenCalledTimes(1);
-  });
-
-  it('falls back to window.location.reload when no handler is provided', () => {
+  it('reloads the current page when refresh is selected', () => {
     const reloadMock = vi.fn();
     const originalLocation = globalThis.location;
     Object.defineProperty(globalThis, 'location', {

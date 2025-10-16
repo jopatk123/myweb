@@ -3,7 +3,7 @@ import { buildServerUrl } from '@/api/httpClient.js';
 import { clamp } from './utils.js';
 import { usePlaybackQueue } from './usePlaybackQueue.js';
 
-export function useAudioController(state, { settings, preloader } = {}) {
+export function useAudioController(state, { settings } = {}) {
   const {
     tracks,
     currentTrack,
@@ -24,19 +24,11 @@ export function useAudioController(state, { settings, preloader } = {}) {
 
   const queue = usePlaybackQueue(state);
   let currentObjectUrl = null;
-  let prefetchTimer = null;
 
   function cleanupCurrentObjectUrl() {
     if (currentObjectUrl) {
       URL.revokeObjectURL(currentObjectUrl);
       currentObjectUrl = null;
-    }
-  }
-
-  function clearPrefetchTimer() {
-    if (prefetchTimer) {
-      clearTimeout(prefetchTimer);
-      prefetchTimer = null;
     }
   }
 
@@ -222,17 +214,9 @@ export function useAudioController(state, { settings, preloader } = {}) {
       Date.now();
     const shouldReload = currentStreamUrl.value !== stream;
 
-    clearPrefetchTimer();
-    const prefetched = preloader?.consume(target.id) || null;
-
-    let nextSource;
-    if (prefetched) {
-      nextSource = prefetched.objectUrl;
-    } else {
-      const streamUrl = resolveStreamUrl(stream);
-      const separator = streamUrl.includes('?') ? '&' : '?';
-      nextSource = `${streamUrl}${separator}v=${versionKey}`;
-    }
+    const streamUrl = resolveStreamUrl(stream);
+    const separator = streamUrl.includes('?') ? '&' : '?';
+    const nextSource = `${streamUrl}${separator}v=${versionKey}`;
 
     currentTrackId.value = target.id;
     currentStreamUrl.value = stream;
@@ -244,9 +228,6 @@ export function useAudioController(state, { settings, preloader } = {}) {
         cleanupCurrentObjectUrl();
         audioEl.value.src = nextSource;
       }
-      if (prefetched) {
-        currentObjectUrl = prefetched.objectUrl;
-      }
       if (!shouldReload && audioEl.value.src !== nextSource) {
         audioEl.value.src = nextSource;
       }
@@ -254,30 +235,23 @@ export function useAudioController(state, { settings, preloader } = {}) {
       isPlaying.value = true;
       isBuffering.value = false;
       syncDurationFromElement();
-      schedulePrefetch();
     } catch (err) {
-      if (!prefetched) {
-        const fallbackSource = resolveStreamUrl(stream);
-        if (fallbackSource && audioEl.value.src !== fallbackSource) {
-          try {
-            cleanupCurrentObjectUrl();
-            audioEl.value.src = fallbackSource;
-            await audioEl.value.play();
-            isPlaying.value = true;
-            isBuffering.value = false;
-            syncDurationFromElement();
-            schedulePrefetch();
-            return;
-          } catch (fallbackErr) {
-            console.error('播放失败(回退源):', fallbackErr);
-          }
+      const fallbackSource = resolveStreamUrl(stream);
+      if (fallbackSource && audioEl.value.src !== fallbackSource) {
+        try {
+          cleanupCurrentObjectUrl();
+          audioEl.value.src = fallbackSource;
+          await audioEl.value.play();
+          isPlaying.value = true;
+          isBuffering.value = false;
+          syncDurationFromElement();
+          return;
+        } catch (fallbackErr) {
+          console.error('播放失败(回退源):', fallbackErr);
         }
       }
       console.error('播放失败:', err);
       error.value = err?.message || '无法播放该音频';
-      if (prefetched && !currentObjectUrl) {
-        URL.revokeObjectURL(prefetched.objectUrl);
-      }
     }
   }
 
@@ -372,28 +346,7 @@ export function useAudioController(state, { settings, preloader } = {}) {
     if (settings) settings.repeatMode = repeatMode.value;
   }
 
-  function schedulePrefetch() {
-    if (!preloader || queue.isShuffleEnabled() || !tracks.value.length) {
-      preloader?.release(undefined, { force: true });
-      return;
-    }
-
-    const nextTrack = queue.nextTrack();
-    if (!nextTrack) {
-      preloader.release(undefined, { force: true });
-      return;
-    }
-
-    clearPrefetchTimer();
-    prefetchTimer = setTimeout(() => {
-      preloader
-        .prefetch(nextTrack, { retainCurrent: false })
-        .catch(err => console.debug('预加载下一首失败', err));
-    }, 2000);
-  }
-
   function teardown() {
-    clearPrefetchTimer();
     if (audioEl.value) {
       detachAudioEvents(audioEl.value);
       audioEl.value.pause?.();

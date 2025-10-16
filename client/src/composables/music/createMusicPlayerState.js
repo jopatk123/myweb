@@ -27,10 +27,6 @@ export function createMusicPlayerState() {
     filename: '',
   });
   const error = ref('');
-  const prefetching = reactive({
-    status: 'idle',
-    trackId: null,
-  });
 
   const currentTrack = computed(
     () => tracks.value.find(track => track.id === currentTrackId.value) || null
@@ -118,6 +114,5 @@ export function createMusicPlayerState() {
     uploadingState,
     error,
     currentIndex,
-    prefetching,
   };
 }

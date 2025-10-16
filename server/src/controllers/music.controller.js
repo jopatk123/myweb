@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { MusicService } from '../services/music.service.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
+import { normaliseUploadedFileName } from '../utils/upload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +39,7 @@ const storageMusic = multer.diskStorage({
     cb(null, musicDir);
   },
   filename: (req, file, cb) => {
+    normaliseUploadedFileName(file);
     const ext = path.extname(file.originalname || '') || '';
     cb(null, `${uuidv4()}${ext}`);
   },

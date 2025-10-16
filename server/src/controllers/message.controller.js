@@ -9,6 +9,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
+import { normaliseUploadedFileName } from '../utils/upload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -76,6 +77,7 @@ const imageStorage = multer.diskStorage({
 const imageFilter = (req, file, cb) => {
   // 只允许图片文件
   if (file.mimetype.startsWith('image/')) {
+    normaliseUploadedFileName(file);
     cb(null, true);
   } else {
     cb(new Error('只允许上传图片文件'), false);

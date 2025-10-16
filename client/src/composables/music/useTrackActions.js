@@ -19,7 +19,7 @@ function normaliseTrack(track) {
   };
 }
 
-export function useTrackActions(state, { preloader } = {}) {
+export function useTrackActions(state) {
   const {
     tracks,
     groups,
@@ -61,7 +61,6 @@ export function useTrackActions(state, { preloader } = {}) {
       if (!tracks.value.length) {
         currentTrackId.value = null;
         currentStreamUrl.value = '';
-        preloader?.release(undefined, { force: true });
       } else if (!currentTrackId.value) {
         currentTrackId.value = tracks.value[0].id;
       }
@@ -212,7 +211,6 @@ export function useTrackActions(state, { preloader } = {}) {
     try {
       await musicApi.deleteTrack(id);
       tracks.value = tracks.value.filter(track => track.id !== id);
-      preloader?.release(id, { force: true });
       if (currentTrackId.value === id) {
         if (tracks.value.length) {
           currentTrackId.value = tracks.value[0].id;
