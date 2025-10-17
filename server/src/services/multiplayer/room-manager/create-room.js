@@ -1,6 +1,11 @@
 // 创建房间相关逻辑
 export function createRoomFactory(Service) {
-  Service.prototype.createRoom = function(sessionId, playerName, roomData, gameConfig = {}) {
+  Service.prototype.createRoom = function (
+    sessionId,
+    playerName,
+    roomData,
+    gameConfig = {}
+  ) {
     try {
       const validation = this.validateGameConfig(gameConfig);
       if (!validation.isValid) {
@@ -13,7 +18,7 @@ export function createRoomFactory(Service) {
         game_settings: validation.validatedConfig,
         current_players: 1,
         game_type: this.getGameType(),
-        ...roomData
+        ...roomData,
       });
       const playerColor = this.getNextPlayerColor(room.id, 0);
       const player = this.PlayerModel.create({
@@ -21,11 +26,13 @@ export function createRoomFactory(Service) {
         session_id: sessionId,
         player_name: playerName,
         player_color: playerColor,
-        is_ready: false
+        is_ready: false,
       });
       this.initGameState(room.id, roomData.mode, validation.validatedConfig);
       const updatedRoom = this.RoomModel.findById(room.id);
-      console.log(`${this.getGameType()} 房间已创建: ${roomCode} (ID: ${room.id})`);
+      console.log(
+        `${this.getGameType()} 房间已创建: ${roomCode} (ID: ${room.id})`
+      );
       return { room: updatedRoom, player };
     } catch (error) {
       console.error('创建房间失败:', error);

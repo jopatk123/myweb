@@ -32,23 +32,28 @@
       </button>
 
       <button
-        v-if="gameStarted && !gameOver && gameMode==='ai_vs_ai' && isAIAutoPlaying"
+        v-if="
+          gameStarted && !gameOver && gameMode === 'ai_vs_ai' && isAIAutoPlaying
+        "
         @click="$emit('stop-ai')"
         class="btn btn-stop"
       >
         停止
       </button>
       <button
-        v-if="gameStarted && !gameOver && gameMode==='ai_vs_ai' && !isAIAutoPlaying"
+        v-if="
+          gameStarted &&
+          !gameOver &&
+          gameMode === 'ai_vs_ai' &&
+          !isAIAutoPlaying
+        "
         @click="$emit('resume-ai')"
         class="btn btn-primary"
       >
         继续
       </button>
 
-      <button @click="$emit('config-ai')" class="btn btn-config">
-        AI配置
-      </button>
+      <button @click="$emit('config-ai')" class="btn btn-config">AI配置</button>
     </div>
 
     <div class="game-mode-info">
@@ -80,15 +85,23 @@
     },
     gameMode: {
       type: String,
-      default: 'human_vs_ai'
+      default: 'human_vs_ai',
     },
     isAIAutoPlaying: {
       type: Boolean,
-      default: true
-    }
+      default: true,
+    },
   });
 
-  defineEmits(['start', 'restart', 'undo', 'hint', 'config-ai', 'stop-ai', 'resume-ai']);
+  defineEmits([
+    'start',
+    'restart',
+    'undo',
+    'hint',
+    'config-ai',
+    'stop-ai',
+    'resume-ai',
+  ]);
 </script>
 
 <style scoped>

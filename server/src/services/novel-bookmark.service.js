@@ -77,7 +77,6 @@ export class NovelBookmarkService {
 
   async deleteBookmark(id) {
     try {
-
       const result = this.bookmarkModel.delete(id);
       return {
         success: true,
@@ -110,11 +109,8 @@ export class NovelBookmarkService {
 
   async syncBookmarks(deviceId, localBookmarks) {
     try {
-
-
       // 获取服务器上的书签（改为返回所有书签，确保跨设备可见）
       const serverBookmarks = this.bookmarkModel.findAll();
-
 
       // 创建本地书签的映射
       const localBookmarkMap = new Map();
@@ -166,13 +162,11 @@ export class NovelBookmarkService {
         return !serverDupKeys.has(key);
       });
 
-
       // 需要下载到本地的书签（服务器有但本地没有）
       const bookmarksToDownload = serverBookmarks.filter(
         bookmark =>
           bookmark && bookmark.id && !localBookmarkMap.has(bookmark.id)
       );
-
 
       // 批量上传新书签
       let uploadedBookmarks = [];
@@ -183,7 +177,6 @@ export class NovelBookmarkService {
             deviceId,
           }))
         );
-
       }
 
       return {

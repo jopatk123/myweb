@@ -31,7 +31,7 @@ export class SnakeStateManager {
   updateRoom(roomData) {
     this.refs.currentRoom.value = roomData;
     this.refs.isInRoom.value = true;
-    
+
     // 缓存房间码
     const roomCode = roomData.room_code || roomData.roomCode;
     if (roomCode) {
@@ -58,7 +58,7 @@ export class SnakeStateManager {
    */
   updateGameState(gameStateData) {
     this.refs.gameState.value = gameStateData;
-    
+
     // 根据游戏状态更新游戏状态标识
     if (gameStateData) {
       this.refs.gameStatus.value = gameStateData.status || 'waiting';
@@ -85,7 +85,7 @@ export class SnakeStateManager {
   startVoteCountdown(seconds) {
     this.utils.clearVoteTimer();
     this.refs.voteTimeout.value = seconds;
-    
+
     this.refs.voteTimer.value = setInterval(() => {
       if (this.refs.voteTimeout.value > 0) {
         this.refs.voteTimeout.value -= 1;

@@ -18,9 +18,9 @@ export class GameServiceFactory {
       minPlayers: 1,
       maxPlayers: 8,
       gameSpeed: 150,
-  timeout: 3000,
+      timeout: 3000,
       autoCleanup: true,
-      cleanupInterval: 5 * 60 * 1000 // 5分钟
+      cleanupInterval: 5 * 60 * 1000, // 5分钟
     };
   }
 
@@ -35,13 +35,13 @@ export class GameServiceFactory {
     const gameConfig = {
       ...this.defaultConfig,
       gameType,
-      ...config
+      ...config,
     };
 
     this.serviceConfigs.set(gameType, {
       config: gameConfig,
       ServiceClass: ServiceClass || RoomManagerService,
-      tablePrefix: config.tablePrefix || gameType
+      tablePrefix: config.tablePrefix || gameType,
     });
 
     console.log(`游戏类型 "${gameType}" 已注册`);
@@ -75,7 +75,7 @@ export class GameServiceFactory {
     // 创建服务实例
     const service = new ServiceClass(wsService, RoomModel, PlayerModel, {
       ...config,
-      gameType
+      gameType,
     });
 
     // 缓存服务实例
@@ -94,11 +94,11 @@ export class GameServiceFactory {
    */
   createRoomModel(gameType, tablePrefix, config) {
     const tableName = `${tablePrefix}_rooms`;
-    
+
     // 创建专门的模型类
     class GameRoomModel extends GenericRoomModel {
       static tableName = tableName;
-      
+
       static getTableName() {
         return tableName;
       }
@@ -108,7 +108,7 @@ export class GameServiceFactory {
         return super.getActiveRooms({ ...filters, game_type: gameType });
       }
 
-  // removed game-type stats helper
+      // removed game-type stats helper
     }
 
     // 确保数据表存在
@@ -126,16 +126,14 @@ export class GameServiceFactory {
    */
   createPlayerModel(gameType, tablePrefix, config) {
     const tableName = `${tablePrefix}_players`;
-    
+
     // 创建专门的模型类
     class GamePlayerModel extends GenericPlayerModel {
       static tableName = tableName;
-      
+
       static getTableName() {
         return tableName;
       }
-
-    
     }
 
     // 确保数据表存在
@@ -155,12 +153,12 @@ export class GameServiceFactory {
       if (tableType === 'room') {
         GenericRoomModel.createTable(tableName, {
           extraColumns: config.extraRoomColumns,
-          indices: config.roomIndices
+          indices: config.roomIndices,
         });
       } else if (tableType === 'player') {
         GenericPlayerModel.createTable(tableName, {
           extraColumns: config.extraPlayerColumns,
-          indices: config.playerIndices
+          indices: config.playerIndices,
         });
       }
     } catch (error) {
@@ -206,7 +204,7 @@ export class GameServiceFactory {
       if (typeof service.cleanup === 'function') {
         service.cleanup();
       }
-      
+
       this.services.delete(gameType);
       console.log(`游戏服务 "${gameType}" 已销毁`);
     }
@@ -227,21 +225,21 @@ export class GameServiceFactory {
    */
   getAllServicesStats() {
     const stats = {};
-    
+
     for (const [gameType, service] of this.services) {
       try {
         stats[gameType] = {
           activeRooms: service.getActiveRooms().length,
           gameStates: service.gameStates.size,
           gameTimers: service.gameTimers.size,
-          config: this.getGameConfig(gameType)
+          config: this.getGameConfig(gameType),
         };
       } catch (error) {
         console.error(`获取 ${gameType} 统计失败:`, error);
         stats[gameType] = { error: error.message };
       }
     }
-    
+
     return stats;
   }
 
@@ -284,7 +282,7 @@ export class GameServiceFactory {
       maxPlayers = 8,
       modes = ['competitive'],
       features = [],
-      customFields = {}
+      customFields = {},
     } = quickConfig;
 
     return {
@@ -295,11 +293,11 @@ export class GameServiceFactory {
         minPlayers,
         maxPlayers,
         modes,
-        features
+        features,
       },
       extraRoomColumns: this.generateExtraColumns(customFields.room),
       extraPlayerColumns: this.generateExtraColumns(customFields.player),
-      ...quickConfig
+      ...quickConfig,
     };
   }
 
@@ -334,12 +332,13 @@ export const PREDEFINED_GAMES = {
     defaultGameConfig: {
       boardSize: 20,
       gameSpeed: 150,
-      voteTimeout: 3000
+      voteTimeout: 3000,
     },
-    extraRoomColumns: 'board_size INTEGER DEFAULT 20, vote_timeout INTEGER DEFAULT 3000',
-    extraPlayerColumns: 'snake_length INTEGER DEFAULT 3, last_vote VARCHAR(10)'
+    extraRoomColumns:
+      'board_size INTEGER DEFAULT 20, vote_timeout INTEGER DEFAULT 3000',
+    extraPlayerColumns: 'snake_length INTEGER DEFAULT 3, last_vote VARCHAR(10)',
   },
-  
+
   gomoku: {
     minPlayers: 2,
     maxPlayers: 2,
@@ -348,12 +347,14 @@ export const PREDEFINED_GAMES = {
     defaultGameConfig: {
       boardSize: 15,
       timeLimit: 300,
-      allowUndo: true
+      allowUndo: true,
     },
-    extraRoomColumns: 'board_size INTEGER DEFAULT 15, time_limit INTEGER DEFAULT 300',
-    extraPlayerColumns: 'moves_count INTEGER DEFAULT 0, time_used INTEGER DEFAULT 0'
+    extraRoomColumns:
+      'board_size INTEGER DEFAULT 15, time_limit INTEGER DEFAULT 300',
+    extraPlayerColumns:
+      'moves_count INTEGER DEFAULT 0, time_used INTEGER DEFAULT 0',
   },
-  
+
   chess: {
     minPlayers: 2,
     maxPlayers: 2,
@@ -362,11 +363,12 @@ export const PREDEFINED_GAMES = {
     defaultGameConfig: {
       timeControl: 600,
       increment: 5,
-      allowTakebacks: false
+      allowTakebacks: false,
     },
-    extraRoomColumns: 'time_control INTEGER DEFAULT 600, increment INTEGER DEFAULT 5',
-    extraPlayerColumns: 'time_remaining INTEGER, moves_count INTEGER DEFAULT 0'
-  }
+    extraRoomColumns:
+      'time_control INTEGER DEFAULT 600, increment INTEGER DEFAULT 5',
+    extraPlayerColumns: 'time_remaining INTEGER, moves_count INTEGER DEFAULT 0',
+  },
 };
 
 // 快速注册预定义游戏
@@ -374,7 +376,7 @@ export function registerPredefinedGames() {
   Object.entries(PREDEFINED_GAMES).forEach(([gameType, config]) => {
     gameServiceFactory.register(gameType, config);
   });
-  
+
   console.log('预定义游戏已注册:', Object.keys(PREDEFINED_GAMES));
 }
 

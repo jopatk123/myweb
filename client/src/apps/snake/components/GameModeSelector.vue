@@ -2,14 +2,14 @@
   <div class="mode-selector">
     <h3>🎮 选择游戏模式</h3>
     <div class="mode-buttons">
-      <button 
+      <button
         class="mode-btn single-mode"
         @click="$emit('select-mode', 'single')"
       >
         🐍 单人模式
         <small>经典贪吃蛇游戏</small>
       </button>
-      <button 
+      <button
         class="mode-btn multiplayer-mode"
         @click="$emit('select-mode', 'multiplayer')"
       >
@@ -90,7 +90,7 @@
       flex-direction: column;
       gap: 1rem;
     }
-    
+
     .mode-btn {
       min-width: 250px;
     }

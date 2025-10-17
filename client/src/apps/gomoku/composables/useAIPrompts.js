@@ -5,13 +5,13 @@ import { aiPromptService } from '../services/AIPromptService.js';
 export function useAIPrompts() {
   // 当前选中的提示词模板
   const selectedTemplate = ref('gomoku-system');
-  
+
   // 获取所有提示词模板列表
   const templateList = computed(() => aiPromptService.getTemplateList());
-  
+
   // 获取所有提示词模板
   const allTemplates = computed(() => aiPromptService.getAllTemplates());
-  
+
   // 获取提示词模板对象
   const promptTemplates = computed(() => aiPromptService.promptTemplates);
 
@@ -77,41 +77,41 @@ export function useAIPrompts() {
   function buildAIMessages(templateId, gameData) {
     const systemPrompt = getSystemPrompt(templateId);
     const gamePrompt = buildGamePrompt(templateId, gameData);
-    
+
     return [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: gamePrompt }
+      { role: 'user', content: gamePrompt },
     ];
   }
 
   // 构建OpenAI格式的请求载荷
   function buildOpenAIPayload(templateId, gameData, config) {
     const messages = buildAIMessages(templateId, gameData);
-    
+
     return {
       model: config.modelName || 'deepseek-chat',
       messages: messages,
       max_tokens: config.maxTokens || 1000,
-      temperature: config.temperature || 0.1
+      temperature: config.temperature || 0.1,
     };
   }
 
   // 构建Claude格式的请求载荷
   function buildClaudePayload(templateId, gameData, config) {
     const messages = buildAIMessages(templateId, gameData);
-    
+
     return {
       model: config.modelName || 'claude-3-sonnet-20240229',
       messages: messages,
       max_tokens: config.maxTokens || 1000,
-      temperature: config.temperature || 0.1
+      temperature: config.temperature || 0.1,
     };
   }
 
   // 根据API类型构建请求载荷
   function buildRequestPayload(templateId, gameData, config) {
     const apiUrl = config.apiUrl || '';
-    
+
     if (apiUrl.includes('anthropic.com')) {
       return buildClaudePayload(templateId, gameData, config);
     } else {
@@ -125,7 +125,7 @@ export function useAIPrompts() {
     templateList,
     allTemplates,
     promptTemplates,
-    
+
     // 方法
     getSystemPrompt,
     buildGamePrompt,
@@ -136,6 +136,6 @@ export function useAIPrompts() {
     removeTemplate,
     resetSelection,
     buildAIMessages,
-    buildRequestPayload
+    buildRequestPayload,
   };
 }

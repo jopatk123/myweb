@@ -1,7 +1,15 @@
 // AI提示词管理服务（拆分重构后版本）
 import { GOMOKU_ADVANCED_PROMPT } from './AIGomokuPromptTemplate.js';
-import { BOARD_SIZE, DEFAULT_TEMPLATE_ID, FALLBACK_TEMPLATE_ID, isValidCoordinate } from './AIConstants.js';
-import { boardToString as formatBoard, historyToString as formatHistory } from './AIBoardFormatter.js';
+import {
+  BOARD_SIZE,
+  DEFAULT_TEMPLATE_ID,
+  FALLBACK_TEMPLATE_ID,
+  isValidCoordinate,
+} from './AIConstants.js';
+import {
+  boardToString as formatBoard,
+  historyToString as formatHistory,
+} from './AIBoardFormatter.js';
 import { parseAIResponse as parseResponseExternal } from './AIResponseParser.js';
 
 export class AIPromptService {
@@ -16,15 +24,16 @@ export class AIPromptService {
       'gomoku-advanced': {
         id: 'gomoku-advanced',
         name: '高级五子棋AI提示词',
-        description: '包含详细威胁分析、跳跃威胁识别和完整封堵策略的高级AI提示词',
-        template: GOMOKU_ADVANCED_PROMPT
+        description:
+          '包含详细威胁分析、跳跃威胁识别和完整封堵策略的高级AI提示词',
+        template: GOMOKU_ADVANCED_PROMPT,
       },
       'gomoku-system': {
         id: 'gomoku-system',
         name: '系统默认五子棋AI提示词',
         description: '系统默认（当前与高级模板一致）',
-        template: GOMOKU_ADVANCED_PROMPT
-      }
+        template: GOMOKU_ADVANCED_PROMPT,
+      },
     };
   }
 
@@ -40,7 +49,9 @@ export class AIPromptService {
 
   // 获取系统提示词
   getSystemPrompt(templateId = DEFAULT_TEMPLATE_ID) {
-    const template = this.promptTemplates[templateId] || this.promptTemplates[FALLBACK_TEMPLATE_ID];
+    const template =
+      this.promptTemplates[templateId] ||
+      this.promptTemplates[FALLBACK_TEMPLATE_ID];
     return template.template;
   }
 
@@ -52,10 +63,10 @@ export class AIPromptService {
   // 构建五子棋游戏状态提示词
   buildGomokuPrompt(gameData) {
     const { board, gameHistory, playerType } = gameData;
-  const boardStr = formatBoard(board);
-  const historyStr = formatHistory(gameHistory);
+    const boardStr = formatBoard(board);
+    const historyStr = formatHistory(gameHistory);
     const playerStr = playerType === 1 ? '黑子' : '白子';
-  return `当前棋局状态：
+    return `当前棋局状态：
 棋盘（0=空位，1=黑子，2=白子）：
 ${boardStr}
 
@@ -77,16 +88,15 @@ ${historyStr}
 `;
   }
 
-
   // 添加自定义提示词模板
   addCustomTemplate(template) {
     if (!template.id || !template.name || !template.template) {
       throw new Error('提示词模板必须包含id、name和template字段');
     }
-    
+
     this.promptTemplates[template.id] = {
       description: template.description || '自定义提示词模板',
-      ...template
+      ...template,
     };
   }
 
@@ -113,15 +123,19 @@ ${historyStr}
     return Object.values(this.promptTemplates).map(template => ({
       id: template.id,
       name: template.name,
-      description: template.description
+      description: template.description,
     }));
   }
 
   // 解析AI回复
-  parseAIResponse(response) { return parseResponseExternal(response); }
+  parseAIResponse(response) {
+    return parseResponseExternal(response);
+  }
 
   // 验证坐标有效性
-  isValidCoordinate(row, col) { return isValidCoordinate(row, col, BOARD_SIZE); }
+  isValidCoordinate(row, col) {
+    return isValidCoordinate(row, col, BOARD_SIZE);
+  }
 
   // （威胁分析本地代码已移除，交由大模型自行识别）
 }
@@ -130,8 +144,11 @@ ${historyStr}
 export const aiPromptService = new AIPromptService();
 
 // 导出便捷方法
-export const getSystemPrompt = (templateId) => aiPromptService.getSystemPrompt(templateId);
-export const buildGamePrompt = (templateId, gameData) => aiPromptService.buildGamePrompt(templateId, gameData);
-export const parseAIResponse = (response) => aiPromptService.parseAIResponse(response);
+export const getSystemPrompt = templateId =>
+  aiPromptService.getSystemPrompt(templateId);
+export const buildGamePrompt = (templateId, gameData) =>
+  aiPromptService.buildGamePrompt(templateId, gameData);
+export const parseAIResponse = response =>
+  aiPromptService.parseAIResponse(response);
 // 兼容性再导出（若其他代码依赖常量）
 export { BOARD_SIZE } from './AIConstants.js';

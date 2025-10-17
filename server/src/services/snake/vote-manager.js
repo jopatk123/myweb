@@ -15,13 +15,17 @@ export class VoteManager {
     const gameState = this.service.getGameState(roomId);
     if (!this._isValidVoteContext(gameState)) return;
 
-    const player = this.service.PlayerModel.findByRoomAndSession(roomId, sessionId);
+    const player = this.service.PlayerModel.findByRoomAndSession(
+      roomId,
+      sessionId
+    );
     if (!player) return;
 
     this._recordVote(gameState, sessionId, direction, player);
-    
-    const onlinePlayers = this.service.PlayerModel.findOnlineByRoomId(roomId) || [];
-    
+
+    const onlinePlayers =
+      this.service.PlayerModel.findOnlineByRoomId(roomId) || [];
+
     // 单人模式直接处理
     if (this._isSinglePlayerMode(onlinePlayers, gameState)) {
       return this._handleSinglePlayerVote(roomId, gameState, direction);
@@ -35,9 +39,9 @@ export class VoteManager {
    * 验证投票上下文是否有效
    */
   _isValidVoteContext(gameState) {
-    return gameState && 
-           gameState.mode === 'shared' && 
-           gameState.status === 'playing';
+    return (
+      gameState && gameState.mode === 'shared' && gameState.status === 'playing'
+    );
   }
 
   /**
@@ -48,7 +52,7 @@ export class VoteManager {
       direction,
       player_name: player.player_name,
       player_color: player.player_color,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 
@@ -63,11 +67,16 @@ export class VoteManager {
    * 处理单人投票
    */
   _handleSinglePlayerVote(roomId, gameState, direction) {
-    if (this.service.isValidDirectionChange(gameState.sharedSnake.direction, direction)) {
+    if (
+      this.service.isValidDirectionChange(
+        gameState.sharedSnake.direction,
+        direction
+      )
+    ) {
       gameState.sharedSnake.nextDirection = direction;
       gameState.sharedSnake.isWaitingForFirstVote = false;
     }
-    
+
     this._clearVoteState(roomId, gameState);
     this._broadcastGameUpdate(roomId, gameState);
   }
@@ -84,7 +93,7 @@ export class VoteManager {
     // 广播投票更新
     this.service.broadcastToRoom(roomId, 'vote_updated', {
       room_id: roomId,
-      votes: gameState.votes
+      votes: gameState.votes,
     });
 
     // 开始投票计时器
@@ -101,7 +110,13 @@ export class VoteManager {
    */
   _handleFirstVote(gameState) {
     const firstVote = Object.values(gameState.votes)[0];
-    if (firstVote && this.service.isValidDirectionChange(gameState.sharedSnake.direction, firstVote.direction)) {
+    if (
+      firstVote &&
+      this.service.isValidDirectionChange(
+        gameState.sharedSnake.direction,
+        firstVote.direction
+      )
+    ) {
       gameState.sharedSnake.nextDirection = firstVote.direction;
     }
   }
@@ -113,7 +128,7 @@ export class VoteManager {
     try {
       const totalOnline = onlinePlayers.length;
       const voteCount = Object.keys(gameState.votes).length;
-      
+
       if (totalOnline > 1 && voteCount === totalOnline) {
         this._clearVoteTimer(roomId);
         this.processVotes(roomId);
@@ -132,7 +147,7 @@ export class VoteManager {
 
     gameState.voteStartTime = Date.now();
     const timeout = gameState.config?.vote_timeout ?? this.VOTE_TIMEOUT;
-    
+
     const timer = setTimeout(() => this.processVotes(roomId), timeout);
     this.voteTimers.set(roomId, timer);
   }
@@ -145,8 +160,13 @@ export class VoteManager {
     if (!gameState || !gameState.sharedSnake) return;
 
     const winningDirection = this._calculateWinningDirection(gameState);
-    
-    if (this.service.isValidDirectionChange(gameState.sharedSnake.direction, winningDirection)) {
+
+    if (
+      this.service.isValidDirectionChange(
+        gameState.sharedSnake.direction,
+        winningDirection
+      )
+    ) {
       gameState.sharedSnake.nextDirection = winningDirection;
     }
 
@@ -159,7 +179,7 @@ export class VoteManager {
    */
   _calculateWinningDirection(gameState) {
     const voteCounts = {};
-    
+
     Object.values(gameState.votes).forEach(vote => {
       voteCounts[vote.direction] = (voteCounts[vote.direction] || 0) + 1;
     });
@@ -204,7 +224,7 @@ export class VoteManager {
       room_id: roomId,
       game_state: gameState,
       shared_snake: gameState.sharedSnake,
-      food: gameState.food
+      food: gameState.food,
     });
   }
 

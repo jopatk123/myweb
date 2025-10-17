@@ -5,7 +5,7 @@ export function useLightbox() {
   const currentImageIndex = ref(0);
 
   // 打开图片查看器
-  const openLightbox = (index) => {
+  const openLightbox = index => {
     currentImageIndex.value = index;
     showLightbox.value = true;
     document.body.style.overflow = 'hidden';
@@ -18,7 +18,7 @@ export function useLightbox() {
   };
 
   // 上一张图片
-  const prevImage = (totalImages) => {
+  const prevImage = totalImages => {
     currentImageIndex.value =
       currentImageIndex.value > 0
         ? currentImageIndex.value - 1
@@ -26,7 +26,7 @@ export function useLightbox() {
   };
 
   // 下一张图片
-  const nextImage = (totalImages) => {
+  const nextImage = totalImages => {
     currentImageIndex.value =
       currentImageIndex.value < totalImages - 1
         ? currentImageIndex.value + 1
@@ -34,7 +34,7 @@ export function useLightbox() {
   };
 
   // 设置当前图片索引
-  const setCurrentImageIndex = (index) => {
+  const setCurrentImageIndex = index => {
     currentImageIndex.value = index;
   };
 

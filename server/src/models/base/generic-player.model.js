@@ -13,7 +13,7 @@ export class GenericPlayerModel extends AbstractPlayerModel {
       enableSoftDelete: false,
       trackLastActive: true,
       enableStats: true,
-      ...options
+      ...options,
     };
   }
 
@@ -24,18 +24,19 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    */
   static create(playerData) {
     const db = getDb();
-    
-    const gameData = typeof playerData.game_data === 'object' 
-      ? JSON.stringify(playerData.game_data) 
-      : playerData.game_data;
-    
+
+    const gameData =
+      typeof playerData.game_data === 'object'
+        ? JSON.stringify(playerData.game_data)
+        : playerData.game_data;
+
     const stmt = db.prepare(`
       INSERT INTO ${this.getTableName()} (
         room_id, session_id, player_name, player_color, is_ready, is_online,
         score, game_data, joined_at, last_active
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
-    
+
     const result = stmt.run(
       playerData.room_id,
       playerData.session_id,
@@ -46,7 +47,7 @@ export class GenericPlayerModel extends AbstractPlayerModel {
       playerData.score || 0,
       gameData || null
     );
-    
+
     return this.findById(result.lastInsertRowid);
   }
 
@@ -137,11 +138,11 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    */
   static update(playerId, updates) {
     const db = getDb();
-    
+
     // 构建动态更新语句
     const fields = [];
     const values = [];
-    
+
     Object.entries(updates).forEach(([key, value]) => {
       if (key === 'game_data' && typeof value === 'object') {
         fields.push(`${key} = ?`);
@@ -151,22 +152,22 @@ export class GenericPlayerModel extends AbstractPlayerModel {
         values.push(value);
       }
     });
-    
+
     if (fields.length === 0) return false;
-    
+
     // 自动更新最后活跃时间
     if (this.options.trackLastActive && !updates.last_active) {
-      fields.push('last_active = datetime(\'now\')');
+      fields.push("last_active = datetime('now')");
     }
-    
+
     values.push(playerId);
-    
+
     const stmt = db.prepare(`
       UPDATE ${this.getTableName()} 
       SET ${fields.join(', ')} 
       WHERE id = ?
     `);
-    
+
     const result = stmt.run(...values);
     return result.changes > 0;
   }
@@ -178,7 +179,7 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    */
   static deleteBySession(sessionId) {
     const db = getDb();
-    
+
     if (this.options.enableSoftDelete) {
       // 软删除
       const stmt = db.prepare(`
@@ -190,7 +191,9 @@ export class GenericPlayerModel extends AbstractPlayerModel {
       return result.changes > 0;
     } else {
       // 硬删除
-      const stmt = db.prepare(`DELETE FROM ${this.getTableName()} WHERE session_id = ?`);
+      const stmt = db.prepare(
+        `DELETE FROM ${this.getTableName()} WHERE session_id = ?`
+      );
       const result = stmt.run(sessionId);
       return result.changes > 0;
     }
@@ -203,7 +206,7 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    */
   static deleteByRoomId(roomId) {
     const db = getDb();
-    
+
     if (this.options.enableSoftDelete) {
       // 软删除
       const stmt = db.prepare(`
@@ -215,7 +218,9 @@ export class GenericPlayerModel extends AbstractPlayerModel {
       return result.changes > 0;
     } else {
       // 硬删除
-      const stmt = db.prepare(`DELETE FROM ${this.getTableName()} WHERE room_id = ?`);
+      const stmt = db.prepare(
+        `DELETE FROM ${this.getTableName()} WHERE room_id = ?`
+      );
       const result = stmt.run(roomId);
       return result.changes > 0;
     }
@@ -228,7 +233,7 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    */
   static deleteById(playerId) {
     const db = getDb();
-    
+
     if (this.options.enableSoftDelete) {
       // 软删除
       const stmt = db.prepare(`
@@ -240,7 +245,9 @@ export class GenericPlayerModel extends AbstractPlayerModel {
       return result.changes > 0;
     } else {
       // 硬删除
-      const stmt = db.prepare(`DELETE FROM ${this.getTableName()} WHERE id = ?`);
+      const stmt = db.prepare(
+        `DELETE FROM ${this.getTableName()} WHERE id = ?`
+      );
       const result = stmt.run(playerId);
       return result.changes > 0;
     }
@@ -254,17 +261,17 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    */
   static getPlayerCount(roomId, onlineOnly = true) {
     const db = getDb();
-    
-    let whereClause = 'room_id = ? AND (deleted_at IS NULL OR deleted_at = \'\')';
+
+    let whereClause = "room_id = ? AND (deleted_at IS NULL OR deleted_at = '')";
     if (onlineOnly) {
       whereClause += ' AND is_online = 1';
     }
-    
+
     const stmt = db.prepare(`
       SELECT COUNT(*) as count FROM ${this.getTableName()} 
       WHERE ${whereClause}
     `);
-    
+
     const result = stmt.get(roomId);
     return result.count;
   }
@@ -325,7 +332,6 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    * @param {object} filters - 过滤条件
    * @returns {object} 统计信息
    */
-  
 
   /**
    * 清理非活跃玩家
@@ -334,15 +340,17 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    */
   static cleanupInactivePlayers(hoursAgo = 24) {
     const db = getDb();
-    const cutoffTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
-    
+    const cutoffTime = new Date(
+      Date.now() - hoursAgo * 60 * 60 * 1000
+    ).toISOString();
+
     // 将长时间未活跃的玩家标记为离线
     const stmt = db.prepare(`
       UPDATE ${this.getTableName()} 
       SET is_online = 0 
       WHERE is_online = 1 AND last_active < ?
     `);
-    
+
     const result = stmt.run(cutoffTime);
     return result.changes;
   }
@@ -362,7 +370,7 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    */
   static parsePlayer(player) {
     if (!player) return null;
-    
+
     try {
       return {
         ...player,
@@ -371,7 +379,7 @@ export class GenericPlayerModel extends AbstractPlayerModel {
         game_data: player.game_data ? JSON.parse(player.game_data) : {},
         joined_at: new Date(player.joined_at),
         last_active: player.last_active ? new Date(player.last_active) : null,
-        deleted_at: player.deleted_at ? new Date(player.deleted_at) : null
+        deleted_at: player.deleted_at ? new Date(player.deleted_at) : null,
       };
     } catch (error) {
       console.error('解析玩家数据失败:', error);
@@ -381,7 +389,7 @@ export class GenericPlayerModel extends AbstractPlayerModel {
         is_online: Boolean(player.is_online),
         game_data: {},
         joined_at: new Date(player.joined_at),
-        last_active: player.last_active ? new Date(player.last_active) : null
+        last_active: player.last_active ? new Date(player.last_active) : null,
       };
     }
   }
@@ -394,15 +402,15 @@ export class GenericPlayerModel extends AbstractPlayerModel {
   static batchUpdate(updates) {
     const db = getDb();
     let totalChanges = 0;
-    
+
     try {
       db.exec('BEGIN TRANSACTION');
-      
+
       for (const { id, updates: playerUpdates } of updates) {
         const success = this.update(id, playerUpdates);
         if (success) totalChanges++;
       }
-      
+
       db.exec('COMMIT');
       return totalChanges;
     } catch (error) {
@@ -418,10 +426,10 @@ export class GenericPlayerModel extends AbstractPlayerModel {
    */
   static createTable(tableName = 'game_players', options = {}) {
     const db = getDb();
-    
+
     const extraColumns = options.extraColumns || '';
     const indices = options.indices || [];
-    
+
     const sql = `
       CREATE TABLE IF NOT EXISTS ${tableName} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -445,15 +453,15 @@ export class GenericPlayerModel extends AbstractPlayerModel {
       CREATE INDEX IF NOT EXISTS idx_${tableName}_is_online ON ${tableName}(is_online);
       CREATE INDEX IF NOT EXISTS idx_${tableName}_last_active ON ${tableName}(last_active);
     `;
-    
+
     db.exec(sql);
-    
+
     // 创建额外索引
     indices.forEach(index => {
       const indexSql = `CREATE INDEX IF NOT EXISTS ${index.name} ON ${tableName}(${index.columns.join(', ')});`;
       db.exec(indexSql);
     });
-    
+
     console.log(`数据表 ${tableName} 创建完成`);
   }
 }

@@ -1,14 +1,18 @@
 // 五子棋游戏逻辑服务
-import { BOARD_SIZE, CELL_STATES, DIRECTIONS } from '../constants/gameConstants.js';
+import {
+  BOARD_SIZE,
+  CELL_STATES,
+  DIRECTIONS,
+} from '../constants/gameConstants.js';
 
 export class GomokuLogic {
   constructor() {
     this.BOARD_SIZE = BOARD_SIZE;
-  // store actual piece states on the board: 0=empty, 1=black, 2=white
-  this.EMPTY = CELL_STATES.EMPTY;
-  // map logical "player" (player number 1) to black, and "AI" (player number 2) to white
-  this.PLAYER = CELL_STATES.BLACK;
-  this.AI = CELL_STATES.WHITE;
+    // store actual piece states on the board: 0=empty, 1=black, 2=white
+    this.EMPTY = CELL_STATES.EMPTY;
+    // map logical "player" (player number 1) to black, and "AI" (player number 2) to white
+    this.PLAYER = CELL_STATES.BLACK;
+    this.AI = CELL_STATES.WHITE;
     this.board = this.createEmptyBoard();
     this.currentPlayer = this.PLAYER;
     this.gameOver = false;
@@ -48,7 +52,14 @@ export class GomokuLogic {
     const currentPlayer = player || this.currentPlayer;
     // sanity check: currentPlayer should be one of CELL_STATES values
     if (currentPlayer !== this.PLAYER && currentPlayer !== this.AI) {
-      console.warn('[GomokuLogic] makeMove called with unexpected player value:', currentPlayer, 'expected', this.PLAYER, 'or', this.AI);
+      console.warn(
+        '[GomokuLogic] makeMove called with unexpected player value:',
+        currentPlayer,
+        'expected',
+        this.PLAYER,
+        'or',
+        this.AI
+      );
     }
     this.board[row][col] = currentPlayer;
     this.moveHistory.push({ row, col, player: currentPlayer });

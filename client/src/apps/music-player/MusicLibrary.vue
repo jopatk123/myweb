@@ -99,12 +99,7 @@
     activeGroupId,
   } = toRefs(props);
 
-  const emit = defineEmits([
-    'play-track',
-    'delete-track',
-    'rename-track',
-    'move-track',
-  ]);
+  defineEmits(['play-track', 'delete-track', 'rename-track', 'move-track']);
 
   const displayBuckets = computed(() => {
     if (activeGroupId.value === 'all') {

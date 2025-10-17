@@ -7,27 +7,36 @@ export class BaseMultiplayerService {
     this.wsService = wsService;
     this.gameStates = new Map(); // roomId -> gameState
     this.gameTimers = new Map(); // roomId -> timer
-    
+
     // 可配置的选项
     this.options = {
       // 玩家颜色池
       playerColors: [
-        '#007bff', '#28a745', '#dc3545', '#ffc107',
-        '#17a2b8', '#6f42c1', '#e83e8c', '#fd7e14',
-        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'
+        '#007bff',
+        '#28a745',
+        '#dc3545',
+        '#ffc107',
+        '#17a2b8',
+        '#6f42c1',
+        '#e83e8c',
+        '#fd7e14',
+        '#FF6B6B',
+        '#4ECDC4',
+        '#45B7D1',
+        '#96CEB4',
       ],
       // 默认游戏配置
       defaultGameConfig: {
         maxPlayers: 8,
         minPlayers: 1,
         gameSpeed: 150,
-        timeout: 3000
+        timeout: 3000,
       },
       // 清理间隔
       cleanupInterval: 5 * 60 * 1000, // 5分钟
       // 游戏类型标识
       gameType: 'default',
-      ...options
+      ...options,
     };
   }
 
@@ -80,9 +89,9 @@ export class BaseMultiplayerService {
       createdAt: Date.now(),
       config: { ...this.options.defaultGameConfig, ...config },
       players: new Map(), // sessionId -> playerData
-      gameData: {} // 游戏特定数据
+      gameData: {}, // 游戏特定数据
     };
-    
+
     this.gameStates.set(roomId, gameState);
     return gameState;
   }
@@ -140,7 +149,7 @@ export class BaseMultiplayerService {
     if (!this.gameTimers.has(roomId)) {
       this.gameTimers.set(roomId, {});
     }
-    
+
     const timers = this.gameTimers.get(roomId);
     if (timers[key]) {
       clearInterval(timers[key]);
@@ -184,11 +193,11 @@ export class BaseMultiplayerService {
     do {
       position = {
         x: Math.floor(Math.random() * boardSize),
-        y: Math.floor(Math.random() * boardSize)
+        y: Math.floor(Math.random() * boardSize),
       };
       attempts++;
     } while (
-      attempts < maxAttempts && 
+      attempts < maxAttempts &&
       excludePositions.some(pos => pos.x === position.x && pos.y === position.y)
     );
 
@@ -202,8 +211,8 @@ export class BaseMultiplayerService {
    * @returns {boolean} 是否碰撞
    */
   checkCollision(position, obstacles = []) {
-    return obstacles.some(obstacle => 
-      obstacle.x === position.x && obstacle.y === position.y
+    return obstacles.some(
+      obstacle => obstacle.x === position.x && obstacle.y === position.y
     );
   }
 
@@ -227,7 +236,7 @@ export class BaseMultiplayerService {
     return {
       isValid: errors.length === 0,
       errors,
-      validatedConfig: { ...defaultGameConfig, ...config }
+      validatedConfig: { ...defaultGameConfig, ...config },
     };
   }
 
@@ -247,7 +256,7 @@ export class BaseMultiplayerService {
       createdAt: gameState.createdAt,
       duration: Date.now() - gameState.createdAt,
       playerCount: gameState.players?.size || 0,
-      gameType: this.options.gameType
+      gameType: this.options.gameType,
     };
   }
 

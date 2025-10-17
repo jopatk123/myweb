@@ -4,22 +4,22 @@ export const BOARD_SIZE = 15;
 export const CELL_STATES = {
   EMPTY: 0,
   BLACK: 1,
-  WHITE: 2
+  WHITE: 2,
 };
 
 export const PLAYER_NAMES = {
   [CELL_STATES.BLACK]: '黑子',
-  [CELL_STATES.WHITE]: '白子'
+  [CELL_STATES.WHITE]: '白子',
 };
 
 export const GAME_STATES = {
   NOT_STARTED: 'not_started',
   PLAYING: 'playing',
-  FINISHED: 'finished'
+  FINISHED: 'finished',
 };
 
 export const WIN_CONDITIONS = {
-  CONSECUTIVE_COUNT: 5
+  CONSECUTIVE_COUNT: 5,
 };
 
 export const AI_THINKING_DELAY = 1000; // AI思考延迟时间(毫秒)
@@ -39,7 +39,7 @@ export const DIRECTIONS = [
 // 为保持向后兼容，导出 PLAYER_TYPES 作为别名，但更推荐使用 PLAYER_ROLES。
 export const PLAYER_ROLES = {
   HUMAN: 'human',
-  AI_MODEL: 'ai_model'
+  AI_MODEL: 'ai_model',
 };
 
 // backward-compatible alias (legacy code may import PLAYER_TYPES)

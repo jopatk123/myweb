@@ -157,7 +157,7 @@
   }
 
   // 观战功能（暂时不实现）
-  function spectateRoom(roomCode) {
+  function spectateRoom(_roomCode) {
     mp.error.value = '观战功能暂未实现';
   }
 

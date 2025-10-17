@@ -29,8 +29,6 @@ export function useSnakeMultiplayer() {
   const voteTimer = ref(null);
   const myVote = ref(null);
 
-
-
   // 计算属性
   const canStart = computed(() => {
     // 共享模式：只要房间存在且至少1人（自己）即可开始
@@ -39,31 +37,49 @@ export function useSnakeMultiplayer() {
     }
     // 竞技模式：所有在线玩家都准备且至少2人
     const readyPlayers = players.value.filter(p => p.is_ready);
-    return readyPlayers.length >= 2 && readyPlayers.length === players.value.length;
+    return (
+      readyPlayers.length >= 2 && readyPlayers.length === players.value.length
+    );
   });
   const isReady = computed(() => currentPlayer.value?.is_ready || false);
-  const isGameHost = computed(() => currentRoom.value?.created_by === currentPlayer.value?.session_id);
+  const isGameHost = computed(
+    () => currentRoom.value?.created_by === currentPlayer.value?.session_id
+  );
 
   // 事件系统
   const events = createSnakeEvents();
 
   // 工具函数
   const clearVoteTimer = () => {
-    if (voteTimer.value) { clearInterval(voteTimer.value); voteTimer.value = null; }
+    if (voteTimer.value) {
+      clearInterval(voteTimer.value);
+      voteTimer.value = null;
+    }
   };
 
   // 初始化管理器
   const refs = {
-    isInRoom, currentRoom, currentPlayer, players, gameState, gameStatus,
-    error, loading, votes, voteTimeout, voteTimer, myVote
+    isInRoom,
+    currentRoom,
+    currentPlayer,
+    players,
+    gameState,
+    gameStatus,
+    error,
+    loading,
+    votes,
+    voteTimeout,
+    voteTimer,
+    myVote,
   };
-  
+
   const utils = { clearVoteTimer };
   const stateManager = new SnakeStateManager(refs, utils);
   const apiClient = new SnakeApiClient({ send });
 
   const resetRoomState = () => stateManager.resetRoomState();
-  const startVoteCountdown = (seconds) => stateManager.startVoteCountdown(seconds);
+  const startVoteCountdown = seconds =>
+    stateManager.startVoteCountdown(seconds);
 
   // API 封装
   const createRoom = (playerName, mode, gameSettings = {}) => {
@@ -78,7 +94,7 @@ export function useSnakeMultiplayer() {
         stateManager.setLoading(false);
       }, 8000);
 
-      const stop = watch(currentRoom, (val) => {
+      const stop = watch(currentRoom, val => {
         if (val && (val.room_code || val.roomCode)) {
           clearTimeout(timer);
           stop();
@@ -101,9 +117,13 @@ export function useSnakeMultiplayer() {
         stateManager.setLoading(false);
       }, 8000);
 
-      const stop = watch(currentRoom, (val) => {
-        if (val && (val.room_code || val.roomCode) && 
-            (val.room_code || val.roomCode).toUpperCase() === roomCode.toUpperCase()) {
+      const stop = watch(currentRoom, val => {
+        if (
+          val &&
+          (val.room_code || val.roomCode) &&
+          (val.room_code || val.roomCode).toUpperCase() ===
+            roomCode.toUpperCase()
+        ) {
           clearTimeout(timer);
           stop();
           stateManager.setLoading(false);
@@ -120,7 +140,7 @@ export function useSnakeMultiplayer() {
     }
   };
 
-  const vote = (direction) => {
+  const vote = direction => {
     if (currentRoom.value?.mode !== 'shared') return;
     const code = currentRoom.value.room_code || currentRoom.value.roomCode;
     if (code) {
@@ -129,7 +149,7 @@ export function useSnakeMultiplayer() {
     }
   };
 
-  const move = (direction) => {
+  const move = direction => {
     if (currentRoom.value?.mode !== 'competitive') return;
     const code = currentRoom.value.room_code || currentRoom.value.roomCode;
     if (code) {
@@ -146,8 +166,8 @@ export function useSnakeMultiplayer() {
     localStorage.removeItem('snakeCurrentRoomCode');
   };
 
-  const getRoomInfo = (roomCode) => apiClient.getRoomInfo(roomCode);
-  
+  const getRoomInfo = roomCode => apiClient.getRoomInfo(roomCode);
+
   const startGame = () => {
     const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
     if (code) {
@@ -157,9 +177,10 @@ export function useSnakeMultiplayer() {
 
   const handleVote = vote; // 语义别名
   const handleMove = move; // 语义别名
-  
-  const kickPlayer = (playerId) => {
-    if (currentRoom.value?.created_by !== currentPlayer.value?.session_id) return;
+
+  const kickPlayer = playerId => {
+    if (currentRoom.value?.created_by !== currentPlayer.value?.session_id)
+      return;
     const code = currentRoom.value?.room_code || currentRoom.value?.roomCode;
     if (code) {
       apiClient.kickPlayer(code, playerId);
@@ -171,7 +192,18 @@ export function useSnakeMultiplayer() {
     state: { isInRoom, loading },
     events,
     api: { getRoomInfo },
-    refs: { currentRoom, currentPlayer, players, gameState, gameStatus, error, votes, myVote, voteTimeout, voteTimer },
+    refs: {
+      currentRoom,
+      currentPlayer,
+      players,
+      gameState,
+      gameStatus,
+      error,
+      votes,
+      myVote,
+      voteTimeout,
+      voteTimer,
+    },
     utils: { resetRoomState, clearVoteTimer },
   };
   const messageHandlers = createSnakeHandlers(handlerCtx);
@@ -193,7 +225,8 @@ export function useSnakeMultiplayer() {
 
   const init = async () => {
     try {
-      loading.value = true; error.value = null;
+      loading.value = true;
+      error.value = null;
       if (!isConnected.value) await connect();
       registerHandlers();
       // 恢复房间（如果页面刷新过且房间仍然存在）
@@ -215,17 +248,47 @@ export function useSnakeMultiplayer() {
     // 不主动断开 WebSocket（交由全局复用），如需彻底关闭可调用 disconnect()
   };
 
-  onMounted(() => { init(); });
-  onUnmounted(() => { cleanup(); });
+  onMounted(() => {
+    init();
+  });
+  onUnmounted(() => {
+    cleanup();
+  });
 
   return {
     // 状态
-    isConnected, isInRoom, currentRoom, currentPlayer, players, gameState, gameStatus, error, loading,
-  votes, voteTimeout, myVote,
+    isConnected,
+    isInRoom,
+    currentRoom,
+    currentPlayer,
+    players,
+    gameState,
+    gameStatus,
+    error,
+    loading,
+    votes,
+    voteTimeout,
+    myVote,
     // 计算属性
-    canStart, isReady, isGameHost,
+    canStart,
+    isReady,
+    isGameHost,
     // 行为
-  init, createRoom, joinRoom, toggleReady, vote, move, leaveRoom, getRoomInfo, resetRoomState, startVoteCountdown, cleanup, startGame, handleVote, handleMove, kickPlayer,
+    init,
+    createRoom,
+    joinRoom,
+    toggleReady,
+    vote,
+    move,
+    leaveRoom,
+    getRoomInfo,
+    resetRoomState,
+    startVoteCountdown,
+    cleanup,
+    startGame,
+    handleVote,
+    handleMove,
+    kickPlayer,
     // 事件订阅
     onGameUpdate: events.onGameUpdate,
     onPlayerJoin: events.onPlayerJoin,
@@ -233,8 +296,8 @@ export function useSnakeMultiplayer() {
     onPlayerReady: events.onPlayerReady,
     onVoteUpdate: events.onVoteUpdate,
     onAutoPopup: events.onAutoPopup,
-  // 直接暴露底层 WebSocket 事件注册方法，供界面注册自定义事件（例如房间列表更新）
-  onMessage,
-  offMessage,
+    // 直接暴露底层 WebSocket 事件注册方法，供界面注册自定义事件（例如房间列表更新）
+    onMessage,
+    offMessage,
   };
 }

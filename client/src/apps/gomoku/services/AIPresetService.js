@@ -7,7 +7,7 @@ export class AIPresetService {
   // 初始化预设配置
   initializePresets() {
     return {
-      'kimi': {
+      kimi: {
         id: 'kimi',
         name: 'Kimi',
         apiUrl: 'https://api.moonshot.cn/v1',
@@ -15,11 +15,11 @@ export class AIPresetService {
         playerName: 'Kimi',
         maxTokens: 5000,
         temperature: 1,
-        description: 'Kimi 模型'
+        description: 'Kimi 模型',
       },
 
       // Deepseek系列
-      'deepseek': {
+      deepseek: {
         id: 'deepseek',
         name: 'Deepseek',
         apiUrl: 'https://api.deepseek.com/v1',
@@ -27,7 +27,7 @@ export class AIPresetService {
         playerName: 'Deepseek AI',
         maxTokens: 5000,
         temperature: 1,
-        description: 'Deepseek 聊天模型 (deepseek-chat)'
+        description: 'Deepseek 聊天模型 (deepseek-chat)',
       },
 
       'gpt-5': {
@@ -38,9 +38,8 @@ export class AIPresetService {
         playerName: 'gpt-5',
         maxTokens: 5000,
         temperature: 1,
-        description: 'GPT-5预设 (chatanywhere)'
+        description: 'GPT-5预设 (chatanywhere)',
       },
-
     };
   }
 
@@ -54,7 +53,7 @@ export class AIPresetService {
     return Object.values(this.presets).map(preset => ({
       id: preset.id,
       name: preset.name,
-      description: preset.description
+      description: preset.description,
     }));
   }
 
@@ -76,7 +75,7 @@ export class AIPresetService {
       modelName: preset.modelName,
       playerName: preset.playerName,
       maxTokens: preset.maxTokens,
-      temperature: preset.temperature
+      temperature: preset.temperature,
     };
   }
 
@@ -96,11 +95,11 @@ export class AIPresetService {
     if (!preset.id || !preset.name) {
       throw new Error('预设配置必须包含id和name字段');
     }
-    
+
     this.presets[preset.id] = {
       maxTokens: 1000,
       temperature: 0.1,
-      ...preset
+      ...preset,
     };
   }
 

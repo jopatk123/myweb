@@ -14,7 +14,7 @@ export class SnakeApiClient {
   createRoom(playerName, mode, gameSettings = {}) {
     return this.ws.send({
       type: 'snake_create_room',
-      data: { playerName, mode, gameSettings }
+      data: { playerName, mode, gameSettings },
     });
   }
 
@@ -24,7 +24,7 @@ export class SnakeApiClient {
   joinRoom(playerName, roomCode) {
     return this.ws.send({
       type: 'snake_join_room',
-      data: { playerName, roomCode: roomCode.toUpperCase() }
+      data: { playerName, roomCode: roomCode.toUpperCase() },
     });
   }
 
@@ -35,7 +35,7 @@ export class SnakeApiClient {
     if (!roomCode) return;
     return this.ws.send({
       type: 'snake_toggle_ready',
-      data: { roomCode }
+      data: { roomCode },
     });
   }
 
@@ -46,7 +46,7 @@ export class SnakeApiClient {
     if (!roomCode) return;
     return this.ws.send({
       type: 'snake_vote',
-      data: { roomCode, direction }
+      data: { roomCode, direction },
     });
   }
 
@@ -57,7 +57,7 @@ export class SnakeApiClient {
     if (!roomCode) return;
     return this.ws.send({
       type: 'snake_move',
-      data: { roomCode, direction }
+      data: { roomCode, direction },
     });
   }
 
@@ -68,7 +68,7 @@ export class SnakeApiClient {
     if (!roomCode) return;
     return this.ws.send({
       type: 'snake_leave_room',
-      data: { roomCode }
+      data: { roomCode },
     });
   }
 
@@ -78,7 +78,7 @@ export class SnakeApiClient {
   getRoomInfo(roomCode) {
     return this.ws.send({
       type: 'snake_get_room_info',
-      data: { roomCode: roomCode.toUpperCase() }
+      data: { roomCode: roomCode.toUpperCase() },
     });
   }
 
@@ -89,7 +89,7 @@ export class SnakeApiClient {
     if (!roomCode) return;
     return this.ws.send({
       type: 'snake_start_game',
-      data: { roomCode }
+      data: { roomCode },
     });
   }
 
@@ -100,7 +100,7 @@ export class SnakeApiClient {
     if (!roomCode) return;
     return this.ws.send({
       type: 'snake_kick_player',
-      data: { roomCode, playerId }
+      data: { roomCode, playerId },
     });
   }
 }

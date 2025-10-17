@@ -12,7 +12,7 @@ export class GenericRoomModel extends AbstractRoomModel {
     this.options = {
       enableSoftDelete: false,
       trackUpdatedAt: true,
-      ...options
+      ...options,
     };
   }
 
@@ -23,18 +23,19 @@ export class GenericRoomModel extends AbstractRoomModel {
    */
   static create(roomData) {
     const db = getDb();
-    
-    const gameSettings = typeof roomData.game_settings === 'object' 
-      ? JSON.stringify(roomData.game_settings) 
-      : roomData.game_settings;
-    
+
+    const gameSettings =
+      typeof roomData.game_settings === 'object'
+        ? JSON.stringify(roomData.game_settings)
+        : roomData.game_settings;
+
     const stmt = db.prepare(`
       INSERT INTO ${this.getTableName()} (
         room_code, game_type, mode, status, max_players, current_players, 
         created_by, game_settings, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
-    
+
     const result = stmt.run(
       roomData.room_code,
       roomData.game_type || 'default',
@@ -45,7 +46,7 @@ export class GenericRoomModel extends AbstractRoomModel {
       roomData.created_by,
       gameSettings
     );
-    
+
     return this.findById(result.lastInsertRowid);
   }
 
@@ -87,11 +88,11 @@ export class GenericRoomModel extends AbstractRoomModel {
    */
   static update(roomId, updates) {
     const db = getDb();
-    
+
     // 构建动态更新语句
     const fields = [];
     const values = [];
-    
+
     Object.entries(updates).forEach(([key, value]) => {
       if (key === 'game_settings' && typeof value === 'object') {
         fields.push(`${key} = ?`);
@@ -101,19 +102,19 @@ export class GenericRoomModel extends AbstractRoomModel {
         values.push(value);
       }
     });
-    
+
     if (fields.length === 0) return false;
-    
+
     // 添加更新时间
-    fields.push('updated_at = datetime(\'now\')');
+    fields.push("updated_at = datetime('now')");
     values.push(roomId);
-    
+
     const stmt = db.prepare(`
       UPDATE ${this.getTableName()} 
       SET ${fields.join(', ')} 
       WHERE id = ?
     `);
-    
+
     const result = stmt.run(...values);
     return result.changes > 0;
   }
@@ -125,7 +126,7 @@ export class GenericRoomModel extends AbstractRoomModel {
    */
   static delete(roomId) {
     const db = getDb();
-    
+
     if (this.options.enableSoftDelete) {
       // 软删除
       const stmt = db.prepare(`
@@ -137,7 +138,9 @@ export class GenericRoomModel extends AbstractRoomModel {
       return result.changes > 0;
     } else {
       // 硬删除
-      const stmt = db.prepare(`DELETE FROM ${this.getTableName()} WHERE id = ?`);
+      const stmt = db.prepare(
+        `DELETE FROM ${this.getTableName()} WHERE id = ?`
+      );
       const result = stmt.run(roomId);
       return result.changes > 0;
     }
@@ -150,40 +153,41 @@ export class GenericRoomModel extends AbstractRoomModel {
    */
   static getActiveRooms(filters = {}) {
     const db = getDb();
-    
-    let whereClause = "(deleted_at IS NULL OR deleted_at = '') AND status IN ('waiting', 'playing')";
+
+    let whereClause =
+      "(deleted_at IS NULL OR deleted_at = '') AND status IN ('waiting', 'playing')";
     const params = [];
-    
+
     // 应用过滤器
     if (filters.game_type) {
-      whereClause += " AND game_type = ?";
+      whereClause += ' AND game_type = ?';
       params.push(filters.game_type);
     }
-    
+
     if (filters.mode) {
-      whereClause += " AND mode = ?";
+      whereClause += ' AND mode = ?';
       params.push(filters.mode);
     }
-    
+
     if (filters.status) {
-      whereClause += " AND status = ?";
+      whereClause += ' AND status = ?';
       params.push(filters.status);
     }
-    
+
     if (filters.has_space) {
-      whereClause += " AND current_players < max_players";
+      whereClause += ' AND current_players < max_players';
     }
-    
+
     const orderBy = filters.order_by || 'created_at DESC';
     const limit = filters.limit ? `LIMIT ${parseInt(filters.limit)}` : '';
-    
+
     const stmt = db.prepare(`
       SELECT * FROM ${this.getTableName()} 
       WHERE ${whereClause} 
       ORDER BY ${orderBy} 
       ${limit}
     `);
-    
+
     const rooms = stmt.all(...params);
     return rooms.map(room => this.parseRoom(room));
   }
@@ -205,25 +209,25 @@ export class GenericRoomModel extends AbstractRoomModel {
    */
   static getStats(filters = {}) {
     const db = getDb();
-    
+
     let whereClause = "(deleted_at IS NULL OR deleted_at = '')";
     const params = [];
-    
+
     if (filters.game_type) {
-      whereClause += " AND game_type = ?";
+      whereClause += ' AND game_type = ?';
       params.push(filters.game_type);
     }
-    
+
     if (filters.date_from) {
-      whereClause += " AND created_at >= ?";
+      whereClause += ' AND created_at >= ?';
       params.push(filters.date_from);
     }
-    
+
     if (filters.date_to) {
-      whereClause += " AND created_at <= ?";
+      whereClause += ' AND created_at <= ?';
       params.push(filters.date_to);
     }
-    
+
     const stmt = db.prepare(`
       SELECT 
         COUNT(*) as total_rooms,
@@ -236,7 +240,7 @@ export class GenericRoomModel extends AbstractRoomModel {
       FROM ${this.getTableName()} 
       WHERE ${whereClause}
     `);
-    
+
     return stmt.get(...params);
   }
 
@@ -248,21 +252,21 @@ export class GenericRoomModel extends AbstractRoomModel {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let attempts = 0;
     const maxAttempts = 10;
-    
+
     do {
       let result = '';
       for (let i = 0; i < 6; i++) {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
       }
-      
+
       // 检查房间码是否已存在
       if (!this.findByRoomCode(result)) {
         return result;
       }
-      
+
       attempts++;
     } while (attempts < maxAttempts);
-    
+
     throw new Error('无法生成唯一房间码');
   }
 
@@ -273,14 +277,16 @@ export class GenericRoomModel extends AbstractRoomModel {
    */
   static cleanupOldRooms(hoursAgo = 24) {
     const db = getDb();
-    const cutoffTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
-    
+    const cutoffTime = new Date(
+      Date.now() - hoursAgo * 60 * 60 * 1000
+    ).toISOString();
+
     const stmt = db.prepare(`
       DELETE FROM ${this.getTableName()} 
       WHERE (status = 'finished' OR status = 'abandoned') 
         AND (updated_at < ? OR created_at < ?)
     `);
-    
+
     const result = stmt.run(cutoffTime, cutoffTime);
     return result.changes;
   }
@@ -300,7 +306,7 @@ export class GenericRoomModel extends AbstractRoomModel {
    */
   static parseRoom(room) {
     if (!room) return null;
-    
+
     try {
       return {
         ...room,
@@ -308,7 +314,7 @@ export class GenericRoomModel extends AbstractRoomModel {
         created_at: new Date(room.created_at),
         updated_at: room.updated_at ? new Date(room.updated_at) : null,
         ended_at: room.ended_at ? new Date(room.ended_at) : null,
-        deleted_at: room.deleted_at ? new Date(room.deleted_at) : null
+        deleted_at: room.deleted_at ? new Date(room.deleted_at) : null,
       };
     } catch (error) {
       console.error('解析房间数据失败:', error);
@@ -316,7 +322,7 @@ export class GenericRoomModel extends AbstractRoomModel {
         ...room,
         game_settings: {},
         created_at: new Date(room.created_at),
-        updated_at: room.updated_at ? new Date(room.updated_at) : null
+        updated_at: room.updated_at ? new Date(room.updated_at) : null,
       };
     }
   }
@@ -329,13 +335,13 @@ export class GenericRoomModel extends AbstractRoomModel {
    */
   static batchOperation(operation, data) {
     const db = getDb();
-    
+
     try {
       db.exec('BEGIN TRANSACTION');
-      
+
       let affectedRows = 0;
       const results = [];
-      
+
       switch (operation) {
         case 'create':
           for (const roomData of data) {
@@ -344,7 +350,7 @@ export class GenericRoomModel extends AbstractRoomModel {
             affectedRows++;
           }
           break;
-          
+
         case 'update':
           for (const { id, updates } of data) {
             const success = this.update(id, updates);
@@ -352,7 +358,7 @@ export class GenericRoomModel extends AbstractRoomModel {
             results.push({ id, success });
           }
           break;
-          
+
         case 'delete':
           for (const id of data) {
             const success = this.delete(id);
@@ -360,17 +366,17 @@ export class GenericRoomModel extends AbstractRoomModel {
             results.push({ id, success });
           }
           break;
-          
+
         default:
           throw new Error(`不支持的批量操作: ${operation}`);
       }
-      
+
       db.exec('COMMIT');
-      
+
       return {
         success: true,
         affectedRows,
-        results
+        results,
       };
     } catch (error) {
       db.exec('ROLLBACK');
@@ -385,10 +391,10 @@ export class GenericRoomModel extends AbstractRoomModel {
    */
   static createTable(tableName = 'game_rooms', options = {}) {
     const db = getDb();
-    
+
     const extraColumns = options.extraColumns || '';
     const indices = options.indices || [];
-    
+
     const sql = `
       CREATE TABLE IF NOT EXISTS ${tableName} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -413,15 +419,15 @@ export class GenericRoomModel extends AbstractRoomModel {
       CREATE INDEX IF NOT EXISTS idx_${tableName}_created_by ON ${tableName}(created_by);
       CREATE INDEX IF NOT EXISTS idx_${tableName}_created_at ON ${tableName}(created_at);
     `;
-    
+
     db.exec(sql);
-    
+
     // 创建额外索引
     indices.forEach(index => {
       const indexSql = `CREATE INDEX IF NOT EXISTS ${index.name} ON ${tableName}(${index.columns.join(', ')});`;
       db.exec(indexSql);
     });
-    
+
     console.log(`数据表 ${tableName} 创建完成`);
   }
 }

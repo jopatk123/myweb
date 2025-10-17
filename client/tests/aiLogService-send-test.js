@@ -11,14 +11,14 @@ async function sendTest() {
     responseText: '测试响应',
     model: 'test-model',
     playerType: 1,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     console.log('HTTP', res.status);

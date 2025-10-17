@@ -16,7 +16,7 @@ export function useMessageBoard() {
   const userSettings = reactive({
     nickname: 'Anonymous',
     avatarColor: '#007bff',
-  autoOpenEnabled: false,
+    autoOpenEnabled: false,
   });
 
   // WebSocket连接
@@ -79,7 +79,8 @@ export function useMessageBoard() {
         // 消息会通过WebSocket实时推送，这里不需要手动添加
         // 同步打开/激活留言板窗口（发送者本地立即可见）
         try {
-          const { findWindowByAppAll, createWindow, showWindowWithoutFocus } = useWindowManager();
+          const { findWindowByAppAll, createWindow, showWindowWithoutFocus } =
+            useWindowManager();
           const existingWindow = findWindowByAppAll('message-board');
           if (existingWindow) {
             // 如果窗口已经存在，尝试以不改变焦点的方式显示它
@@ -93,7 +94,8 @@ export function useMessageBoard() {
           } else {
             // 创建窗口但不激活（不抢占焦点）
             createWindow({
-              component: () => import('@/components/message-board/MessageBoardWindow.vue'),
+              component: () =>
+                import('@/components/message-board/MessageBoardWindow.vue'),
               title: '💬 留言板',
               appSlug: 'message-board',
               width: 400,

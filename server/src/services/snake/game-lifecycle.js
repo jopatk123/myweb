@@ -15,7 +15,7 @@ export class GameLifecycleManager {
   async startGame(roomId, hostSessionId = null) {
     const room = await this._validateRoom(roomId, hostSessionId);
     const players = await this._validatePlayers(roomId, room);
-    
+
     let gameState = this.service.getGameState(roomId);
     if (!gameState) {
       throw new Error('游戏状态不存在');
@@ -64,7 +64,7 @@ export class GameLifecycleManager {
    */
   async _validatePlayers(roomId, room) {
     const players = this.service.PlayerModel.findOnlineByRoomId(roomId);
-    
+
     if (players.length === 0) {
       throw new Error('房间内没有玩家');
     }
@@ -85,16 +85,16 @@ export class GameLifecycleManager {
   async _updateRoomAndGameState(roomId, gameState, players) {
     this.service.RoomModel.update(roomId, { status: 'playing' });
     // 动态调整棋盘大小：以 2 人=基础大小，为基准每增加 1 人边长 +1
-    if(gameState.mode === 'competitive'){
+    if (gameState.mode === 'competitive') {
       const base = this.service.SNAKE_CONFIG.BOARD_SIZE; // 当前 20 (针对 2 人)
-  const extraPlayers = Math.max(0, players.length - 2);
-  const dynamicSize = base + extraPlayers * 3; // 每增加1玩家长和宽各+3
-      if(!gameState.config) gameState.config = {};
+      const extraPlayers = Math.max(0, players.length - 2);
+      const dynamicSize = base + extraPlayers * 3; // 每增加1玩家长和宽各+3
+      if (!gameState.config) gameState.config = {};
       gameState.config.BOARD_SIZE = dynamicSize;
     }
-    this.service.updateGameState(roomId, { 
-      status: 'playing', 
-      startTime: Date.now() 
+    this.service.updateGameState(roomId, {
+      status: 'playing',
+      startTime: Date.now(),
     });
     gameState.playerCount = players.length;
   }
@@ -138,7 +138,7 @@ export class GameLifecycleManager {
     this.service.broadcastToRoom(roomId, 'game_started', {
       room_id: roomId,
       game_state: this.service.getGameState(roomId),
-      players
+      players,
     });
   }
 
@@ -177,7 +177,7 @@ export class GameLifecycleManager {
     this.service.updateGameState(roomId, {
       status: 'finished',
       endTime: Date.now(),
-      endReason: reason
+      endReason: reason,
     });
 
     this.service.RoomModel.update(roomId, { status: 'waiting' });
@@ -193,12 +193,27 @@ export class GameLifecycleManager {
 
       const players = this.service.PlayerModel.findByRoomId(roomId);
       const finalScore = gameState.sharedSnake?.score || 0;
-      const duration = gameState.startTime ? (Date.now() - gameState.startTime) : 0;
+      const duration = gameState.startTime
+        ? Date.now() - gameState.startTime
+        : 0;
 
       if (gameState.mode === 'shared') {
-        this._saveSharedModeRecords(roomId, gameState, players, finalScore, duration, reason);
+        this._saveSharedModeRecords(
+          roomId,
+          gameState,
+          players,
+          finalScore,
+          duration,
+          reason
+        );
       } else if (gameState.mode === 'competitive') {
-        this._saveCompetitiveModeRecords(roomId, gameState, players, duration, reason);
+        this._saveCompetitiveModeRecords(
+          roomId,
+          gameState,
+          players,
+          duration,
+          reason
+        );
       }
     } catch (error) {
       console.error('保存游戏记录失败:', error);
@@ -208,7 +223,14 @@ export class GameLifecycleManager {
   /**
    * 保存共享模式记录
    */
-  _saveSharedModeRecords(roomId, gameState, players, finalScore, duration, reason) {
+  _saveSharedModeRecords(
+    roomId,
+    gameState,
+    players,
+    finalScore,
+    duration,
+    reason
+  ) {
     players.forEach(player => {
       SnakeGameRecordModel.create({
         room_id: roomId,
@@ -217,7 +239,7 @@ export class GameLifecycleManager {
         winner_score: finalScore,
         game_duration: duration,
         end_reason: reason,
-        player_count: players.length
+        player_count: players.length,
       });
     });
   }
@@ -236,7 +258,7 @@ export class GameLifecycleManager {
         winner_score: gameState.snakes[winner.session_id]?.score || 0,
         game_duration: duration,
         end_reason: reason,
-        player_count: players.length
+        player_count: players.length,
       });
     }
   }
@@ -249,10 +271,11 @@ export class GameLifecycleManager {
       room_id: roomId,
       reason,
       final_score: gameState.sharedSnake?.score || 0,
-  game_state: gameState,
-  winner: gameState.winner || null, // 兼容旧字段
-  loser: gameState.loser || null,
-  winners: gameState.winners || (gameState.winner? [gameState.winner]: [])
+      game_state: gameState,
+      winner: gameState.winner || null, // 兼容旧字段
+      loser: gameState.loser || null,
+      winners:
+        gameState.winners || (gameState.winner ? [gameState.winner] : []),
     });
   }
 }

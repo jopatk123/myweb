@@ -24,17 +24,20 @@ export class SnakeGameManager {
     await SnakeRoomModel.update(roomId, { status: 'playing' });
     const gameState = this.service.gameStates.get(roomId);
 
-  // start game for room
-    
+    // start game for room
+
     if (room.mode === 'shared') {
       initSharedGame(gameState, players);
     } else if (room.mode === 'competitive') {
       initCompetitiveGame(gameState, players);
     }
 
-  // game state initialized
+    // game state initialized
 
-    await this.service.broadcastToRoom(roomId, 'game_started', { game_state: gameState, players });
+    await this.service.broadcastToRoom(roomId, 'game_started', {
+      game_state: gameState,
+      players,
+    });
     this.startGameLoop(roomId);
 
     if (room.mode === 'shared') {
@@ -47,7 +50,7 @@ export class SnakeGameManager {
     const gameState = this.service.gameStates.get(roomId);
     if (!gameState) return;
 
-  // starting game loop
+    // starting game loop
 
     const gameLoop = async () => {
       const currentGameState = this.service.gameStates.get(roomId);
@@ -61,27 +64,35 @@ export class SnakeGameManager {
         }
 
         if (!this.service.gameStates.get(roomId)?.gameOver) {
-          this.service.gameTimers.set(roomId, setTimeout(gameLoop, currentGameState.config.GAME_SPEED));
+          this.service.gameTimers.set(
+            roomId,
+            setTimeout(gameLoop, currentGameState.config.GAME_SPEED)
+          );
         }
       } catch (error) {
         console.error('游戏循环错误:', error);
         await this.endGame(roomId, 'error');
       }
     };
-    this.service.gameTimers.set(roomId, setTimeout(gameLoop, gameState.config.GAME_SPEED));
+    this.service.gameTimers.set(
+      roomId,
+      setTimeout(gameLoop, gameState.config.GAME_SPEED)
+    );
   }
 
   async endGame(roomId, reason, winner = null) {
     const gameState = this.service.gameStates.get(roomId);
     if (!gameState || gameState.gameOver) return;
 
-  // end game
+    // end game
 
     gameState.gameOver = true;
     gameState.winner = winner;
 
-    if (this.service.gameTimers.has(roomId)) clearTimeout(this.service.gameTimers.get(roomId));
-    if (this.service.voteTimers.has(roomId)) clearTimeout(this.service.voteTimers.get(roomId));
+    if (this.service.gameTimers.has(roomId))
+      clearTimeout(this.service.gameTimers.get(roomId));
+    if (this.service.voteTimers.has(roomId))
+      clearTimeout(this.service.voteTimers.get(roomId));
     this.service.gameTimers.delete(roomId);
     this.service.voteTimers.delete(roomId);
 
@@ -93,7 +104,7 @@ export class SnakeGameManager {
       winner,
       final_score: gameState.winnerScore,
       duration: gameState.duration,
-      game_state: gameState
+      game_state: gameState,
     });
     this.service.gameStates.delete(roomId);
     // 通知大厅刷新（房间变为 finished 或随后被删除）
@@ -105,7 +116,7 @@ export class SnakeGameManager {
   async recordGame(gameState, reason, winner) {
     const gameDuration = Math.floor((Date.now() - gameState.startTime) / 1000);
     const players = await SnakePlayerModel.findOnlineByRoomId(gameState.roomId);
-    
+
     let winnerScore = 0;
     if (winner) {
       if (gameState.mode === 'shared') {
@@ -123,7 +134,7 @@ export class SnakeGameManager {
       winner_score: winnerScore,
       game_duration: gameDuration,
       player_count: players.length,
-      mode: gameState.mode
+      mode: gameState.mode,
     });
   }
 }

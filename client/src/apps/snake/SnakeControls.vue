@@ -43,7 +43,13 @@
     difficulty: { type: String, required: true },
   });
 
-  const emit = defineEmits(['start', 'pause', 'restart', 'backToMenu', 'update:difficulty']);
+  const emit = defineEmits([
+    'start',
+    'pause',
+    'restart',
+    'backToMenu',
+    'update:difficulty',
+  ]);
 
   function onChange(e) {
     emit('update:difficulty', e.target.value);

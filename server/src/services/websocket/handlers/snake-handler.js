@@ -70,7 +70,11 @@ export class SnakeMessageHandler {
   async joinRoom(sessionId, data) {
     try {
       const { playerName, roomCode } = data || {};
-      const result = await this.adapter.joinRoom(sessionId, playerName, roomCode);
+      const result = await this.adapter.joinRoom(
+        sessionId,
+        playerName,
+        roomCode
+      );
 
       this.trackRoom(sessionId, result?.room?.room_code);
       this.ws.sendToClient(sessionId, {
@@ -237,7 +241,9 @@ export class SnakeMessageHandler {
 
       if (!sent) {
         this.ws.broadcast(message);
-        console.warn('broadcastToRoom: no specific clients matched, broadcasted');
+        console.warn(
+          'broadcastToRoom: no specific clients matched, broadcasted'
+        );
       }
     } catch (error) {
       console.error('房间广播失败:', error);

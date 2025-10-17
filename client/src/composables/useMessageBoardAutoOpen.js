@@ -8,14 +8,19 @@ import { getAppComponentBySlug } from '@/apps/registry.js';
 
 const messageBoardComponent =
   getAppComponentBySlug('message-board') ||
-  defineAsyncComponent(() =>
-    import('@/components/message-board/MessageBoardWindow.vue')
+  defineAsyncComponent(
+    () => import('@/components/message-board/MessageBoardWindow.vue')
   );
 
 export function useMessageBoardAutoOpen() {
   const isAutoOpenEnabled = ref(false);
   const { onMessage } = useWebSocket();
-  const { createWindow, findWindowByAppAll, setActiveWindow, showWindowWithoutFocus } = useWindowManager();
+  const {
+    createWindow,
+    findWindowByAppAll,
+    setActiveWindow,
+    showWindowWithoutFocus,
+  } = useWindowManager();
 
   // NOTE: 为满足“只要有新消息就强制打开留言板”的需求，
   // 我们在收到 newMessage 时总是打开/激活留言板窗口，而不再根据用户设置或会话列表做条件判断。

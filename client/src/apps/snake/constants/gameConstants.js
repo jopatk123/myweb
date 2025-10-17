@@ -8,7 +8,7 @@ export const GAME_CONFIG = {
   // 画布配置
   BOARD_SIZE: 400,
   CELL_SIZE: 20,
-  
+
   // 游戏速度配置
   SPEEDS: {
     easy: 150,
@@ -16,7 +16,7 @@ export const GAME_CONFIG = {
     hard: 90,
     extreme: 60,
   },
-  
+
   // 游戏机制配置
   SPECIAL_FOOD_PROBABILITY: 0.1,
   SPECIAL_FOOD_TIMEOUT: 5000,
@@ -81,7 +81,7 @@ export const COLORS = {
     HIGHLIGHT: '#ffffff',
     HEAD_EYES: '#000000',
   },
-  
+
   // 食物颜色
   FOOD: {
     PALETTES: [
@@ -92,16 +92,16 @@ export const COLORS = {
     ],
     SPECIAL: '#ffd700',
   },
-  
+
   // 多人模式颜色
   MULTIPLAYER: {
     PLAYER_COLORS: ['#4ade80', '#60a5fa', '#f472b6', '#facc15'],
   },
-  
+
   // 背景和网格
   BACKGROUND: '#1a1a1a',
   GRID: '#2a2a2a',
-  
+
   // 粒子效果
   PARTICLES: {
     FOOD: '#ff6b6b',
@@ -153,7 +153,7 @@ export const GAME_EVENTS = {
   GAME_OVER: 'game_over',
   SCORE_UPDATE: 'score_update',
   LEVEL_UP: 'level_up',
-  
+
   // 多人游戏事件
   ROOM_CREATED: 'room_created',
   ROOM_JOINED: 'room_joined',

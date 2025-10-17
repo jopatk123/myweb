@@ -20,22 +20,14 @@ export function useGomokuApp() {
     startGame,
     restartGame,
     makePlayerMove,
-    undoMove
+    undoMove,
   } = useGomokuGame();
 
   // 统计数据管理
-  const {
-    playerWins,
-    totalGames,
-    recordGameResult
-  } = useGomokuStats();
+  const { playerWins, totalGames, recordGameResult } = useGomokuStats();
 
   // 提示功能管理
-  const {
-    showHint,
-    hintPosition,
-    closeHint
-  } = useGomokuHint();
+  const { showHint, hintPosition, closeHint } = useGomokuHint();
 
   // 游戏模式服务
   const gameModeService = new GameModeService();
@@ -63,7 +55,7 @@ export function useGomokuApp() {
     getAIThinkingText,
     isAIAutoPlaying,
     stopAIAutoPlay,
-    resumeAIAutoPlay
+    resumeAIAutoPlay,
   } = useGomokuAIThinking({
     gameModeService,
     gameMode,
@@ -76,10 +68,10 @@ export function useGomokuApp() {
     recordGameResult,
     gomokuBoard,
     currentPlayer,
-    showViolationModal: (data) => {
+    showViolationModal: data => {
       violationData.value = data;
       showViolation.value = true;
-    }
+    },
   });
 
   // 计算属性
@@ -100,7 +92,11 @@ export function useGomokuApp() {
         return;
       }
     } else if (gameMode.value === 'ai_vs_ai') {
-      if (!aiConfig.value || !aiConfig.value.ai1Config || !aiConfig.value.ai2Config) {
+      if (
+        !aiConfig.value ||
+        !aiConfig.value.ai1Config ||
+        !aiConfig.value.ai2Config
+      ) {
         showAIConfig.value = true;
         return;
       }
@@ -133,15 +129,17 @@ export function useGomokuApp() {
     }
   }
 
-  function handleConfiguredStart() { handleStartGame(); }
+  function handleConfiguredStart() {
+    handleStartGame();
+  }
 
   function handleConfigSaved(config) {
     gameMode.value = config.mode;
-    
+
     // 配置游戏模式服务
     const debug = window.location.search.includes('gomokuDebug=1');
     gameModeService.setGameMode(config.mode);
-    
+
     if (config.mode === 'human_vs_ai') {
       aiConfig.value = config.aiConfig;
       if (debug) console.log('[GomokuApp] Configuring player 2 AI');
@@ -150,7 +148,7 @@ export function useGomokuApp() {
       // AI对AI模式需要配置两个AI
       aiConfig.value = {
         ai1Config: config.ai1Config,
-        ai2Config: config.ai2Config
+        ai2Config: config.ai2Config,
       };
       if (debug) console.log('[GomokuApp] Configuring AI vs AI mode');
       gameModeService.configurePlayerAI(1, config.ai1Config);
@@ -163,20 +161,24 @@ export function useGomokuApp() {
     hideGameOverOverlay.value = false;
     restartGame();
     closeHint();
-    currentThinking.value = null; currentAIPlayer.value = null; lastMoveWithReasoning.value = null; thinkingHistory.value = [];
-    
+    currentThinking.value = null;
+    currentAIPlayer.value = null;
+    lastMoveWithReasoning.value = null;
+    thinkingHistory.value = [];
+
     nextTick(() => {
       gomokuBoard.value?.drawBoard();
-      
+
       // 如果是AI对AI模式，重新开始AI对战
       if (gameMode.value === 'ai_vs_ai') {
         try {
           handleAITurn();
         } catch (error) {
           const debug = window.location.search.includes('gomokuDebug=1');
-          if (debug) console.error('[GomokuApp] AI vs AI restart failed:', error);
-  // 用非阻塞的控制台警告替代弹窗，避免中断游戏流程
-  console.warn('[GomokuApp] AI connection failed (restart):', error);
+          if (debug)
+            console.error('[GomokuApp] AI vs AI restart failed:', error);
+          // 用非阻塞的控制台警告替代弹窗，避免中断游戏流程
+          console.warn('[GomokuApp] AI connection failed (restart):', error);
         }
       }
     });
@@ -189,7 +191,7 @@ export function useGomokuApp() {
       if (debug) console.log('[GomokuApp] AI is thinking, player move blocked');
       return;
     }
-    
+
     // 检查当前玩家是否为人类
     if (gameModeService.isAIPlayer(currentPlayer.value)) {
       if (debug) console.log('[GomokuApp] Current player is AI, move blocked');
@@ -213,8 +215,8 @@ export function useGomokuApp() {
         await handleAITurn();
       } catch (error) {
         if (debug) console.error('[GomokuApp] AI turn failed:', error);
-  // AI连接失败，记录为警告，不再阻断玩家流程（AI为辅助功能）
-  console.warn('[GomokuApp] AI turn failed:', error);
+        // AI连接失败，记录为警告，不再阻断玩家流程（AI为辅助功能）
+        console.warn('[GomokuApp] AI turn failed:', error);
       }
     } else {
       if (debug) console.log('[GomokuApp] Player move failed');
@@ -227,14 +229,14 @@ export function useGomokuApp() {
       if (gameMode.value === 'human_vs_ai') {
         undoMove();
       }
-      
+
       // 清理思考历史中对应的记录
       if (gameMode.value === 'human_vs_ai') {
         thinkingHistory.value = thinkingHistory.value.slice(0, -1);
       } else {
         thinkingHistory.value = thinkingHistory.value.slice(0, -2);
       }
-      
+
       nextTick(() => {
         gomokuBoard.value?.drawBoard();
       });
@@ -249,10 +251,10 @@ export function useGomokuApp() {
 
   function handleShowHint() {
     if (!gameStarted.value || gameOver.value) return;
-    
+
     const centerRow = 7;
     const centerCol = 7;
-    
+
     if (board.value[centerRow][centerCol] === 0) {
       hintPosition.value = { row: centerRow, col: centerCol };
       showHint.value = true;
@@ -276,35 +278,55 @@ export function useGomokuApp() {
         if (data.config) {
           aiConfig.value = {
             ...data.config,
-            apiKey: rememberKeys ? (data.config.apiKey || '') : ''
+            apiKey: rememberKeys ? data.config.apiKey || '' : '',
           };
-          if(gameMode.value==='human_vs_ai'){
+          if (gameMode.value === 'human_vs_ai') {
             // 配置服务（如果有 apiUrl 与 apiKey 则完整，否则等待用户输入）
-            if(data.config.apiUrl && data.config.apiKey && rememberKeys){
+            if (data.config.apiUrl && data.config.apiKey && rememberKeys) {
               gameModeService.setGameMode(gameMode.value);
               gameModeService.configurePlayerAI(2, aiConfig.value);
             }
           }
         }
-        if(data.ai1Config || data.ai2Config){
+        if (data.ai1Config || data.ai2Config) {
           aiConfig.value = {
-            ai1Config: data.ai1Config ? { ...data.ai1Config, apiKey: rememberKeys ? (data.ai1Config.apiKey||'') : '' } : null,
-            ai2Config: data.ai2Config ? { ...data.ai2Config, apiKey: rememberKeys ? (data.ai2Config.apiKey||'') : '' } : null
+            ai1Config: data.ai1Config
+              ? {
+                  ...data.ai1Config,
+                  apiKey: rememberKeys ? data.ai1Config.apiKey || '' : '',
+                }
+              : null,
+            ai2Config: data.ai2Config
+              ? {
+                  ...data.ai2Config,
+                  apiKey: rememberKeys ? data.ai2Config.apiKey || '' : '',
+                }
+              : null,
           };
-          if(gameMode.value==='ai_vs_ai'){
+          if (gameMode.value === 'ai_vs_ai') {
             gameModeService.setGameMode(gameMode.value);
-            if(aiConfig.value.ai1Config && aiConfig.value.ai1Config.apiUrl && aiConfig.value.ai1Config.apiKey && rememberKeys){
+            if (
+              aiConfig.value.ai1Config &&
+              aiConfig.value.ai1Config.apiUrl &&
+              aiConfig.value.ai1Config.apiKey &&
+              rememberKeys
+            ) {
               gameModeService.configurePlayerAI(1, aiConfig.value.ai1Config);
             }
-            if(aiConfig.value.ai2Config && aiConfig.value.ai2Config.apiUrl && aiConfig.value.ai2Config.apiKey && rememberKeys){
+            if (
+              aiConfig.value.ai2Config &&
+              aiConfig.value.ai2Config.apiUrl &&
+              aiConfig.value.ai2Config.apiKey &&
+              rememberKeys
+            ) {
               gameModeService.configurePlayerAI(2, aiConfig.value.ai2Config);
             }
           }
         }
       }
     } catch (error) {
-    const debug = window.location.search.includes('gomokuDebug=1');
-    if (debug) console.error('加载配置失败:', error);
+      const debug = window.location.search.includes('gomokuDebug=1');
+      if (debug) console.error('加载配置失败:', error);
     }
 
     nextTick(() => {
@@ -351,6 +373,6 @@ export function useGomokuApp() {
     gameModeInfo,
     handleUndoMove,
     handleShowHint,
-    handleViolationClose
+    handleViolationClose,
   };
 }

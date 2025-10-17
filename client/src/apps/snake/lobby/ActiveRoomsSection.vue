@@ -20,7 +20,7 @@
 
     <div v-else class="rooms-grid">
       <RoomCard
-        v-for="room in rooms" 
+        v-for="room in rooms"
         :key="room.id || room.room_code || room.roomCode"
         :room="room"
         @join="$emit('join-room', $event)"
@@ -31,107 +31,111 @@
 </template>
 
 <script setup>
-import RoomCard from './RoomCard.vue'
+  import RoomCard from './RoomCard.vue';
 
-defineProps({
-  rooms: { type: Array, default: () => [] },
-  loading: { type: Boolean, default: false }
-})
+  defineProps({
+    rooms: { type: Array, default: () => [] },
+    loading: { type: Boolean, default: false },
+  });
 
-defineEmits(['refresh', 'join-room', 'spectate'])
+  defineEmits(['refresh', 'join-room', 'spectate']);
 </script>
 
 <style scoped>
-.active-rooms-section {
-  background: white;
-  padding: 25px;
-  border-radius: 15px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-  border: 1px solid #e1e8ed;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.section-header h3 {
-  margin: 0;
-  color: #2c3e50;
-  font-size: 20px;
-}
-
-.btn-text {
-  background: none;
-  border: none;
-  color: #667eea;
-  cursor: pointer;
-  font-size: 14px;
-  transition: color 0.3s;
-}
-
-.btn-text:hover:not(:disabled) {
-  color: #5a6fd8;
-}
-
-.btn-text:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.loading-placeholder {
-  text-align: center;
-  padding: 40px;
-  color: #666;
-}
-
-.loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #667eea;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  display: inline-block;
-  margin-right: 10px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.empty-rooms {
-  text-align: center;
-  padding: 60px 20px;
-  color: #666;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 20px;
-}
-
-.empty-rooms p {
-  margin: 0 0 8px 0;
-}
-
-.empty-hint {
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-.rooms-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-}
-
-@media (max-width: 768px) {
-  .rooms-grid {
-    grid-template-columns: 1fr;
+  .active-rooms-section {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    border: 1px solid #e1e8ed;
   }
-}
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .section-header h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 20px;
+  }
+
+  .btn-text {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    font-size: 14px;
+    transition: color 0.3s;
+  }
+
+  .btn-text:hover:not(:disabled) {
+    color: #5a6fd8;
+  }
+
+  .btn-text:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .loading-placeholder {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+  }
+
+  .loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    margin-right: 10px;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  .empty-rooms {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+  }
+
+  .empty-rooms p {
+    margin: 0 0 8px 0;
+  }
+
+  .empty-hint {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+  .rooms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+
+  @media (max-width: 768px) {
+    .rooms-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

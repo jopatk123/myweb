@@ -38,10 +38,10 @@ export class GameErrorHandler {
    */
   handleError(type, error, context = {}) {
     const errorInfo = this._createErrorInfo(type, error, context);
-    
+
     // 记录错误日志
     this._logError(errorInfo);
-    
+
     // 触发注册的回调
     if (this.errorCallbacks.has(type)) {
       this.errorCallbacks.get(type).forEach(callback => {
@@ -52,7 +52,7 @@ export class GameErrorHandler {
         }
       });
     }
-    
+
     return errorInfo;
   }
 
@@ -78,12 +78,12 @@ export class GameErrorHandler {
     if (ERROR_MESSAGES[type]) {
       return ERROR_MESSAGES[type];
     }
-    
+
     // 如果错误对象有消息，使用它
     if (error?.message) {
       return error.message;
     }
-    
+
     // 根据错误类型返回通用消息
     switch (type) {
       case 'NETWORK_ERROR':
@@ -104,7 +104,7 @@ export class GameErrorHandler {
    */
   _logError(errorInfo) {
     const logLevel = this._getLogLevel(errorInfo.type);
-    
+
     switch (logLevel) {
       case 'error':
         console.error(`[GameError:${errorInfo.type}]`, errorInfo);
@@ -133,7 +133,7 @@ export class GameErrorHandler {
       ROOM_FULL: 'info',
       PERMISSION_DENIED: 'warn',
     };
-    
+
     return errorLevels[errorType] || 'error';
   }
 

@@ -9,7 +9,7 @@ export function useGomokuHint() {
   // 显示提示
   function displayHint(position) {
     if (!position) return;
-    
+
     hintPosition.value = position;
     showHint.value = true;
   }
@@ -36,10 +36,10 @@ export function useGomokuHint() {
     // 状态
     showHint,
     hintPosition,
-    
+
     // 方法
     displayHint,
     closeHint,
-    toggleHint
+    toggleHint,
   };
 }

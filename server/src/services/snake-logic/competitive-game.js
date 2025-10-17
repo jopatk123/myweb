@@ -21,13 +21,26 @@ export async function updateCompetitiveGame(roomId, service) {
 
     const head = { ...snake.body[0] };
     switch (snake.direction) {
-      case 'up': head.y -= 1; break;
-      case 'down': head.y += 1; break;
-      case 'left': head.x -= 1; break;
-      case 'right': head.x += 1; break;
+      case 'up':
+        head.y -= 1;
+        break;
+      case 'down':
+        head.y += 1;
+        break;
+      case 'left':
+        head.x -= 1;
+        break;
+      case 'right':
+        head.x += 1;
+        break;
     }
 
-    if (head.x < 0 || head.x >= boardSize || head.y < 0 || head.y >= boardSize) {
+    if (
+      head.x < 0 ||
+      head.x >= boardSize ||
+      head.y < 0 ||
+      head.y >= boardSize
+    ) {
       snake.gameOver = true;
       gameOverCount++;
       continue;
@@ -42,7 +55,9 @@ export async function updateCompetitiveGame(roomId, service) {
     }
     if (snake.gameOver) continue;
 
-    for (const [otherSessionId, otherSnake] of Object.entries(gameState.snakes)) {
+    for (const [otherSessionId, otherSnake] of Object.entries(
+      gameState.snakes
+    )) {
       if (otherSessionId === sessionId || otherSnake.gameOver) continue;
       for (const segment of otherSnake.body) {
         if (head.x === segment.x && head.y === segment.y) {
@@ -69,7 +84,9 @@ export async function updateCompetitiveGame(roomId, service) {
       snake.body.pop();
     }
 
-    const aliveCount = Object.values(gameState.snakes).filter(s => !s.gameOver).length;
+    const aliveCount = Object.values(gameState.snakes).filter(
+      s => !s.gameOver
+    ).length;
     if (aliveCount === 1) {
       winner = snake.player;
     }
@@ -77,7 +94,7 @@ export async function updateCompetitiveGame(roomId, service) {
 
   await service.broadcastToRoom(roomId, 'competitive_update', {
     snakes: gameState.snakes,
-    food: gameState.food
+    food: gameState.food,
   });
 
   const totalPlayers = Object.keys(gameState.snakes).length;

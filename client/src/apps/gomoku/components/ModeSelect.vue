@@ -9,35 +9,35 @@
 </template>
 
 <script setup>
-defineEmits(['select-ai', 'select-multiplayer']);
+  defineEmits(['select-ai', 'select-multiplayer']);
 </script>
 
 <style scoped>
-.mode-select-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(6px);
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
-  gap: 20px;
-}
+  .mode-select-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    gap: 20px;
+  }
 
-.mode-select-overlay .mode-buttons {
-  display: flex;
-  gap: 20px;
-}
+  .mode-select-overlay .mode-buttons {
+    display: flex;
+    gap: 20px;
+  }
 
-.mode-select-overlay button {
-  padding: 12px 28px;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background: #4a67ff;
-  color: #fff;
-}
+  .mode-select-overlay button {
+    padding: 12px 28px;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #4a67ff;
+    color: #fff;
+  }
 </style>

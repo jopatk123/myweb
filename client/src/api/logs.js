@@ -1,7 +1,8 @@
 import { buildApiUrl } from './httpClient.js';
 
 // AI 文件日志功能已移除：此模块保留兼容导出，所有方法返回禁用状态。
-const disabled = () => Promise.resolve({ code: 200, data: { logs: [], disabled: true } });
+const disabled = () =>
+  Promise.resolve({ code: 200, data: { logs: [], disabled: true } });
 
 export const logsApi = {
   getAILogs: disabled,

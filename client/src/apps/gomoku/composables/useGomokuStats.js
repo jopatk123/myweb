@@ -3,7 +3,7 @@ import { ref } from 'vue';
 
 const STORAGE_KEYS = {
   PLAYER_WINS: 'gomoku_player_wins',
-  TOTAL_GAMES: 'gomoku_total_games'
+  TOTAL_GAMES: 'gomoku_total_games',
 };
 
 export function useGomokuStats() {
@@ -18,11 +18,12 @@ export function useGomokuStats() {
   // 记录游戏结果
   function recordGameResult(winner) {
     totalGames.value++;
-    
-    if (winner === 1) { // 玩家获胜
+
+    if (winner === 1) {
+      // 玩家获胜
       playerWins.value++;
     }
-    
+
     // 保存到本地存储
     saveStats();
   }
@@ -50,10 +51,10 @@ export function useGomokuStats() {
     // 状态
     playerWins,
     totalGames,
-    
+
     // 方法
     recordGameResult,
     resetStats,
-    getWinRate
+    getWinRate,
   };
 }

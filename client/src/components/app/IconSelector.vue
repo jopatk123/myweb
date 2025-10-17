@@ -98,7 +98,11 @@
     { name: 'Excel', path: '/apps/icons/excel-128.svg', category: 'tool' },
     { name: '下载', path: '/apps/icons/download.svg', category: 'tool' },
     { name: '地图', path: '/apps/icons/map.svg', category: 'tool' },
-    { name: '留言板', path: '/apps/icons/message-board-128.svg', category: 'tool' },
+    {
+      name: '留言板',
+      path: '/apps/icons/message-board-128.svg',
+      category: 'tool',
+    },
 
     // 游戏类图标
     { name: '贪吃蛇', path: '/apps/icons/snake-128.png', category: 'game' },
@@ -112,8 +116,16 @@
     // 其他常用图标
     { name: '时钟', path: '/apps/icons/clock.svg', category: 'other' },
     { name: '相机', path: '/apps/icons/camera.svg', category: 'other' },
-    { name: '小说阅读器', path: '/apps/icons/novel-reader.svg', category: 'other' },
-    { name: '计时器', path: '/apps/icons/work-timer-128.svg', category: 'other' },
+    {
+      name: '小说阅读器',
+      path: '/apps/icons/novel-reader.svg',
+      category: 'other',
+    },
+    {
+      name: '计时器',
+      path: '/apps/icons/work-timer-128.svg',
+      category: 'other',
+    },
   ]);
 
   // 监听外部传入的值变化

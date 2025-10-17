@@ -107,141 +107,141 @@
 </template>
 
 <script setup>
-import GomokuHeader from '../GomokuHeader.vue';
-import GomokuBoard from '../GomokuBoard.vue';
-import GomokuControls from '../GomokuControls.vue';
-import GomokuOverlays from '../GomokuOverlays.vue';
-import SimpleAIConfig from './SimpleAIConfig.vue';
-import AIThinkingPanel from './AIThinkingPanel.vue';
-import GameStatusPanel from './GameStatusPanel.vue';
-import ViolationModal from './ViolationModal.vue';
-import { useGomokuApp } from '../composables/useGomokuApp.js';
+  import GomokuHeader from '../GomokuHeader.vue';
+  import GomokuBoard from '../GomokuBoard.vue';
+  import GomokuControls from '../GomokuControls.vue';
+  import GomokuOverlays from '../GomokuOverlays.vue';
+  import SimpleAIConfig from './SimpleAIConfig.vue';
+  import AIThinkingPanel from './AIThinkingPanel.vue';
+  import GameStatusPanel from './GameStatusPanel.vue';
+  import ViolationModal from './ViolationModal.vue';
+  import { useGomokuApp } from '../composables/useGomokuApp.js';
 
-const app = useGomokuApp();
+  const app = useGomokuApp();
 
-// 解构以便模板使用（保留原有的变量名以兼容模板）
-const {
-  gomokuBoard,
-  showAIConfig,
-  handleConfiguredStart,
-  handleConfigSaved,
-  showViolation,
-  violationData,
-  currentPlayer,
-  moveCount,
-  playerWins,
-  totalGames,
-  gameOver,
-  gameStarted,
-  currentThinking,
-  thinkingHistory,
-  clearThinkingHistory,
-  board,
-  lastMove,
-  handlePlayerMove,
-  hideGameOverOverlay,
-  winner,
-  showHint,
-  hintPosition,
-  isAIThinking,
-  getAIThinkingText,
-  gameMode,
-  getPlayerName,
-  handleStartGame,
-  handleRestartGame,
-  closeHint,
-  stopAIAutoPlay,
-  resumeAIAutoPlay,
-  canUndo,
-  isAIAutoPlaying,
-  currentAIPlayer,
-  lastMoveWithReasoning,
-  gameModeInfo,
-  handleUndoMove,
-  handleShowHint,
-  handleViolationClose
-} = app;
+  // 解构以便模板使用（保留原有的变量名以兼容模板）
+  const {
+    gomokuBoard,
+    showAIConfig,
+    handleConfiguredStart,
+    handleConfigSaved,
+    showViolation,
+    violationData,
+    currentPlayer,
+    moveCount,
+    playerWins,
+    totalGames,
+    gameOver,
+    gameStarted,
+    currentThinking,
+    thinkingHistory,
+    clearThinkingHistory,
+    board,
+    lastMove,
+    handlePlayerMove,
+    hideGameOverOverlay,
+    winner,
+    showHint,
+    hintPosition,
+    isAIThinking,
+    getAIThinkingText,
+    gameMode,
+    getPlayerName,
+    handleStartGame,
+    handleRestartGame,
+    closeHint,
+    stopAIAutoPlay,
+    resumeAIAutoPlay,
+    canUndo,
+    isAIAutoPlaying,
+    currentAIPlayer,
+    lastMoveWithReasoning,
+    gameModeInfo,
+    handleUndoMove,
+    handleShowHint,
+    handleViolationClose,
+  } = app;
 </script>
 
 <style scoped>
-.main-game-area {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  gap: 20px;
-  align-items: start;
-  flex: 1;
-}
-
-.left-panel,
-.right-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.center-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.game-container {
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
-
-/* 响应式布局 */
-@media (max-width: 1200px) {
   .main-game-area {
-    grid-template-columns: 1fr 1.5fr 1fr;
-    gap: 15px;
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 20px;
+    align-items: start;
+    flex: 1;
   }
-}
 
-@media (max-width: 992px) {
-  .main-game-area {
-    grid-template-columns: 1fr;
+  .left-panel,
+  .right-panel {
+    display: flex;
+    flex-direction: column;
     gap: 20px;
   }
 
-  .left-panel,
-  .right-panel {
-    order: 2;
-  }
-
   .center-panel {
-    order: 1;
-  }
-}
-
-@media (max-width: 768px) {
-  .main-game-area {
-    gap: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
   }
 
-  .left-panel,
-  .right-panel {
-    gap: 15px;
+  .game-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
   }
 
-  .center-panel {
-    gap: 15px;
+  /* 响应式布局 */
+  @media (max-width: 1200px) {
+    .main-game-area {
+      grid-template-columns: 1fr 1.5fr 1fr;
+      gap: 15px;
+    }
   }
-}
 
-@media (max-width: 576px) {
-  .main-game-area {
-    gap: 10px;
-  }
-}
+  @media (max-width: 992px) {
+    .main-game-area {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
 
-/* 确保面板在小屏幕上的可读性 */
-@media (max-width: 480px) {
-  .left-panel,
-  .right-panel {
-    font-size: 0.9rem;
+    .left-panel,
+    .right-panel {
+      order: 2;
+    }
+
+    .center-panel {
+      order: 1;
+    }
   }
-}
+
+  @media (max-width: 768px) {
+    .main-game-area {
+      gap: 15px;
+    }
+
+    .left-panel,
+    .right-panel {
+      gap: 15px;
+    }
+
+    .center-panel {
+      gap: 15px;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .main-game-area {
+      gap: 10px;
+    }
+  }
+
+  /* 确保面板在小屏幕上的可读性 */
+  @media (max-width: 480px) {
+    .left-panel,
+    .right-panel {
+      font-size: 0.9rem;
+    }
+  }
 </style>

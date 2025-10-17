@@ -2,7 +2,8 @@
 // 不需要外部校验函数，移除未使用的导入以避免 ESLint 警告
 
 export function boardToString(board) {
-  if (!board || !Array.isArray(board) || !Array.isArray(board[0])) return '无效棋盘数据';
+  if (!board || !Array.isArray(board) || !Array.isArray(board[0]))
+    return '无效棋盘数据';
   const size = board.length;
   let result = '   ';
   for (let i = 0; i < size; i++) {
@@ -25,7 +26,12 @@ export function boardToString(board) {
 
 export function historyToString(gameHistory) {
   if (!gameHistory || gameHistory.length === 0) return '暂无走棋记录';
-  return gameHistory.map((move, idx) => `第${idx + 1}步: ${move.player === 1 ? '黑子' : '白子'} 下在 (${move.row}, ${move.col})`).join('\n');
+  return gameHistory
+    .map(
+      (move, idx) =>
+        `第${idx + 1}步: ${move.player === 1 ? '黑子' : '白子'} 下在 (${move.row}, ${move.col})`
+    )
+    .join('\n');
 }
 
 // 组合完整棋局字符串的工具（可独立使用）

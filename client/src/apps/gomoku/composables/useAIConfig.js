@@ -1,31 +1,34 @@
 // AI配置管理组合式函数
 import { ref, reactive } from 'vue';
 import { GameModeService, GAME_MODES } from '../services/GameModeService.js';
-import { aiPresetService, PRESET_AI_CONFIGS } from '../services/AIPresetService.js';
+import {
+  aiPresetService,
+  PRESET_AI_CONFIGS,
+} from '../services/AIPresetService.js';
 
 export function useAIConfig() {
   // 游戏模式服务
   const gameModeService = new GameModeService();
-  
+
   // 状态
   const currentMode = ref(GAME_MODES.HUMAN_VS_AI);
   const showConfigPanel = ref(false);
   const isTestingConnection = ref(false);
-  
+
   // AI配置状态
   const aiConfigs = reactive({
     1: null, // 玩家1的AI配置
-    2: null  // 玩家2的AI配置
+    2: null, // 玩家2的AI配置
   });
 
   // 默认配置模板
   const defaultConfig = {
     apiUrl: '',
     apiKey: '',
-  modelName: 'deepseek-chat',
+    modelName: 'deepseek-chat',
     playerName: '',
     maxTokens: 1000,
-    temperature: 0.1
+    temperature: 0.1,
   };
 
   // 设置游戏模式
@@ -44,10 +47,10 @@ export function useAIConfig() {
 
       // 保存配置
       aiConfigs[playerNumber] = { ...config };
-      
+
       // 配置游戏模式服务
       gameModeService.configurePlayerAI(playerNumber, config);
-      
+
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -81,11 +84,14 @@ export function useAIConfig() {
     }
 
     if (!config.apiUrl.startsWith('http')) {
-      return { success: false, error: 'API URL格式不正确，必须以http或https开头' };
+      return {
+        success: false,
+        error: 'API URL格式不正确，必须以http或https开头',
+      };
     }
 
     isTestingConnection.value = true;
-    
+
     try {
       const result = await gameModeService.testAIConnection(playerNumber);
       return result;
@@ -133,7 +139,7 @@ export function useAIConfig() {
   function saveConfigToStorage() {
     const configData = {
       mode: currentMode.value,
-      aiConfigs: { ...aiConfigs }
+      aiConfigs: { ...aiConfigs },
     };
     localStorage.setItem('gomoku_ai_config', JSON.stringify(configData));
   }
@@ -145,7 +151,7 @@ export function useAIConfig() {
       if (saved) {
         const configData = JSON.parse(saved);
         currentMode.value = configData.mode || GAME_MODES.HUMAN_VS_AI;
-        
+
         // 恢复AI配置（但不包含敏感信息如API Key）
         if (configData.aiConfigs) {
           Object.keys(configData.aiConfigs).forEach(playerNumber => {
@@ -154,17 +160,17 @@ export function useAIConfig() {
               // 只恢复非敏感配置
               aiConfigs[playerNumber] = {
                 ...config,
-                apiKey: '' // 不保存API Key到本地存储
+                apiKey: '', // 不保存API Key到本地存储
               };
             }
           });
         }
-        
+
         setGameMode(currentMode.value);
       }
     } catch (error) {
-    const debug = window.location.search.includes('gomokuDebug=1');
-    if (debug) console.error('加载AI配置失败:', error);
+      const debug = window.location.search.includes('gomokuDebug=1');
+      if (debug) console.error('加载AI配置失败:', error);
     }
   }
 
@@ -174,11 +180,11 @@ export function useAIConfig() {
     showConfigPanel,
     isTestingConnection,
     aiConfigs,
-    
+
     // 预设配置
     presetConfigs: PRESET_AI_CONFIGS,
     defaultConfig,
-    
+
     // 方法
     setGameMode,
     configureAI,
@@ -193,8 +199,8 @@ export function useAIConfig() {
     resetConfig,
     saveConfigToStorage,
     loadConfigFromStorage,
-    
+
     // 游戏模式服务实例
-    gameModeService
+    gameModeService,
   };
 }

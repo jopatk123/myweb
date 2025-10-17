@@ -14,7 +14,7 @@ export function initGameState(roomId, mode, config) {
     food: null,
     gameOver: false,
     winner: null,
-    config
+    config,
   };
 }
 
@@ -22,17 +22,17 @@ export function initSharedGame(gameState, players) {
   void players;
   const boardSize = gameState.config.BOARD_SIZE;
   const center = Math.floor(boardSize / 2);
-  
+
   gameState.sharedSnake = {
     body: [
       { x: center, y: center },
       { x: center, y: center + 1 },
-      { x: center, y: center + 2 }
+      { x: center, y: center + 2 },
     ],
     direction: 'up',
     nextDirection: 'up',
     length: 3,
-    score: 0
+    score: 0,
   };
 
   gameState.food = generateFood(gameState.sharedSnake.body, boardSize);
@@ -42,29 +42,32 @@ export function initSharedGame(gameState, players) {
 
 export function initCompetitiveGame(gameState, players) {
   const boardSize = gameState.config.BOARD_SIZE;
-  
+
   players.forEach((player, index) => {
-    const startX = index === 0 ? Math.floor(boardSize / 4) : Math.floor(3 * boardSize / 4);
+    const startX =
+      index === 0 ? Math.floor(boardSize / 4) : Math.floor((3 * boardSize) / 4);
     const startY = Math.floor(boardSize / 2);
-    
+
     gameState.snakes[player.session_id] = {
       body: [
         { x: startX, y: startY },
         { x: startX, y: startY + 1 },
-        { x: startX, y: startY + 2 }
+        { x: startX, y: startY + 2 },
       ],
       direction: 'up',
       nextDirection: 'up',
       length: 3,
       score: 0,
       gameOver: false,
-      player: player
+      player: player,
     };
   });
 
   gameState.food = {};
   players.forEach(player => {
-    const allSnakeBodies = Object.values(gameState.snakes).flatMap(snake => snake.body);
+    const allSnakeBodies = Object.values(gameState.snakes).flatMap(
+      snake => snake.body
+    );
     gameState.food[player.session_id] = generateFood(allSnakeBodies, boardSize);
   });
 
@@ -81,7 +84,7 @@ export function generateFood(snakeBodies, boardSize) {
   do {
     food = {
       x: Math.floor(Math.random() * boardSize),
-      y: Math.floor(Math.random() * boardSize)
+      y: Math.floor(Math.random() * boardSize),
     };
   } while (occupiedPositions.has(`${food.x},${food.y}`));
 

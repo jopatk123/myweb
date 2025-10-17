@@ -3,12 +3,12 @@ import { AIModelService } from './AIModelService.js';
 
 export const GAME_MODES = {
   HUMAN_VS_AI: 'human_vs_ai',
-  AI_VS_AI: 'ai_vs_ai'
+  AI_VS_AI: 'ai_vs_ai',
 };
 
 export const PLAYER_TYPES = {
   HUMAN: 'human',
-  AI_MODEL: 'ai_model'
+  AI_MODEL: 'ai_model',
 };
 
 export class GameModeService {
@@ -16,7 +16,7 @@ export class GameModeService {
     this.currentMode = GAME_MODES.HUMAN_VS_AI;
     this.players = {
       1: { type: PLAYER_TYPES.HUMAN, name: '玩家', config: null },
-      2: { type: PLAYER_TYPES.AI_MODEL, name: 'AI', config: null }
+      2: { type: PLAYER_TYPES.AI_MODEL, name: 'AI', config: null },
     };
     this.aiServices = new Map();
   }
@@ -24,13 +24,29 @@ export class GameModeService {
   // 设置游戏模式
   setGameMode(mode) {
     this.currentMode = mode;
-    
+
     if (mode === GAME_MODES.HUMAN_VS_AI) {
-      this.players[1] = { type: PLAYER_TYPES.HUMAN, name: '玩家', config: null };
-      this.players[2] = { type: PLAYER_TYPES.AI_MODEL, name: 'AI', config: null };
+      this.players[1] = {
+        type: PLAYER_TYPES.HUMAN,
+        name: '玩家',
+        config: null,
+      };
+      this.players[2] = {
+        type: PLAYER_TYPES.AI_MODEL,
+        name: 'AI',
+        config: null,
+      };
     } else if (mode === GAME_MODES.AI_VS_AI) {
-      this.players[1] = { type: PLAYER_TYPES.AI_MODEL, name: 'AI黑子', config: null };
-      this.players[2] = { type: PLAYER_TYPES.AI_MODEL, name: 'AI白子', config: null };
+      this.players[1] = {
+        type: PLAYER_TYPES.AI_MODEL,
+        name: 'AI黑子',
+        config: null,
+      };
+      this.players[2] = {
+        type: PLAYER_TYPES.AI_MODEL,
+        name: 'AI白子',
+        config: null,
+      };
     }
   }
 
@@ -51,14 +67,15 @@ export class GameModeService {
     }
 
     this.players[playerNumber].config = aiConfig;
-    this.players[playerNumber].name = aiConfig.playerName || `AI${playerNumber}`;
-    
+    this.players[playerNumber].name =
+      aiConfig.playerName || `AI${playerNumber}`;
+
     // 创建AI服务实例
     const aiService = new AIModelService({
       ...aiConfig,
-      playerName: this.players[playerNumber].name
+      playerName: this.players[playerNumber].name,
     });
-    
+
     this.aiServices.set(playerNumber, aiService);
   }
 
@@ -89,7 +106,12 @@ export class GameModeService {
       throw new Error(`玩家${playerNumber}未配置AI服务`);
     }
 
-    return await aiService.getNextMove(board, gameHistory, playerNumber, onThinkingUpdate);
+    return await aiService.getNextMove(
+      board,
+      gameHistory,
+      playerNumber,
+      onThinkingUpdate
+    );
   }
 
   // 验证游戏配置
@@ -101,7 +123,9 @@ export class GameModeService {
         if (!player.config) {
           errors.push(`玩家${playerNumber}需要配置AI`);
         } else if (!player.config.apiUrl || !player.config.apiKey) {
-          errors.push(`玩家${playerNumber}的AI配置不完整：需要API URL和API Key`);
+          errors.push(
+            `玩家${playerNumber}的AI配置不完整：需要API URL和API Key`
+          );
         } else if (!player.config.apiUrl.startsWith('http')) {
           errors.push(`玩家${playerNumber}的API URL格式不正确`);
         } else if (!this.aiServices.has(parseInt(playerNumber))) {
@@ -112,7 +136,7 @@ export class GameModeService {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -132,7 +156,7 @@ export class GameModeService {
       mode: this.currentMode,
       players: { ...this.players },
       isHumanVsAI: this.currentMode === GAME_MODES.HUMAN_VS_AI,
-      isAIVsAI: this.currentMode === GAME_MODES.AI_VS_AI
+      isAIVsAI: this.currentMode === GAME_MODES.AI_VS_AI,
     };
   }
 

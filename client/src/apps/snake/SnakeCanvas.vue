@@ -41,30 +41,30 @@
 
   function draw() {
     if (!renderer) return;
-    
+
     // 清空画布
     renderer.clearCanvas();
-    
+
     // 绘制网格
     renderer.drawGrid(props.gridSize);
-    
+
     // 绘制食物
     if (props.foods && props.foods.length) {
       renderer.drawMultipleFoods(props.foods);
     } else if (props.food) {
       renderer.drawFood(props.food, 0);
     }
-    
+
     // 绘制特殊食物
     renderer.drawSpecialFood(props.specialFood);
-    
+
     // 绘制蛇
     if (props.snakes && Object.keys(props.snakes).length) {
       renderer.drawMultipleSnakes(props.snakes, props.activeSessionId);
     } else if (props.snake && props.snake.length) {
       renderer.drawSingleSnake(props.snake, '#4ade80');
     }
-    
+
     // 绘制粒子效果
     renderer.drawParticles(props.particles);
   }

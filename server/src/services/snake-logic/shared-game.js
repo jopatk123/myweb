@@ -8,7 +8,9 @@ export async function updateSharedGame(roomId, service) {
   if (!gameState) return;
 
   if (!gameState.sharedSnake) {
-    console.warn(`[shared-game] room ${roomId} missing sharedSnake, skipping update`);
+    console.warn(
+      `[shared-game] room ${roomId} missing sharedSnake, skipping update`
+    );
     return;
   }
 
@@ -16,10 +18,18 @@ export async function updateSharedGame(roomId, service) {
 
   const head = { ...gameState.sharedSnake.body[0] };
   switch (gameState.sharedSnake.direction) {
-    case 'up': head.y -= 1; break;
-    case 'down': head.y += 1; break;
-    case 'left': head.x -= 1; break;
-    case 'right': head.x += 1; break;
+    case 'up':
+      head.y -= 1;
+      break;
+    case 'down':
+      head.y += 1;
+      break;
+    case 'left':
+      head.x -= 1;
+      break;
+    case 'right':
+      head.x += 1;
+      break;
   }
 
   const boardSize = gameState.config.BOARD_SIZE;
@@ -45,7 +55,7 @@ export async function updateSharedGame(roomId, service) {
 
   await service.broadcastToRoom(roomId, 'game_update', {
     shared_snake: gameState.sharedSnake,
-    food: gameState.food
+    food: gameState.food,
   });
 }
 
@@ -56,14 +66,24 @@ export function startVoteProcessingLoop(roomId, service) {
   }
 
   const voteLoop = async () => {
-    if (!service.gameStates.has(roomId) || service.gameStates.get(roomId).gameOver) {
+    if (
+      !service.gameStates.has(roomId) ||
+      service.gameStates.get(roomId).gameOver
+    ) {
       return;
     }
 
     const winningDirection = calculateVoteResult(gameState.votes);
     if (winningDirection) {
-      const oppositeDirections = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
-      if (oppositeDirections[winningDirection] !== gameState.sharedSnake.direction) {
+      const oppositeDirections = {
+        up: 'down',
+        down: 'up',
+        left: 'right',
+        right: 'left',
+      };
+      if (
+        oppositeDirections[winningDirection] !== gameState.sharedSnake.direction
+      ) {
         gameState.sharedSnake.nextDirection = winningDirection;
       }
     }
@@ -71,13 +91,19 @@ export function startVoteProcessingLoop(roomId, service) {
     gameState.votes = {};
 
     await service.broadcastToRoom(roomId, 'vote_processed', {
-      winning_direction: winningDirection
+      winning_direction: winningDirection,
     });
 
-    service.voteTimers.set(roomId, setTimeout(voteLoop, gameState.config.VOTE_TIMEOUT));
+    service.voteTimers.set(
+      roomId,
+      setTimeout(voteLoop, gameState.config.VOTE_TIMEOUT)
+    );
   };
 
-  service.voteTimers.set(roomId, setTimeout(voteLoop, gameState.config.VOTE_TIMEOUT));
+  service.voteTimers.set(
+    roomId,
+    setTimeout(voteLoop, gameState.config.VOTE_TIMEOUT)
+  );
 }
 
 function calculateVoteResult(votes) {
@@ -95,7 +121,9 @@ function calculateVoteResult(votes) {
   }
 
   const maxVotes = Math.max(...Object.values(voteCount));
-  const winners = Object.keys(voteCount).filter(dir => voteCount[dir] === maxVotes);
+  const winners = Object.keys(voteCount).filter(
+    dir => voteCount[dir] === maxVotes
+  );
 
   return winners[Math.floor(Math.random() * winners.length)];
 }

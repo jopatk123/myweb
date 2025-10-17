@@ -72,16 +72,18 @@
   const currentPlayerText = computed(() => {
     if (props.gameOver) return '游戏结束';
     if (props.isAiThinking) {
-      return props.currentAIPlayerName ? `${props.currentAIPlayerName}思考中...` : 'AI思考中...';
+      return props.currentAIPlayerName
+        ? `${props.currentAIPlayerName}思考中...`
+        : 'AI思考中...';
     }
-    return props.currentPlayer === 1 ? 
-      (props.player1Name || '黑子') : 
-      (props.player2Name || '白子');
+    return props.currentPlayer === 1
+      ? props.player1Name || '黑子'
+      : props.player2Name || '白子';
   });
 
   const currentPlayerClass = computed(() => {
     if (props.gameOver) return 'game-over';
-  if (props.isAiThinking) return 'ai-thinking';
+    if (props.isAiThinking) return 'ai-thinking';
     return props.currentPlayer === 1 ? 'player-turn' : 'ai-turn';
   });
 

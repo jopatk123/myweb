@@ -3,23 +3,26 @@
     <h3>快速开始</h3>
     <div class="quick-start-controls">
       <input
-  :value="playerName"
-  @input="$emit('update:playerName', $event.target.value)"
+        :value="playerName"
+        @input="$emit('update:playerName', $event.target.value)"
         type="text"
         :placeholder="playerNamePlaceholder"
         maxlength="20"
         class="player-name-input"
-        
       />
-      
-      <slot name="mode-selector" :selectedMode="selectedMode" :onModeChange="onModeChange">
+
+      <slot
+        name="mode-selector"
+        :selectedMode="selectedMode"
+        :onModeChange="onModeChange"
+      >
         <div class="game-mode-selector">
           <label v-for="mode in gameModes" :key="mode.value">
-            <input 
+            <input
               :checked="selectedMode === mode.value"
               @change="$emit('update:selectedMode', mode.value)"
-              type="radio" 
-              :value="mode.value" 
+              type="radio"
+              :value="mode.value"
             />
             <span class="mode-option">
               {{ mode.icon }} {{ mode.label }}
@@ -28,9 +31,9 @@
           </label>
         </div>
       </slot>
-      
+
       <div class="quick-start-buttons">
-        <button 
+        <button
           class="btn-secondary"
           @click="$emit('showCreateRoom')"
           :disabled="!playerName.trim()"
@@ -43,111 +46,111 @@
 </template>
 
 <script setup>
-defineProps({
-  playerName: String,
-  playerNamePlaceholder: String,
-  selectedMode: String,
-  gameModes: Array,
-  loading: Boolean
-});
+  defineProps({
+    playerName: String,
+    playerNamePlaceholder: String,
+    selectedMode: String,
+    gameModes: Array,
+    loading: Boolean,
+  });
 
-const emit = defineEmits([
-  'update:playerName',
-  'update:selectedMode',
-  'showCreateRoom'
-]);
+  const emit = defineEmits([
+    'update:playerName',
+    'update:selectedMode',
+    'showCreateRoom',
+  ]);
 
-const onModeChange = (mode) => {
-  emit('update:selectedMode', mode);
-};
+  const onModeChange = mode => {
+    emit('update:selectedMode', mode);
+  };
 </script>
 
 <style scoped>
-.quick-start-section {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
+  .quick-start-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
 
-.quick-start-controls {
-  display: grid;
-  gap: 15px;
-}
+  .quick-start-controls {
+    display: grid;
+    gap: 15px;
+  }
 
-.player-name-input {
-  padding: 12px;
-  border: 2px solid #ddd;
-  border-radius: 6px;
-  font-size: 16px;
-}
+  .player-name-input {
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+  }
 
-.game-mode-selector {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
-}
+  .game-mode-selector {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
 
-.mode-option {
-  display: block;
-  padding: 10px 15px;
-  border: 2px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
+  .mode-option {
+    display: block;
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
 
-input[type="radio"] {
-  display: none;
-}
+  input[type='radio'] {
+    display: none;
+  }
 
-input[type="radio"]:checked + .mode-option {
-  border-color: #007bff;
-  background-color: #f0f8ff;
-  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-}
+  input[type='radio']:checked + .mode-option {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+  }
 
+  .mode-option:hover {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+  }
 
-.mode-option:hover {
-  border-color: #007bff;
-  background-color: #f0f8ff;
-}
+  .quick-start-buttons {
+    display: flex;
+    gap: 10px;
+  }
 
-.quick-start-buttons {
-  display: flex;
-  gap: 10px;
-}
+  .btn-primary,
+  .btn-secondary {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+  }
 
-.btn-primary, .btn-secondary {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s ease;
-}
+  .btn-primary {
+    background-color: #007bff;
+    color: white;
+  }
 
-.btn-primary {
-  background-color: #007bff;
-  color: white;
-}
+  .btn-primary:hover {
+    background-color: #0056b3;
+  }
 
-.btn-primary:hover {
-  background-color: #0056b3;
-}
+  .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
 
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-}
+  .btn-secondary:hover {
+    background-color: #545b62;
+  }
 
-.btn-secondary:hover {
-  background-color: #545b62;
-}
-
-.btn-primary:disabled,
-.btn-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+  .btn-primary:disabled,
+  .btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 </style>

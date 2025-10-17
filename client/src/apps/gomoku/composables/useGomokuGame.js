@@ -30,7 +30,7 @@ export function useGomokuGame() {
   function restartGame() {
     gameLogic.value.resetGame();
     lastMove.value = null;
-    
+
     if (!gameStarted.value) {
       gameStarted.value = true;
     }
@@ -38,21 +38,38 @@ export function useGomokuGame() {
 
   function makePlayerMove(row, col) {
     const debug = window.location.search.includes('gomokuDebug=1');
-    if (debug) console.log('[DEBUG makePlayerMove] Called with:', row, col, 'currentPlayer:', gameLogic.value.currentPlayer, 'gameOver:', gameLogic.value.gameOver);
+    if (debug)
+      console.log(
+        '[DEBUG makePlayerMove] Called with:',
+        row,
+        col,
+        'currentPlayer:',
+        gameLogic.value.currentPlayer,
+        'gameOver:',
+        gameLogic.value.gameOver
+      );
 
     if (gameLogic.value.gameOver) {
-      if (debug) console.log('[DEBUG makePlayerMove] Game is over, move rejected');
+      if (debug)
+        console.log('[DEBUG makePlayerMove] Game is over, move rejected');
       return false;
     }
 
     // 移除玩家限制检查，允许AI调用此函数
     if (debug) console.log('[DEBUG makePlayerMove] Attempting to make move');
     if (gameLogic.value.makeMove(row, col)) {
-      if (debug) console.log('[DEBUG makePlayerMove] Move successful! New current player:', gameLogic.value.currentPlayer);
+      if (debug)
+        console.log(
+          '[DEBUG makePlayerMove] Move successful! New current player:',
+          gameLogic.value.currentPlayer
+        );
       lastMove.value = { row, col };
       return true;
     }
-    if (debug) console.log('[DEBUG makePlayerMove] Move failed - position may be occupied or invalid');
+    if (debug)
+      console.log(
+        '[DEBUG makePlayerMove] Move failed - position may be occupied or invalid'
+      );
     return false;
   }
 
@@ -67,7 +84,8 @@ export function useGomokuGame() {
       if (gameLogic.value.undoMove()) {
         // 更新最后一步
         const history = gameLogic.value.moveHistory;
-        lastMove.value = history.length > 0 ? history[history.length - 1] : null;
+        lastMove.value =
+          history.length > 0 ? history[history.length - 1] : null;
         return true;
       }
     }
@@ -79,7 +97,7 @@ export function useGomokuGame() {
     if (gameLogic.value.gameOver) {
       return null;
     }
-    
+
     // 简单提示：建议中心位置或附近
     const center = Math.floor(gameLogic.value.BOARD_SIZE / 2);
     for (let offset = 0; offset < 3; offset++) {
@@ -93,7 +111,7 @@ export function useGomokuGame() {
         }
       }
     }
-    
+
     return null;
   }
 
@@ -101,7 +119,7 @@ export function useGomokuGame() {
     // 状态
     gameStarted,
     lastMove,
-    
+
     // 计算属性
     canUndo,
     currentPlayer,
@@ -109,13 +127,13 @@ export function useGomokuGame() {
     winner,
     board,
     moveCount,
-  gameHistory,
-    
+    gameHistory,
+
     // 方法
     startGame,
     restartGame,
     makePlayerMove,
     undoMove,
-    getHint
+    getHint,
   };
 }

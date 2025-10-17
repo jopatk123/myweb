@@ -18,7 +18,13 @@ export class RoomManagerService extends BaseMultiplayerService {
     this.PlayerModel = PlayerModel;
     if (!RoomManagerService._cleanupStarted) {
       RoomManagerService._cleanupStarted = true;
-      setInterval(() => { try { this.cleanupEmptyRooms(); } catch (e) { console.error('定时清理房间失败', e); } }, this.options.cleanupInterval);
+      setInterval(() => {
+        try {
+          this.cleanupEmptyRooms();
+        } catch (e) {
+          console.error('定时清理房间失败', e);
+        }
+      }, this.options.cleanupInterval);
     }
   }
 }

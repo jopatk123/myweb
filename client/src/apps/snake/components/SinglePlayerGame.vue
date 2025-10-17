@@ -36,7 +36,7 @@
       :paused="paused"
       :game-over="gameOver"
       :difficulty="difficulty"
-      @update:difficulty="(val) => emit('update:difficulty', val)"
+      @update:difficulty="val => emit('update:difficulty', val)"
       @start="start"
       @pause="pause"
       @restart="restart"
@@ -72,10 +72,10 @@
   const emit = defineEmits([
     'back-to-menu',
     'start',
-    'pause', 
+    'pause',
     'restart',
     'canvas-click',
-    'update:difficulty'
+    'update:difficulty',
   ]);
 
   const snakeCanvas = ref(null);

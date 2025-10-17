@@ -10,11 +10,17 @@
         <video v-else-if="isVideo" :src="previewUrl" class="media" controls />
         <div v-else-if="isWord || isExcel" class="doc-wrap">
           <div v-if="loading" class="loading">正在生成预览...</div>
-          <div v-else-if="previewHtml" class="doc-html" v-html="previewHtml"></div>
+          <div
+            v-else-if="previewHtml"
+            class="doc-html"
+            v-html="previewHtml"
+          ></div>
           <div v-else class="fallback">
             无法预览该文件。你可以点击下方下载并在本地查看。
-            <div style="margin-top:10px">
-              <a :href="previewUrl" target="_blank" rel="noopener" class="btn">下载文件</a>
+            <div style="margin-top: 10px">
+              <a :href="previewUrl" target="_blank" rel="noopener" class="btn"
+                >下载文件</a
+              >
             </div>
           </div>
         </div>
@@ -137,7 +143,8 @@
         // mammoth expects ArrayBuffer
         const ab = await fetchArrayBuffer(url);
         // dynamic import mammoth to reduce initial bundle cost
-        const mammoth = (await import('mammoth')).default || (await import('mammoth'));
+        const mammoth =
+          (await import('mammoth')).default || (await import('mammoth'));
         const result = await mammoth.convertToHtml({ arrayBuffer: ab });
         const DOMPurify = (await import('dompurify')).default;
         previewHtml.value = DOMPurify.sanitize(result.value || '');
@@ -168,7 +175,7 @@
   // 当文件或模态打开时尝试生成预览（自动降级为不可预览提示）
   watch(
     [() => props.file, () => props.modelValue],
-  ([_file, open]) => {
+    ([_file, open]) => {
       if (open && (isWord.value || isExcel.value)) {
         // 异步生成
         generatePreview().catch(() => {});

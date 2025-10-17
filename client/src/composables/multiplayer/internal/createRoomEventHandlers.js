@@ -19,7 +19,7 @@ export function createRoomEventHandlers({
       connecting.value = false;
     },
 
-    room_left: data => {
+    room_left: _data => {
       currentRoom.value = null;
       currentPlayer.value = null;
       players.value = [];

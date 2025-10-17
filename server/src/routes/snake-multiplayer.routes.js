@@ -13,8 +13,6 @@ export const createSnakeMultiplayerRoutes = () => {
   // 获取房间详情
   router.get('/rooms/:roomCode', SnakeMultiplayerController.getRoomDetail);
 
-  
-
   // 清理离线玩家（管理员功能）
   router.post('/cleanup', SnakeMultiplayerController.cleanupOfflinePlayers);
 

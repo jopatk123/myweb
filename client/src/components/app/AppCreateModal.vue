@@ -64,9 +64,9 @@
       .toString()
       .trim()
       .toLowerCase()
-  .replace(/[^a-z0-9\s-]/g, '') // 移除非法字符
+      .replace(/[^a-z0-9\s-]/g, '') // 移除非法字符
       .replace(/\s+/g, '-') // 空白转为连字符
-  .replace(/-+/g, '-') // 合并连续连字符
+      .replace(/-+/g, '-') // 合并连续连字符
       .replace(/^-|-$/g, ''); // 移除首尾连字符
   }
 

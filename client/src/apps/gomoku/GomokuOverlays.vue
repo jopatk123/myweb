@@ -6,8 +6,12 @@
       <p>体验AI大模型的智慧对战</p>
       <p>黑子先行，连成五子获胜</p>
       <div class="start-buttons">
-        <button @click="$emit('start')" class="btn btn-primary">开始游戏</button>
-        <button @click="$emit('config-ai')" class="btn btn-secondary">AI配置</button>
+        <button @click="$emit('start')" class="btn btn-primary">
+          开始游戏
+        </button>
+        <button @click="$emit('config-ai')" class="btn btn-secondary">
+          AI配置
+        </button>
       </div>
     </div>
   </div>
@@ -15,12 +19,14 @@
   <!-- 游戏结束覆盖层 -->
   <div v-if="gameOver" class="game-overlay">
     <div class="game-over-modal">
-      <h3 :class="{
-        'win-title': gameMode === 'human_vs_ai' && winner === 1,
-        'lose-title': gameMode === 'human_vs_ai' && winner === 2,
-        'ai-win-title': gameMode === 'ai_vs_ai' && winner,
-        'draw-title': !winner
-      }">
+      <h3
+        :class="{
+          'win-title': gameMode === 'human_vs_ai' && winner === 1,
+          'lose-title': gameMode === 'human_vs_ai' && winner === 2,
+          'ai-win-title': gameMode === 'ai_vs_ai' && winner,
+          'draw-title': !winner,
+        }"
+      >
         {{ winTitle }}
       </h3>
 
@@ -47,10 +53,7 @@
   </div>
 
   <!-- AI思考提示 -->
-  <div
-    v-if="isAiThinking"
-    class="thinking-overlay"
-  >
+  <div v-if="isAiThinking" class="thinking-overlay">
     <div class="thinking-indicator">
       <div class="thinking-dots">
         <span></span>
@@ -119,19 +122,25 @@
     // 新增：游戏模式相关props
     gameMode: {
       type: String,
-      default: 'human_vs_ai'
+      default: 'human_vs_ai',
     },
     player1Name: {
       type: String,
-      default: '人类玩家'
+      default: '人类玩家',
     },
     player2Name: {
       type: String,
-      default: 'AI玩家'
-    }
+      default: 'AI玩家',
+    },
   });
 
-  defineEmits(['start', 'restart', 'close-gameover', 'close-hint', 'config-ai']);
+  defineEmits([
+    'start',
+    'restart',
+    'close-gameover',
+    'close-hint',
+    'config-ai',
+  ]);
 
   // 计算获胜者名称
   const winnerName = computed(() => {
@@ -142,12 +151,12 @@
   // 计算获胜标题
   const winTitle = computed(() => {
     if (!props.winner) return '🤝 平局';
-    
+
     if (props.gameMode === 'human_vs_ai') {
       // 人机对战模式
       return props.winner === 1 ? '🎉 恭喜获胜！' : '😔 AI获胜';
     } else {
-      // AI对AI模式  
+      // AI对AI模式
       return `🏆 ${winnerName.value} 获胜！`;
     }
   });
@@ -155,10 +164,12 @@
   // 计算获胜描述
   const winDescription = computed(() => {
     if (!props.winner) return '棋盘已满，不分胜负！';
-    
+
     if (props.gameMode === 'human_vs_ai') {
       // 人机对战模式
-      return props.winner === 1 ? '你成功击败了最高难度AI！' : 'AI技高一筹，再接再厉！';
+      return props.winner === 1
+        ? '你成功击败了最高难度AI！'
+        : 'AI技高一筹，再接再厉！';
     } else {
       // AI对AI模式
       return `经过激烈对战，${winnerName.value} 技高一筹！`;

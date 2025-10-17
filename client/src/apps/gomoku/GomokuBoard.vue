@@ -113,8 +113,8 @@
       ctx.stroke();
     }
 
-  // 绘制坐标标注 (0~14) - 放在网格之上、棋子之下
-  drawCoordinates();
+    // 绘制坐标标注 (0~14) - 放在网格之上、棋子之下
+    drawCoordinates();
 
     // 绘制天元和星位
     const starPoints = [

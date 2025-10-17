@@ -1,13 +1,15 @@
 <template>
-  <div 
+  <div
     class="room-card"
-    :class="{ 
+    :class="{
       'room-full': room.current_players >= room.max_players,
-      'room-playing': room.status === 'playing'
+      'room-playing': room.status === 'playing',
     }"
   >
     <div class="room-header">
-  <span class="room-code">{{ room.room_code || room.roomCode || '未知房间' }}</span>
+      <span class="room-code">{{
+        room.room_code || room.roomCode || '未知房间'
+      }}</span>
       <span class="room-mode" :class="`mode-${room.mode}`">
         {{ room.mode === 'shared' ? '🤝 共享' : '⚔️ 竞技' }}
       </span>
@@ -15,7 +17,9 @@
 
     <div class="room-info">
       <div class="player-count">
-        <span class="count">{{ room.current_players }}/{{ room.max_players }}</span>
+        <span class="count"
+          >{{ room.current_players }}/{{ room.max_players }}</span
+        >
         <span class="label">玩家</span>
       </div>
       <div class="room-status">
@@ -26,25 +30,35 @@
     </div>
 
     <div class="room-actions">
-      <button 
+      <button
         v-if="canJoinRoom"
-        class="btn-join" 
+        class="btn-join"
         @click="$emit('join', room.room_code || room.roomCode)"
       >
         {{ getJoinButtonText() }}
       </button>
-      <button 
-        v-else-if="room.status === 'playing' && room.current_players >= room.max_players && room.mode !== 'shared'"
-        class="btn-spectate" 
+      <button
+        v-else-if="
+          room.status === 'playing' &&
+          room.current_players >= room.max_players &&
+          room.mode !== 'shared'
+        "
+        class="btn-spectate"
         @click="$emit('spectate', room.room_code || room.roomCode)"
         disabled
       >
         👁️房间已满
       </button>
-      <span v-else-if="room.current_players >= room.max_players" class="room-unavailable">
+      <span
+        v-else-if="room.current_players >= room.max_players"
+        class="room-unavailable"
+      >
         房间已满
       </span>
-      <span v-else-if="room.status === 'playing' && room.mode === 'competitive'" class="room-unavailable">
+      <span
+        v-else-if="room.status === 'playing' && room.mode === 'competitive'"
+        class="room-unavailable"
+      >
         竞技模式游戏中
       </span>
     </div>
@@ -52,192 +66,193 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+  import { computed } from 'vue';
 
-const props = defineProps({
-  room: { type: Object, required: true }
-})
+  const props = defineProps({
+    room: { type: Object, required: true },
+  });
 
-defineEmits(['join', 'spectate'])
+  defineEmits(['join', 'spectate']);
 
-const getStatusText = (status) => {
-  const statusMap = {
-    'waiting': '等待中',
-    'playing': '游戏中',
-    'finished': '已结束'
-  }
-  return statusMap[status] || status
-}
+  const getStatusText = status => {
+    const statusMap = {
+      waiting: '等待中',
+      playing: '游戏中',
+      finished: '已结束',
+    };
+    return statusMap[status] || status;
+  };
 
-const canJoinRoom = computed(() => {
-  const room = props.room
-  
-  // 房间已满则不能加入
-  if (room.current_players >= room.max_players) {
-    return false
-  }
-  
-  // 等待中的房间都可以加入
-  if (room.status === 'waiting') {
-    return true
-  }
-  
-  // 游戏中的房间：只有共享模式可以加入
-  if (room.status === 'playing') {
-    return room.mode === 'shared'
-  }
-  
-  return false
-})
+  const canJoinRoom = computed(() => {
+    const room = props.room;
 
-const getJoinButtonText = () => {
-  const room = props.room
-  
-  if (room.status === 'waiting') {
-    return '🚀 加入游戏'
-  } else if (room.status === 'playing' && room.mode === 'shared') {
-    return '🐍 中途加入'
-  }
-  
-  return '🎮 加入游戏'
-}
+    // 房间已满则不能加入
+    if (room.current_players >= room.max_players) {
+      return false;
+    }
+
+    // 等待中的房间都可以加入
+    if (room.status === 'waiting') {
+      return true;
+    }
+
+    // 游戏中的房间：只有共享模式可以加入
+    if (room.status === 'playing') {
+      return room.mode === 'shared';
+    }
+
+    return false;
+  });
+
+  const getJoinButtonText = () => {
+    const room = props.room;
+
+    if (room.status === 'waiting') {
+      return '🚀 加入游戏';
+    } else if (room.status === 'playing' && room.mode === 'shared') {
+      return '🐍 中途加入';
+    }
+
+    return '🎮 加入游戏';
+  };
 </script>
 
 <style scoped>
-.room-card {
-  background: white;
-  border: 1px solid #e1e8ed;
-  border-radius: 12px;
-  padding: 20px;
-  transition: all 0.3s;
-}
+  .room-card {
+    background: white;
+    border: 1px solid #e1e8ed;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s;
+  }
 
-.room-card:hover {
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
+  .room-card:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
 
-.room-card.room-full {
-  opacity: 0.7;
-}
+  .room-card.room-full {
+    opacity: 0.7;
+  }
 
-.room-card.room-playing {
-  border-left: 4px solid #ffa502;
-}
+  .room-card.room-playing {
+    border-left: 4px solid #ffa502;
+  }
 
-.room-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
+  .room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
 
-.room-code {
-  font-family: monospace;
-  font-weight: bold;
-  font-size: 18px;
-  color: #2c3e50;
-}
+  .room-code {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 18px;
+    color: #2c3e50;
+  }
 
-.room-mode {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
+  .room-mode {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
 
-.mode-shared {
-  background: #e3f2fd;
-  color: #1976d2;
-}
+  .mode-shared {
+    background: #e3f2fd;
+    color: #1976d2;
+  }
 
-.mode-competitive {
-  background: #fce4ec;
-  color: #c2185b;
-}
+  .mode-competitive {
+    background: #fce4ec;
+    color: #c2185b;
+  }
 
-.room-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
+  .room-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
 
-.player-count {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+  .player-count {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
-.count {
-  font-weight: bold;
-  font-size: 18px;
-  color: #2c3e50;
-}
+  .count {
+    font-weight: bold;
+    font-size: 18px;
+    color: #2c3e50;
+  }
 
-.label {
-  font-size: 12px;
-  color: #666;
-}
+  .label {
+    font-size: 12px;
+    color: #666;
+  }
 
-.status {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
+  .status {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
 
-.status-waiting {
-  background: #e8f5e8;
-  color: #2e7d32;
-}
+  .status-waiting {
+    background: #e8f5e8;
+    color: #2e7d32;
+  }
 
-.status-playing {
-  background: #fff3e0;
-  color: #ef6c00;
-}
+  .status-playing {
+    background: #fff3e0;
+    color: #ef6c00;
+  }
 
-.status-finished {
-  background: #fafafa;
-  color: #616161;
-}
+  .status-finished {
+    background: #fafafa;
+    color: #616161;
+  }
 
-.room-actions {
-  text-align: center;
-}
+  .room-actions {
+    text-align: center;
+  }
 
-.btn-join, .btn-spectate {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s;
-  width: 100%;
-}
+  .btn-join,
+  .btn-spectate {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+  }
 
-.btn-join {
-  background: #667eea;
-  color: white;
-}
+  .btn-join {
+    background: #667eea;
+    color: white;
+  }
 
-.btn-join:hover {
-  background: #5a6fd8;
-  transform: translateY(-1px);
-}
+  .btn-join:hover {
+    background: #5a6fd8;
+    transform: translateY(-1px);
+  }
 
-.btn-spectate {
-  background: #ffa502;
-  color: white;
-}
+  .btn-spectate {
+    background: #ffa502;
+    color: white;
+  }
 
-.btn-spectate:hover {
-  background: #e8940e;
-  transform: translateY(-1px);
-}
+  .btn-spectate:hover {
+    background: #e8940e;
+    transform: translateY(-1px);
+  }
 
-.room-unavailable {
-  color: #666;
-  font-size: 14px;
-}
+  .room-unavailable {
+    color: #666;
+    font-size: 14px;
+  }
 </style>

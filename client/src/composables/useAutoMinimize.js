@@ -28,7 +28,8 @@ export function useAutoMinimize(options = {}) {
   }
 
   // 标注未使用的参数以消除 lint 警告（功能保留以备未来使用）
-  void _enabled; void _isAppActive;
+  void _enabled;
+  void _isAppActive;
 
   // 安排最小化
   function scheduleMinimize(customDelay = delay) {

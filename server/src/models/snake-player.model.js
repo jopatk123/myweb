@@ -15,7 +15,7 @@ export const SnakePlayerModel = {
         is_ready, is_online, joined_at
       ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
     `);
-    
+
     const result = stmt.run(
       playerData.room_id,
       playerData.session_id,
@@ -24,7 +24,7 @@ export const SnakePlayerModel = {
       playerData.is_ready ? 1 : 0,
       playerData.is_online !== false ? 1 : 0 // 默认为true
     );
-    
+
     return this.findById(result.lastInsertRowid);
   },
 
@@ -71,7 +71,7 @@ export const SnakePlayerModel = {
     return rows.map(r => ({
       ...r,
       is_ready: !!r.is_ready,
-      is_online: !!r.is_online
+      is_online: !!r.is_online,
     }));
   },
 
@@ -89,7 +89,7 @@ export const SnakePlayerModel = {
     return rows.map(r => ({
       ...r,
       is_ready: !!r.is_ready,
-      is_online: !!r.is_online
+      is_online: !!r.is_online,
     }));
   },
 
@@ -98,10 +98,10 @@ export const SnakePlayerModel = {
    */
   update(id, updateData) {
     const db = getDb();
-    
+
     const fields = [];
     const values = [];
-    
+
     Object.entries(updateData).forEach(([key, value]) => {
       fields.push(`${key} = ?`);
       // 转换布尔值为数字
@@ -111,20 +111,27 @@ export const SnakePlayerModel = {
         values.push(value);
       }
     });
-    
-    fields.push('updated_at = datetime(\'now\')');
+
+    fields.push("updated_at = datetime('now')");
     values.push(id);
-    
+
     const stmt = db.prepare(`
       UPDATE snake_players 
       SET ${fields.join(', ')} 
       WHERE id = ?
     `);
-    
+
     try {
       stmt.run(...values);
     } catch (e) {
-      console.error('Failed to update snake_player id=', id, 'fields=', fields.join(', '), 'error=', e && e.message);
+      console.error(
+        'Failed to update snake_player id=',
+        id,
+        'fields=',
+        fields.join(', '),
+        'error=',
+        e && e.message
+      );
       throw e;
     }
     return this.findById(id);
@@ -135,10 +142,10 @@ export const SnakePlayerModel = {
    */
   updateByRoomAndSession(roomId, sessionId, updateData) {
     const db = getDb();
-    
+
     const fields = [];
     const values = [];
-    
+
     Object.entries(updateData).forEach(([key, value]) => {
       fields.push(`${key} = ?`);
       // 转换布尔值为数字
@@ -148,20 +155,25 @@ export const SnakePlayerModel = {
         values.push(value);
       }
     });
-    
-    fields.push('updated_at = datetime(\'now\')');
+
+    fields.push("updated_at = datetime('now')");
     values.push(roomId, sessionId);
-    
+
     const stmt = db.prepare(`
       UPDATE snake_players 
       SET ${fields.join(', ')} 
       WHERE room_id = ? AND session_id = ?
     `);
-    
+
     try {
       stmt.run(...values);
     } catch (e) {
-      console.error('Failed to update snake_player by room/session', { roomId, sessionId, fields: fields.join(', '), error: e && e.message });
+      console.error('Failed to update snake_player by room/session', {
+        roomId,
+        sessionId,
+        fields: fields.join(', '),
+        error: e && e.message,
+      });
       throw e;
     }
     return this.findByRoomAndSession(roomId, sessionId);
@@ -225,5 +237,5 @@ export const SnakePlayerModel = {
     `);
     const result = stmt.run();
     return result.changes;
-  }
+  },
 };

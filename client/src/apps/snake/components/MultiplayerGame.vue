@@ -1,19 +1,19 @@
 <template>
   <div class="multiplayer-mode">
     <!-- 大厅界面 -->
-    <SnakeLobby 
+    <SnakeLobby
       v-if="multiplayerView === 'lobby'"
       @join-room="$emit('join-room')"
       @create-room="$emit('create-room')"
     />
-    
+
     <!-- 房间界面 -->
     <SnakeRoom
       v-else-if="multiplayerView === 'room'"
       @leave-room="$emit('leave-room')"
       @game-update="$emit('game-update', $event)"
     />
-    
+
     <!-- 返回按钮 -->
     <div class="multiplayer-back">
       <button class="btn btn-secondary" @click="$emit('back-to-menu')">
@@ -31,16 +31,16 @@
     multiplayerView: {
       type: String,
       required: true,
-      validator: (value) => ['lobby', 'room'].includes(value)
-    }
+      validator: value => ['lobby', 'room'].includes(value),
+    },
   });
 
   defineEmits([
     'back-to-menu',
     'join-room',
-    'create-room', 
+    'create-room',
     'leave-room',
-    'game-update'
+    'game-update',
   ]);
 </script>
 

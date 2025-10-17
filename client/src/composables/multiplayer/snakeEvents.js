@@ -13,9 +13,14 @@ export function createSnakeEvents() {
     if (listeners[type]) listeners[type].push(cb);
   };
   const emit = (type, payload) => {
-    if (listeners[type]) listeners[type].forEach(cb => {
-      try { cb(payload); } catch (e) { console.error('Snake event handler error', type, e); }
-    });
+    if (listeners[type])
+      listeners[type].forEach(cb => {
+        try {
+          cb(payload);
+        } catch (e) {
+          console.error('Snake event handler error', type, e);
+        }
+      });
   };
 
   return {
@@ -32,6 +37,6 @@ export function createSnakeEvents() {
     emitPlayerLeave: data => emit('playerLeave', data),
     emitPlayerReady: data => emit('playerReady', data),
     emitVoteUpdate: data => emit('voteUpdate', data),
-    emitAutoPopup: data => emit('autoPopup', data)
+    emitAutoPopup: data => emit('autoPopup', data),
   };
 }

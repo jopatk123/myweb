@@ -17,8 +17,6 @@ export class NovelBookmarkController {
         deviceId,
       } = req.body;
 
-
-
       if (!bookId || !title) {
         return res.status(400).json({
           success: false,
@@ -136,7 +134,6 @@ export class NovelBookmarkController {
     try {
       const { id } = req.params;
 
-
       if (!id) {
         return res.status(400).json({
           success: false,
@@ -191,7 +188,6 @@ export class NovelBookmarkController {
     try {
       const { deviceId, bookmarks } = req.body;
 
-
       if (!deviceId) {
         return res.status(400).json({
           success: false,
@@ -203,8 +199,6 @@ export class NovelBookmarkController {
         deviceId,
         bookmarks || []
       );
-
-
 
       if (result.success) {
         res.json(result);

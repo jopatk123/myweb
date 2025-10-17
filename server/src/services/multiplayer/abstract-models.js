@@ -14,8 +14,8 @@ export class AbstractRoomModel {
    * @returns {object} 创建的房间
    */
   static create(_roomData) {
-  void _roomData;
-  throw new Error('create method must be implemented');
+    void _roomData;
+    throw new Error('create method must be implemented');
   }
 
   /**
@@ -24,8 +24,8 @@ export class AbstractRoomModel {
    * @returns {object|null} 房间对象
    */
   static findByRoomCode(_roomCode) {
-  void _roomCode;
-  throw new Error('findByRoomCode method must be implemented');
+    void _roomCode;
+    throw new Error('findByRoomCode method must be implemented');
   }
 
   /**
@@ -34,8 +34,8 @@ export class AbstractRoomModel {
    * @returns {object|null} 房间对象
    */
   static findById(_roomId) {
-  void _roomId;
-  throw new Error('findById method must be implemented');
+    void _roomId;
+    throw new Error('findById method must be implemented');
   }
 
   /**
@@ -45,9 +45,9 @@ export class AbstractRoomModel {
    * @returns {boolean} 更新是否成功
    */
   static update(_roomId, _updates) {
-  void _roomId;
-  void _updates;
-  throw new Error('update method must be implemented');
+    void _roomId;
+    void _updates;
+    throw new Error('update method must be implemented');
   }
 
   /**
@@ -56,8 +56,8 @@ export class AbstractRoomModel {
    * @returns {boolean} 删除是否成功
    */
   static delete(_roomId) {
-  void _roomId;
-  throw new Error('delete method must be implemented');
+    void _roomId;
+    throw new Error('delete method must be implemented');
   }
 
   /**
@@ -66,8 +66,8 @@ export class AbstractRoomModel {
    * @returns {Array} 房间列表
    */
   static getActiveRooms(_filters = {}) {
-  void _filters;
-  throw new Error('getActiveRooms method must be implemented');
+    void _filters;
+    throw new Error('getActiveRooms method must be implemented');
   }
 
   /**
@@ -95,8 +95,8 @@ export class AbstractPlayerModel {
    * @returns {object} 创建的玩家
    */
   static create(_playerData) {
-  void _playerData;
-  throw new Error('create method must be implemented');
+    void _playerData;
+    throw new Error('create method must be implemented');
   }
 
   /**
@@ -106,9 +106,9 @@ export class AbstractPlayerModel {
    * @returns {object|null} 玩家对象
    */
   static findByRoomAndSession(_roomId, _sessionId) {
-  void _roomId;
-  void _sessionId;
-  throw new Error('findByRoomAndSession method must be implemented');
+    void _roomId;
+    void _sessionId;
+    throw new Error('findByRoomAndSession method must be implemented');
   }
 
   /**
@@ -117,8 +117,8 @@ export class AbstractPlayerModel {
    * @returns {Array} 玩家列表
    */
   static findByRoomId(_roomId) {
-  void _roomId;
-  throw new Error('findByRoomId method must be implemented');
+    void _roomId;
+    throw new Error('findByRoomId method must be implemented');
   }
 
   /**
@@ -127,8 +127,8 @@ export class AbstractPlayerModel {
    * @returns {Array} 在线玩家列表
    */
   static findOnlineByRoomId(_roomId) {
-  void _roomId;
-  throw new Error('findOnlineByRoomId method must be implemented');
+    void _roomId;
+    throw new Error('findOnlineByRoomId method must be implemented');
   }
 
   /**
@@ -138,9 +138,9 @@ export class AbstractPlayerModel {
    * @returns {boolean} 更新是否成功
    */
   static update(_playerId, _updates) {
-  void _playerId;
-  void _updates;
-  throw new Error('update method must be implemented');
+    void _playerId;
+    void _updates;
+    throw new Error('update method must be implemented');
   }
 
   /**
@@ -149,8 +149,8 @@ export class AbstractPlayerModel {
    * @returns {boolean} 删除是否成功
    */
   static deleteBySession(_sessionId) {
-  void _sessionId;
-  throw new Error('deleteBySession method must be implemented');
+    void _sessionId;
+    throw new Error('deleteBySession method must be implemented');
   }
 
   /**
@@ -159,8 +159,8 @@ export class AbstractPlayerModel {
    * @returns {boolean} 删除是否成功
    */
   static deleteByRoomId(_roomId) {
-  void _roomId;
-  throw new Error('deleteByRoomId method must be implemented');
+    void _roomId;
+    throw new Error('deleteByRoomId method must be implemented');
   }
 
   /**
@@ -169,8 +169,8 @@ export class AbstractPlayerModel {
    * @returns {number} 玩家数量
    */
   static getPlayerCount(_roomId) {
-  void _roomId;
-  throw new Error('getPlayerCount method must be implemented');
+    void _roomId;
+    throw new Error('getPlayerCount method must be implemented');
   }
 }
 
@@ -185,8 +185,8 @@ export class AbstractGameRecordModel {
    * @returns {object} 创建的记录
    */
   static create(_recordData) {
-  void _recordData;
-  throw new Error('create method must be implemented');
+    void _recordData;
+    throw new Error('create method must be implemented');
   }
 
   /**
@@ -195,8 +195,8 @@ export class AbstractGameRecordModel {
    * @returns {Array} 游戏记录列表
    */
   static findByRoomId(_roomId) {
-  void _roomId;
-  throw new Error('findByRoomId method must be implemented');
+    void _roomId;
+    throw new Error('findByRoomId method must be implemented');
   }
 
   /**
@@ -264,10 +264,14 @@ export class ModelValidator {
    */
   static validateRoomModel(RoomModel) {
     const requiredMethods = [
-      'create', 'findByRoomCode', 'findById', 'update', 
-      'delete', 'getActiveRooms'
+      'create',
+      'findByRoomCode',
+      'findById',
+      'update',
+      'delete',
+      'getActiveRooms',
     ];
-    
+
     return this._validateMethods(RoomModel, requiredMethods, 'RoomModel');
   }
 
@@ -278,10 +282,16 @@ export class ModelValidator {
    */
   static validatePlayerModel(PlayerModel) {
     const requiredMethods = [
-      'create', 'findByRoomAndSession', 'findByRoomId', 'findOnlineByRoomId',
-      'update', 'deleteBySession', 'deleteByRoomId', 'getPlayerCount'
+      'create',
+      'findByRoomAndSession',
+      'findByRoomId',
+      'findOnlineByRoomId',
+      'update',
+      'deleteBySession',
+      'deleteByRoomId',
+      'getPlayerCount',
     ];
-    
+
     return this._validateMethods(PlayerModel, requiredMethods, 'PlayerModel');
   }
 
@@ -291,7 +301,7 @@ export class ModelValidator {
    */
   static _validateMethods(Model, requiredMethods, modelName) {
     const missingMethods = [];
-    
+
     requiredMethods.forEach(method => {
       if (typeof Model[method] !== 'function') {
         missingMethods.push(method);
@@ -301,7 +311,7 @@ export class ModelValidator {
     return {
       isValid: missingMethods.length === 0,
       missingMethods,
-      modelName
+      modelName,
     };
   }
 
@@ -314,7 +324,7 @@ export class ModelValidator {
     const results = {
       room: this.validateRoomModel(RoomModel),
       player: this.validatePlayerModel(PlayerModel),
-      gameRecord: null
+      gameRecord: null,
     };
 
     if (GameRecordModel) {
@@ -327,7 +337,7 @@ export class ModelValidator {
 
     return {
       isValid: allValid,
-      results
+      results,
     };
   }
 
@@ -337,10 +347,12 @@ export class ModelValidator {
    * @returns {object} 验证结果
    */
   static validateGameRecordModel(GameRecordModel) {
-    const requiredMethods = [
-      'create', 'findByRoomId'
-    ];
-    
-    return this._validateMethods(GameRecordModel, requiredMethods, 'GameRecordModel');
+    const requiredMethods = ['create', 'findByRoomId'];
+
+    return this._validateMethods(
+      GameRecordModel,
+      requiredMethods,
+      'GameRecordModel'
+    );
   }
 }

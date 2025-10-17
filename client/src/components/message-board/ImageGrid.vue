@@ -21,78 +21,78 @@
 </template>
 
 <script setup>
-import { useImagePreview } from '@/composables/useImagePreview';
+  import { useImagePreview } from '@/composables/useImagePreview';
 
-defineProps({
-  images: {
-    type: Array,
-    default: () => [],
-  },
-});
+  defineProps({
+    images: {
+      type: Array,
+      default: () => [],
+    },
+  });
 
-defineEmits(['image-click', 'context-menu']);
+  defineEmits(['image-click', 'context-menu']);
 
-const { getImageUrl, onImageLoad, onImageError } = useImagePreview();
+  const { getImageUrl, onImageLoad, onImageError } = useImagePreview();
 </script>
 
 <style scoped>
-.image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
-  max-width: 100%;
-}
+  .image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    max-width: 100%;
+  }
 
-.image-grid.single-image {
-  grid-template-columns: 1fr;
-  max-width: 300px;
-}
+  .image-grid.single-image {
+    grid-template-columns: 1fr;
+    max-width: 300px;
+  }
 
-.image-item {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-}
+  .image-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
+  }
 
-.image-item:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
+  .image-item:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
 
-.image-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
+  .image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
 
-.image-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
+  .image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
 
-.image-item:hover .image-overlay {
-  opacity: 1;
-}
+  .image-item:hover .image-overlay {
+    opacity: 1;
+  }
 
-.view-icon {
-  font-size: 20px;
-  color: white;
-}
+  .view-icon {
+    font-size: 20px;
+    color: white;
+  }
 </style>

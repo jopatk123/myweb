@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
  * 支持：.docx -> HTML / text, .xlsx -> HTML table, 纯文本文件 -> text
  */
 export function useFilePreview() {
-  const previewDocx = async (file) => {
+  const previewDocx = async file => {
     if (!file) return '';
     const arrayBuffer = await file.arrayBuffer();
     // mammoth.convertToHtml 在浏览器环境可用
@@ -14,7 +14,7 @@ export function useFilePreview() {
     return result.value || '';
   };
 
-  const extractTextFromDocx = async (file) => {
+  const extractTextFromDocx = async file => {
     if (!file) return '';
     const arrayBuffer = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer });
@@ -33,7 +33,7 @@ export function useFilePreview() {
     return html;
   };
 
-  const previewGenericText = async (file) => {
+  const previewGenericText = async file => {
     if (!file) return '';
     try {
       return await file.text();

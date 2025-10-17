@@ -12,7 +12,12 @@ export class SnakeMultiplayerAdapter {
 
   // 旧接口: createRoom -> 新接口: createSnakeRoom
   async createRoom(sessionId, playerName, mode, gameSettings) {
-    const result = await this.snakeGame.createSnakeRoom(sessionId, playerName, mode, gameSettings);
+    const result = await this.snakeGame.createSnakeRoom(
+      sessionId,
+      playerName,
+      mode,
+      gameSettings
+    );
     if (result?.room?.room_code && !result.room.roomCode) {
       result.room.roomCode = result.room.room_code; // 兼容 camelCase
     }
@@ -21,7 +26,11 @@ export class SnakeMultiplayerAdapter {
 
   // 旧接口: joinRoom (roomCode)
   async joinRoom(sessionId, playerName, roomCode) {
-    const result = await this.snakeGame.joinRoom(sessionId, playerName, roomCode);
+    const result = await this.snakeGame.joinRoom(
+      sessionId,
+      playerName,
+      roomCode
+    );
     if (result?.room?.room_code && !result.room.roomCode) {
       result.room.roomCode = result.room.room_code;
     }
@@ -66,7 +75,7 @@ export class SnakeMultiplayerAdapter {
     const payload = {
       room: details.room,
       players: details.players,
-      game_state: this.snakeGame.getGameState?.(room.id) || null
+      game_state: this.snakeGame.getGameState?.(room.id) || null,
     };
     if (payload.room?.room_code && !payload.room.roomCode) {
       payload.room.roomCode = payload.room.room_code;

@@ -24,14 +24,14 @@ export class CanvasRenderer {
   drawGrid(gridSize) {
     this.ctx.strokeStyle = '#2a2a2a';
     this.ctx.lineWidth = 0.5;
-    
+
     for (let i = 0; i <= gridSize; i++) {
       // 垂直线
       this.ctx.beginPath();
       this.ctx.moveTo(i * this.cell, 0);
       this.ctx.lineTo(i * this.cell, this.boardSize);
       this.ctx.stroke();
-      
+
       // 水平线
       this.ctx.beginPath();
       this.ctx.moveTo(0, i * this.cell);
@@ -62,7 +62,7 @@ export class CanvasRenderer {
     body.forEach((segment, index) => {
       const x = segment.x * this.cell;
       const y = segment.y * this.cell;
-      
+
       if (index === 0) {
         // 绘制蛇头
         this._drawSnakeHead(x, y, colorBase, highlight);
@@ -80,7 +80,7 @@ export class CanvasRenderer {
     // 头部主体
     this.ctx.fillStyle = highlight ? '#ffffff' : colorBase;
     this.ctx.fillRect(x + 2, y + 2, this.cell - 4, this.cell - 4);
-    
+
     // 眼睛
     this.ctx.fillStyle = highlight ? colorBase : '#000';
     this.ctx.fillRect(x + 5, y + 5, 3, 3);
@@ -95,7 +95,7 @@ export class CanvasRenderer {
     this.ctx.globalAlpha = Math.max(0.35, 1 - index * 0.06);
     this.ctx.fillRect(x + 1, y + 1, this.cell - 2, this.cell - 2);
     this.ctx.globalAlpha = 1;
-    
+
     // 高亮模式下在第二节加彩色条纹
     if (highlight && index === 1) {
       this.ctx.fillStyle = colorBase;
@@ -108,10 +108,11 @@ export class CanvasRenderer {
    */
   drawMultipleSnakes(snakes, activeSessionId) {
     const defaultColors = ['#4ade80', '#60a5fa', '#f472b6', '#facc15'];
-    
+
     Object.values(snakes).forEach((snake, idx) => {
       const color = snake.player?.player_color || defaultColors[idx % 4];
-      const highlight = activeSessionId && snake.player?.session_id === activeSessionId;
+      const highlight =
+        activeSessionId && snake.player?.session_id === activeSessionId;
       this.drawSingleSnake(snake.body || [], color, highlight);
     });
   }
@@ -122,22 +123,22 @@ export class CanvasRenderer {
   drawFood(food, altIndex = 0) {
     const x = food.x * this.cell;
     const y = food.y * this.cell;
-    
+
     const palette = [
       ['#ff6b6b', '#ff4757'],
       ['#7c3aed', '#6d28d9'],
       ['#0ea5e9', '#0284c7'],
-      ['#f59e0b', '#d97706']
+      ['#f59e0b', '#d97706'],
     ];
-    
+
     const [outer, inner] = palette[altIndex % palette.length];
-    
+
     // 外层发光效果
     this.ctx.shadowColor = outer;
     this.ctx.shadowBlur = 8;
     this.ctx.fillStyle = outer;
     this.ctx.fillRect(x + 2, y + 2, this.cell - 4, this.cell - 4);
-    
+
     // 内层
     this.ctx.shadowBlur = 0;
     this.ctx.fillStyle = inner;
@@ -158,12 +159,12 @@ export class CanvasRenderer {
    */
   drawSpecialFood(specialFood) {
     if (!specialFood) return;
-    
+
     const x = specialFood.x * this.cell;
     const y = specialFood.y * this.cell;
     const time = Date.now() * 0.01;
     const alpha = 0.5 + 0.5 * Math.sin(time);
-    
+
     // 闪烁效果
     this.ctx.save();
     this.ctx.globalAlpha = alpha;
@@ -173,7 +174,7 @@ export class CanvasRenderer {
     this.ctx.fillRect(x + 1, y + 1, this.cell - 2, this.cell - 2);
     this.ctx.shadowBlur = 0;
     this.ctx.restore();
-    
+
     // 星星符号
     this.ctx.fillStyle = '#000';
     this.ctx.font = '12px Arial';

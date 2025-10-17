@@ -1,12 +1,15 @@
 import { ref, computed } from 'vue';
-import { GAME_CONFIG, INITIAL_GAME_STATE } from '../apps/snake/constants/gameConstants.js';
-import { 
-  GameUtils, 
-  SnakeMovement, 
-  FoodManager, 
-  ParticleManager, 
-  GameStateManager, 
-  CollisionDetector 
+import {
+  GAME_CONFIG,
+  INITIAL_GAME_STATE,
+} from '../apps/snake/constants/gameConstants.js';
+import {
+  GameUtils,
+  SnakeMovement,
+  FoodManager,
+  ParticleManager,
+  GameStateManager,
+  CollisionDetector,
 } from '../apps/snake/utils/gameLogic.js';
 
 export default function useSnakeGame() {
@@ -52,11 +55,14 @@ export default function useSnakeGame() {
   function createSpecialFood() {
     if (!specialFood.value) {
       const excludePositions = [...snake.value, food.value];
-      const newSpecialFood = FoodManager.createSpecialFood(excludePositions, gridSize.value);
-      
+      const newSpecialFood = FoodManager.createSpecialFood(
+        excludePositions,
+        gridSize.value
+      );
+
       if (newSpecialFood) {
         specialFood.value = newSpecialFood;
-        
+
         // 特殊食物定时消失
         specialFoodTimer.value = setTimeout(() => {
           specialFood.value = null;
@@ -95,14 +101,20 @@ export default function useSnakeGame() {
 
     // 检查食物碰撞
     const collisionResult = CollisionDetector.processCollisions(
-      wrappedHead, 
-      food.value, 
+      wrappedHead,
+      food.value,
       specialFood.value
     );
 
     // 更新蛇的位置
-    const ateAnyFood = collisionResult.ateFood || collisionResult.ateSpecialFood;
-    snake.value = SnakeMovement.moveSnake(snake.value, dir.value, gridSize.value, ateAnyFood);
+    const ateAnyFood =
+      collisionResult.ateFood || collisionResult.ateSpecialFood;
+    snake.value = SnakeMovement.moveSnake(
+      snake.value,
+      dir.value,
+      gridSize.value,
+      ateAnyFood
+    );
 
     // 处理食物碰撞结果
     if (collisionResult.ateFood) {
@@ -163,7 +175,7 @@ export default function useSnakeGame() {
     paused.value = initialState.paused;
     score.value = initialState.score;
     level.value = initialState.level;
-    
+
     // 重置游戏对象
     snake.value = [...initialState.snake];
     dir.value = { ...initialState.direction };

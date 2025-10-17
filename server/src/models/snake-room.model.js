@@ -9,18 +9,19 @@ export const SnakeRoomModel = {
    */
   create(roomData) {
     const db = getDb();
-    
-    const gameSettings = typeof roomData.game_settings === 'object' 
-      ? JSON.stringify(roomData.game_settings) 
-      : roomData.game_settings;
-    
+
+    const gameSettings =
+      typeof roomData.game_settings === 'object'
+        ? JSON.stringify(roomData.game_settings)
+        : roomData.game_settings;
+
     const stmt = db.prepare(`
       INSERT INTO snake_rooms (
         room_code, mode, game_type, status, max_players, current_players, 
         created_by, game_settings, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `);
-    
+
     const result = stmt.run(
       roomData.room_code,
       roomData.mode,
@@ -31,7 +32,7 @@ export const SnakeRoomModel = {
       roomData.created_by,
       gameSettings
     );
-    
+
     // 获取插入的记录
     const room = this.findById(result.lastInsertRowid);
     return room;
@@ -44,11 +45,11 @@ export const SnakeRoomModel = {
     const db = getDb();
     const stmt = db.prepare('SELECT * FROM snake_rooms WHERE room_code = ?');
     const room = stmt.get(roomCode);
-    
+
     if (room && room.game_settings) {
       room.game_settings = JSON.parse(room.game_settings);
     }
-    
+
     return room;
   },
 
@@ -59,11 +60,11 @@ export const SnakeRoomModel = {
     const db = getDb();
     const stmt = db.prepare('SELECT * FROM snake_rooms WHERE id = ?');
     const room = stmt.get(id);
-    
+
     if (room && room.game_settings) {
       room.game_settings = JSON.parse(room.game_settings);
     }
-    
+
     return room;
   },
 
@@ -72,10 +73,10 @@ export const SnakeRoomModel = {
    */
   update(id, updateData) {
     const db = getDb();
-    
+
     const fields = [];
     const values = [];
-    
+
     Object.entries(updateData).forEach(([key, value]) => {
       if (key === 'game_settings' && typeof value === 'object') {
         fields.push(`${key} = ?`);
@@ -85,18 +86,18 @@ export const SnakeRoomModel = {
         values.push(value);
       }
     });
-    
-    fields.push('updated_at = datetime(\'now\')');
+
+    fields.push("updated_at = datetime('now')");
     values.push(id);
-    
+
     const stmt = db.prepare(`
       UPDATE snake_rooms 
       SET ${fields.join(', ')} 
       WHERE id = ?
     `);
-    
+
     stmt.run(...values);
-    
+
     return this.findById(id);
   },
 
@@ -110,9 +111,9 @@ export const SnakeRoomModel = {
       WHERE status IN ('waiting', 'playing') 
       ORDER BY created_at DESC
     `);
-    
+
     const rooms = stmt.all();
-    
+
     return rooms.map(room => {
       if (room.game_settings) {
         room.game_settings = JSON.parse(room.game_settings);
@@ -138,21 +139,21 @@ export const SnakeRoomModel = {
     let roomCode;
     let attempts = 0;
     const maxAttempts = 10;
-    
+
     do {
       roomCode = '';
       for (let i = 0; i < 6; i++) {
         roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
       }
-      
+
       const existing = this.findByRoomCode(roomCode);
       if (!existing) {
         return roomCode;
       }
-      
+
       attempts++;
     } while (attempts < maxAttempts);
-    
+
     throw new Error('Failed to generate unique room code');
-  }
+  },
 };

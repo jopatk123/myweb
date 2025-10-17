@@ -5,13 +5,13 @@ import { aiPresetService } from '../services/AIPresetService.js';
 export function useAIPresets() {
   // 当前选中的预设
   const selectedPreset = ref('');
-  
+
   // 获取所有预设列表
   const presetList = computed(() => aiPresetService.getPresetList());
-  
+
   // 获取所有预设对象
   const allPresets = computed(() => aiPresetService.getAllPresets());
-  
+
   // 获取预设对象
   const presets = computed(() => aiPresetService.presets);
 
@@ -75,7 +75,7 @@ export function useAIPresets() {
     presetList,
     allPresets,
     presets,
-    
+
     // 方法
     applyPreset,
     generatePlayerName,
@@ -84,6 +84,6 @@ export function useAIPresets() {
     getDefaultPreset,
     addCustomPreset,
     removePreset,
-    resetSelection
+    resetSelection,
   };
 }

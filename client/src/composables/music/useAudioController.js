@@ -19,7 +19,6 @@ export function useAudioController(state, { settings } = {}) {
     repeatMode,
     shuffle,
     error,
-    currentIndex,
   } = state;
 
   const queue = usePlaybackQueue(state);

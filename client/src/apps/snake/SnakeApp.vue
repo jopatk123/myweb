@@ -1,7 +1,7 @@
 <template>
   <div class="snake-app">
     <!-- 游戏模式选择 -->
-    <GameModeSelector 
+    <GameModeSelector
       v-if="gameMode === 'menu'"
       @select-mode="handleModeSelect"
     />
@@ -113,7 +113,7 @@
   });
 
   // 处理模式选择
-  const handleModeSelect = (mode) => {
+  const handleModeSelect = mode => {
     if (mode === 'single') {
       gameMode.value = 'single';
     } else if (mode === 'multiplayer') {
@@ -125,7 +125,7 @@
   const backToMenu = () => {
     gameMode.value = 'menu';
     multiplayerView.value = 'lobby';
-    
+
     // 重置游戏状态
     if (gameStarted.value || gameOver.value) {
       restart();
@@ -133,8 +133,8 @@
   };
 
   // 处理多人游戏更新
-  const handleMultiplayerGameUpdate = (_data) => {
-  // multiplayer game update received — debug log removed
+  const handleMultiplayerGameUpdate = _data => {
+    // multiplayer game update received — debug log removed
   };
 
   watch(difficulty, updateSpeed);
