@@ -19,9 +19,9 @@ RUN if [ "$USE_LOCAL_CLIENT" = "0" ]; then \
 COPY client/package*.json ./client/
 COPY package*.json ./
 
-# 安装客户端构建依赖
+# 在客户端构建阶段使用 npm ci 以获得确定性依赖
 RUN if [ "$USE_LOCAL_CLIENT" = "0" ]; then \
-        cd client && npm install; \
+        cd client && npm ci --silent; \
     fi
 
 # 复制客户端源代码
@@ -40,7 +40,7 @@ ARG SKIP_SERVER_NPM_INSTALL=0
 # 设置工作目录
 WORKDIR /app
 
-# 安装构建原生模块所需的工具（better-sqlite3 等依赖）
+# 安装构建原生模块所需的工具（better-sqlite3 等依赖）仅在构建阶段
 RUN apk add --no-cache python3 make g++ pkgconf
 
 # 只有在不跳过服务端安装时才安装依赖
@@ -61,15 +61,15 @@ COPY client/package*.json ./client/
 ENV HUSKY=0
 ENV SKIP_HUSKY=1
 
-# 安装 server workspace 的依赖，避免执行根目录的 prepare（husky）脚本
+# 在构建环境中使用 npm ci 安装 server 依赖（确定性）
 RUN if [ "$SKIP_SERVER_NPM_INSTALL" = "0" ]; then \
-        npm install --workspace=server --omit=dev; \
+        npm ci --workspace=server --omit=dev --silent; \
     fi
 
 # =================== 运行时阶段 ===================
 FROM node:20-alpine AS runtime
 
-# 安装 dumb-init 用于正确的信号处理
+# 安装 dumb-init 用于正确的信号处理（runtime 只需此项）
 RUN apk add --no-cache dumb-init
 
 # 创建应用用户以提高安全性
@@ -90,6 +90,7 @@ ARG SKIP_SERVER_NPM_INSTALL=0
 ARG USE_LOCAL_CLIENT=0
 
 # 复制依赖（工作区模式下依赖在根目录）
+# 在 server-deps 阶段我们安装了依赖到 /app/node_modules
 COPY --from=server-deps /app/node_modules ./node_modules
 
 # 创建客户端目录并复制构建文件
