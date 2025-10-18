@@ -21,7 +21,14 @@ COPY package*.json ./
 
 # 在客户端构建阶段使用 npm ci 以获得确定性依赖
 RUN if [ "$USE_LOCAL_CLIENT" = "0" ]; then \
-        cd client && npm ci --silent; \
+        cd client && \
+        # prefer deterministic install when a lockfile exists, otherwise fall back to npm install
+        if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then \
+            npm ci --silent; \
+        else \
+            echo "package-lock.json not found, falling back to 'npm install'"; \
+            npm install --silent; \
+        fi; \
     fi
 
 # 复制客户端源代码
@@ -61,9 +68,10 @@ COPY client/package*.json ./client/
 ENV HUSKY=0
 ENV SKIP_HUSKY=1
 
-# 在构建环境中使用 npm ci 安装 server 依赖（确定性）
+# 在构建环境中安装 server 依赖
+# 注：先使用 npm install 以确保 lock file 与 package.json 同步，避免 npm ci 因版本不匹配而失败
 RUN if [ "$SKIP_SERVER_NPM_INSTALL" = "0" ]; then \
-        npm ci --workspace=server --omit=dev --silent; \
+        npm install --workspace=server --omit=dev; \
     fi
 
 # =================== 运行时阶段 ===================
