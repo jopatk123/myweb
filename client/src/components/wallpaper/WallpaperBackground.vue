@@ -47,6 +47,15 @@
     }
   });
 
+  const buildPreloadUrl = (wallpaper, retryCount) => {
+    const baseUrl = getWallpaperUrl(wallpaper);
+    if (!baseUrl) return null;
+    if (!retryCount) return baseUrl;
+
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}_retry=${retryCount}_${Date.now()}`;
+  };
+
   const updateWallpaper = wallpaper => {
     if (!wallpaper) {
       currentWallpaper.value = null;
@@ -54,42 +63,39 @@
       return;
     }
 
-    // 重置重试计数
     loadRetries.value = 0;
 
-    // 获取URL（已包含版本参数）
-    let url = getWallpaperUrl(wallpaper);
-    if (!url) {
-      currentWallpaper.value = null;
-      return;
-    }
-
-    // 添加额外的时间戳参数强制刷新（以防版本参数未生效）
-    const separator = url.includes('?') ? '&' : '?';
-    const urlWithTimestamp = `${url}${separator}_refresh=${Date.now()}`;
-
-    // 预加载图片
-    const img = new Image();
-    img.onload = () => {
-      currentWallpaper.value = wallpaper;
-    };
-    img.onerror = () => {
-      // 图片加载失败，重试几次
-      if (loadRetries.value < MAX_RETRIES) {
-        loadRetries.value++;
-        console.warn(
-          `壁纸加载失败，第 ${loadRetries.value}/${MAX_RETRIES} 次重试...`
-        );
-        setTimeout(() => {
-          updateWallpaper(wallpaper);
-        }, 1000 * loadRetries.value);
-      } else {
-        console.warn('壁纸加载失败，已重试', MAX_RETRIES, '次');
-        // 即使失败也显示壁纸，可能是部分加载
-        currentWallpaper.value = wallpaper;
+    const attemptLoad = retryCount => {
+      const preloadUrl = buildPreloadUrl(wallpaper, retryCount);
+      if (!preloadUrl) {
+        currentWallpaper.value = null;
+        return;
       }
+
+      const img = new Image();
+      img.onload = () => {
+        currentWallpaper.value = wallpaper;
+      };
+      img.onerror = () => {
+        if (retryCount < MAX_RETRIES) {
+          const nextRetry = retryCount + 1;
+          loadRetries.value = nextRetry;
+          console.warn(
+            `壁纸加载失败，第 ${nextRetry}/${MAX_RETRIES} 次重试...`
+          );
+          setTimeout(() => {
+            attemptLoad(nextRetry);
+          }, 1000 * nextRetry);
+        } else {
+          console.warn('壁纸加载失败，已重试', MAX_RETRIES, '次');
+          currentWallpaper.value = wallpaper;
+        }
+      };
+
+      img.src = preloadUrl;
     };
-    img.src = urlWithTimestamp;
+
+    attemptLoad(0);
   };
 
   watch(

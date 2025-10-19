@@ -118,7 +118,28 @@ export async function createApp(options = {}) {
   app.use(normalizeRequestKeys);
   app.use(normalizeResponseMiddleware);
 
-  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+  const uploadsDir = path.join(__dirname, '../uploads');
+  const uploadsCacheSeconds = Math.max(
+    0,
+    Number(appEnv.staticAssets.uploadsCacheMaxAgeSeconds) || 0
+  );
+  app.use(
+    '/uploads',
+    express.static(uploadsDir, {
+      maxAge: uploadsCacheSeconds * 1000,
+      etag: true,
+      setHeaders(res) {
+        if (uploadsCacheSeconds > 0) {
+          res.setHeader(
+            'Cache-Control',
+            `public, max-age=${uploadsCacheSeconds}, immutable`
+          );
+        } else {
+          res.setHeader('Cache-Control', 'no-store');
+        }
+      },
+    })
+  );
 
   const db =
     providedDb ||
