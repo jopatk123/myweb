@@ -3,6 +3,7 @@ import App from './App.vue';
 import router from './router';
 import '@/styles/admin.css';
 import '@/styles/gomoku-shared.css';
+import '@/styles/wallpaper-animations.css';
 
 const app = createApp(App);
 

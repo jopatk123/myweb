@@ -3,11 +3,13 @@
     <!-- 默认背景 -->
     <div v-if="!currentWallpaper" class="default-background"></div>
 
-    <!-- 用户壁纸 -->
+    <!-- 用户壁纸（使用动画） -->
     <div
       v-else
+      :key="wallpaperKey"
       class="user-wallpaper"
-      :style="{ backgroundImage: `url(${getWallpaperUrl(currentWallpaper)})` }"
+      :class="animationClass"
+      :style="wallpaperStyle"
     ></div>
 
     <!-- 渐变遮罩 -->
@@ -16,8 +18,9 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, watch } from 'vue';
+  import { ref, computed, onMounted, watch } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
+  import { useWallpaperAnimation } from '@/composables/useWallpaperAnimation.js';
 
   const props = defineProps({
     wallpaper: { type: Object, default: null },
@@ -26,9 +29,44 @@
   const { activeWallpaper, fetchActiveWallpaper, getWallpaperUrl } =
     useWallpaper();
 
+  // 初始化动画系统
+  const wallpaperAnimation = useWallpaperAnimation({
+    onAnimationEnd: () => {
+      // 动画结束后的回调，可以在这里做一些清理工作
+    },
+  });
+
   const currentWallpaper = ref(null);
   const loadRetries = ref(0);
   const MAX_RETRIES = 3;
+
+  // 壁纸唯一键，用于触发重新渲染和动画
+  const wallpaperKey = ref(0);
+
+  // 当前动画样式
+  const currentAnimationStyle = ref(null);
+
+  // 计算合并后的壁纸样式（背景图 + 动画样式）
+  const wallpaperStyle = computed(() => {
+    const baseStyle = {
+      backgroundImage: currentWallpaper.value
+        ? `url(${getWallpaperUrl(currentWallpaper.value)})`
+        : 'none',
+    };
+
+    if (currentAnimationStyle.value) {
+      return { ...baseStyle, ...currentAnimationStyle.value };
+    }
+
+    return baseStyle;
+  });
+
+  // 动画类名
+  const animationClass = computed(() => {
+    return wallpaperAnimation.currentAnimationType.value
+      ? `wallpaper-animation-${wallpaperAnimation.currentAnimationType.value}`
+      : '';
+  });
 
   // 监听传入的 wallpaper 或全局活跃壁纸变化
   const sourceWallpaper = ref(props.wallpaper || activeWallpaper.value);
@@ -75,6 +113,15 @@
       const img = new Image();
       img.onload = () => {
         currentWallpaper.value = wallpaper;
+
+        // 壁纸加载成功后，播放随机动画
+        currentAnimationStyle.value = null;
+        const animationResult = wallpaperAnimation.playAnimation();
+        if (animationResult) {
+          currentAnimationStyle.value = animationResult.style;
+          // 更新 key 以触发重新渲染
+          wallpaperKey.value += 1;
+        }
       };
       img.onerror = () => {
         if (retryCount < MAX_RETRIES) {
@@ -89,6 +136,9 @@
         } else {
           console.warn('壁纸加载失败，已重试', MAX_RETRIES, '次');
           currentWallpaper.value = wallpaper;
+          currentAnimationStyle.value = null;
+          // 即使加载失败也更新 key
+          wallpaperKey.value += 1;
         }
       };
 
@@ -139,7 +189,6 @@
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
-    transition: opacity 0.5s ease;
   }
 
   .background-overlay {
