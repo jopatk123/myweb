@@ -49,6 +49,11 @@ export class WallpaperService {
     return wallpaper;
   }
 
+  getWallpapersByIds(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+    return this.wallpaperModel.findManyByIds(ids);
+  }
+
   async uploadWallpaper(fileData, groupId = null) {
     // 期望 controller 传入 camelCase 的 fileData；在此做一次必要的 fallback 兼容
     const filename = fileData.filename || fileData.file_name;

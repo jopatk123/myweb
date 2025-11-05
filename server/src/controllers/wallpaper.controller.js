@@ -1,11 +1,12 @@
 import { WallpaperService } from '../services/wallpaper.service.js';
 import multer from 'multer';
 import path from 'path';
-import { createReadStream } from 'fs';
+import { createReadStream, existsSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { normalizeKeys } from '../utils/case-helper.js';
 import { parseEnvByteSize } from '../utils/env.js';
+import archiver from 'archiver';
 
 // 解析当前模块目录（ESM 无 __dirname）
 const __filename = fileURLToPath(import.meta.url);
@@ -369,6 +370,81 @@ export class WallpaperController {
     try {
       const group = await this.service.getCurrentGroup();
       res.json({ code: 200, data: group, message: '获取成功' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // 下载壁纸
+  async downloadWallpapers(req, res, next) {
+    try {
+      let { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
+      }
+
+      // 规范化 ids：转换为整数并过滤非法值
+      const sanitizedIds = ids
+        .map(i => Number(i))
+        .filter(n => Number.isInteger(n) && n > 0);
+      if (sanitizedIds.length === 0) {
+        return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
+      }
+
+      // 获取壁纸信息
+      const wallpapers = await this.service.getWallpapersByIds(sanitizedIds);
+      if (wallpapers.length === 0) {
+        return res
+          .status(404)
+          .json({ code: 404, message: '没有找到指定的壁纸' });
+      }
+
+      // 如果只有一张壁纸，直接下载该文件
+      if (wallpapers.length === 1) {
+        const wallpaper = wallpapers[0];
+        const filePath = path.join(__dirname, '../../', wallpaper.file_path);
+
+        if (!existsSync(filePath)) {
+          return res.status(404).json({ code: 404, message: '壁纸文件不存在' });
+        }
+
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${wallpaper.original_name || `wallpaper_${wallpaper.id}`}"`
+        );
+        res.setHeader('Content-Type', wallpaper.mime_type || 'image/jpeg');
+        return createReadStream(filePath).pipe(res);
+      }
+
+      // 多张壁纸，打包为 ZIP
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="wallpapers_${Date.now()}.zip"`
+      );
+
+      const archive = archiver('zip', {
+        zlib: { level: 6 }, // 压缩级别 0-9
+      });
+
+      archive.on('error', err => {
+        console.error('Archive error:', err);
+        res.status(500).json({ code: 500, message: 'ZIP 打包失败' });
+      });
+
+      archive.pipe(res);
+
+      // 添加所有壁纸文件到 ZIP
+      for (const wallpaper of wallpapers) {
+        const filePath = path.join(__dirname, '../../', wallpaper.file_path);
+        if (existsSync(filePath)) {
+          const fileName =
+            wallpaper.original_name || `wallpaper_${wallpaper.id}`;
+          archive.file(filePath, { name: fileName });
+        }
+      }
+
+      await archive.finalize();
     } catch (error) {
       next(error);
     }
