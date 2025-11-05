@@ -23,6 +23,18 @@
         >
           上传壁纸
         </button>
+        <button
+          @click="$emit('download-wallpapers')"
+          class="btn btn-success small"
+          :disabled="selectedCount === 0"
+          :title="
+            selectedCount === 0
+              ? '请先选择要下载的壁纸'
+              : `下载选中的 ${selectedCount} 张壁纸`
+          "
+        >
+          下载壁纸 ({{ selectedCount }})
+        </button>
       </div>
       <button @click="$emit('open-main-window')" class="btn btn-info">
         打开桌面
@@ -45,6 +57,7 @@
     'open-bulk-upload',
     'bulk-delete',
     'bulk-move',
+    'download-wallpapers',
   ]);
 </script>
 
@@ -112,6 +125,13 @@
   }
   .btn-danger:hover:not(:disabled) {
     background: #c82333;
+  }
+  .btn-success {
+    background: #28a745;
+    color: white;
+  }
+  .btn-success:hover:not(:disabled) {
+    background: #218838;
   }
   .btn-info {
     background: #17a2b8;

@@ -1,5 +1,15 @@
 <template>
-  <div class="admin-layout">
+  <div class="admin-layout" :class="{ 'sider-visible': siderVisible }">
+    <!-- 全局侧边栏切换按钮 -->
+    <button
+      v-if="!siderVisible"
+      class="global-sider-toggle"
+      @click="siderVisible = true"
+      title="显示侧边栏"
+    >
+      ☰
+    </button>
+
     <!-- 全局侧边栏 -->
     <aside class="global-sider">
       <div class="brand">管理后台</div>
@@ -136,6 +146,7 @@
   const keyword = ref('');
   const selectedGroupId = ref('');
   const selectedIds = ref([]);
+  const siderVisible = ref(false);
 
   // 模态框状态
   const showCreateModal = ref(false);

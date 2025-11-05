@@ -1,5 +1,15 @@
 <template>
-  <div class="admin-layout">
+  <div class="admin-layout" :class="{ 'sider-visible': siderVisible }">
+    <!-- 全局侧边栏切换按钮 -->
+    <button
+      v-if="!siderVisible"
+      class="global-sider-toggle"
+      @click="siderVisible = true"
+      title="显示侧边栏"
+    >
+      ☰
+    </button>
+
     <!-- 全局侧边栏 -->
     <aside class="global-sider">
       <div class="brand">管理后台</div>
@@ -29,6 +39,7 @@
         @open-bulk-upload="showBulkUploadModal = true"
         @bulk-delete="handleBulkDelete"
         @bulk-move="showMoveModal = true"
+        @download-wallpapers="handleDownload"
         @open-main-window="openMainWindow"
       />
 
@@ -150,6 +161,7 @@
     deleteMultipleWallpapers,
     moveMultipleWallpapers,
     applyCurrentGroup,
+    downloadWallpapers,
     // pagination
     page,
     limit,
@@ -168,6 +180,7 @@
   const bulkMoveLoading = ref(false);
   const keyword = ref('');
   const selectedIds = ref([]);
+  const siderVisible = ref(false);
 
   const closeMoveModal = () => {
     bulkMoveLoading.value = false;
@@ -206,6 +219,22 @@
       alert(err.message || '批量移动失败');
     } finally {
       bulkMoveLoading.value = false;
+    }
+  };
+
+  // 下载壁纸
+  const handleDownload = async () => {
+    if (selectedIds.value.length === 0) return;
+
+    try {
+      await downloadWallpapers(selectedIds.value);
+      displayToast(
+        selectedIds.value.length === 1
+          ? '壁纸已下载'
+          : `${selectedIds.value.length} 张壁纸已打包下载`
+      );
+    } catch (err) {
+      alert(err.message || '下载失败，请稍后重试');
     }
   };
 

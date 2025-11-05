@@ -375,6 +375,49 @@ export function useWallpaper() {
     return basePath;
   };
 
+  // 下载壁纸
+  const downloadWallpapers = async ids => {
+    try {
+      const blob = await wallpaperApi.downloadWallpapers(ids);
+      // 创建临时URL并触发下载
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // 根据壁纸数量和MIME类型确定文件名
+      if (ids.length === 1) {
+        // 单个文件，从Content-Disposition或直接用ID命名
+        link.download = `wallpaper_${ids[0]}.${getFileExtension(blob.type)}`;
+      } else {
+        // 多个文件，通常是ZIP
+        link.download = `wallpapers_${new Date().getTime()}.zip`;
+      }
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      return true;
+    } catch (err) {
+      error.value = err.message || '下载失败';
+      throw err;
+    }
+  };
+
+  // 辅助函数：根据MIME类型获取文件扩展名
+  const getFileExtension = mimeType => {
+    const mimeMap = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'image/gif': 'gif',
+      'application/zip': 'zip',
+      'application/x-zip-compressed': 'zip',
+    };
+    return mimeMap[mimeType] || 'bin';
+  };
+
   return {
     // 状态
     wallpapers,
@@ -417,5 +460,6 @@ export function useWallpaper() {
     deleteMultipleWallpapers,
     moveMultipleWallpapers,
     applyCurrentGroup,
+    downloadWallpapers,
   };
 }

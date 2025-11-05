@@ -30,12 +30,21 @@
               v-model="selectedIds"
             />
           </td>
-          <td>
-            {{
-              wallpaper.name ||
-              wallpaper.originalName ||
-              wallpaper.original_name
-            }}
+          <td class="name-cell">
+            <span
+              class="name-truncate"
+              :title="
+                wallpaper.name ||
+                wallpaper.originalName ||
+                wallpaper.original_name
+              "
+            >
+              {{
+                wallpaper.name ||
+                wallpaper.originalName ||
+                wallpaper.original_name
+              }}
+            </span>
           </td>
           <td>
             <img
@@ -234,6 +243,20 @@
   .wallpaper-list tr.active {
     background-color: #eff6ff;
   }
+
+  /* 名称列样式 */
+  .name-cell {
+    max-width: 250px;
+    overflow: hidden;
+  }
+  .name-truncate {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
   .thumbnail {
     width: 100px;
     height: 56.25px; /* 16:9 */
