@@ -110,4 +110,18 @@ export const wallpaperApi = {
   deleteGroup(id) {
     return api.delete(`/wallpapers/groups/${id}`);
   },
+
+  // 下载壁纸（支持单个或批量）
+  // 返回 Blob 数据供前端处理
+  downloadWallpapers(ids, options = {}) {
+    return api.post(
+      '/wallpapers/download',
+      { ids },
+      {
+        responseType: 'blob',
+        timeout: 600000, // 10分钟超时，用于大文件下载
+        ...options,
+      }
+    );
+  },
 };

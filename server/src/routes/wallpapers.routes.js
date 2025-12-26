@@ -44,6 +44,9 @@ export function createWallpaperRoutes(db) {
   router.put('/move', validateBody(moveWallpapersSchema), (req, res, next) =>
     controller.moveWallpapers(req, res, next)
   );
+  router.post('/download', (req, res, next) =>
+    controller.downloadWallpapers(req, res, next)
+  );
 
   router.put(
     '/:id(\\d+)',

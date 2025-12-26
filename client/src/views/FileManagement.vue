@@ -1,5 +1,15 @@
 <template>
-  <div class="admin-layout">
+  <div class="admin-layout" :class="{ 'sider-visible': siderVisible }">
+    <!-- 全局侧边栏切换按钮 -->
+    <button
+      v-if="!siderVisible"
+      class="global-sider-toggle"
+      @click="siderVisible = true"
+      title="显示侧边栏"
+    >
+      ☰
+    </button>
+
     <!-- 全局侧边栏 -->
     <aside class="global-sider">
       <div class="brand">管理后台</div>
@@ -199,6 +209,7 @@
 
   const statusMessage = ref('');
   const statusType = ref('info');
+  const siderVisible = ref(false);
 
   const statusClass = computed(() => `status-${statusType.value}`);
 

@@ -2,6 +2,40 @@
  * Migration: 添加音乐播放器所需的数据表，并扩展 files.type_category 支持 music
  */
 export const up = async knex => {
+  const hasFilesTable = await knex.schema.hasTable('files');
+  if (!hasFilesTable) {
+    await knex.schema.createTable('files', table => {
+      table.increments('id').primary();
+      table.string('original_name').notNullable();
+      table.string('stored_name').notNullable();
+      table.string('file_path').notNullable();
+      table.string('mime_type').notNullable();
+      table.integer('file_size').notNullable();
+      table
+        .enu('type_category', [
+          'image',
+          'video',
+          'word',
+          'excel',
+          'archive',
+          'other',
+          'novel',
+          'music',
+        ])
+        .notNullable();
+      table.string('file_url');
+      table.string('uploader_id');
+      table.timestamp('created_at').defaultTo(knex.fn.now());
+      table.timestamp('updated_at').defaultTo(knex.fn.now());
+    });
+
+    await knex.schema.alterTable('files', table => {
+      table.index(['uploader_id'], 'idx_files_uploader_id');
+      table.index(['type_category'], 'idx_files_type_category');
+      table.index(['created_at'], 'idx_files_created_at');
+    });
+  }
+
   // 创建 music_tracks 表（若不存在）
   const hasMusicTable = await knex.schema.hasTable('music_tracks');
   if (!hasMusicTable) {

@@ -3,15 +3,66 @@
 /* 布局与侧栏 */
 .admin-layout {
   display: grid;
-  grid-template-columns: 200px 260px 1fr;
+  grid-template-columns: 260px 1fr;
   grid-template-rows: 1fr;
   min-height: 100vh;
+  position: relative;
+}
+
+.admin-layout.sider-visible {
+  grid-template-columns: 200px 260px 1fr;
 }
 
 .global-sider {
   background: #0f172a;
   color: #e2e8f0;
   padding: 16px 12px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 200px;
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+}
+
+.admin-layout.sider-visible .global-sider {
+  position: static;
+  transform: translateX(0);
+  height: auto;
+  width: auto;
+  overflow-y: visible;
+}
+
+.global-sider-toggle {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  z-index: 999;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: none;
+  border-radius: 6px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+.global-sider-toggle:hover {
+  background: #1e293b;
+  color: #fff;
+}
+
+.admin-layout.sider-visible .global-sider-toggle {
+  display: none;
 }
 
 .brand {
@@ -424,16 +475,11 @@ table {
 /* 自适应 */
 @media (max-width: 1024px) {
   .admin-layout {
-    grid-template-columns: 160px 220px 1fr;
+    grid-template-columns: 220px 1fr;
   }
-}
 
-@media (max-width: 1024px) {
-  .admin-layout {
-    grid-template-columns: 200px 1fr;
-  }
-  .module-sider {
-    display: none;
+  .admin-layout.sider-visible {
+    grid-template-columns: 160px 220px 1fr;
   }
 }
 
@@ -441,10 +487,20 @@ table {
   .admin-layout {
     grid-template-columns: 1fr;
   }
-  .global-sider,
+
+  .admin-layout.sider-visible {
+    grid-template-columns: 1fr;
+  }
+
+  .global-sider {
+    width: 80vw;
+    max-width: 250px;
+  }
+
   .module-sider {
     display: none;
   }
+
   .toolbar {
     flex-direction: column;
     gap: 16px;
