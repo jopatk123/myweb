@@ -47,6 +47,7 @@
   const {
     GRID,
     cellToPosition,
+    positionToCell,
     finalizeDragForPositions,
     savePositionsToStorage: gridSavePositionsToStorage,
     loadPositionsFromStorage: gridLoadPositionsToStorage,
@@ -291,6 +292,9 @@
 
   defineExpose({ autoArrange, setSelectedIds });
 
+  // 用于记录上一次的应用 ID 列表，避免重复加载
+  let lastAppIds = '';
+
   // 自动排列：从左上角开始，按列优先，每列最多 8 行
   async function autoArrange(startCol = 0) {
     const arranged = {};
@@ -306,26 +310,13 @@
     }
     positions.value = arranged;
     gridSavePositionsToStorage(STORAGE_KEY, positions.value, visibleApps.value);
+    // 更新缓存的应用ID列表，避免下次 watch 触发时覆盖排列结果
+    lastAppIds = (visibleApps.value || [])
+      .map(a => a.id)
+      .sort()
+      .join(',');
     return col + (row > 0 ? 1 : 0);
   }
-
-  onMounted(async () => {
-    await fetchApps({ visible: true }, true);
-    positions.value = gridLoadPositionsToStorage
-      ? gridLoadPositionsToStorage(STORAGE_KEY, visibleApps.value)
-      : {};
-    // NOTE: ensure alias name matches the composable alias
-    positions.value = gridLoadPositionsToStorage
-      ? gridLoadPositionsToStorage(STORAGE_KEY, visibleApps.value)
-      : {};
-  });
-
-  // 当 apps 列表更新后，重新加载已保存的位置（例如从后端异步拉取完成）
-  watch(apps, () => {
-    positions.value = gridLoadPositionsToStorage
-      ? gridLoadPositionsToStorage(STORAGE_KEY, visibleApps.value)
-      : {};
-  });
 
   // 将位置持久化到 localStorage
   function savePositionsToStorage() {
@@ -340,20 +331,92 @@
     }
   }
 
+  // 加载位置并为没有位置的图标分配默认位置
   function loadPositionsFromStorage() {
     try {
-      positions.value = gridLoadPositionsToStorage
-        ? gridLoadPositionsToStorage(STORAGE_KEY, visibleApps.value)
+      const apps = visibleApps.value || [];
+      const currentAppIds = apps
+        .map(a => a.id)
+        .sort()
+        .join(',');
+
+      // 如果应用列表没有变化且已有位置数据，跳过加载
+      if (
+        currentAppIds === lastAppIds &&
+        Object.keys(positions.value).length > 0
+      ) {
+        return;
+      }
+      lastAppIds = currentAppIds;
+
+      const saved = gridLoadPositionsToStorage
+        ? gridLoadPositionsToStorage(STORAGE_KEY, apps)
         : {};
+
+      // 为没有保存位置的图标分配位置，避免重叠
+      if (apps.length === 0) {
+        positions.value = saved;
+        return;
+      }
+
+      // 获取已占用的格子
+      const occupied = new Set();
+      for (const [id, pos] of Object.entries(saved)) {
+        if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+          const cell = positionToCell(pos);
+          occupied.add(`${cell.col}:${cell.row}`);
+        }
+      }
+
+      // 为缺失位置的图标分配位置
+      const result = { ...saved };
+      for (const app of apps) {
+        if (!result[app.id]) {
+          // 找到下一个空闲格子
+          let col = 0;
+          let row = 0;
+          while (occupied.has(`${col}:${row}`)) {
+            row += 1;
+            if (row >= GRID.maxRows) {
+              row = 0;
+              col += 1;
+            }
+          }
+          result[app.id] = cellToPosition({ col, row });
+          occupied.add(`${col}:${row}`);
+        }
+      }
+
+      positions.value = result;
     } catch (e) {
       console.error('AppIcons.loadPositionsFromStorage error', e);
     }
   }
 
-  // 当应用列表变化时，清理无效位置
-  watch(apps, () => {
+  onMounted(async () => {
+    await fetchApps({ visible: true }, true);
     loadPositionsFromStorage();
   });
+
+  // 当 apps 列表更新后，重新加载已保存的位置并为新图标分配位置
+  watch(
+    visibleApps,
+    (newApps, oldApps) => {
+      // 只有当实际列表内容变化时才重新加载
+      const newIds = (newApps || [])
+        .map(a => a.id)
+        .sort()
+        .join(',');
+      const oldIds = (oldApps || [])
+        .map(a => a.id)
+        .sort()
+        .join(',');
+      if (newIds !== oldIds) {
+        loadPositionsFromStorage();
+      }
+    },
+    { deep: false }
+  );
 </script>
 
 <style scoped>

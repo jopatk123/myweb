@@ -11,12 +11,6 @@ services:
     image: myweb:latest
     # 使用环境变量使容器名可配置（优先使用 BACKEND_CONTAINER_NAME，否则回退到 myweb-app）
     container_name: ${BACKEND_CONTAINER_NAME:-myweb-app}
-    # Load runtime environment variables from project .env so server-side
-    # uploads and other runtime config (e.g. FILE_MAX_UPLOAD_SIZE) are available
-    # inside the container. The deploy.sh script already exports .env before
-    # invoking docker compose, but explicitly providing env_file makes the
-    # behavior explicit and works with docker compose invocations that don't
-    # inherit the parent shell environment.
     env_file:
       - .env
     ports:
@@ -39,11 +33,6 @@ services:
       start_period: 40s
     networks:
       - myweb-network
-    # 如果使用 Traefik 作为反向代理，取消以下注释并配置相应的服务。
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.myweb.rule=Host(`${DOMAIN:-localhost}`)"
-    #   - "traefik.http.services.myweb.loadbalancer.server.port=3000"
 
 volumes:
   myweb-data:

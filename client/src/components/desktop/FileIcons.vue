@@ -50,6 +50,7 @@
   const {
     GRID,
     cellToPosition,
+    positionToCell,
     finalizeDragForPositions,
     savePositionsToStorage: gridSavePositionsToStorage,
     loadPositionsFromStorage: gridLoadPositionsFromStorage,
@@ -261,6 +262,11 @@
     }
     positions.value = arranged;
     gridSavePositionsToStorage(STORAGE_KEY, positions.value, props.files);
+    // 更新缓存的文件ID列表，避免下次 watch 触发时覆盖排列结果
+    lastFileIds = (props.files || [])
+      .map(f => f.id)
+      .sort()
+      .join(',');
     return col + (row > 0 ? 1 : 0);
   }
 
@@ -280,11 +286,65 @@
     }
   }
 
+  // 用于记录上一次的文件 ID 列表，避免重复加载
+  let lastFileIds = '';
+
+  // 加载位置并为没有位置的图标分配默认位置
   function loadPositionsFromStorage() {
     try {
-      positions.value = gridLoadPositionsFromStorage
-        ? gridLoadPositionsFromStorage(STORAGE_KEY, props.files)
+      const files = props.files || [];
+      const currentFileIds = files
+        .map(f => f.id)
+        .sort()
+        .join(',');
+
+      // 如果文件列表没有变化，跳过加载
+      if (
+        currentFileIds === lastFileIds &&
+        Object.keys(positions.value).length > 0
+      ) {
+        return;
+      }
+      lastFileIds = currentFileIds;
+
+      const saved = gridLoadPositionsFromStorage
+        ? gridLoadPositionsFromStorage(STORAGE_KEY, files)
         : {};
+
+      if (files.length === 0) {
+        positions.value = saved;
+        return;
+      }
+
+      // 获取已占用的格子
+      const occupied = new Set();
+      for (const [id, pos] of Object.entries(saved)) {
+        if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+          const cell = positionToCell(pos);
+          occupied.add(`${cell.col}:${cell.row}`);
+        }
+      }
+
+      // 为缺失位置的文件分配位置
+      const result = { ...saved };
+      for (const file of files) {
+        if (!result[file.id]) {
+          // 找到下一个空闲格子（文件图标从第二列开始，为应用图标留出空间）
+          let col = 1; // 文件图标默认从第1列开始
+          let row = 0;
+          while (occupied.has(`${col}:${row}`)) {
+            row += 1;
+            if (row >= GRID.maxRows) {
+              row = 0;
+              col += 1;
+            }
+          }
+          result[file.id] = cellToPosition({ col, row });
+          occupied.add(`${col}:${row}`);
+        }
+      }
+
+      positions.value = result;
     } catch (e) {
       console.error('FileIcons.loadPositionsFromStorage error', e);
     }
@@ -298,9 +358,21 @@
   // 当父组件传入的 files 变化时，重新加载位置（例如异步 fetch 完成后）
   watch(
     () => props.files,
-    () => {
-      loadPositionsFromStorage();
-    }
+    (newFiles, oldFiles) => {
+      // 只有当文件列表实际变化时才重新加载
+      const newIds = (newFiles || [])
+        .map(f => f.id)
+        .sort()
+        .join(',');
+      const oldIds = (oldFiles || [])
+        .map(f => f.id)
+        .sort()
+        .join(',');
+      if (newIds !== oldIds) {
+        loadPositionsFromStorage();
+      }
+    },
+    { deep: false }
   );
 </script>
 
