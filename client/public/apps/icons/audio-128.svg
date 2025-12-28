@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="audio-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#AB47BC"/>
+      <stop offset="100%" style="stop-color:#7B1FA2"/>
+    </linearGradient>
+    <filter id="audio-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  <rect x="16" y="8" width="96" height="112" rx="8" fill="url(#audio-grad)" filter="url(#audio-shadow)"/>
+  <path d="M80 8v24a8 8 0 008 8h24" fill="none" stroke="#E1BEE7" stroke-width="2"/>
+  <polygon points="80,8 112,40 80,40" fill="#E1BEE7"/>
+  <!-- Sound wave bars -->
+  <rect x="36" y="68" width="6" height="24" rx="3" fill="rgba(255,255,255,0.9)"/>
+  <rect x="48" y="58" width="6" height="44" rx="3" fill="rgba(255,255,255,0.9)"/>
+  <rect x="60" y="52" width="6" height="56" rx="3" fill="rgba(255,255,255,0.9)"/>
+  <rect x="72" y="58" width="6" height="44" rx="3" fill="rgba(255,255,255,0.9)"/>
+  <rect x="84" y="68" width="6" height="24" rx="3" fill="rgba(255,255,255,0.9)"/>
+</svg>

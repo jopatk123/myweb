@@ -209,9 +209,16 @@
   const fileTypeIcons = computed(() => ({
     image: '/apps/icons/image-128.svg',
     video: '/apps/icons/video-128.svg',
+    audio: '/apps/icons/audio-128.svg',
+    music: '/apps/icons/music-128.svg',
     word: '/apps/icons/word-128.svg',
     excel: '/apps/icons/excel-128.svg',
+    ppt: '/apps/icons/ppt-128.svg',
+    pdf: '/apps/icons/pdf-128.svg',
+    text: '/apps/icons/text-128.svg',
+    code: '/apps/icons/code-128.svg',
     archive: '/apps/icons/archive-128.svg',
+    novel: '/apps/icons/novel-128.svg',
     other: '/apps/icons/file-128.svg',
   }));
 

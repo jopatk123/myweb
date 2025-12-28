@@ -1,22 +1,16 @@
-import path from 'path';
-import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { FileModel } from '../models/file.model.js';
-import { NovelModel } from '../models/novel.model.js';
-import { NovelBookmarkModel } from '../models/novel-bookmark.model.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadsRoot = path.resolve(__dirname, '../../uploads');
+/**
+ * 文件类型常量定义
+ * 用于统一管理文件类型分类、图标和MIME类型映射
+ */
 
 /**
  * 文件类型分类枚举
  */
-const FILE_CATEGORIES = {
+export const FILE_CATEGORIES = {
   IMAGE: 'image',
   VIDEO: 'video',
   AUDIO: 'audio',
-  MUSIC: 'music',
+  MUSIC: 'music', // 音乐文件（与audio区分，用于音乐播放器）
   WORD: 'word',
   EXCEL: 'excel',
   PPT: 'ppt',
@@ -31,7 +25,7 @@ const FILE_CATEGORIES = {
 /**
  * MIME类型到文件类型分类的映射
  */
-const MIME_TYPE_MAP = {
+export const MIME_TYPE_MAP = {
   // 图片类型
   'image/jpeg': FILE_CATEGORIES.IMAGE,
   'image/png': FILE_CATEGORIES.IMAGE,
@@ -150,9 +144,9 @@ const MIME_TYPE_MAP = {
 };
 
 /**
- * 文件扩展名到文件类型分类的映射
+ * 文件扩展名到文件类型分类的映射（用于MIME类型无法判断时的回退）
  */
-const EXTENSION_TYPE_MAP = {
+export const EXTENSION_TYPE_MAP = {
   // 图片
   '.jpg': FILE_CATEGORIES.IMAGE,
   '.jpeg': FILE_CATEGORIES.IMAGE,
@@ -277,6 +271,13 @@ const EXTENSION_TYPE_MAP = {
   '.pl': FILE_CATEGORIES.CODE,
   '.pm': FILE_CATEGORIES.CODE,
   '.dart': FILE_CATEGORIES.CODE,
+  '.ex': FILE_CATEGORIES.CODE,
+  '.exs': FILE_CATEGORIES.CODE,
+  '.clj': FILE_CATEGORIES.CODE,
+  '.hs': FILE_CATEGORIES.CODE,
+  '.fs': FILE_CATEGORIES.CODE,
+  '.ml': FILE_CATEGORIES.CODE,
+  '.elm': FILE_CATEGORIES.CODE,
 
   // 压缩文件
   '.zip': FILE_CATEGORIES.ARCHIVE,
@@ -299,27 +300,46 @@ const EXTENSION_TYPE_MAP = {
 };
 
 /**
+ * 文件类型对应的图标路径
+ */
+export const FILE_TYPE_ICONS = {
+  [FILE_CATEGORIES.IMAGE]: '/apps/icons/image-128.svg',
+  [FILE_CATEGORIES.VIDEO]: '/apps/icons/video-128.svg',
+  [FILE_CATEGORIES.AUDIO]: '/apps/icons/audio-128.svg',
+  [FILE_CATEGORIES.MUSIC]: '/apps/icons/music-128.svg',
+  [FILE_CATEGORIES.WORD]: '/apps/icons/word-128.svg',
+  [FILE_CATEGORIES.EXCEL]: '/apps/icons/excel-128.svg',
+  [FILE_CATEGORIES.PPT]: '/apps/icons/ppt-128.svg',
+  [FILE_CATEGORIES.PDF]: '/apps/icons/pdf-128.svg',
+  [FILE_CATEGORIES.TEXT]: '/apps/icons/text-128.svg',
+  [FILE_CATEGORIES.CODE]: '/apps/icons/code-128.svg',
+  [FILE_CATEGORIES.ARCHIVE]: '/apps/icons/archive-128.svg',
+  [FILE_CATEGORIES.NOVEL]: '/apps/icons/novel-128.svg',
+  [FILE_CATEGORIES.OTHER]: '/apps/icons/file-128.svg',
+};
+
+/**
  * 根据MIME类型和文件名获取文件类型分类
  * @param {string} mimeType - MIME类型
- * @param {string} originalName - 原始文件名
+ * @param {string} fileName - 文件名
  * @returns {string} 文件类型分类
  */
-function detectTypeCategory(mimeType, originalName = '') {
+export function getFileCategory(mimeType, fileName = '') {
   // 先尝试通过MIME类型判断
-  const mt = String(mimeType || '').toLowerCase();
-  if (MIME_TYPE_MAP[mt]) {
-    return MIME_TYPE_MAP[mt];
+  if (mimeType && MIME_TYPE_MAP[mimeType.toLowerCase()]) {
+    return MIME_TYPE_MAP[mimeType.toLowerCase()];
   }
 
   // 使用通用MIME类型前缀判断
+  const mt = String(mimeType || '').toLowerCase();
   if (mt.startsWith('image/')) return FILE_CATEGORIES.IMAGE;
   if (mt.startsWith('video/')) return FILE_CATEGORIES.VIDEO;
   if (mt.startsWith('audio/')) return FILE_CATEGORIES.MUSIC;
   if (mt.startsWith('text/')) return FILE_CATEGORIES.TEXT;
 
   // 通过文件扩展名判断
-  if (originalName) {
-    const name = String(originalName).toLowerCase();
+  if (fileName) {
+    const name = String(fileName).toLowerCase();
     const lastDotIndex = name.lastIndexOf('.');
     if (lastDotIndex !== -1) {
       const ext = name.substring(lastDotIndex);
@@ -332,139 +352,112 @@ function detectTypeCategory(mimeType, originalName = '') {
   return FILE_CATEGORIES.OTHER;
 }
 
-// 导出供测试使用
-export {
-  detectTypeCategory,
-  FILE_CATEGORIES,
-  MIME_TYPE_MAP,
-  EXTENSION_TYPE_MAP,
-};
-
-function buildFileUrl(baseUrl, relativePath) {
-  const normalizedPath = relativePath.replace(/^\/+/, '');
-  const trimmedBase = (baseUrl || '').trim();
-  if (!trimmedBase) {
-    return normalizedPath;
-  }
-
-  const sanitizedBase = trimmedBase.replace(/\/+$/, '');
-  if (/^https?:\/\//i.test(sanitizedBase)) {
-    try {
-      const base = sanitizedBase.endsWith('/')
-        ? sanitizedBase
-        : `${sanitizedBase}/`;
-      return new URL(normalizedPath, base).toString();
-    } catch {
-      return `${sanitizedBase}/${normalizedPath}`;
-    }
-  }
-
-  return `${sanitizedBase}/${normalizedPath}`;
+/**
+ * 获取文件类型对应的图标路径
+ * @param {string} category - 文件类型分类
+ * @returns {string} 图标路径
+ */
+export function getFileIcon(category) {
+  return FILE_TYPE_ICONS[category] || FILE_TYPE_ICONS[FILE_CATEGORIES.OTHER];
 }
 
-export class FileService {
-  constructor(db) {
-    this.model = new FileModel(db);
-    this.novelModel = new NovelModel(db);
-    this.bookmarkModel = new NovelBookmarkModel(db);
+/**
+ * 根据文件信息获取图标路径
+ * @param {string} mimeType - MIME类型
+ * @param {string} fileName - 文件名
+ * @returns {string} 图标路径
+ */
+export function getFileIconByFile(mimeType, fileName) {
+  const category = getFileCategory(mimeType, fileName);
+  return getFileIcon(category);
+}
+
+/**
+ * 可预览的文件类型列表
+ */
+export const PREVIEWABLE_CATEGORIES = [
+  FILE_CATEGORIES.IMAGE,
+  FILE_CATEGORIES.VIDEO,
+  FILE_CATEGORIES.WORD,
+  FILE_CATEGORIES.EXCEL,
+  FILE_CATEGORIES.PDF,
+  FILE_CATEGORIES.TEXT,
+  FILE_CATEGORIES.CODE,
+];
+
+/**
+ * 判断文件是否可预览
+ * @param {string} category - 文件类型分类
+ * @returns {boolean}
+ */
+export function isPreviewable(category) {
+  return PREVIEWABLE_CATEGORIES.includes(category);
+}
+
+/**
+ * 上传文件大小限制（字节）
+ */
+export const UPLOAD_SIZE_LIMITS = {
+  DEFAULT: 1024 * 1024 * 1024, // 1GB
+  IMAGE: 50 * 1024 * 1024, // 50MB
+  VIDEO: 2 * 1024 * 1024 * 1024, // 2GB
+  AUDIO: 200 * 1024 * 1024, // 200MB
+  DOCUMENT: 100 * 1024 * 1024, // 100MB
+};
+
+/**
+ * 格式化文件大小
+ * @param {number} bytes - 字节数
+ * @param {number} decimals - 小数位数
+ * @returns {string} 格式化后的文件大小
+ */
+export function formatFileSize(bytes, decimals = 1) {
+  if (!bytes || bytes <= 0 || !isFinite(bytes)) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  if (i < 0 || i >= sizes.length) return '0 B';
+  return (
+    parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i]
+  );
+}
+
+/**
+ * 格式化上传速度
+ * @param {number} bytesPerSecond - 每秒字节数
+ * @returns {string} 格式化后的速度
+ */
+export function formatUploadSpeed(bytesPerSecond) {
+  if (!bytesPerSecond || bytesPerSecond <= 0 || !isFinite(bytesPerSecond))
+    return '';
+  const k = 1024;
+  const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+  const i = Math.floor(Math.log(bytesPerSecond) / Math.log(k));
+  if (i < 0 || i >= sizes.length) return '';
+  return (
+    parseFloat((bytesPerSecond / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+  );
+}
+
+/**
+ * 格式化剩余时间
+ * @param {number} seconds - 秒数
+ * @returns {string} 格式化后的时间
+ */
+export function formatRemainingTime(seconds) {
+  if (!seconds || seconds <= 0 || !isFinite(seconds)) return '';
+
+  if (seconds < 60) {
+    return `${Math.ceil(seconds)}秒`;
   }
 
-  list({ page = 1, limit = 20, type = null, search = null } = {}) {
-    return this.model.findAll({ page, limit, type, search });
+  if (seconds < 3600) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.ceil(seconds % 60);
+    return secs > 0 ? `${mins}分${secs}秒` : `${mins}分`;
   }
 
-  get(id) {
-    const row = this.model.findById(id);
-    if (!row) {
-      const err = new Error('文件不存在');
-      err.status = 404;
-      throw err;
-    }
-    return row;
-  }
-
-  create({
-    originalName,
-    storedName,
-    filePath,
-    mimeType,
-    fileSize,
-    uploaderId,
-    baseUrl = '',
-    typeCategory: explicitTypeCategory = null,
-  }) {
-    const typeCategory =
-      explicitTypeCategory || detectTypeCategory(mimeType, originalName);
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    const fileUrl = buildFileUrl(baseUrl, normalizedPath);
-
-    const payload = {
-      originalName,
-      storedName,
-      filePath: normalizedPath,
-      mimeType,
-      fileSize,
-      typeCategory,
-      fileUrl,
-      uploaderId,
-    };
-    // FileModel.create expects camelCase keys; pass payload directly
-    return this.model.create(payload);
-  }
-
-  createMany(entries = []) {
-    const items = Array.isArray(entries) ? entries : [entries];
-    if (!items.length) return [];
-    const txn = this.model.db.transaction(data =>
-      data.map(item => this.create(item))
-    );
-    return txn(items);
-  }
-
-  async remove(id) {
-    // 先事务性删除 DB（files + novels），再尽力删除磁盘文件，保证前端与 DB 一致
-    const db = this.model.db;
-    const file = this.get(id);
-    const filePath = file.file_path;
-
-    // 1) 事务：删除 files 记录与 novels 关联记录
-    const transaction = db.transaction(() => {
-      const normalizedCategory = (file.type_category || file.typeCategory || '')
-        .toLowerCase()
-        .trim();
-      const novelRow =
-        normalizedCategory === 'novel'
-          ? this.novelModel.findByFilePath(filePath)
-          : null;
-
-      this.model.delete(id);
-
-      if (normalizedCategory === 'novel') {
-        this.novelModel.deleteByFilePath(filePath);
-        if (novelRow) {
-          this.bookmarkModel.deleteByBookId(novelRow.id);
-        }
-      }
-
-      this.bookmarkModel.deleteByFileId(id);
-    });
-
-    transaction();
-
-    // 2) 尝试删除磁盘文件（失败仅记录，不影响已完成的 DB 状态）
-    try {
-      const absolutePath = path.resolve(__dirname, '../../', filePath);
-      if (!absolutePath.startsWith(uploadsRoot)) {
-        console.warn('拒绝删除非上传目录文件:', absolutePath);
-        return true;
-      }
-      await fs.unlink(absolutePath);
-    } catch (err) {
-      if (err.code !== 'ENOENT') {
-        console.warn('删除磁盘文件失败（已忽略）:', err && err.message);
-      }
-    }
-
-    return true;
-  }
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  return mins > 0 ? `${hours}时${mins}分` : `${hours}时`;
 }
