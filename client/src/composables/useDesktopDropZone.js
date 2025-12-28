@@ -7,6 +7,8 @@ import { ref } from 'vue';
 export function useDesktopDropZone({ upload, onError } = {}) {
   const dragOver = ref(false);
 
+  const MAX_DESKTOP_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1GiB
+
   const toArray = files => Array.from(files || []);
 
   function onDragOver() {
@@ -21,6 +23,17 @@ export function useDesktopDropZone({ upload, onError } = {}) {
     dragOver.value = false;
     const droppedFiles = toArray(event?.dataTransfer?.files);
     if (!droppedFiles.length || typeof upload !== 'function') return;
+
+    const oversize = droppedFiles.find(
+      f => (f?.size || 0) > MAX_DESKTOP_UPLOAD_SIZE
+    );
+    if (oversize) {
+      const err = new Error(
+        `文件过大：${oversize.name || 'unknown'}（最大允许 1G）`
+      );
+      err.code = 'DESKTOP_UPLOAD_TOO_LARGE';
+      throw err;
+    }
 
     try {
       await upload(droppedFiles);

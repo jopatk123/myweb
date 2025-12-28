@@ -19,7 +19,7 @@ const __dirname = path.dirname(__filename);
 const uploadsRoot = path.join(__dirname, '../../uploads');
 const filesDir = path.join(uploadsRoot, 'files');
 const novelsDir = path.join(uploadsRoot, 'novels');
-const DEFAULT_MAX_UPLOAD_SIZE = 1000 * 1024 * 1024; // 1GB
+const DEFAULT_MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1GiB
 const MAX_UPLOAD_SIZE = parseEnvByteSize(
   'FILE_MAX_UPLOAD_SIZE',
   DEFAULT_MAX_UPLOAD_SIZE
@@ -115,8 +115,10 @@ const fileFilter = (_req, file, cb) => {
   if (isAllowedFile(file)) {
     return cb(null, true);
   }
-  const err = new multer.MulterError('LIMIT_UNEXPECTED_FILE', file.fieldname);
-  err.message = '不支持的文件类型';
+  const err = new Error('不支持的文件类型');
+  err.status = 400;
+  err.code = 'UNSUPPORTED_FILE_TYPE';
+  err.field = file.fieldname;
   return cb(err);
 };
 

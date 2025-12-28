@@ -77,8 +77,8 @@ RUN if [ "$SKIP_SERVER_NPM_INSTALL" = "0" ]; then \
 # =================== 运行时阶段 ===================
 FROM node:20-alpine AS runtime
 
-# 安装 dumb-init 用于正确的信号处理（runtime 只需此项）
-RUN apk add --no-cache dumb-init
+# 安装运行期依赖：dumb-init 用于信号处理；ffmpeg 供音频转码/压缩功能使用
+RUN apk add --no-cache dumb-init ffmpeg
 
 # 创建应用用户以提高安全性
 RUN addgroup -g 1001 -S nodejs && \

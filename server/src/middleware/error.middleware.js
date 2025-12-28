@@ -5,18 +5,9 @@ const errorLogger = logger.child('ErrorHandler');
 
 export default function errorHandler(err, req, res, _next) {
   void _next;
-  // 日志记录
-  errorLogger.error('Unhandled error caught by Express middleware', {
-    path: req?.path,
-    method: req?.method,
-    status: err?.status || 500,
-    requestId: req?.headers?.['x-request-id'],
-    error: err,
-  });
-
   // 分类错误处理
-  let status = err.status || 500;
-  let message = err.message || 'Internal Server Error';
+  let status = err?.status || 500;
+  let message = err?.message || 'Internal Server Error';
 
   // 数据库错误
   if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -31,10 +22,23 @@ export default function errorHandler(err, req, res, _next) {
   if (err.code === 'LIMIT_FILE_SIZE') {
     status = 400;
     message = '文件大小超出限制';
-  } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+  } else if (err.code === 'UNSUPPORTED_FILE_TYPE') {
     status = 400;
     message = '不支持的文件类型';
+  } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    // Multer 语义：表单字段名不符合预期（例如后端期待 field="file"，但前端传了其它字段）
+    status = 400;
+    message = '上传字段不正确';
   }
+
+  // 日志记录（使用最终 status，避免误导）
+  errorLogger.error('Unhandled error caught by Express middleware', {
+    path: req?.path,
+    method: req?.method,
+    status,
+    requestId: req?.headers?.['x-request-id'],
+    error: err,
+  });
 
   const response = {
     code: status,

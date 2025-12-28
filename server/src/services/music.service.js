@@ -2,7 +2,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import ffmpeg from 'fluent-ffmpeg';
-import ffmpegPath from 'ffmpeg-static';
 import { MusicTrackModel } from '../models/music-track.model.js';
 import { MusicGroupModel } from '../models/music-group.model.js';
 import { FileService } from './file.service.js';
@@ -12,8 +11,25 @@ const __dirname = path.dirname(__filename);
 const uploadsRoot = path.join(__dirname, '../../uploads');
 const musicDir = path.join(uploadsRoot, 'music');
 
-if (ffmpegPath) {
-  ffmpeg.setFfmpegPath(ffmpegPath);
+let _ffmpegConfigured = false;
+
+async function configureFfmpegIfNeeded() {
+  if (_ffmpegConfigured) return;
+  _ffmpegConfigured = true;
+
+  try {
+    const mod = await import('ffmpeg-static');
+    const ffmpegPath = mod?.default ?? mod;
+    if (ffmpegPath) {
+      ffmpeg.setFfmpegPath(ffmpegPath);
+    }
+  } catch (err) {
+    // 在 Alpine 等环境下 ffmpeg-static 可能无法加载；回退为使用系统 ffmpeg（若存在）
+    console.warn(
+      'ffmpeg-static 加载失败，将回退为系统 ffmpeg（若存在）:',
+      err?.message || err
+    );
+  }
 }
 
 function ensureAbsolutePath(relativePath) {
@@ -358,6 +374,7 @@ export class MusicService {
     }
 
     try {
+      await configureFfmpegIfNeeded();
       const compressedName = `${path.basename(inputPath, path.extname(inputPath))}_compressed.opus`;
       const compressedPath = path.join(musicDir, compressedName);
 

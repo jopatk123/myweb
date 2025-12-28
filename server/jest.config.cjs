@@ -1,3 +1,7 @@
+process.env.NODE_OPTIONS = process.env.NODE_OPTIONS
+  ? `${process.env.NODE_OPTIONS} --experimental-vm-modules`
+  : '--experimental-vm-modules';
+
 module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],

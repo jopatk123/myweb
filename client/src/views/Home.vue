@@ -161,7 +161,9 @@
 
   const { dragOver, onDragOver, onDragLeave, onDrop } = useDesktopDropZone({
     upload: filesToUpload => upload(filesToUpload),
-    onError: () => {},
+    onError: error => {
+      console.warn('[Home] Desktop upload failed', error);
+    },
   });
 
   const { createWindow } = useWindowManager();
