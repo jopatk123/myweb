@@ -77,7 +77,9 @@ export function useDesktopFileActions({
       .toLowerCase()
       .trim();
 
-    if (['image', 'video', 'word', 'excel'].includes(typeCategory)) {
+    if (
+      ['image', 'video', 'word', 'excel', 'text', 'code'].includes(typeCategory)
+    ) {
       return true;
     }
 
@@ -91,7 +93,7 @@ export function useDesktopFileActions({
         ''
     );
 
-    return /\.(png|jpe?g|gif|bmp|webp|svg|avif|mp4|webm|ogg|ogv|mov|mkv|docx?|xlsx?|xlsm|xlsb)$/i.test(
+    return /\.(png|jpe?g|gif|bmp|webp|svg|avif|mp4|webm|ogg|ogv|mov|mkv|docx?|xlsx?|xlsm|xlsb|txt|json)$/i.test(
       name
     );
   });

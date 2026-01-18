@@ -25,6 +25,11 @@
             </div>
           </div>
         </div>
+        <pre v-else-if="isText" class="text-preview"
+          >{{
+            previewText || '无法预览该文件，您可以点击下方下载并在本地查看。'
+          }}
+        </pre>
         <div v-else class="fallback">暂不支持该类型预览</div>
       </div>
     </div>
@@ -83,6 +88,12 @@
       ) ||
       /\.(xlsx?|xlsm|xlsb)$/i.test(nameOrPath.value)
   );
+  const isText = computed(() => {
+    if (typeCat.value === 'text' || typeCat.value === 'code') return true;
+    if (mime.value.toLowerCase().startsWith('text/')) return true;
+    if (/application\/json/i.test(mime.value)) return true;
+    return /\.(txt|json)$/i.test(nameOrPath.value);
+  });
 
   const previewUrl = computed(() => {
     const f = props.file || {};
@@ -98,6 +109,7 @@
 
   const loading = ref(false);
   const previewHtml = ref('');
+  const previewText = ref('');
 
   async function fetchArrayBuffer(url) {
     const resp = await fetch(url, { credentials: 'include' });
@@ -107,8 +119,17 @@
     return await resp.arrayBuffer();
   }
 
+  async function fetchText(url) {
+    const resp = await fetch(url, { credentials: 'include' });
+    if (!resp.ok) throw new Error('无法获取文件');
+    const size = Number(resp.headers.get('content-length') || 0);
+    if (size && size > 2 * 1024 * 1024) throw new Error('文件过大');
+    return await resp.text();
+  }
+
   async function generatePreview() {
     previewHtml.value = '';
+    previewText.value = '';
     if (!previewUrl.value) return;
     loading.value = true;
     try {
@@ -129,9 +150,24 @@
         const rawHtml = XLSX.utils.sheet_to_html(sheet);
         const DOMPurify = (await import('dompurify')).default;
         previewHtml.value = DOMPurify.sanitize(rawHtml);
+      } else if (isText.value) {
+        const rawText = await fetchText(url);
+        if (
+          /\.json$/i.test(nameOrPath.value) ||
+          /application\/json/i.test(mime.value)
+        ) {
+          try {
+            previewText.value = JSON.stringify(JSON.parse(rawText), null, 2);
+          } catch {
+            previewText.value = rawText;
+          }
+        } else {
+          previewText.value = rawText;
+        }
       }
     } catch {
       previewHtml.value = '';
+      previewText.value = '';
     } finally {
       loading.value = false;
     }
@@ -141,8 +177,12 @@
   watch(
     () => props.file,
     () => {
-      if (isWord.value || isExcel.value) generatePreview().catch(() => {});
-      else previewHtml.value = '';
+      if (isWord.value || isExcel.value || isText.value)
+        generatePreview().catch(() => {});
+      else {
+        previewHtml.value = '';
+        previewText.value = '';
+      }
     },
     { immediate: true }
   );
@@ -183,6 +223,17 @@
     object-fit: contain;
     background: #000;
     border-radius: 8px;
+  }
+  .text-preview {
+    width: 100%;
+    height: 100%;
+    background: #0b0f19;
+    color: #e5e7eb;
+    padding: 16px;
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: pre-wrap;
   }
   .doc-actions {
     position: absolute;

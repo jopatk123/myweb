@@ -24,6 +24,11 @@
             </div>
           </div>
         </div>
+        <pre v-else-if="isText" class="text-preview"
+          >{{
+            previewText || '无法预览该文件。你可以点击下方下载并在本地查看。'
+          }}
+        </pre>
         <div v-else class="fallback">暂不支持该类型预览</div>
       </div>
     </div>
@@ -104,6 +109,12 @@
       ) ||
       /\.(xlsx?|xlsm|xlsb)$/i.test(nameOrPath.value)
   );
+  const isText = computed(() => {
+    if (typeCat.value === 'text' || typeCat.value === 'code') return true;
+    if (mime.value.toLowerCase().startsWith('text/')) return true;
+    if (/application\/json/i.test(mime.value)) return true;
+    return /\.(txt|json)$/i.test(nameOrPath.value);
+  });
 
   const previewUrl = computed(() => {
     const f = props.file || {};
@@ -120,6 +131,7 @@
   // 前端渲染状态
   const loading = ref(false);
   const previewHtml = ref('');
+  const previewText = ref('');
 
   // 辅助：从 URL 获取 ArrayBuffer（带凭据）
   async function fetchArrayBuffer(url) {
@@ -131,9 +143,18 @@
     return await resp.arrayBuffer();
   }
 
+  async function fetchText(url) {
+    const resp = await fetch(url, { credentials: 'include' });
+    if (!resp.ok) throw new Error('无法获取文件');
+    const size = Number(resp.headers.get('content-length') || 0);
+    if (size && size > 2 * 1024 * 1024) throw new Error('文件过大');
+    return await resp.text();
+  }
+
   // 生成预览（docx -> html, xlsx -> html）
   async function generatePreview() {
     previewHtml.value = '';
+    previewText.value = '';
     if (!previewUrl.value) return;
     loading.value = true;
     try {
@@ -158,11 +179,26 @@
         const rawHtml = XLSX.utils.sheet_to_html(sheet);
         const DOMPurify = (await import('dompurify')).default;
         previewHtml.value = DOMPurify.sanitize(rawHtml);
+      } else if (isText.value) {
+        const rawText = await fetchText(url);
+        if (
+          /\.json$/i.test(nameOrPath.value) ||
+          /application\/json/i.test(mime.value)
+        ) {
+          try {
+            previewText.value = JSON.stringify(JSON.parse(rawText), null, 2);
+          } catch {
+            previewText.value = rawText;
+          }
+        } else {
+          previewText.value = rawText;
+        }
       }
     } catch {
       // 预览失败，previewHtml 保持空以触发 fallback UI
       // console.error(e);
       previewHtml.value = '';
+      previewText.value = '';
     } finally {
       loading.value = false;
     }
@@ -176,11 +212,12 @@
   watch(
     [() => props.file, () => props.modelValue],
     ([_file, open]) => {
-      if (open && (isWord.value || isExcel.value)) {
+      if (open && (isWord.value || isExcel.value || isText.value)) {
         // 异步生成
         generatePreview().catch(() => {});
       } else {
         previewHtml.value = '';
+        previewText.value = '';
       }
     },
     { immediate: true }
@@ -270,6 +307,17 @@
     object-fit: contain;
     background: #000;
     border-radius: 8px;
+  }
+  .text-preview {
+    width: 100%;
+    height: 100%;
+    background: #0b0f19;
+    color: #e5e7eb;
+    padding: 16px;
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: pre-wrap;
   }
   .fallback {
     color: #ddd;
