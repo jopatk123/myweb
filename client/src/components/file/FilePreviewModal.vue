@@ -24,6 +24,22 @@
             </div>
           </div>
         </div>
+        <div v-else-if="isMarkdown" class="doc-wrap">
+          <div v-if="loading" class="loading">正在解析 Markdown...</div>
+          <div
+            v-else-if="previewHtml"
+            class="markdown-preview"
+            v-html="previewHtml"
+          ></div>
+          <div v-else class="fallback">
+            无法预览该文件。你可以点击下方下载并在本地查看。
+            <div style="margin-top: 10px">
+              <a :href="previewUrl" target="_blank" rel="noopener" class="btn"
+                >下载文件</a
+              >
+            </div>
+          </div>
+        </div>
         <pre v-else-if="isText" class="text-preview"
           >{{
             previewText || '无法预览该文件。你可以点击下方下载并在本地查看。'
@@ -109,7 +125,14 @@
       ) ||
       /\.(xlsx?|xlsm|xlsb)$/i.test(nameOrPath.value)
   );
+  const isMarkdown = computed(
+    () =>
+      mime.value.toLowerCase() === 'text/markdown' ||
+      /\.(md|markdown)$/i.test(nameOrPath.value)
+  );
   const isText = computed(() => {
+    // Markdown 文件单独处理，不走普通文本预览
+    if (isMarkdown.value) return false;
     if (typeCat.value === 'text' || typeCat.value === 'code') return true;
     if (mime.value.toLowerCase().startsWith('text/')) return true;
     if (/application\/json/i.test(mime.value)) return true;
@@ -179,6 +202,13 @@
         const rawHtml = XLSX.utils.sheet_to_html(sheet);
         const DOMPurify = (await import('dompurify')).default;
         previewHtml.value = DOMPurify.sanitize(rawHtml);
+      } else if (isMarkdown.value) {
+        // Markdown 预览 - 使用 marked 解析
+        const rawText = await fetchText(url);
+        const { marked } = await import('marked');
+        const DOMPurify = (await import('dompurify')).default;
+        const rawHtml = marked.parse(rawText);
+        previewHtml.value = DOMPurify.sanitize(rawHtml);
       } else if (isText.value) {
         const rawText = await fetchText(url);
         if (
@@ -212,7 +242,10 @@
   watch(
     [() => props.file, () => props.modelValue],
     ([_file, open]) => {
-      if (open && (isWord.value || isExcel.value || isText.value)) {
+      if (
+        open &&
+        (isWord.value || isExcel.value || isMarkdown.value || isText.value)
+      ) {
         // 异步生成
         generatePreview().catch(() => {});
       } else {
@@ -318,6 +351,110 @@
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     white-space: pre-wrap;
+  }
+  .markdown-preview {
+    width: 100%;
+    height: 100%;
+    background: #1a1f2e;
+    color: #e5e7eb;
+    padding: 24px 32px;
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+  .markdown-preview :deep(h1),
+  .markdown-preview :deep(h2),
+  .markdown-preview :deep(h3),
+  .markdown-preview :deep(h4),
+  .markdown-preview :deep(h5),
+  .markdown-preview :deep(h6) {
+    color: #fff;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .markdown-preview :deep(h1) {
+    font-size: 2em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.3em;
+  }
+  .markdown-preview :deep(h2) {
+    font-size: 1.5em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.3em;
+  }
+  .markdown-preview :deep(h3) {
+    font-size: 1.25em;
+  }
+  .markdown-preview :deep(p) {
+    margin: 1em 0;
+  }
+  .markdown-preview :deep(code) {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Fira Code', Consolas, Monaco, monospace;
+    font-size: 0.9em;
+  }
+  .markdown-preview :deep(pre) {
+    background: #0d1117;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1em 0;
+  }
+  .markdown-preview :deep(pre code) {
+    background: transparent;
+    padding: 0;
+  }
+  .markdown-preview :deep(blockquote) {
+    border-left: 4px solid #3b82f6;
+    margin: 1em 0;
+    padding: 0.5em 1em;
+    background: rgba(59, 130, 246, 0.1);
+    color: #93c5fd;
+  }
+  .markdown-preview :deep(ul),
+  .markdown-preview :deep(ol) {
+    padding-left: 2em;
+    margin: 1em 0;
+  }
+  .markdown-preview :deep(li) {
+    margin: 0.5em 0;
+  }
+  .markdown-preview :deep(a) {
+    color: #60a5fa;
+    text-decoration: none;
+  }
+  .markdown-preview :deep(a:hover) {
+    text-decoration: underline;
+  }
+  .markdown-preview :deep(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+  }
+  .markdown-preview :deep(th),
+  .markdown-preview :deep(td) {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .markdown-preview :deep(th) {
+    background: rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+  }
+  .markdown-preview :deep(hr) {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 2em 0;
+  }
+  .markdown-preview :deep(img) {
+    max-width: 100%;
+    border-radius: 8px;
   }
   .fallback {
     color: #ddd;

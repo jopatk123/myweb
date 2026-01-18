@@ -29,55 +29,8 @@ const MAX_UPLOAD_FILES = Math.max(
   parseEnvNumber('FILE_MAX_UPLOAD_FILES', 10)
 );
 
-const allowedMimePatterns = [
-  /^image\//i,
-  /^video\//i,
-  /^audio\//i,
-  /^text\//i,
-  /^application\/(pdf|zip|x-7z-compressed|x-rar-compressed|msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document|vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|json)$/i,
-];
-
-const allowedExtensions = new Set(
-  [
-    '.png',
-    '.jpg',
-    '.jpeg',
-    '.gif',
-    '.bmp',
-    '.webp',
-    '.svg',
-    '.mp4',
-    '.mkv',
-    '.mov',
-    '.avi',
-    '.mp3',
-    '.wav',
-    '.flac',
-    '.aac',
-    '.ogg',
-    '.m4a',
-    '.wma',
-    '.doc',
-    '.docx',
-    '.xls',
-    '.xlsx',
-    '.ppt',
-    '.pptx',
-    '.pdf',
-    '.zip',
-    '.rar',
-    '.7z',
-    '.tar',
-    '.gz',
-    '.tgz',
-    '.txt',
-    '.md',
-    '.csv',
-    '.json',
-    '.log',
-    '.epub',
-  ].map(ext => ext.toLowerCase())
-);
+// 允许所有文件类型上传 - 移除限制
+const allowAllFiles = true;
 
 if (!fs.existsSync(filesDir)) {
   try {
@@ -102,12 +55,9 @@ function resolveBaseUrl(req) {
 }
 
 function isAllowedFile(file) {
-  const mimetype = String(file.mimetype || '').toLowerCase();
-  const ext = path.extname(file.originalname || '').toLowerCase();
-  return (
-    allowedMimePatterns.some(regex => regex.test(mimetype)) ||
-    allowedExtensions.has(ext)
-  );
+  // 允许所有文件类型上传
+  if (allowAllFiles) return true;
+  return true;
 }
 
 const fileFilter = (_req, file, cb) => {
