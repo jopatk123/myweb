@@ -68,7 +68,7 @@
 | 变量                   | 默认          | 说明                  |
 | ---------------------- | ------------- | --------------------- |
 | `NODE_ENV`             | `development` | 运行模式              |
-| `BACKEND_PORT`         | `10010`       | 后端 HTTP/WS 端口     |
+| `BACKEND_PORT`         | `3000`        | 后端 HTTP/WS 端口     |
 | `FRONTEND_PORT`        | `3000`        | Vite dev 端口         |
 | `VITE_API_BASE`        | `/api`        | 前端打包时的 API 前缀 |
 | `CORS_ORIGIN`          | `*`           | 允许跨域来源          |
