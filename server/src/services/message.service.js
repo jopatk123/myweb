@@ -63,10 +63,17 @@ export class MessageService {
   /**
    * 获取留言列表
    */
-  static async getMessages({ page = 1, limit = 50 } = {}) {
+  static async getMessages({ page = 1, limit = 50, search = '' } = {}) {
     const offset = (page - 1) * limit;
-    const messages = MessageModel.findAll({ limit, offset, order: 'DESC' });
-    const total = MessageModel.count();
+    const normalizedSearch =
+      typeof search === 'string' ? search.trim() : '';
+    const messages = MessageModel.findAll({
+      limit,
+      offset,
+      order: 'DESC',
+      search: normalizedSearch,
+    });
+    const total = MessageModel.count({ search: normalizedSearch });
 
     return {
       messages: messages.reverse(), // 反转顺序，最新的在底部

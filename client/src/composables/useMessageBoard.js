@@ -1,7 +1,7 @@
 /**
  * 留言板组合式函数
  */
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useWindowManager } from './useWindowManager.js';
 import { messageAPI } from '@/api/message.js';
 import { useWebSocket } from './useWebSocket.js';
@@ -11,6 +11,7 @@ export function useMessageBoard() {
   const loading = ref(false);
   const sending = ref(false);
   const error = ref(null);
+  const searchQuery = ref('');
 
   // 用户设置
   const userSettings = reactive({
@@ -32,14 +33,17 @@ export function useMessageBoard() {
   });
 
   // 获取留言列表
-  const fetchMessages = async (page = 1) => {
+  const fetchMessages = async ({ page = 1, search = searchQuery.value } = {}) => {
     try {
       loading.value = true;
       error.value = null;
+      const normalizedSearch =
+        typeof search === 'string' ? search.trim() : '';
 
       const response = await messageAPI.getMessages({
         page,
         limit: pagination.limit,
+        ...(normalizedSearch ? { q: normalizedSearch } : {}),
       });
 
       if (response.code === 200) {
@@ -188,6 +192,7 @@ export function useMessageBoard() {
 
   // 处理新留言
   const handleNewMessage = data => {
+    if (isSearching.value) return;
     const { message } = data;
     if (message) {
       // 检查是否已存在（避免重复）
@@ -277,6 +282,11 @@ export function useMessageBoard() {
   // 计算属性
   const hasMessages = computed(() => messages.value.length > 0);
   const canLoadMore = computed(() => pagination.page < pagination.totalPages);
+  const isSearching = computed(() => searchQuery.value.trim().length > 0);
+
+  const setSearchQuery = value => {
+    searchQuery.value = value || '';
+  };
 
   // 初始化
   onMounted(() => {
@@ -289,6 +299,19 @@ export function useMessageBoard() {
     onMessage('messageDeleted', handleMessageDeleted);
   });
 
+  let searchDebounceTimer = null;
+  watch(
+    searchQuery,
+    newQuery => {
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        pagination.page = 1;
+        fetchMessages({ page: 1, search: newQuery });
+      }, 300);
+    },
+    { flush: 'post' }
+  );
+
   return {
     // 数据
     messages,
@@ -298,10 +321,12 @@ export function useMessageBoard() {
     userSettings,
     pagination,
     isConnected,
+    searchQuery,
 
     // 计算属性
     hasMessages,
     canLoadMore,
+    isSearching,
 
     // 方法
     fetchMessages,
@@ -312,5 +337,6 @@ export function useMessageBoard() {
     uploadImages,
     formatTime,
     generateRandomColor,
+    setSearchQuery,
   };
 }

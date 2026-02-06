@@ -57,17 +57,31 @@ export class MessageModel {
   /**
    * 获取留言列表
    */
-  static findAll({ limit = 50, offset = 0, order = 'DESC' } = {}) {
+  static findAll({ limit = 50, offset = 0, order = 'DESC', search = '' } = {}) {
     const db = getDb();
+    const normalizedSearch =
+      typeof search === 'string' ? search.trim() : '';
+    const hasSearch = normalizedSearch.length > 0;
+    const whereSql = hasSearch
+      ? 'WHERE content LIKE ? OR author_name LIKE ?'
+      : '';
     const stmt = db.prepare(`
       SELECT id, content, author_name as authorName, author_color as authorColor, 
              session_id as sessionId, images, image_type as imageType, created_at as createdAt, updated_at as updatedAt
       FROM messages 
+      ${whereSql}
       ORDER BY created_at ${order}
       LIMIT ? OFFSET ?
     `);
 
-    const messages = stmt.all(limit, offset);
+    const params = [];
+    if (hasSearch) {
+      const term = `%${normalizedSearch}%`;
+      params.push(term, term);
+    }
+    params.push(limit, offset);
+
+    const messages = stmt.all(...params);
     return messages.map(message => {
       if (message.images) {
         message.images = JSON.parse(message.images);
@@ -79,10 +93,20 @@ export class MessageModel {
   /**
    * 获取留言总数
    */
-  static count() {
+  static count({ search = '' } = {}) {
     const db = getDb();
-    const stmt = db.prepare(`SELECT COUNT(*) as count FROM messages`);
-    return stmt.get().count;
+    const normalizedSearch =
+      typeof search === 'string' ? search.trim() : '';
+    if (!normalizedSearch) {
+      const stmt = db.prepare(`SELECT COUNT(*) as count FROM messages`);
+      return stmt.get().count;
+    }
+
+    const term = `%${normalizedSearch}%`;
+    const stmt = db.prepare(
+      `SELECT COUNT(*) as count FROM messages WHERE content LIKE ? OR author_name LIKE ?`
+    );
+    return stmt.get(term, term).count;
   }
 
   /**

@@ -2,6 +2,11 @@
   <div class="message-board">
     <MessageBoardHeader
       :is-connected="isConnected"
+      :search-query="searchQuery"
+      :search-count="pagination.total"
+      :loading="loading"
+      :is-searching="isSearching"
+      @update:search-query="setSearchQuery"
       @toggle-settings="showSettings = !showSettings"
       @close="$emit('close')"
     />
@@ -20,6 +25,8 @@
       :loading="loading"
       :has-messages="hasMessages"
       :error="error"
+      :is-searching="isSearching"
+      :search-query="searchQuery"
       :list-ref="messageListRef"
       :format-time="formatTime"
       @retry="fetchMessages()"
@@ -58,7 +65,10 @@
     sending,
     error,
     userSettings,
+    pagination,
     isConnected,
+    searchQuery,
+    isSearching,
     hasMessages,
     fetchMessages,
     sendMessage,
@@ -67,6 +77,7 @@
     updateUserSettings,
     formatTime,
     generateRandomColor,
+    setSearchQuery,
   } = useMessageBoard();
 
   // 本地状态
@@ -164,6 +175,7 @@
   watch(
     messages,
     () => {
+      if (isSearching.value) return;
       nextTick(() => {
         scrollToBottom();
       });

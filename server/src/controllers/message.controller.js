@@ -136,10 +136,11 @@ export class MessageController {
    */
   static async getMessages(req, res, next) {
     try {
-      const { page, limit } = req.query;
+      const { page, limit, q } = req.query;
       const result = await MessageService.getMessages({
         page: parseInt(page) || 1,
         limit: parseInt(limit) || 50,
+        search: q,
       });
 
       res.json({

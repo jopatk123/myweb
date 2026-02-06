@@ -24,7 +24,7 @@
       <textarea
         v-model="inputMessage"
         placeholder="输入留言内容... (Ctrl+V 粘贴图片)"
-        rows="2"
+        rows="3"
         maxlength="1000"
         @keydown.enter.exact.prevent="handleSend"
         @keydown.enter.shift.exact="handleNewLine"
@@ -171,31 +171,34 @@
 
 <style scoped>
   .message-input {
-    padding: 16px;
+    padding: 20px;
     border-top: 1px solid #e9ecef;
-    background: #f8f9fa;
+    background: #fff;
   }
 
   .input-container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
   }
 
   .input-container textarea {
     width: 100%;
-    padding: 8px 12px;
+    padding: 12px 16px;
     border: 1px solid #ced4da;
-    border-radius: 4px;
-    font-size: 14px;
+    border-radius: 12px;
+    font-size: 15px;
     resize: none;
     font-family: inherit;
+    transition: all 0.2s;
+    background: #f8f9fa;
   }
 
   .input-container textarea:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    background: #fff;
+    border-color: #4dabf7;
+    box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.25);
   }
 
   .input-actions {
@@ -207,37 +210,41 @@
   .input-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
   }
 
   .add-image-btn {
-    background: none;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    padding: 6px 8px;
+    background: #f1f3f5;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
     cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.2s;
+    font-size: 18px;
+    transition: all 0.2s;
+    color: #495057;
   }
 
   .add-image-btn:hover {
     background: #e9ecef;
+    color: #212529;
+    transform: translateY(-1px);
   }
 
   .selected-images {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     margin-bottom: 8px;
     flex-wrap: wrap;
   }
 
   .selected-image-item {
     position: relative;
-    width: 80px;
-    height: 80px;
-    border-radius: 4px;
+    width: 90px;
+    height: 90px;
+    border-radius: 8px;
     overflow: hidden;
-    border: 1px solid #ced4da;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   }
 
   .selected-image-item img {
@@ -248,78 +255,89 @@
 
   .remove-image-btn {
     position: absolute;
-    top: 2px;
-    right: 2px;
-    background: rgba(220, 53, 69, 0.9);
+    top: 4px;
+    right: 4px;
+    background: rgba(33, 37, 41, 0.8);
     color: white;
     border: none;
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    font-size: 12px;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    padding: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background-color 0.2s;
   }
 
   .remove-image-btn:hover {
-    background: rgba(220, 53, 69, 1);
+    background: rgba(250, 82, 82, 0.9);
   }
 
   .compression-info {
     position: absolute;
-    bottom: 2px;
-    left: 2px;
-    right: 2px;
-    background: rgba(0, 0, 0, 0.7);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.6);
     color: white;
     padding: 2px 4px;
-    border-radius: 2px;
     font-size: 10px;
     display: flex;
     flex-direction: column;
     gap: 1px;
+    backdrop-filter: blur(2px);
   }
 
   .compression-badge {
-    background: #ffc107;
+    background: #ffd43b;
     color: #000;
-    padding: 1px 3px;
+    padding: 1px 4px;
     border-radius: 2px;
-    font-weight: bold;
+    font-weight: 700;
     font-size: 9px;
     text-align: center;
+    align-self: flex-start;
+    margin-bottom: 1px;
   }
 
   .size-info {
-    font-size: 9px;
+    font-size: 10px;
     text-align: center;
-    opacity: 0.9;
+    opacity: 0.95;
+    font-weight: 500;
   }
 
   .char-count {
-    font-size: 12px;
-    color: #6c757d;
+    font-size: 13px;
+    color: #868e96;
   }
 
   .send-btn {
-    padding: 6px 16px;
-    background: #007bff;
+    padding: 8px 20px;
+    background: #228be6;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(34, 139, 230, 0.2);
   }
 
   .send-btn:hover:not(:disabled) {
-    background: #0056b3;
+    background: #1c7ed6;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(34, 139, 230, 0.3);
   }
 
   .send-btn:disabled {
-    background: #6c757d;
+    background: #adb5bd;
     cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
   }
 </style>

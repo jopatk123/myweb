@@ -8,7 +8,10 @@
     </div>
 
     <div v-if="!loading && !hasMessages" class="empty">
-      还没有留言，来发第一条吧！
+      <span v-if="isSearching">
+        没有找到与“{{ searchQuery }}”相关的留言
+      </span>
+      <span v-else>还没有留言，来发第一条吧！</span>
     </div>
 
     <div v-for="message in messages" :key="message.id" class="message-item">
@@ -44,6 +47,8 @@
     error: { type: [String, Object], default: '' },
     listRef: { type: [Function, Object], default: null },
     formatTime: { type: Function, required: true },
+    isSearching: { type: Boolean, default: false },
+    searchQuery: { type: String, default: '' },
   });
 
   defineEmits(['retry']);
@@ -101,7 +106,7 @@
     () => props.messages.length,
     (newLen, oldLen) => {
       if (newLen === oldLen) return;
-      if (!isUserScrolling) {
+      if (!isUserScrolling && !props.isSearching) {
         // 使用平滑滚动以在发送/接收时更自然
         scrollToBottom('smooth');
       }
@@ -113,84 +118,97 @@
   .message-list {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 20px;
+    scroll-behavior: smooth;
   }
 
   .loading,
   .error,
   .empty {
     text-align: center;
-    color: #6c757d;
-    font-size: 14px;
-    padding: 20px;
+    color: #868e96;
+    font-size: 15px;
+    padding: 30px;
   }
 
   .error {
-    color: #dc3545;
+    color: #fa5252;
   }
 
   .retry-btn {
-    margin-left: 8px;
-    padding: 4px 8px;
-    background: #dc3545;
+    margin-left: 10px;
+    padding: 6px 12px;
+    background: #fa5252;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
+    transition: background-color 0.2s;
+  }
+
+  .retry-btn:hover {
+    background: #e03131;
   }
 
   .message-item {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     align-items: flex-start;
   }
 
   .message-avatar {
-    width: 36px;
-    height: 36px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-weight: bold;
-    font-size: 14px;
+    font-weight: 600;
+    font-size: 16px;
     flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .message-content {
     flex: 1;
     min-width: 0;
+    max-width: 85%;
   }
 
   .message-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: 10px;
+    margin-bottom: 6px;
   }
 
   .author-name {
-    font-weight: 500;
-    color: #333;
+    font-weight: 600;
+    color: #343a40;
     font-size: 14px;
   }
 
   .message-time {
     font-size: 12px;
-    color: #6c757d;
+    color: #adb5bd;
   }
 
   .message-text {
-    color: #495057;
-    font-size: 14px;
-    line-height: 1.4;
+    display: inline-block;
+    color: #212529;
+    font-size: 15px;
+    line-height: 1.5;
     word-wrap: break-word;
     white-space: pre-wrap;
+    background-color: #f1f3f5;
+    padding: 10px 16px;
+    border-radius: 0 16px 16px 16px;
+    margin-top: 2px;
   }
 
   /* 滚动条样式 */
