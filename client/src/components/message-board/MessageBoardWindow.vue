@@ -1,5 +1,5 @@
 <template>
-  <div class="message-board-window">
+  <div class="message-board-window" @contextmenu.stop>
     <MessageBoard @close="$emit('close')" />
   </div>
 </template>

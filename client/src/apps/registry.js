@@ -64,7 +64,7 @@ export const internalApps = [
   {
     slug: 'message-board',
     name: '留言板',
-    preferredSize: { width: 400, height: 600 },
+    preferredSize: { width: 530, height: 800 },
     component: defineAsyncComponent(
       () => import('../components/message-board/MessageBoardWindow.vue')
     ),

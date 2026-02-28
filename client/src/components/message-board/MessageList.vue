@@ -118,10 +118,10 @@
   .message-list {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 14px;
     scroll-behavior: smooth;
   }
 
@@ -130,8 +130,8 @@
   .empty {
     text-align: center;
     color: #868e96;
-    font-size: 15px;
-    padding: 30px;
+    font-size: 13px;
+    padding: 24px;
   }
 
   .error {
@@ -156,20 +156,20 @@
 
   .message-item {
     display: flex;
-    gap: 16px;
+    gap: 10px;
     align-items: flex-start;
   }
 
   .message-avatar {
-    width: 42px;
-    height: 42px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     font-weight: 600;
-    font-size: 16px;
+    font-size: 13px;
     flex-shrink: 0;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
@@ -177,37 +177,37 @@
   .message-content {
     flex: 1;
     min-width: 0;
-    max-width: 85%;
+    max-width: 90%;
   }
 
   .message-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
+    gap: 8px;
+    margin-bottom: 4px;
   }
 
   .author-name {
     font-weight: 600;
     color: #343a40;
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .message-time {
-    font-size: 12px;
+    font-size: 11px;
     color: #adb5bd;
   }
 
   .message-text {
     display: inline-block;
     color: #212529;
-    font-size: 15px;
+    font-size: 14px;
     line-height: 1.5;
     word-wrap: break-word;
     white-space: pre-wrap;
     background-color: #f1f3f5;
-    padding: 10px 16px;
-    border-radius: 0 16px 16px 16px;
+    padding: 8px 14px;
+    border-radius: 0 14px 14px 14px;
     margin-top: 2px;
   }
 

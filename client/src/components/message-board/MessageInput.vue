@@ -171,7 +171,7 @@
 
 <style scoped>
   .message-input {
-    padding: 20px;
+    padding: 10px 14px;
     border-top: 1px solid #e9ecef;
     background: #fff;
   }
@@ -179,15 +179,15 @@
   .input-container {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
   }
 
   .input-container textarea {
     width: 100%;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border: 1px solid #ced4da;
-    border-radius: 12px;
-    font-size: 15px;
+    border-radius: 10px;
+    font-size: 14px;
     resize: none;
     font-family: inherit;
     transition: all 0.2s;
@@ -216,10 +216,10 @@
   .add-image-btn {
     background: #f1f3f5;
     border: none;
-    border-radius: 8px;
-    padding: 8px 12px;
+    border-radius: 6px;
+    padding: 5px 10px;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 15px;
     transition: all 0.2s;
     color: #495057;
   }
@@ -311,18 +311,18 @@
   }
 
   .char-count {
-    font-size: 13px;
+    font-size: 11px;
     color: #868e96;
   }
 
   .send-btn {
-    padding: 8px 20px;
+    padding: 6px 16px;
     background: #228be6;
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 500;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(34, 139, 230, 0.2);

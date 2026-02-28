@@ -58,8 +58,8 @@
   .message-board-header {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 16px 20px 12px;
+    gap: 6px;
+    padding: 10px 14px 8px;
     background: #fff;
     border-bottom: 1px solid #e9ecef;
   }
@@ -79,16 +79,16 @@
 
   .header-left h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 600;
     color: #343a40;
   }
 
   .online-status {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
     color: #868e96;
-    padding: 2px 10px;
+    padding: 2px 8px;
     border-radius: 12px;
     background: #f1f3f5;
   }
@@ -107,11 +107,11 @@
   .close-btn {
     background: transparent;
     border: none;
-    font-size: 18px;
+    font-size: 15px;
     cursor: pointer;
-    padding: 6px;
-    width: 32px;
-    height: 32px;
+    padding: 4px;
+    width: 28px;
+    height: 28px;
     border-radius: 6px;
     transition: all 0.2s;
     display: flex;
@@ -145,10 +145,10 @@
 
   .search-input input {
     width: 100%;
-    padding: 8px 28px 8px 12px;
+    padding: 6px 26px 6px 10px;
     border: 1px solid #e9ecef;
-    border-radius: 10px;
-    font-size: 13px;
+    border-radius: 8px;
+    font-size: 12px;
     background: #f8f9fa;
     transition: all 0.2s;
   }
