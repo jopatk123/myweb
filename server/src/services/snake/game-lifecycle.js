@@ -3,6 +3,9 @@
  */
 import { initCompetitivePlayers } from './competitive-mode.logic.js';
 import { SnakeGameRecordModel } from '../../models/snake-game-record.model.js';
+import logger from '../../utils/logger.js';
+
+const lifecycleLogger = logger.child('GameLifecycle');
 
 export class GameLifecycleManager {
   constructor(snakeGameService) {
@@ -216,7 +219,7 @@ export class GameLifecycleManager {
         );
       }
     } catch (error) {
-      console.error('保存游戏记录失败:', error);
+      lifecycleLogger.error('保存游戏记录失败', { error });
     }
   }
 

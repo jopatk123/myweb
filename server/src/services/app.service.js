@@ -4,6 +4,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '../utils/logger.js';
+
+const appServiceLogger = logger.child('AppService');
 
 export class AppService {
   constructor(db) {
@@ -72,7 +75,9 @@ export class AppService {
       } catch (e) {
         void e;
         // 清理失败不影响删除流程，仅日志提示
-        console.warn('[AppService.deleteApp] 清理图标失败:', e?.message || e);
+        appServiceLogger.warn('[AppService.deleteApp] 清理图标失败', {
+          error: e?.message || e,
+        });
       }
     }
 
@@ -176,7 +181,7 @@ export class AppService {
       return newFilename;
     } catch (error) {
       void error;
-      console.error('复制预选图标失败:');
+      appServiceLogger.error('复制预选图标失败');
       throw new Error(`复制预选图标失败: ${error?.message || '未知错误'}`);
     }
   }
@@ -192,10 +197,9 @@ export class AppService {
     } catch (e) {
       if (e && e.code === 'ENOENT') return false;
       // 其他错误打印但不抛出，避免影响主流程
-      console.warn(
-        '[AppService.deleteIconFileIfExists] 删除失败:',
-        e?.message || e
-      );
+      appServiceLogger.warn('[AppService.deleteIconFileIfExists] 删除失败', {
+        error: e?.message || e,
+      });
       return false;
     }
   }

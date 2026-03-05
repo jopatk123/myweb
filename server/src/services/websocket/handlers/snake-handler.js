@@ -1,6 +1,9 @@
 import { SnakeMultiplayerAdapter } from '../../snake-multiplayer.adapter.js';
 import { SnakePlayerModel } from '../../../models/snake-player.model.js';
 import { SnakeRoomModel } from '../../../models/snake-room.model.js';
+import logger from '../../../utils/logger.js';
+
+const snakeHandlerLogger = logger.child('SnakeHandler');
 
 export class SnakeMessageHandler {
   constructor(wsService) {
@@ -117,7 +120,7 @@ export class SnakeMessageHandler {
       // 离开房间后更新房间列表（可能房间被删除）
       this.ws.broadcast('snake_room_list_updated');
     } catch (error) {
-      console.error('离开房间失败:', error);
+      snakeHandlerLogger.error('离开房间失败', { error });
     }
   }
 
@@ -141,7 +144,9 @@ export class SnakeMessageHandler {
       await this.adapter.startGame(sessionId, roomCode);
       this.ws.broadcast('snake_room_list_updated');
     } catch (error) {
-      console.error('处理 snake_start_game 失败:', error?.message || error);
+      snakeHandlerLogger.error('处理 snake_start_game 失败', {
+        error: error?.message || error,
+      });
       this.sendError(sessionId, error);
     }
   }
@@ -155,7 +160,7 @@ export class SnakeMessageHandler {
         this.ws.broadcast('snake_room_list_updated');
       }
     } catch (error) {
-      console.error('处理玩家断线失败:', error);
+      snakeHandlerLogger.error('处理玩家断线失败', { error });
     }
   }
 
@@ -182,9 +187,9 @@ export class SnakeMessageHandler {
           (await SnakePlayerModel.findOnlineByRoomId?.(roomId)) || [];
         sessionIds = players.map(player => player.session_id).filter(Boolean);
       } catch (error) {
-        console.warn(
+        snakeHandlerLogger.warn(
           'broadcastToRoom: failed to get players from PlayerModel, falling back to sessionRoomMap',
-          error
+          { error }
         );
       }
 
@@ -211,7 +216,9 @@ export class SnakeMessageHandler {
               .filter(Boolean);
           }
         } catch (error) {
-          console.warn('broadcastToRoom: failed to load room data', error);
+          snakeHandlerLogger.warn('broadcastToRoom: failed to load room data', {
+            error,
+          });
         }
       }
 
@@ -241,12 +248,12 @@ export class SnakeMessageHandler {
 
       if (!sent) {
         this.ws.broadcast(message);
-        console.warn(
+        snakeHandlerLogger.warn(
           'broadcastToRoom: no specific clients matched, broadcasted'
         );
       }
     } catch (error) {
-      console.error('房间广播失败:', error);
+      snakeHandlerLogger.error('房间广播失败', { error });
     }
   }
 }

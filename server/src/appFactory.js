@@ -14,6 +14,7 @@ import { createWorkTimerRoutes } from './routes/worktimer.routes.js';
 import { createNovelBookmarkRoutes } from './routes/novel-bookmarks.routes.js';
 import { createSnakeMultiplayerRoutes } from './routes/snake-multiplayer.routes.js';
 import messageRoutes from './routes/messages.routes.js';
+import { createAuthRoutes } from './routes/auth.routes.js';
 import { createInternalLogsRoutes } from './routes/internal.logs.routes.js';
 import { createMusicRoutes } from './routes/music.routes.js';
 import errorHandler from './middleware/error.middleware.js';
@@ -162,6 +163,7 @@ export async function createApp(options = {}) {
   app.use('/api/music', createMusicRoutes(db));
   app.use('/api/snake-multiplayer', createSnakeMultiplayerRoutes());
   app.use('/api/messages', messageRoutes);
+  app.use('/api/auth', createAuthRoutes());
 
   app.use('/internal/logs', createInternalLogsRoutes());
 

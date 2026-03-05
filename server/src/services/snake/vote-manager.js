@@ -1,3 +1,7 @@
+import logger from '../../utils/logger.js';
+
+const voteLogger = logger.child('VoteManager');
+
 /**
  * 投票管理器 - 处理共享模式的投票逻辑
  */
@@ -134,7 +138,7 @@ export class VoteManager {
         this.processVotes(roomId);
       }
     } catch (error) {
-      console.error('检查投票状态失败:', error);
+      voteLogger.error('检查投票状态失败', { error });
     }
   }
 

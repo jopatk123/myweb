@@ -97,7 +97,6 @@ test('deleteWallpaper removes db record and deletes physical file', async () => 
 });
 
 test('deleteMultipleWallpapers attempts to cleanup files and returns changes count', async () => {
-  const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
   const unlinkSpy = jest
     .spyOn(fs, 'unlink')
     .mockRejectedValueOnce(
@@ -129,8 +128,6 @@ test('deleteMultipleWallpapers attempts to cleanup files and returns changes cou
   );
   expect(result.changes).toBeGreaterThanOrEqual(2);
   expect(unlinkSpy).toHaveBeenCalledTimes(2);
-  expect(consoleSpy).toHaveBeenCalledTimes(1);
 
   unlinkSpy.mockRestore();
-  consoleSpy.mockRestore();
 });

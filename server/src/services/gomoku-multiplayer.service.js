@@ -1,3 +1,7 @@
+import logger from '../utils/logger.js';
+
+const gomokuLogger = logger.child('GomokuMultiplayerService');
+
 export class GomokuMultiplayerService {
   constructor(wsService) {
     this.ws = wsService;
@@ -27,11 +31,11 @@ export class GomokuMultiplayerService {
     room.game_state = this._createEmptyGameState();
     this.rooms.set(roomCode, room);
 
-    console.debug(
-      `[GomokuService] Room created: ${roomCode} by ${playerName} (server: ${sessionId}, client: ${clientSessionId})`
+    gomokuLogger.debug(
+      `Room created: ${roomCode} by ${playerName} (server: ${sessionId}, client: ${clientSessionId})`
     );
-    console.debug(
-      `[GomokuService] Sending room_created message to sessionId: ${sessionId}`
+    gomokuLogger.debug(
+      `Sending room_created message to sessionId: ${sessionId}`
     );
 
     // 只向创建者发送房间创建消息
@@ -66,8 +70,8 @@ export class GomokuMultiplayerService {
     };
     room.players.push(player);
 
-    console.debug(
-      `[GomokuService] Player ${playerName} joined room ${roomCode} (server: ${sessionId}, client: ${clientSessionId})`
+    gomokuLogger.debug(
+      `Player ${playerName} joined room ${roomCode} (server: ${sessionId}, client: ${clientSessionId})`
     );
 
     // 向加入者发送房间加入消息
@@ -96,9 +100,7 @@ export class GomokuMultiplayerService {
 
     p.is_ready = !p.is_ready;
 
-    console.debug(
-      `[GomokuService] Player ${p.player_name} ready status: ${p.is_ready}`
-    );
+    gomokuLogger.debug(`Player ${p.player_name} ready status: ${p.is_ready}`);
 
     // 向操作者发送ready切换确认
     this.ws.sendToClient(sessionId, {
@@ -125,7 +127,7 @@ export class GomokuMultiplayerService {
     room.status = 'playing';
     room.game_state = this._createEmptyGameState();
 
-    console.debug(`[GomokuService] Game started in room ${roomCode}`);
+    gomokuLogger.debug(`Game started in room ${roomCode}`);
 
     // 向房间内所有玩家广播游戏开始
     this._broadcastRoom(room, 'game_started', {
@@ -170,14 +172,12 @@ export class GomokuMultiplayerService {
     const idx = room.players.findIndex(p => p.session_id === clientSessionId);
     if (idx >= 0) {
       const [player] = room.players.splice(idx, 1);
-      console.debug(
-        `[GomokuService] Player ${player.player_name} left room ${roomCode}`
-      );
+      gomokuLogger.debug(`Player ${player.player_name} left room ${roomCode}`);
       this._broadcastRoom(room, 'player_left', { player });
     }
     if (room.players.length === 0) {
       this.rooms.delete(roomCode);
-      console.debug(`[GomokuService] Room ${roomCode} deleted (no players)`);
+      gomokuLogger.debug(`Room ${roomCode} deleted (no players)`);
     } else {
       room.status = 'waiting';
       room.players.forEach(p => (p.is_ready = false));
@@ -201,16 +201,16 @@ export class GomokuMultiplayerService {
         );
         if (idx >= 0) {
           const [player] = room.players.splice(idx, 1);
-          console.debug(
-            `[GomokuService] Player ${player && player.player_name} removed from room ${roomCode} due to disconnect`
+          gomokuLogger.debug(
+            `Player ${player && player.player_name} removed from room ${roomCode} due to disconnect`
           );
           // 广播玩家离开给房间内其他玩家
           this._broadcastRoom(room, 'player_left', { player });
 
           if (room.players.length === 0) {
             this.rooms.delete(roomCode);
-            console.debug(
-              `[GomokuService] Room ${roomCode} deleted (no players) after disconnect`
+            gomokuLogger.debug(
+              `Room ${roomCode} deleted (no players) after disconnect`
             );
           } else {
             room.status = 'waiting';
@@ -222,7 +222,7 @@ export class GomokuMultiplayerService {
         }
       }
     } catch (err) {
-      console.error('[GomokuService] handlePlayerDisconnect failed:', err);
+      gomokuLogger.error('handlePlayerDisconnect failed', { error: err });
     }
   }
 
@@ -262,10 +262,8 @@ export class GomokuMultiplayerService {
     const activeRooms = this.getActiveRooms();
     // 向所有连接的客户端发送房间列表更新
     this.ws.broadcast('gomoku_room_list', { rooms: activeRooms });
-    console.debug(
-      '[GomokuService] Broadcast room list update:',
-      activeRooms.length,
-      'rooms'
+    gomokuLogger.debug(
+      `Broadcast room list update: ${activeRooms.length} rooms`
     );
   }
 
@@ -280,12 +278,12 @@ export class GomokuMultiplayerService {
           this.ws.sendToClient(player.session_id, { type, data });
         }
       });
-      console.debug(
-        `[GomokuService] Broadcast ${event} to room ${room.room_code} players:`,
+      gomokuLogger.debug(
+        `Broadcast ${event} to room ${room.room_code} players:`,
         room.players.map(p => p.player_name)
       );
     } else {
-      console.debug(`[GomokuService] No players to broadcast ${event} to`);
+      gomokuLogger.debug(`No players to broadcast ${event} to`);
     }
   }
 

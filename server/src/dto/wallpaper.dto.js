@@ -18,6 +18,23 @@ export function validateBody(schema) {
   };
 }
 
+// 查询参数验证中间件
+export function validateQuery(schema) {
+  return (req, res, next) => {
+    const { error, value } = schema.validate(req.query, {
+      convert: true,
+      abortEarly: false,
+    });
+    if (error) {
+      return res
+        .status(400)
+        .json({ code: 400, message: '查询参数错误', errors: error.details });
+    }
+    req.query = value;
+    next();
+  };
+}
+
 // 上传（multipart）场景：req.body 经 multer 填充后仍可校验
 export const uploadWallpaperSchema = Joi.object({
   groupId: Joi.alternatives()

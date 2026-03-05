@@ -1,8 +1,5 @@
-import {
-  AUTH_STORAGE_KEY,
-  AUTH_TTL_DAYS,
-  DEFAULT_APP_PASSWORD,
-} from '@/constants/auth.js';
+import { AUTH_STORAGE_KEY, AUTH_TTL_DAYS } from '@/constants/auth.js';
+import { buildApiUrl } from '@/api/httpClient.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -61,8 +58,28 @@ export function isAuthValid(now = Date.now(), storage = getStorage()) {
   return false;
 }
 
-export function validatePassword(input, expected = DEFAULT_APP_PASSWORD) {
-  return String(input ?? '') === String(expected ?? '');
+export async function validatePasswordRemote(input) {
+  try {
+    const res = await fetch(buildApiUrl('auth/verify'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: String(input ?? '') }),
+    });
+    const data = await res.json();
+    return data.success === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function checkPasswordRequired() {
+  try {
+    const res = await fetch(buildApiUrl('auth/status'));
+    const data = await res.json();
+    return data.data?.required !== false;
+  } catch {
+    return true;
+  }
 }
 
 export { MS_PER_DAY };

@@ -3,6 +3,9 @@
  */
 import { SnakeRoomModel } from '../../models/snake-room.model.js';
 import { SnakePlayerModel } from '../../models/snake-player.model.js';
+import logger from '../../utils/logger.js';
+
+const gameManagerLogger = logger.child('SnakeGameManager');
 import { SnakeGameRecordModel } from '../../models/snake-game-record.model.js';
 import { initSharedGame, initCompetitiveGame } from './game-state.js';
 import { updateSharedGame, startVoteProcessingLoop } from './shared-game.js';
@@ -70,7 +73,7 @@ export class SnakeGameManager {
           );
         }
       } catch (error) {
-        console.error('游戏循环错误:', error);
+        gameManagerLogger.error('游戏循环错误', { error });
         await this.endGame(roomId, 'error');
       }
     };

@@ -3,6 +3,7 @@ import { RoomManagerService } from '../multiplayer/room-manager.service.js';
 import { SnakeRoomModel } from '../../models/snake-room.model.js';
 import { SnakePlayerModel } from '../../models/snake-player.model.js';
 import { appEnv } from '../../config/env.js';
+import logger from '../../utils/logger.js';
 // Removed unused imports to silence lint warnings
 import {
   createInitialSnake,
@@ -11,6 +12,8 @@ import {
 import { updateCompetitiveGameTick } from './competitive-mode.logic.js';
 import { VoteManager } from './vote-manager.js';
 import { GameLifecycleManager } from './game-lifecycle.js';
+
+const snakeServiceLogger = logger.child('SnakeGameService');
 
 export class SnakeGameService extends RoomManagerService {
   constructor(wsService) {
@@ -42,7 +45,7 @@ export class SnakeGameService extends RoomManagerService {
         try {
           this.autoCleanupStaleRooms();
         } catch (e) {
-          console.error('蛇房间自动清理失败', e);
+          snakeServiceLogger.error('蛇房间自动清理失败', { error: e });
         }
       }, 60 * 1000);
     }
@@ -211,14 +214,17 @@ export class SnakeGameService extends RoomManagerService {
 
       // 调试：如果房间状态仍是 playing 但判定 empty，记录可疑情况
       if (appEnv.snake.cleanupDebug && empty && gs && gs.status === 'playing') {
-        console.warn('[SnakeCleanup][SUSPECT] playing 房间被视为空', {
-          room_id: r.id,
-          mode: r.mode,
-          gsStatus: gs.status,
-          online,
-          idleMs,
-          updated_at: r.updated_at,
-        });
+        snakeServiceLogger.warn(
+          '[SnakeCleanup][SUSPECT] playing 房间被视为空',
+          {
+            room_id: r.id,
+            mode: r.mode,
+            gsStatus: gs.status,
+            online,
+            idleMs,
+            updated_at: r.updated_at,
+          }
+        );
       }
 
       if (
@@ -226,7 +232,7 @@ export class SnakeGameService extends RoomManagerService {
         idleMs > 4 * 60 * 60 * 1000 &&
         idleMs < 10 * 60 * 60 * 1000
       ) {
-        console.warn(
+        snakeServiceLogger.warn(
           '[SnakeCleanup][TZ?] 发现可能的时区偏差导致的巨大 idleMs',
           {
             room_id: r.id,
@@ -239,7 +245,7 @@ export class SnakeGameService extends RoomManagerService {
       }
 
       if (appEnv.snake.cleanupDebug) {
-        console.debug('[SnakeCleanup][CHECK]', {
+        snakeServiceLogger.debug('[SnakeCleanup][CHECK]', {
           room_id: r.id,
           status: r.status,
           gsStatus: gs?.status,
@@ -269,7 +275,7 @@ export class SnakeGameService extends RoomManagerService {
     });
     if (removed > 0) {
       this.wsService.broadcast('snake_room_list_updated');
-      console.debug && console.debug(`自动清理 ${removed} 个蛇房间`, stale);
+      snakeServiceLogger.debug(`自动清理 ${removed} 个蛇房间`, { stale });
     }
   }
 

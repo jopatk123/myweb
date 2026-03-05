@@ -1,4 +1,7 @@
 import { WebSocket } from 'ws';
+import logger from '../../utils/logger.js';
+
+const connLogger = logger.child('ConnectionStore');
 
 /**
  * 管理 WebSocket 连接、会话映射与消息发送
@@ -69,7 +72,7 @@ export class ConnectionStore {
       socket.send(message);
       return true;
     } catch (error) {
-      console.warn('[ConnectionStore] send failed', error);
+      connLogger.warn('send failed', { error });
       this.unregister(serverId);
       return false;
     }
@@ -93,7 +96,7 @@ export class ConnectionStore {
       try {
         socket.send(message);
       } catch (error) {
-        console.warn('[ConnectionStore] broadcast failed', error);
+        connLogger.warn('broadcast failed', { error });
         this.unregister(serverId);
       }
     });

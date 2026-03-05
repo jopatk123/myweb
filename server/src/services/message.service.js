@@ -3,6 +3,9 @@
  */
 import { MessageModel } from '../models/message.model.js';
 import { UserSessionModel } from '../models/userSession.model.js';
+import logger from '../utils/logger.js';
+
+const msgServiceLogger = logger.child('MessageService');
 
 export class MessageService {
   /**
@@ -65,8 +68,7 @@ export class MessageService {
    */
   static async getMessages({ page = 1, limit = 50, search = '' } = {}) {
     const offset = (page - 1) * limit;
-    const normalizedSearch =
-      typeof search === 'string' ? search.trim() : '';
+    const normalizedSearch = typeof search === 'string' ? search.trim() : '';
     const messages = MessageModel.findAll({
       limit,
       offset,
@@ -128,10 +130,13 @@ export class MessageService {
               try {
                 if (fs.existsSync(imagePath)) {
                   fs.unlinkSync(imagePath);
-                  console.log(`删除图片文件: ${imagePath}`);
+                  msgServiceLogger.info('删除图片文件', { path: imagePath });
                 }
               } catch (error) {
-                console.error(`删除图片文件失败: ${imagePath}`, error);
+                msgServiceLogger.error('删除图片文件失败', {
+                  path: imagePath,
+                  error,
+                });
               }
             }
           }
@@ -148,7 +153,7 @@ export class MessageService {
         }, 0),
       };
     } catch (error) {
-      console.error('清除留言板失败:', error);
+      msgServiceLogger.error('清除留言板失败', { error });
       throw new Error('清除留言板失败: ' + error.message);
     }
   }

@@ -1,4 +1,7 @@
 import { NovelBookmarkModel } from '../models/novel-bookmark.model.js';
+import logger from '../utils/logger.js';
+
+const bookmarkLogger = logger.child('NovelBookmarkService');
 
 export class NovelBookmarkService {
   constructor(db) {
@@ -13,7 +16,7 @@ export class NovelBookmarkService {
         data: bookmark,
       };
     } catch (error) {
-      console.error('创建书签失败:', error);
+      bookmarkLogger.error('创建书签失败', { error });
       return {
         success: false,
         error: error.message,
@@ -29,7 +32,7 @@ export class NovelBookmarkService {
         data: bookmarks,
       };
     } catch (error) {
-      console.error('获取书签失败:', error);
+      bookmarkLogger.error('获取书签失败', { error });
       return {
         success: false,
         error: error.message,
@@ -45,7 +48,7 @@ export class NovelBookmarkService {
         data: bookmarks,
       };
     } catch (error) {
-      console.error('获取书签失败:', error);
+      bookmarkLogger.error('获取书签失败', { error });
       return {
         success: false,
         error: error.message,
@@ -67,7 +70,7 @@ export class NovelBookmarkService {
         data: bookmark,
       };
     } catch (error) {
-      console.error('更新书签失败:', error);
+      bookmarkLogger.error('更新书签失败', { error });
       return {
         success: false,
         error: error.message,
@@ -83,7 +86,7 @@ export class NovelBookmarkService {
         data: { deleted: result.changes > 0 },
       };
     } catch (error) {
-      console.error('删除书签失败:', error);
+      bookmarkLogger.error('删除书签失败', { error });
       return {
         success: false,
         error: error.message,
@@ -99,7 +102,7 @@ export class NovelBookmarkService {
         data: { deleted: result.changes },
       };
     } catch (error) {
-      console.error('删除书籍书签失败:', error);
+      bookmarkLogger.error('删除书籍书签失败', { error });
       return {
         success: false,
         error: error.message,
@@ -188,7 +191,7 @@ export class NovelBookmarkService {
         },
       };
     } catch (error) {
-      console.error('同步书签失败:', error);
+      bookmarkLogger.error('同步书签失败', { error });
       return {
         success: false,
         error: error.message,
@@ -204,7 +207,7 @@ export class NovelBookmarkService {
         data: bookmarks,
       };
     } catch (error) {
-      console.error('获取所有书签失败:', error);
+      bookmarkLogger.error('获取所有书签失败', { error });
       return {
         success: false,
         error: error.message,

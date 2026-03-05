@@ -1,3 +1,7 @@
+import logger from '../../../utils/logger.js';
+
+const queryLogger = logger.child('QueryRoom');
+
 // 查询相关逻辑
 export function queryRoomFactory(Service) {
   Service.prototype.getActiveRooms = function (_filters = {}) {
@@ -11,7 +15,7 @@ export function queryRoomFactory(Service) {
         })
         .map(room => ({ ...room, game_type: gameType }));
     } catch (error) {
-      console.error('获取房间列表失败:', error);
+      queryLogger.error('获取房间列表失败', { error });
       throw error;
     }
   };
@@ -27,7 +31,7 @@ export function queryRoomFactory(Service) {
         stats: gameStats,
       };
     } catch (error) {
-      console.error('获取房间详情失败:', error);
+      queryLogger.error('获取房间详情失败', { error });
       throw error;
     }
   };

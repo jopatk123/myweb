@@ -1,4 +1,7 @@
 // 共享模式核心逻辑
+import logger from '../../utils/logger.js';
+
+const sharedModeLogger = logger.child('SharedModeLogic');
 export function createInitialSnake(boardSize) {
   const centerX = Math.floor(boardSize / 2);
   const centerY = Math.floor(boardSize / 2);
@@ -26,7 +29,7 @@ export function updateSharedGameTick(service, roomId) {
       /* touch timestamp */
     });
   } catch (e) {
-    console.warn('shared tick touch failed', e);
+    sharedModeLogger.warn('shared tick touch failed', { error: e });
   }
   const snake = gameState.sharedSnake;
   if (snake.isWaitingForFirstVote) {

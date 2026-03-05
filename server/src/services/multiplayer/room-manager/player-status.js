@@ -1,3 +1,7 @@
+import logger from '../../../utils/logger.js';
+
+const statusLogger = logger.child('PlayerStatus');
+
 // 玩家状态及准备/开始/结束游戏相关逻辑
 export function playerStatusFactory(Service) {
   Service.prototype.togglePlayerReady = function (sessionId, roomId) {
@@ -20,7 +24,7 @@ export function playerStatusFactory(Service) {
       });
       return updatedPlayer;
     } catch (error) {
-      console.error('切换准备状态失败:', error);
+      statusLogger.error('切换准备状态失败', { error });
       throw error;
     }
   };
@@ -42,7 +46,7 @@ export function playerStatusFactory(Service) {
         players,
       };
     } catch (error) {
-      console.error('检查玩家准备状态失败:', error);
+      statusLogger.error('检查玩家准备状态失败', { error });
       return {
         allReady: false,
         readyCount: 0,
@@ -64,7 +68,7 @@ export function playerStatusFactory(Service) {
         this.getGameType() === 'snake' && room.mode === 'shared';
       if (isSnakeSharedMode) {
         if (players.length < 1) throw new Error('至少需要1名玩家才能开始游戏');
-        console.log(
+        statusLogger.info(
           `贪吃蛇共享模式开始: 房间 ${roomId}, 玩家数: ${players.length}, 无需等待准备`
         );
       } else {
@@ -84,10 +88,10 @@ export function playerStatusFactory(Service) {
         players,
         start_time: Date.now(),
       });
-      console.log(`${this.getGameType()} 游戏开始: 房间 ${roomId}`);
+      statusLogger.info(`${this.getGameType()} 游戏开始: 房间 ${roomId}`);
       return { success: true, players };
     } catch (error) {
-      console.error('开始游戏失败:', error);
+      statusLogger.error('开始游戏失败', { error });
       throw error;
     }
   };
@@ -108,12 +112,14 @@ export function playerStatusFactory(Service) {
         result: gameResult,
         end_time: Date.now(),
       });
-      console.log(`${this.getGameType()} 游戏结束: 房间 ${roomId}`, gameResult);
+      statusLogger.info(`${this.getGameType()} 游戏结束: 房间 ${roomId}`, {
+        gameResult,
+      });
       setTimeout(() => {
         this.cleanupRoom(roomId);
       }, 10000);
     } catch (error) {
-      console.error('结束游戏失败:', error);
+      statusLogger.error('结束游戏失败', { error });
     }
   };
 }

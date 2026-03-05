@@ -1,3 +1,7 @@
+import logger from '../../../utils/logger.js';
+
+const cleanupLogger = logger.child('CleanupRoom');
+
 // 清理相关逻辑
 export function cleanupRoomFactory(Service) {
   Service.prototype.cleanupRoom = function (roomId) {
@@ -9,9 +13,11 @@ export function cleanupRoomFactory(Service) {
       if (this.wsService?.broadcast) {
         this.wsService.broadcast(broadcastEvent);
       }
-      console.log(`${this.getGameType()} 房间 ${roomId} 已删除并释放房间码`);
+      cleanupLogger.info(
+        `${this.getGameType()} 房间 ${roomId} 已删除并释放房间码`
+      );
     } catch (error) {
-      console.error('清理房间失败:', error);
+      cleanupLogger.error('清理房间失败', { error });
     }
   };
 
@@ -45,12 +51,14 @@ export function cleanupRoomFactory(Service) {
         if (this.wsService?.broadcast) {
           this.wsService.broadcast(broadcastEvent);
         }
-        console.log(
+        cleanupLogger.info(
           `已清理 ${removed} 个空或超时的 ${this.getGameType()} 房间`
         );
       }
     } catch (e) {
-      console.error(`扫描 ${this.getGameType()} 空房间失败`, e);
+      cleanupLogger.error(`扫描 ${this.getGameType()} 空房间失败`, {
+        error: e,
+      });
     }
   };
 }

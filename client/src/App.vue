@@ -16,9 +16,9 @@
           <button
             class="btn btn-primary"
             type="submit"
-            :disabled="!passwordInput"
+            :disabled="!passwordInput || isSubmitting"
           >
-            进入
+            {{ isSubmitting ? '验证中...' : '进入' }}
           </button>
         </form>
         <p v-if="errorMessage" class="password-gate__error">
@@ -33,34 +33,55 @@
 
 <script setup>
   import { onMounted, ref } from 'vue';
-  import { DEFAULT_APP_PASSWORD } from '@/constants/auth.js';
   import {
     isAuthValid,
     saveAuth,
-    validatePassword,
+    validatePasswordRemote,
+    checkPasswordRequired,
   } from '@/utils/passwordGate.js';
 
   const isAuthorized = ref(false);
   const passwordInput = ref('');
   const errorMessage = ref('');
+  const isSubmitting = ref(false);
 
   function refreshAuthState() {
     isAuthorized.value = isAuthValid();
   }
 
-  function handleSubmit() {
-    if (!validatePassword(passwordInput.value, DEFAULT_APP_PASSWORD)) {
-      errorMessage.value = '密码错误，请重试。';
-      return;
-    }
-    saveAuth();
+  async function handleSubmit() {
+    if (isSubmitting.value) return;
+    isSubmitting.value = true;
     errorMessage.value = '';
-    passwordInput.value = '';
-    isAuthorized.value = true;
+
+    try {
+      const ok = await validatePasswordRemote(passwordInput.value);
+      if (!ok) {
+        errorMessage.value = '密码错误，请重试。';
+        return;
+      }
+      saveAuth();
+      passwordInput.value = '';
+      isAuthorized.value = true;
+    } catch {
+      errorMessage.value = '验证服务异常，请稍后重试。';
+    } finally {
+      isSubmitting.value = false;
+    }
   }
 
-  onMounted(() => {
-    refreshAuthState();
+  onMounted(async () => {
+    // 先检查本地缓存
+    if (isAuthValid()) {
+      isAuthorized.value = true;
+      return;
+    }
+    // 检查后端是否需要密码
+    const required = await checkPasswordRequired();
+    if (!required) {
+      saveAuth();
+      isAuthorized.value = true;
+    }
   });
 </script>
 

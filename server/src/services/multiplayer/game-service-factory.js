@@ -5,6 +5,9 @@
 import { RoomManagerService } from './room-manager.service.js';
 import { GenericRoomModel } from '../../models/base/generic-room.model.js';
 import { GenericPlayerModel } from '../../models/base/generic-player.model.js';
+import logger from '../../utils/logger.js';
+
+const factoryLogger = logger.child('GameServiceFactory');
 
 /**
  * 游戏服务工厂类
@@ -44,7 +47,7 @@ export class GameServiceFactory {
       tablePrefix: config.tablePrefix || gameType,
     });
 
-    console.log(`游戏类型 "${gameType}" 已注册`);
+    factoryLogger.info(`游戏类型 "${gameType}" 已注册`);
     return this;
   }
 
@@ -81,7 +84,7 @@ export class GameServiceFactory {
     // 缓存服务实例
     this.services.set(gameType, service);
 
-    console.log(`游戏服务 "${gameType}" 创建完成`);
+    factoryLogger.info(`游戏服务 "${gameType}" 创建完成`);
     return service;
   }
 
@@ -162,7 +165,7 @@ export class GameServiceFactory {
         });
       }
     } catch (error) {
-      console.error(`创建数据表 ${tableName} 失败:`, error);
+      factoryLogger.error(`创建数据表 ${tableName} 失败`, { error });
     }
   }
 
@@ -206,7 +209,7 @@ export class GameServiceFactory {
       }
 
       this.services.delete(gameType);
-      console.log(`游戏服务 "${gameType}" 已销毁`);
+      factoryLogger.info(`游戏服务 "${gameType}" 已销毁`);
     }
   }
 
@@ -235,7 +238,7 @@ export class GameServiceFactory {
           config: this.getGameConfig(gameType),
         };
       } catch (error) {
-        console.error(`获取 ${gameType} 统计失败:`, error);
+        factoryLogger.error(`获取 ${gameType} 统计失败`, { error });
         stats[gameType] = { error: error.message };
       }
     }
@@ -253,7 +256,7 @@ export class GameServiceFactory {
           service.cleanupEmptyRooms();
         }
       } catch (error) {
-        console.error(`清理 ${gameType} 服务失败:`, error);
+        factoryLogger.error(`清理 ${gameType} 服务失败`, { error });
       }
     }
   }
@@ -377,7 +380,9 @@ export function registerPredefinedGames() {
     gameServiceFactory.register(gameType, config);
   });
 
-  console.log('预定义游戏已注册:', Object.keys(PREDEFINED_GAMES));
+  factoryLogger.info('预定义游戏已注册', {
+    games: Object.keys(PREDEFINED_GAMES),
+  });
 }
 
 // 导出工厂方法

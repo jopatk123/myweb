@@ -5,6 +5,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import sharp from 'sharp';
+import logger from '../utils/logger.js';
+
+const wallpaperLogger = logger.child('WallpaperService');
 
 const THUMBNAIL_DEFAULT_WIDTH = 320;
 const THUMBNAIL_MIN_SIZE = 50;
@@ -100,10 +103,9 @@ export class WallpaperService {
         await fs.unlink(diskPath);
       } catch (cleanupErr) {
         if (cleanupErr.code !== 'ENOENT') {
-          console.warn(
-            '壁纸上传失败后的文件清理失败:',
-            cleanupErr && cleanupErr.message
-          );
+          wallpaperLogger.warn('壁纸上传失败后的文件清理失败', {
+            error: cleanupErr && cleanupErr.message,
+          });
         }
       }
       throw error;
@@ -139,7 +141,9 @@ export class WallpaperService {
       await fs.unlink(diskPath);
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        console.warn('删除壁纸物理文件失败（已忽略）:', error && error.message);
+        wallpaperLogger.warn('删除壁纸物理文件失败（已忽略）', {
+          error: error && error.message,
+        });
       }
     }
 
@@ -165,9 +169,11 @@ export class WallpaperService {
         await fs.unlink(diskPath);
       } catch (error) {
         if (error.code !== 'ENOENT') {
-          console.warn(
+          wallpaperLogger.warn(
             `批量删除壁纸时文件删除失败（已忽略）: ${wallpaper.file_path}`,
-            error && error.message
+            {
+              error: error && error.message,
+            }
           );
         }
       }
@@ -357,10 +363,9 @@ export class WallpaperService {
       entries = await fs.readdir(THUMBNAIL_DIR);
     } catch (error) {
       if (error?.code !== 'ENOENT') {
-        console.warn(
-          '读取缩略图缓存目录失败（已忽略）:',
-          error?.message || error
-        );
+        wallpaperLogger.warn('读取缩略图缓存目录失败（已忽略）', {
+          error: error?.message || error,
+        });
       }
       return;
     }
@@ -378,11 +383,10 @@ export class WallpaperService {
           await fs.unlink(targetPath);
         } catch (error) {
           if (error?.code !== 'ENOENT') {
-            console.warn(
-              '删除缩略图缓存失败（已忽略）:',
-              targetPath,
-              error?.message || error
-            );
+            wallpaperLogger.warn('删除缩略图缓存失败（已忽略）', {
+              path: targetPath,
+              error: error?.message || error,
+            });
           }
         }
       })

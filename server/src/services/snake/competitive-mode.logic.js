@@ -1,4 +1,7 @@
 // 竞技模式核心逻辑
+import logger from '../../utils/logger.js';
+
+const competitiveLogger = logger.child('CompetitiveModeLogic');
 export function initCompetitivePlayers(service, roomId, players) {
   const gameState = service.getGameState(roomId);
   if (!gameState) return;
@@ -57,7 +60,7 @@ export function updateCompetitiveGameTick(service, roomId) {
       /* tick touch */
     });
   } catch (e) {
-    console.warn('competitive tick touch failed', e);
+    competitiveLogger.warn('competitive tick touch failed', { error: e });
   }
   if (gameState.loser) {
     // 已经确定输家，等待 lifecycle endGame 调用（防抖）

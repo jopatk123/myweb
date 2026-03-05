@@ -1,3 +1,7 @@
+import logger from '../../utils/logger.js';
+
+const baseLogger = logger.child('BaseMultiplayerService');
+
 /**
  * 通用多人游戏基础服务
  * 提供房间管理、玩家管理等通用功能
@@ -117,7 +121,7 @@ export class BaseMultiplayerService {
       this.gameStates.delete(roomId);
     }
 
-    console.log(`游戏资源已清理: 房间 ${roomId}`);
+    baseLogger.info(`游戏资源已清理: 房间 ${roomId}`);
   }
 
   /**

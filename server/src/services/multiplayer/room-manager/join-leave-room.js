@@ -1,3 +1,7 @@
+import logger from '../../../utils/logger.js';
+
+const roomLogger = logger.child('JoinLeaveRoom');
+
 // 加入/离开房间相关逻辑
 export function joinLeaveRoomFactory(Service) {
   // 加入房间
@@ -49,12 +53,12 @@ export function joinLeaveRoomFactory(Service) {
         players,
         room,
       });
-      console.log(
+      roomLogger.info(
         `玩家 ${playerName} 加入 ${this.getGameType()} 房间: ${roomCode} (状态: ${room.status})`
       );
       return { room, player, players };
     } catch (error) {
-      console.error('加入房间失败:', error);
+      roomLogger.error('加入房间失败', { error });
       throw error;
     }
   };
@@ -81,10 +85,12 @@ export function joinLeaveRoomFactory(Service) {
       } else if (room.created_by === sessionId) {
         this.transferHostRole(roomId);
       }
-      console.log(`玩家 ${player.player_name} 离开 ${this.getGameType()} 房间`);
+      roomLogger.info(
+        `玩家 ${player.player_name} 离开 ${this.getGameType()} 房间`
+      );
       return { success: true };
     } catch (error) {
-      console.error('离开房间失败:', error);
+      roomLogger.error('离开房间失败', { error });
       throw error;
     }
   };
@@ -100,10 +106,10 @@ export function joinLeaveRoomFactory(Service) {
           new_host: newHost.session_id,
           room_id: roomId,
         });
-        console.log(`房间 ${roomId} 房主已转移给 ${newHost.player_name}`);
+        roomLogger.info(`房间 ${roomId} 房主已转移给 ${newHost.player_name}`);
       }
     } catch (error) {
-      console.error('转移房主权限失败:', error);
+      roomLogger.error('转移房主权限失败', { error });
     }
   };
 }

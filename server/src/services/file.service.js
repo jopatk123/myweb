@@ -4,6 +4,9 @@ import { fileURLToPath } from 'url';
 import { FileModel } from '../models/file.model.js';
 import { NovelModel } from '../models/novel.model.js';
 import { NovelBookmarkModel } from '../models/novel-bookmark.model.js';
+import logger from '../utils/logger.js';
+
+const fileServiceLogger = logger.child('FileService');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -455,13 +458,17 @@ export class FileService {
     try {
       const absolutePath = path.resolve(__dirname, '../../', filePath);
       if (!absolutePath.startsWith(uploadsRoot)) {
-        console.warn('拒绝删除非上传目录文件:', absolutePath);
+        fileServiceLogger.warn('拒绝删除非上传目录文件', {
+          path: absolutePath,
+        });
         return true;
       }
       await fs.unlink(absolutePath);
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        console.warn('删除磁盘文件失败（已忽略）:', err && err.message);
+        fileServiceLogger.warn('删除磁盘文件失败（已忽略）', {
+          error: err?.message,
+        });
       }
     }
 

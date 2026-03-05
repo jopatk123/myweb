@@ -2,14 +2,17 @@
  * 共享模式游戏逻辑
  */
 import { generateFood } from './game-state.js';
+import logger from '../../utils/logger.js';
+
+const sharedGameLogger = logger.child('SharedGame');
 
 export async function updateSharedGame(roomId, service) {
   const gameState = service.gameStates.get(roomId);
   if (!gameState) return;
 
   if (!gameState.sharedSnake) {
-    console.warn(
-      `[shared-game] room ${roomId} missing sharedSnake, skipping update`
+    sharedGameLogger.warn(
+      `room ${roomId} missing sharedSnake, skipping update`
     );
     return;
   }

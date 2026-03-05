@@ -1,3 +1,7 @@
+import logger from '../../../utils/logger.js';
+
+const createRoomLogger = logger.child('CreateRoom');
+
 // 创建房间相关逻辑
 export function createRoomFactory(Service) {
   Service.prototype.createRoom = function (
@@ -30,12 +34,12 @@ export function createRoomFactory(Service) {
       });
       this.initGameState(room.id, roomData.mode, validation.validatedConfig);
       const updatedRoom = this.RoomModel.findById(room.id);
-      console.log(
+      createRoomLogger.info(
         `${this.getGameType()} 房间已创建: ${roomCode} (ID: ${room.id})`
       );
       return { room: updatedRoom, player };
     } catch (error) {
-      console.error('创建房间失败:', error);
+      createRoomLogger.error('创建房间失败', { error });
       throw new Error(`创建房间失败: ${error.message}`);
     }
   };

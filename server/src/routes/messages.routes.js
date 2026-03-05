@@ -7,20 +7,42 @@ import {
   uploadImage,
   MESSAGE_IMAGE_MAX_FILES,
 } from '../controllers/message.controller.js';
+import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
+import {
+  validateBody,
+  sendMessageSchema,
+  updateUserSettingsSchema,
+  clearAllMessagesSchema,
+  getMessagesSchema,
+} from '../dto/message.dto.js';
+import { validateQuery } from '../dto/wallpaper.dto.js';
 
 const router = express.Router();
+const adminGuard = createFilesAdminGuard();
 
 // 获取留言列表
-router.get('/', MessageController.getMessages);
+router.get(
+  '/',
+  validateQuery(getMessagesSchema),
+  MessageController.getMessages
+);
 
 // 发送留言
-router.post('/', MessageController.sendMessage);
+router.post(
+  '/',
+  validateBody(sendMessageSchema),
+  MessageController.sendMessage
+);
 
 // 获取用户设置
 router.get('/user-settings', MessageController.getUserSettings);
 
 // 更新用户设置
-router.put('/user-settings', MessageController.updateUserSettings);
+router.put(
+  '/user-settings',
+  validateBody(updateUserSettingsSchema),
+  MessageController.updateUserSettings
+);
 
 // 上传图片
 router.post(
@@ -29,10 +51,15 @@ router.post(
   MessageController.uploadImage
 );
 
-// 清除所有留言
-router.delete('/clear-all', MessageController.clearAllMessages);
+// 清除所有留言（需要管理员权限）
+router.delete(
+  '/clear-all',
+  adminGuard,
+  validateBody(clearAllMessagesSchema),
+  MessageController.clearAllMessages
+);
 
-// 删除留言（管理功能）
-router.delete('/:id', MessageController.deleteMessage);
+// 删除留言（需要管理员权限）
+router.delete('/:id', adminGuard, MessageController.deleteMessage);
 
 export default router;

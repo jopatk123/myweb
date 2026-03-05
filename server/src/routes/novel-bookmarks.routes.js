@@ -1,12 +1,20 @@
 import express from 'express';
 import { NovelBookmarkController } from '../controllers/novel-bookmark.controller.js';
+import {
+  validateBody,
+  createBookmarkSchema,
+  updateBookmarkSchema,
+  syncBookmarksSchema,
+} from '../dto/novel-bookmark.dto.js';
 
 export function createNovelBookmarkRoutes(db) {
   const router = express.Router();
   const bookmarkController = new NovelBookmarkController(db);
 
   // 创建书签
-  router.post('/', (req, res) => bookmarkController.createBookmark(req, res));
+  router.post('/', validateBody(createBookmarkSchema), (req, res) =>
+    bookmarkController.createBookmark(req, res)
+  );
 
   // 获取指定书籍的所有书签
   router.get('/book/:bookId', (req, res) =>
@@ -19,7 +27,9 @@ export function createNovelBookmarkRoutes(db) {
   );
 
   // 更新书签
-  router.put('/:id', (req, res) => bookmarkController.updateBookmark(req, res));
+  router.put('/:id', validateBody(updateBookmarkSchema), (req, res) =>
+    bookmarkController.updateBookmark(req, res)
+  );
 
   // 删除单个书签
   router.delete('/:id', (req, res) =>
@@ -32,7 +42,7 @@ export function createNovelBookmarkRoutes(db) {
   );
 
   // 同步书签
-  router.post('/sync', (req, res) =>
+  router.post('/sync', validateBody(syncBookmarksSchema), (req, res) =>
     bookmarkController.syncBookmarks(req, res)
   );
 
