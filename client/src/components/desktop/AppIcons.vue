@@ -361,7 +361,7 @@
 
       // 获取已占用的格子
       const occupied = new Set();
-      for (const [id, pos] of Object.entries(saved)) {
+      for (const [, pos] of Object.entries(saved)) {
         if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
           const cell = positionToCell(pos);
           occupied.add(`${cell.col}:${cell.row}`);

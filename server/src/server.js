@@ -1,17 +1,25 @@
 import http from 'http';
 import app from './app.js';
-import { createUploadDirs } from './utils/file-helper.js';
 import { WebSocketService } from './services/websocket.service.js';
 import logger from './utils/logger.js';
 import { appEnv } from './config/env.js';
 
 const bootstrapLogger = logger.child('ServerBootstrap');
 
+process.on('uncaughtException', err => {
+  bootstrapLogger.error('Uncaught exception', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', reason => {
+  bootstrapLogger.error(
+    'Unhandled rejection',
+    reason instanceof Error ? reason : { reason }
+  );
+});
+
 // 端口优先级：PORT（通用） > BACKEND_PORT（专用） > 默认 3000
 const PORT = appEnv.port ?? 3000;
-
-// 创建上传目录
-await createUploadDirs();
 
 // 创建HTTP服务器
 const server = http.createServer(app);
@@ -22,6 +30,11 @@ wsService.init(server);
 
 // 将WebSocket服务实例存储到app中，供控制器使用
 app.set('wsServer', wsService);
+
+server.on('error', err => {
+  bootstrapLogger.error('HTTP server error', err);
+  process.exit(1);
+});
 
 server.listen(PORT, '0.0.0.0', () => {
   bootstrapLogger.info('HTTP server started', {

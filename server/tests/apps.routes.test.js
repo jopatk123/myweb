@@ -1,4 +1,3 @@
-/* eslint-env jest */
 import request from 'supertest';
 import { createApp } from '../src/appFactory.js';
 

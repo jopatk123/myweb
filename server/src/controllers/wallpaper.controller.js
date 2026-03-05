@@ -7,6 +7,9 @@ import { fileURLToPath } from 'url';
 import { normalizeKeys } from '../utils/case-helper.js';
 import { parseEnvByteSize } from '../utils/env.js';
 import archiver from 'archiver';
+import logger from '../utils/logger.js';
+
+const wallpaperLogger = logger.child('WallpaperController');
 
 // 解析当前模块目录（ESM 无 __dirname）
 const __filename = fileURLToPath(import.meta.url);
@@ -428,7 +431,7 @@ export class WallpaperController {
       });
 
       archive.on('error', err => {
-        console.error('Archive error:', err);
+        wallpaperLogger.error('Archive error', err);
         res.status(500).json({ code: 500, message: 'ZIP 打包失败' });
       });
 

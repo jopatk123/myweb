@@ -173,7 +173,7 @@ describe('useWallpaperAnimation', () => {
       expect(animation.animationState.value).toBe(AnimationState.PLAYING);
 
       // 立即开始新动画，应该清理旧定时器
-      const result2 = animation.playAnimation(AnimationType.ZOOM_IN);
+      animation.playAnimation(AnimationType.ZOOM_IN);
       expect(animation.currentAnimationType.value).toBe(AnimationType.ZOOM_IN);
 
       // 快进第一个动画的时长，不应该触发完成

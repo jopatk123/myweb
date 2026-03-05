@@ -23,6 +23,9 @@ import {
 } from './utils/case-helper.js';
 import { setDb } from './utils/dbPool.js';
 import { createUploadDirs } from './utils/file-helper.js';
+import logger from './utils/logger.js';
+
+const appLogger = logger.child('AppFactory');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,7 +68,7 @@ function resolveCorsOptions() {
         return callback(null, true);
       }
 
-      console.warn(`CORS origin denied: ${origin}`);
+      appLogger.warn('CORS origin denied', { origin });
       return callback(null, false);
     },
   };

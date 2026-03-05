@@ -20,11 +20,6 @@
       >
         再来一局
       </button>
-      <div style="margin-top: 8px; font-size: 12px; color: #999">
-        Game Debug: Status={{ gameStatus }}, MySeat={{ mySeat }}, Board={{
-          board?.[0]?.[0] !== undefined ? 'loaded' : 'empty'
-        }}
-      </div>
     </div>
 
     <!-- 游戏结束弹窗 -->

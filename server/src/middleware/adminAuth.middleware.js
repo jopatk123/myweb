@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import { getAdminTokenConfig } from '../config/env.js';
 
 function normalizeToken(raw) {
@@ -15,6 +15,17 @@ function hashTokenIfNeeded(token) {
   return value;
 }
 
+function constantTimeEquals(a, b) {
+  const bufA = Buffer.from(String(a));
+  const bufB = Buffer.from(String(b));
+  if (bufA.length !== bufB.length) {
+    // Compare against self to consume constant time, then return false
+    timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
+}
+
 function verifyToken(expected, provided) {
   const safeExpected = normalizeToken(expected);
   const safeProvided = normalizeToken(provided);
@@ -24,10 +35,10 @@ function verifyToken(expected, provided) {
 
   if (safeExpected.startsWith('sha256:')) {
     const hash = createHash('sha256').update(safeProvided).digest('hex');
-    return `sha256:${hash}` === safeExpected;
+    return constantTimeEquals(`sha256:${hash}`, safeExpected);
   }
 
-  return safeExpected === safeProvided;
+  return constantTimeEquals(safeExpected, safeProvided);
 }
 
 export function createFilesAdminGuard(envVar = 'FILES_ADMIN_TOKEN') {

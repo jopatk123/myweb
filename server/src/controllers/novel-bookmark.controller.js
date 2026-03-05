@@ -1,4 +1,7 @@
 import { NovelBookmarkService } from '../services/novel-bookmark.service.js';
+import logger from '../utils/logger.js';
+
+const bookmarkLogger = logger.child('NovelBookmarkController');
 
 export class NovelBookmarkController {
   constructor(db) {
@@ -40,7 +43,7 @@ export class NovelBookmarkController {
         res.status(400).json(result);
       }
     } catch (error) {
-      console.error('创建书签控制器错误:', error);
+      bookmarkLogger.error('创建书签错误', error);
       res.status(500).json({
         success: false,
         error: '服务器内部错误',
@@ -67,7 +70,7 @@ export class NovelBookmarkController {
         res.status(400).json(result);
       }
     } catch (error) {
-      console.error('获取书签控制器错误:', error);
+      bookmarkLogger.error('获取书签错误 (byBookId)', error);
       res.status(500).json({
         success: false,
         error: '服务器内部错误',
@@ -94,7 +97,7 @@ export class NovelBookmarkController {
         res.status(400).json(result);
       }
     } catch (error) {
-      console.error('获取书签控制器错误:', error);
+      bookmarkLogger.error('获取书签错误 (byFileId)', error);
       res.status(500).json({
         success: false,
         error: '服务器内部错误',
@@ -122,7 +125,7 @@ export class NovelBookmarkController {
         res.status(400).json(result);
       }
     } catch (error) {
-      console.error('更新书签控制器错误:', error);
+      bookmarkLogger.error('更新书签错误', error);
       res.status(500).json({
         success: false,
         error: '服务器内部错误',
@@ -149,7 +152,7 @@ export class NovelBookmarkController {
         res.status(400).json(result);
       }
     } catch (error) {
-      console.error('删除书签控制器错误:', error);
+      bookmarkLogger.error('删除书签错误', error);
       res.status(500).json({
         success: false,
         error: '服务器内部错误',
@@ -176,7 +179,7 @@ export class NovelBookmarkController {
         res.status(400).json(result);
       }
     } catch (error) {
-      console.error('删除书籍书签控制器错误:', error);
+      bookmarkLogger.error('删除书籍书签错误', error);
       res.status(500).json({
         success: false,
         error: '服务器内部错误',
@@ -206,7 +209,7 @@ export class NovelBookmarkController {
         res.status(400).json(result);
       }
     } catch (error) {
-      console.error('同步书签控制器错误:', error);
+      bookmarkLogger.error('同步书签错误', error);
       res.status(500).json({
         success: false,
         error: '服务器内部错误',
@@ -224,7 +227,7 @@ export class NovelBookmarkController {
         res.status(400).json(result);
       }
     } catch (error) {
-      console.error('获取所有书签控制器错误:', error);
+      bookmarkLogger.error('获取所有书签错误', error);
       res.status(500).json({
         success: false,
         error: '服务器内部错误',

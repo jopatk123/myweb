@@ -12,6 +12,9 @@ import { NovelModel } from '../models/novel.model.js';
 import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import { normaliseUploadedFileName } from '../utils/upload.js';
+import logger from '../utils/logger.js';
+
+const fileLogger = logger.child('FileController');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,7 +39,7 @@ if (!fs.existsSync(filesDir)) {
   try {
     fs.mkdirSync(filesDir, { recursive: true });
   } catch (e) {
-    console.warn('无法创建 files 上传目录:', e.message);
+    fileLogger.warn('无法创建 files 上传目录', { error: e.message });
   }
 }
 
@@ -54,7 +57,7 @@ function resolveBaseUrl(req) {
   return `${protocol}://${host}`.replace(/\/+$/, '');
 }
 
-function isAllowedFile(file) {
+function isAllowedFile(_file) {
   // 允许所有文件类型上传
   if (allowAllFiles) return true;
   return true;
@@ -93,7 +96,7 @@ if (!fs.existsSync(novelsDir)) {
   try {
     fs.mkdirSync(novelsDir, { recursive: true });
   } catch (e) {
-    console.warn('无法创建 novels 上传目录:', e.message);
+    fileLogger.warn('无法创建 novels 上传目录', { error: e.message });
   }
 }
 
@@ -155,7 +158,9 @@ export function createFileRoutes(db) {
                 await fsPromises.unlink(diskPath);
               } catch (unlinkErr) {
                 if (unlinkErr?.code !== 'ENOENT') {
-                  console.warn('上传失败，清理文件出错:', unlinkErr.message);
+                  fileLogger.warn('上传失败，清理文件出错', {
+                    error: unlinkErr.message,
+                  });
                 }
               }
             })
@@ -204,11 +209,10 @@ export function createFileRoutes(db) {
               await fsPromises.writeFile(diskPath, Buffer.from(str, 'utf8'));
             }
           } catch (convErr) {
-            console.warn(
-              '小说文件编码转换失败：',
-              diskPath,
-              convErr && convErr.message
-            );
+            fileLogger.warn('小说文件编码转换失败', {
+              path: diskPath,
+              error: convErr && convErr.message,
+            });
           }
           // 将 files 与 novels 的写入包裹在同一事务中
           const db = service.model.db;
@@ -245,17 +249,15 @@ export function createFileRoutes(db) {
             try {
               await fsPromises.unlink(diskPath);
             } catch (unlinkErr) {
-              console.warn(
-                '无法删除失败交易产生的文件：',
-                diskPath,
-                unlinkErr && unlinkErr.message
-              );
+              fileLogger.warn('无法删除失败交易产生的文件', {
+                path: diskPath,
+                error: unlinkErr && unlinkErr.message,
+              });
             }
-            console.warn(
-              'novel upload transaction failed for',
-              diskPath,
-              dbErr && dbErr.message
-            );
+            fileLogger.warn('novel upload transaction failed', {
+              path: diskPath,
+              error: dbErr && dbErr.message,
+            });
             continue;
           }
         }

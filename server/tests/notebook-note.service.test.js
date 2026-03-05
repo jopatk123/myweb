@@ -1,4 +1,3 @@
-/* eslint-env jest */
 import { NotebookNoteService } from '../src/services/notebook-note.service.js';
 import { createTestDatabase, closeTestDatabase } from './helpers/test-db.js';
 

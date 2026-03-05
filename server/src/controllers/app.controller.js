@@ -1,5 +1,8 @@
 import Joi from 'joi';
 import { AppService } from '../services/app.service.js';
+import logger from '../utils/logger.js';
+
+const appCtrlLogger = logger.child('AppController');
 
 const appSchema = Joi.object({
   name: Joi.string().min(1).max(100).required(),
@@ -84,7 +87,7 @@ export class AppController {
       });
       res.status(201).json({ code: 201, data: app, message: '创建成功' });
     } catch (error) {
-      console.error('[AppController.create] 错误:', error);
+      appCtrlLogger.error('create 错误', error);
       next(error);
     }
   }
@@ -129,7 +132,7 @@ export class AppController {
       const app = await this.service.updateApp(id, payload);
       res.json({ code: 200, data: app, message: '更新成功' });
     } catch (error) {
-      console.error('AppController.update - error:', error);
+      appCtrlLogger.error('update 错误', error);
       next(error);
     }
   }

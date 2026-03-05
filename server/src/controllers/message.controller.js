@@ -10,6 +10,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import { normaliseUploadedFileName } from '../utils/upload.js';
+import logger from '../utils/logger.js';
+
+const msgLogger = logger.child('MessageController');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,19 +22,9 @@ const imagesDir = path.join(__dirname, '../../uploads/message-images');
 if (!fs.existsSync(imagesDir)) {
   try {
     fs.mkdirSync(imagesDir, { recursive: true, mode: 0o755 });
-    console.log('✅ 创建 message-images 上传目录成功:', imagesDir);
+    msgLogger.info('创建 message-images 上传目录成功', { path: imagesDir });
   } catch (e) {
-    console.error('❌ 无法创建 message-images 上传目录:', e.message);
-    // 尝试使用当前用户权限创建
-    try {
-      const { execSync } = await import('child_process');
-      execSync(`mkdir -p "${imagesDir}" && chmod 755 "${imagesDir}"`, {
-        stdio: 'inherit',
-      });
-      console.log('✅ 使用系统命令创建目录成功');
-    } catch (cmdError) {
-      console.error('❌ 系统命令创建目录也失败:', cmdError.message);
-    }
+    msgLogger.error('无法创建 message-images 上传目录', { error: e.message });
   }
 } else {
   // 检查目录权限
@@ -42,12 +35,10 @@ if (!fs.existsSync(imagesDir)) {
     }
     // 检查写权限
     fs.accessSync(imagesDir, fs.constants.W_OK);
-    console.log('✅ message-images 目录权限正常');
   } catch (permError) {
-    console.error('❌ message-images 目录权限问题:', permError.message);
-    console.log(
-      '💡 请手动修复目录权限: sudo chown -R $USER:$USER uploads/message-images/'
-    );
+    msgLogger.error('message-images 目录权限问题', {
+      error: permError.message,
+    });
   }
 }
 
@@ -239,7 +230,7 @@ export class MessageController {
       try {
         fs.accessSync(imagesDir, fs.constants.W_OK);
       } catch (permError) {
-        console.error('❌ 上传目录权限不足:', permError.message);
+        msgLogger.error('上传目录权限不足', { error: permError.message });
         return res.status(500).json({
           code: 500,
           message: '服务器配置错误：上传目录权限不足',
@@ -255,14 +246,14 @@ export class MessageController {
         path: `uploads/message-images/${file.filename}`,
       }));
 
-      console.log('✅ 图片上传成功:', images.length, '张图片');
+      msgLogger.info('图片上传成功', { count: images.length });
       res.json({
         code: 200,
         message: '图片上传成功',
         data: images,
       });
     } catch (error) {
-      console.error('❌ 图片上传失败:', error.message);
+      msgLogger.error('图片上传失败', { error: error.message });
       next(error);
     }
   }

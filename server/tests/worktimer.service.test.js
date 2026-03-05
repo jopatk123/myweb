@@ -1,4 +1,3 @@
-/* eslint-env jest */
 import { WorkTimerService } from '../src/services/worktimer.service.js';
 import { createTestDatabase, closeTestDatabase } from './helpers/test-db.js';
 

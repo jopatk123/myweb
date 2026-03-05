@@ -5,6 +5,9 @@ import ffmpeg from 'fluent-ffmpeg';
 import { MusicTrackModel } from '../models/music-track.model.js';
 import { MusicGroupModel } from '../models/music-group.model.js';
 import { FileService } from './file.service.js';
+import logger from '../utils/logger.js';
+
+const musicSvcLogger = logger.child('MusicService');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,10 +28,9 @@ async function configureFfmpegIfNeeded() {
     }
   } catch (err) {
     // 在 Alpine 等环境下 ffmpeg-static 可能无法加载；回退为使用系统 ffmpeg（若存在）
-    console.warn(
-      'ffmpeg-static 加载失败，将回退为系统 ffmpeg（若存在）:',
-      err?.message || err
-    );
+    musicSvcLogger.warn('ffmpeg-static 加载失败，将回退为系统 ffmpeg', {
+      error: err?.message || err,
+    });
   }
 }
 
@@ -76,7 +78,9 @@ export class MusicService {
       await fs.mkdir(musicDir, { recursive: true });
     } catch (err) {
       if (err && err.code !== 'EEXIST') {
-        console.warn('确保音乐上传目录失败:', err?.message || err);
+        musicSvcLogger.warn('确保音乐上传目录失败', {
+          error: err?.message || err,
+        });
       }
     }
   }
@@ -119,7 +123,10 @@ export class MusicService {
       const metadata = await parseFile(filePath, { duration: true });
       return metadata || {};
     } catch (err) {
-      console.warn('解析音频元数据失败:', filePath, err?.message || err);
+      musicSvcLogger.warn('解析音频元数据失败', {
+        path: filePath,
+        error: err?.message || err,
+      });
       return {};
     }
   }
@@ -132,9 +139,9 @@ export class MusicService {
         this.parseFileLoader = typeof parse === 'function' ? parse : null;
       } catch (err) {
         if (!this.metadataWarningLogged) {
-          console.warn(
-            'music-metadata 未安装或无法加载，已跳过元数据解析:',
-            err?.message || err
+          musicSvcLogger.warn(
+            'music-metadata 未安装或无法加载，已跳过元数据解析',
+            { error: err?.message || err }
           );
           this.metadataWarningLogged = true;
         }
@@ -394,7 +401,9 @@ export class MusicService {
         try {
           await fs.unlink(inputPath);
         } catch (err) {
-          console.warn('删除原始文件失败:', err?.message || err);
+          musicSvcLogger.warn('删除原始文件失败', {
+            error: err?.message || err,
+          });
         }
 
         return {
@@ -412,7 +421,7 @@ export class MusicService {
       try {
         await fs.unlink(compressedPath);
       } catch (err) {
-        console.warn('删除压缩文件失败:', err?.message || err);
+        musicSvcLogger.warn('删除压缩文件失败', { error: err?.message || err });
       }
       return {
         compressed: false,
@@ -421,7 +430,9 @@ export class MusicService {
         mimeType: originalMime,
       };
     } catch (err) {
-      console.warn('音频压缩失败，使用原始文件:', err?.message || err);
+      musicSvcLogger.warn('音频压缩失败，使用原始文件', {
+        error: err?.message || err,
+      });
       return {
         compressed: false,
         path: inputPath,
@@ -508,7 +519,9 @@ export class MusicService {
           await fs.unlink(abs);
         } catch (err) {
           if (err?.code !== 'ENOENT') {
-            console.warn('删除音乐文件失败（已忽略）:', err?.message || err);
+            musicSvcLogger.warn('删除音乐文件失败（已忽略）', {
+              error: err?.message || err,
+            });
           }
         }
       }

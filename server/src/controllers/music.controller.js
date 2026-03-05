@@ -9,6 +9,9 @@ import { fileURLToPath } from 'url';
 import { MusicService } from '../services/music.service.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import { normaliseUploadedFileName } from '../utils/upload.js';
+import logger from '../utils/logger.js';
+
+const musicLogger = logger.child('MusicController');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,7 +21,7 @@ if (!fs.existsSync(musicDir)) {
   try {
     fs.mkdirSync(musicDir, { recursive: true });
   } catch (err) {
-    console.warn('无法创建 music 上传目录:', err?.message || err);
+    musicLogger.warn('无法创建 music 上传目录', { error: err?.message || err });
   }
 }
 
@@ -64,10 +67,9 @@ async function loadFfmpeg() {
         }
         return ffmpegInstance;
       } catch (error) {
-        console.warn(
-          'FFmpeg 模块加载失败，已回退为直接文件流:',
-          error?.message || error
-        );
+        musicLogger.warn('FFmpeg 模块加载失败，已回退为直接文件流', {
+          error: error?.message || error,
+        });
         return null;
       }
     })();
@@ -81,7 +83,7 @@ function safeParseJson(input) {
   try {
     return JSON.parse(input);
   } catch (err) {
-    console.warn('解析 JSON 失败:', err?.message || err);
+    musicLogger.warn('解析 JSON 失败', { error: err?.message || err });
     return null;
   }
 }
@@ -392,7 +394,7 @@ export function createMusicRoutes(db) {
             .audioCodec('libopus')
             .audioBitrate('128k')
             .on('error', err => {
-              console.error('FFmpeg 转码失败:', err);
+              musicLogger.error('FFmpeg 转码失败', err);
               if (!res.headersSent) {
                 next(err);
               } else {

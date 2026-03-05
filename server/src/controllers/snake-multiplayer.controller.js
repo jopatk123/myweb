@@ -4,6 +4,9 @@
 import { SnakeRoomModel } from '../models/snake-room.model.js';
 import { SnakePlayerModel } from '../models/snake-player.model.js';
 import { SnakeGameRecordModel } from '../models/snake-game-record.model.js';
+import logger from '../utils/logger.js';
+
+const snakeLogger = logger.child('SnakeMultiplayer');
 
 export const SnakeMultiplayerController = {
   /**
@@ -35,7 +38,7 @@ export const SnakeMultiplayerController = {
         data: roomsWithPlayers,
       });
     } catch (error) {
-      console.error('获取活跃房间失败:', error);
+      snakeLogger.error('获取活跃房间失败', error);
       res.status(500).json({
         success: false,
         message: '获取房间列表失败',
@@ -78,7 +81,7 @@ export const SnakeMultiplayerController = {
         },
       });
     } catch (error) {
-      console.error('获取房间详情失败:', error);
+      snakeLogger.error('获取房间详情失败', error);
       res.status(500).json({
         success: false,
         message: '获取房间详情失败',
@@ -109,7 +112,7 @@ export const SnakeMultiplayerController = {
         },
       });
     } catch (error) {
-      console.error('清理离线玩家失败:', error);
+      snakeLogger.error('清理离线玩家失败', error);
       res.status(500).json({
         success: false,
         message: '清理离线玩家失败',

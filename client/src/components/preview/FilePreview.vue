@@ -11,6 +11,7 @@
 
 <script>
   import { ref } from 'vue';
+  import DOMPurify from 'dompurify';
   import { useFilePreview } from '@/composables/useFilePreview';
 
   export default {
@@ -35,14 +36,16 @@
           if (name.endsWith('.docx')) {
             // 尝试用 html 预览，失败则退回纯文本
             try {
-              htmlPreview.value = await previewDocx(file);
+              const raw = await previewDocx(file);
+              htmlPreview.value = DOMPurify.sanitize(raw || '');
               if (!htmlPreview.value)
                 textPreview.value = await extractTextFromDocx(file);
             } catch {
               textPreview.value = await extractTextFromDocx(file);
             }
           } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
-            htmlPreview.value = await previewXlsx(file);
+            const raw = await previewXlsx(file);
+            htmlPreview.value = DOMPurify.sanitize(raw || '');
             if (!htmlPreview.value) textPreview.value = '无法生成表格预览';
           } else {
             textPreview.value = await previewGenericText(file);

@@ -76,7 +76,7 @@ export default [
     },
   },
   {
-    files: ['server/**/*.js'],
+    files: ['server/**/*.{js,mjs}'],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -102,11 +102,11 @@ export default [
   },
   {
     files: [
-      '**/*.test.js',
-      '**/*.spec.js',
-      'tests/**/*.js',
-      'client/tests/**/*.js',
-      'server/tests/**/*.js',
+      '**/*.test.{js,mjs}',
+      '**/*.spec.{js,mjs}',
+      'tests/**/*.{js,mjs}',
+      'client/tests/**/*.{js,mjs}',
+      'server/tests/**/*.{js,mjs}',
     ],
     languageOptions: {
       globals: {

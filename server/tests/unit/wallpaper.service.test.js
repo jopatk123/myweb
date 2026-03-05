@@ -1,4 +1,3 @@
-/* eslint-env jest */
 import { WallpaperService } from '../../src/services/wallpaper.service.js';
 import { createTestDatabase, closeTestDatabase } from '../helpers/test-db.js';
 
