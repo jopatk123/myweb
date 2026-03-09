@@ -35,7 +35,6 @@ describe('AppListTable', () => {
     });
 
     expect(getByText('Test App')).toBeInTheDocument();
-    expect(getByText('test-app')).toBeInTheDocument();
     expect(getByText('第三方')).toBeInTheDocument();
   });
 

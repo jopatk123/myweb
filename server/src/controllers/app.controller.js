@@ -8,7 +8,7 @@ const appSchema = Joi.object({
   name: Joi.string().min(1).max(100).required(),
   slug: Joi.string()
     .pattern(/^[a-z0-9-]+$/)
-    .required(),
+    .optional(),
   description: Joi.string().allow(null, '').optional(),
   icon_filename: Joi.string().allow(null, '').optional(),
   preset_icon: Joi.string().allow(null, '').optional(),
@@ -68,6 +68,9 @@ export class AppController {
         convert: true,
       });
 
+      // slug 由服务端自动生成，忽略前端传入的值
+      delete payload.slug;
+
       // 处理前端可能发送的空字符串：把空字符串归一为 null
       if (payload.group_id === '') payload.group_id = null;
 
@@ -115,8 +118,11 @@ export class AppController {
 
       // 开启 Joi 类型转换，兼容前端字符串数字等情况
       const payload = await appSchema
-        .fork(['name', 'slug'], s => s.optional())
+        .fork(['name'], s => s.optional())
         .validateAsync(bodySnake, { convert: true });
+
+      // slug 由服务端自动管理，忽略前端传入的值
+      delete payload.slug;
 
       // 处理预选图标：如果使用预选图标，将其复制到uploads目录并设置icon_filename
       if (payload.preset_icon && !payload.icon_filename) {
@@ -229,9 +235,6 @@ export class AppController {
     try {
       const schema = Joi.object({
         name: Joi.string().min(1).max(100).required(),
-        slug: Joi.string()
-          .pattern(/^[a-z0-9-]+$/)
-          .optional(),
         is_default: Joi.boolean().optional(),
       });
       const payload = await schema.validateAsync(req.body);
@@ -247,9 +250,6 @@ export class AppController {
       const id = Number(req.params.id);
       const schema = Joi.object({
         name: Joi.string().min(1).max(100).optional(),
-        slug: Joi.string()
-          .pattern(/^[a-z0-9-]+$/)
-          .optional(),
         is_default: Joi.boolean().optional(),
       });
       const payload = await schema.validateAsync(req.body);

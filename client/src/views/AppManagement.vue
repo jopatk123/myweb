@@ -163,7 +163,7 @@
     return apps.value.filter(
       a =>
         (a.name || '').toLowerCase().includes(k) ||
-        (a.slug || '').toLowerCase().includes(k)
+        (a.description || '').toLowerCase().includes(k)
     );
   });
 
@@ -277,12 +277,10 @@
       if (groupModalMode.value === 'create') {
         await createGroup({
           name: form.name.trim(),
-          slug: form.slug?.trim() || undefined,
         });
       } else if (groupModalMode.value === 'edit' && editingGroup.value) {
         await updateGroup(editingGroup.value.id, {
           name: form.name.trim(),
-          slug: form.slug?.trim() || undefined,
         });
       }
       showGroupModal.value = false;

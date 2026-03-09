@@ -10,7 +10,7 @@
           <label>名称</label>
           <input v-model="form.name" placeholder="例如：Google" />
         </div>
-        <!-- Slug 字段由前端根据名称自动生成，隐藏输入 -->
+
         <div class="form-row">
           <label>URL</label>
           <input v-model="form.target_url" placeholder="https://example.com" />
@@ -50,25 +50,11 @@
 
   const initialFormState = {
     name: '',
-    slug: '',
     target_url: '',
     icon_filename: null,
     group_id: null,
     is_visible: true,
   };
-
-  // 简单的 slug 生成函数：把名称转换为小写、替换非字母数字为连字符、去重连字符
-  function generateSlugFromName(name) {
-    if (!name) return '';
-    return name
-      .toString()
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // 移除非法字符
-      .replace(/\s+/g, '-') // 空白转为连字符
-      .replace(/-+/g, '-') // 合并连续连字符
-      .replace(/^-|-$/g, ''); // 移除首尾连字符
-  }
 
   const form = ref({ ...initialFormState });
   const selectedIconPath = ref('');
@@ -95,12 +81,9 @@
   };
 
   const submit = async () => {
-    // 在提交前确保生成 slug
-    const computedSlug = generateSlugFromName(form.value.name);
     const payload = {
       ...form.value,
       name: form.value.name.trim(),
-      slug: computedSlug,
       target_url: form.value.target_url?.trim() || null,
       group_id: form.value.group_id || null,
       is_visible:
@@ -108,8 +91,8 @@
       is_builtin: false,
     };
 
-    if (!payload.name || !payload.slug) {
-      alert('请填写名称，系统无法生成有效的 slug');
+    if (!payload.name) {
+      alert('请填写名称');
       return;
     }
     if (!payload.target_url) {

@@ -8,7 +8,6 @@
           </th>
           <th>图标</th>
           <th>名称</th>
-          <th>Slug</th>
           <th>类型</th>
           <th>分组</th>
           <th>可见</th>
@@ -36,7 +35,6 @@
             <span v-else class="icon placeholder">—</span>
           </td>
           <td>{{ app.name }}</td>
-          <td>{{ app.slug }}</td>
           <td>{{ (app.isBuiltin ?? app.is_builtin) ? '内置' : '第三方' }}</td>
           <td>{{ displayGroupName(app.groupId || app.group_id) }}</td>
           <td>

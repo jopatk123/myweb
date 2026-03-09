@@ -1,5 +1,6 @@
 import { AppModel } from '../models/app.model.js';
 import { AppGroupModel } from '../models/app-group.model.js';
+import { generateUniqueSlug } from '../utils/slug.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -37,15 +38,39 @@ export class AppService {
     // 接受 camelCase payload，映射为 snake_case 给 model
     try {
       const { mapToSnake } = await import('../utils/field-mapper.js');
-      return this.appModel.create(mapToSnake(payload));
+      const snakePayload = mapToSnake(payload);
+      // 自动生成 slug（若未提供）
+      if (!snakePayload.slug) {
+        snakePayload.slug = generateUniqueSlug(
+          snakePayload.name,
+          slug => !!this.appModel.findBySlug(slug)
+        );
+      }
+      return this.appModel.create(snakePayload);
     } catch (error) {
       void error;
       // 回退：若动态 import 失败，则直接传入 payload（model 层会兼容）
+      if (!payload.slug) {
+        payload.slug = generateUniqueSlug(
+          payload.name,
+          slug => !!this.appModel.findBySlug(slug)
+        );
+      }
       return this.appModel.create(payload);
     }
   }
 
   updateApp(id, payload) {
+    // 如果名称有变化,自动更新 slug
+    if (payload.name) {
+      const existing = this.appModel.findById(id);
+      if (existing && !existing.is_builtin && existing.name !== payload.name) {
+        payload.slug = generateUniqueSlug(payload.name, slug => {
+          const found = this.appModel.findBySlug(slug);
+          return found && found.id !== id;
+        });
+      }
+    }
     return this.appModel.update(id, payload);
   }
 
@@ -129,10 +154,31 @@ export class AppService {
   }
 
   createGroup(payload) {
+    // 自动生成 slug（若未提供）
+    if (!payload.slug && payload.name) {
+      payload.slug = generateUniqueSlug(payload.name, slug => {
+        const existing = this.groupModel.db
+          .prepare('SELECT id FROM app_groups WHERE slug = ?')
+          .get(slug);
+        return !!existing;
+      });
+    }
     return this.groupModel.create(payload);
   }
 
   updateGroup(id, payload) {
+    // 如果名称有变化,自动更新 slug
+    if (payload.name) {
+      const existing = this.groupModel.findById(id);
+      if (existing && existing.name !== payload.name) {
+        payload.slug = generateUniqueSlug(payload.name, slug => {
+          const found = this.groupModel.db
+            .prepare('SELECT id FROM app_groups WHERE slug = ? AND id != ?')
+            .get(slug, id);
+          return !!found;
+        });
+      }
+    }
     return this.groupModel.update(id, payload);
   }
 

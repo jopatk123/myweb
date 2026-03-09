@@ -52,23 +52,9 @@
 
   const initialFormState = {
     name: '',
-    slug: '',
     target_url: '',
     icon_filename: null,
   };
-
-  // 简单的 slug 生成函数：把名称转换为小写、替换非字母数字为连字符、去重连字符
-  function generateSlugFromName(name) {
-    if (!name) return '';
-    return name
-      .toString()
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // 移除非法字符
-      .replace(/\s+/g, '-') // 空白转为连字符
-      .replace(/-+/g, '-') // 合并连续连字符
-      .replace(/^-|-$/g, ''); // 移除首尾连字符
-  }
 
   const form = ref({ ...initialFormState });
   const selectedIconPath = ref('');
@@ -82,7 +68,6 @@
         // 填充现有应用数据
         form.value = {
           name: props.app.name || '',
-          slug: props.app.slug || '',
           target_url: props.app.target_url || props.app.targetUrl || '',
           icon_filename:
             props.app.icon_filename || props.app.iconFilename || null,
@@ -106,16 +91,13 @@
   };
 
   const submit = async () => {
-    // 在提交前根据名称生成新的 slug（如果名称被修改）
-    const computedSlug = generateSlugFromName(form.value.name);
     const payload = {
       name: form.value.name.trim(),
-      slug: computedSlug,
       target_url: form.value.target_url?.trim() || null,
     };
 
-    if (!payload.name || !payload.slug) {
-      alert('请填写名称，系统无法生成有效的 slug');
+    if (!payload.name) {
+      alert('请填写名称');
       return;
     }
     if (!payload.target_url) {

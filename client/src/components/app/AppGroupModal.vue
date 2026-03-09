@@ -10,10 +10,7 @@
           <label>名称</label>
           <input v-model="form.name" placeholder="例如：办公" />
         </div>
-        <div class="form-row">
-          <label>Slug</label>
-          <input v-model="form.slug" placeholder="例如：office" />
-        </div>
+
         <div class="actions">
           <button class="btn btn-primary" @click="submit">保存</button>
           <button class="btn" @click="close">取消</button>
@@ -40,7 +37,7 @@
 
   const emit = defineEmits(['update:show', 'submit']);
 
-  const form = ref({ name: '', slug: '' });
+  const form = ref({ name: '' });
 
   const isEditMode = computed(() => props.mode === 'edit');
 
@@ -51,10 +48,9 @@
         if (isEditMode.value && props.group) {
           form.value = {
             name: props.group.name || '',
-            slug: props.group.slug || '',
           };
         } else {
-          form.value = { name: '', slug: '' };
+          form.value = { name: '' };
         }
       }
     }
