@@ -80,7 +80,6 @@
     { name: '计算器', path: '/apps/icons/calculator-128.png', category: 'app' },
     { name: '记事本', path: '/apps/icons/notebook-128.svg', category: 'app' },
     { name: '设置', path: '/apps/icons/settings.svg', category: 'app' },
-    { name: '音乐', path: '/apps/icons/music.svg', category: 'app' },
     { name: '视频', path: '/apps/icons/video-128.svg', category: 'app' },
 
     // 社交媒体图标（仅存在的）
@@ -105,9 +104,7 @@
     },
 
     // 游戏类图标
-    { name: '贪吃蛇', path: '/apps/icons/snake-128.png', category: 'game' },
     { name: '扑克', path: '/apps/icons/cards.svg', category: 'game' },
-    { name: '五子棋', path: '/apps/icons/gomoku-128.svg', category: 'game' },
 
     // 办公类图标
     { name: '演示', path: '/apps/icons/presentation.svg', category: 'office' },
@@ -115,12 +112,6 @@
 
     // 其他常用图标
     { name: '时钟', path: '/apps/icons/clock.svg', category: 'other' },
-    { name: '相机', path: '/apps/icons/camera.svg', category: 'other' },
-    {
-      name: '小说阅读器',
-      path: '/apps/icons/novel-reader.svg',
-      category: 'other',
-    },
     {
       name: '计时器',
       path: '/apps/icons/work-timer-128.svg',

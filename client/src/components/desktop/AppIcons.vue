@@ -75,14 +75,8 @@
     }
     // 后端未提供图标，根据 slug 推断本地路径
     // 注意：这里假设了图标文件的命名规范
-    if (app.slug === 'snake') {
-      return `/apps/icons/snake-128.png`;
-    }
     if (app.slug === 'calculator') {
       return `/apps/icons/calculator-128.png`;
-    }
-    if (app.slug === 'novel-reader') {
-      return `/apps/icons/novel-reader.svg`;
     }
     if (app.slug === 'work-timer') {
       return `/apps/icons/work-timer-128.svg`;

@@ -58,21 +58,6 @@ export const filesApi = {
     });
   },
 
-  uploadNovels(files, onUploadProgress) {
-    const form = new FormData();
-    const arr = Array.isArray(files) ? files : [files];
-    for (const f of arr) form.append('file', f);
-    return api.post('/files/upload/novel', form, {
-      headers: buildAuthHeaders(),
-      onUploadProgress: e => {
-        if (!onUploadProgress) return;
-        if (!e.total) return;
-        const pct = Math.round((e.loaded * 100) / e.total);
-        onUploadProgress(pct, e.loaded, e.total);
-      },
-    });
-  },
-
   list(params = {}) {
     return api.get('/files', {
       params,

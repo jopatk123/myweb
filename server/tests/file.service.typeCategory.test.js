@@ -29,12 +29,12 @@ describe('file.service - detectTypeCategory', () => {
     });
 
     it('should detect audio/music types by MIME', () => {
-      expect(detectTypeCategory('audio/mpeg')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('audio/wav')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('audio/flac')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('audio/aac')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('audio/ogg')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('audio/m4a')).toBe(FILE_CATEGORIES.MUSIC);
+      expect(detectTypeCategory('audio/mpeg')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('audio/wav')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('audio/flac')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('audio/aac')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('audio/ogg')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('audio/m4a')).toBe(FILE_CATEGORIES.AUDIO);
       expect(detectTypeCategory('audio/midi')).toBe(FILE_CATEGORIES.AUDIO);
     });
 
@@ -130,13 +130,13 @@ describe('file.service - detectTypeCategory', () => {
       expect(detectTypeCategory('', 'video.webm')).toBe(FILE_CATEGORIES.VIDEO);
     });
 
-    it('should detect music types by extension', () => {
-      expect(detectTypeCategory('', 'song.mp3')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('', 'song.wav')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('', 'song.flac')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('', 'song.aac')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('', 'song.m4a')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('', 'song.ogg')).toBe(FILE_CATEGORIES.MUSIC);
+    it('should detect audio types by extension', () => {
+      expect(detectTypeCategory('', 'song.mp3')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('', 'song.wav')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('', 'song.flac')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('', 'song.aac')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('', 'song.m4a')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('', 'song.ogg')).toBe(FILE_CATEGORIES.AUDIO);
     });
 
     it('should detect document types by extension', () => {
@@ -190,25 +190,19 @@ describe('file.service - detectTypeCategory', () => {
         FILE_CATEGORIES.ARCHIVE
       );
     });
-
-    it('should detect novel types by extension', () => {
-      expect(detectTypeCategory('', 'book.epub')).toBe(FILE_CATEGORIES.NOVEL);
-      expect(detectTypeCategory('', 'book.mobi')).toBe(FILE_CATEGORIES.NOVEL);
-      expect(detectTypeCategory('', 'book.azw3')).toBe(FILE_CATEGORIES.NOVEL);
-    });
   });
 
   describe('case insensitivity', () => {
     it('should handle uppercase MIME types', () => {
       expect(detectTypeCategory('IMAGE/JPEG')).toBe(FILE_CATEGORIES.IMAGE);
       expect(detectTypeCategory('VIDEO/MP4')).toBe(FILE_CATEGORIES.VIDEO);
-      expect(detectTypeCategory('AUDIO/MPEG')).toBe(FILE_CATEGORIES.MUSIC);
+      expect(detectTypeCategory('AUDIO/MPEG')).toBe(FILE_CATEGORIES.AUDIO);
     });
 
     it('should handle uppercase file extensions', () => {
       expect(detectTypeCategory('', 'PHOTO.JPG')).toBe(FILE_CATEGORIES.IMAGE);
       expect(detectTypeCategory('', 'VIDEO.MP4')).toBe(FILE_CATEGORIES.VIDEO);
-      expect(detectTypeCategory('', 'SONG.MP3')).toBe(FILE_CATEGORIES.MUSIC);
+      expect(detectTypeCategory('', 'SONG.MP3')).toBe(FILE_CATEGORIES.AUDIO);
     });
 
     it('should handle mixed case', () => {
@@ -229,8 +223,8 @@ describe('file.service - detectTypeCategory', () => {
     });
 
     it('should use audio/ prefix for unknown audio types', () => {
-      expect(detectTypeCategory('audio/unknown')).toBe(FILE_CATEGORIES.MUSIC);
-      expect(detectTypeCategory('audio/x-custom')).toBe(FILE_CATEGORIES.MUSIC);
+      expect(detectTypeCategory('audio/unknown')).toBe(FILE_CATEGORIES.AUDIO);
+      expect(detectTypeCategory('audio/x-custom')).toBe(FILE_CATEGORIES.AUDIO);
     });
 
     it('should use text/ prefix for unknown text types', () => {
@@ -304,7 +298,7 @@ describe('file.service - detectTypeCategory', () => {
       expect(FILE_CATEGORIES).toBeDefined();
       expect(FILE_CATEGORIES.IMAGE).toBe('image');
       expect(FILE_CATEGORIES.VIDEO).toBe('video');
-      expect(FILE_CATEGORIES.MUSIC).toBe('music');
+      expect(FILE_CATEGORIES.AUDIO).toBe('audio');
     });
 
     it('should export MIME_TYPE_MAP', () => {

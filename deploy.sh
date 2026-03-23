@@ -171,7 +171,6 @@ setup_permissions() {
     "$PROJECT_ROOT/server/uploads/apps"
     "$PROJECT_ROOT/server/uploads/apps/icons"
     "$PROJECT_ROOT/server/uploads/files"
-    "$PROJECT_ROOT/server/uploads/novels"
     "$PROJECT_ROOT/server/data"
     "$PROJECT_ROOT/server/logs"
   )

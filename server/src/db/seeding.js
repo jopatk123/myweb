@@ -19,47 +19,17 @@ export function seedAppsIfEmpty(db) {
         `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_builtin, target_url) VALUES (?,?,?,?,?,?,?,?)`
       );
       insert.run(
-        '贪吃蛇',
-        'snake',
-        '经典小游戏（本地实现示例）',
-        'snake-128.png',
+        '计算器',
+        'calculator',
+        '科学计算器，支持基本运算和内存功能',
+        'calculator-128.png',
         gid,
         1,
         1,
         null
       );
-      console.log('🌱 Seeded example app: snake');
+      console.log('🌱 Seeded example app: calculator');
 
-      // 也种子计算器应用，避免额外脚本依赖（如果尚未存在）
-      const hasCalculator = db
-        .prepare('SELECT id FROM apps WHERE slug = ? AND is_deleted = 0')
-        .get('calculator');
-      if (!hasCalculator) {
-        try {
-          insert.run(
-            '计算器',
-            'calculator',
-            '科学计算器，支持基本运算和内存功能',
-            'calculator-128.png',
-            gid,
-            1,
-            1,
-            null
-          );
-          console.log('🌱 Seeded example app: calculator');
-        } catch (e) {
-          console.warn(
-            'seedAppsIfEmpty: failed to seed calculator app:',
-            e?.message || e
-          );
-        }
-      } else {
-        console.log(
-          '🟢 Calculator app already exists, skipping seed for calculator'
-        );
-      }
-
-      // 也种子笔记本应用
       const hasNotebook = db
         .prepare('SELECT id FROM apps WHERE slug = ? AND is_deleted = 0')
         .get('notebook');
@@ -77,43 +47,8 @@ export function seedAppsIfEmpty(db) {
           );
           console.log('🌱 Seeded example app: notebook');
         } catch (e) {
-          console.warn(
-            'seedAppsIfEmpty: failed to seed notebook app:',
-            e?.message || e
-          );
+          // ignore duplicate
         }
-      } else {
-        console.log(
-          '🟢 Notebook app already exists, skipping seed for notebook'
-        );
-      }
-
-      const hasMusic = db
-        .prepare('SELECT id FROM apps WHERE slug = ? AND is_deleted = 0')
-        .get('music-player');
-      if (!hasMusic) {
-        try {
-          insert.run(
-            '音乐播放器',
-            'music-player',
-            '上传并播放本地音乐，支持播放列表管理',
-            'music.svg',
-            gid,
-            1,
-            1,
-            null
-          );
-          console.log('🌱 Seeded example app: music-player');
-        } catch (e) {
-          console.warn(
-            'seedAppsIfEmpty: failed to seed music-player app:',
-            e?.message || e
-          );
-        }
-      } else {
-        console.log(
-          '🟢 Music-player app already exists, skipping seed for music-player'
-        );
       }
     }
   } catch (e) {
@@ -124,15 +59,6 @@ export function seedAppsIfEmpty(db) {
 export function ensureBuiltinApps(db) {
   try {
     const builtins = [
-      {
-        name: '贪吃蛇',
-        slug: 'snake',
-        description: '经典小游戏（本地实现示例）',
-        icon_filename: 'snake-128.png',
-        is_visible: 1,
-        is_builtin: 1,
-        target_url: null,
-      },
       {
         name: '计算器',
         slug: 'calculator',
@@ -152,28 +78,10 @@ export function ensureBuiltinApps(db) {
         target_url: null,
       },
       {
-        name: '小说阅读器',
-        slug: 'novel-reader',
-        description: '用于阅读本地小说文件，支持章节与进度管理',
-        icon_filename: 'novel-reader.svg',
-        is_visible: 1,
-        is_builtin: 1,
-        target_url: null,
-      },
-      {
         name: '下班计时器',
         slug: 'work-timer',
         description: '工作时间管理和下班倒计时',
         icon_filename: 'work-timer-128.svg',
-        is_visible: 1,
-        is_builtin: 1,
-        target_url: null,
-      },
-      {
-        name: '五子棋',
-        slug: 'gomoku',
-        description: '五子棋对战，挑战AI',
-        icon_filename: 'gomoku-128.svg',
         is_visible: 1,
         is_builtin: 1,
         target_url: null,
@@ -184,15 +92,6 @@ export function ensureBuiltinApps(db) {
         description: '用于站内留言与通知展示',
         icon_filename: 'message-board-128.svg',
         is_visible: 0,
-        is_builtin: 1,
-        target_url: null,
-      },
-      {
-        name: '音乐播放器',
-        slug: 'music-player',
-        description: '上传并播放本地音乐，支持播放列表管理',
-        icon_filename: 'music.svg',
-        is_visible: 1,
         is_builtin: 1,
         target_url: null,
       },

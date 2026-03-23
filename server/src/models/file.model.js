@@ -7,12 +7,15 @@ export class FileModel {
     const allowedTypes = new Set([
       'image',
       'video',
+      'audio',
       'word',
       'excel',
+      'ppt',
+      'pdf',
+      'text',
+      'code',
       'archive',
       'other',
-      'novel',
-      'music',
     ]);
 
     const safePage = Math.max(1, Number(page) || 1);

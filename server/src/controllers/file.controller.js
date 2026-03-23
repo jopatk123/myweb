@@ -3,12 +3,13 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
-import jschardet from 'jschardet';
-import iconv from 'iconv-lite';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
-import { FileService } from '../services/file.service.js';
-import { NovelModel } from '../models/novel.model.js';
+import {
+  FileService,
+  detectTypeCategory,
+  FILE_CATEGORIES,
+} from '../services/file.service.js';
 import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import { normaliseUploadedFileName } from '../utils/upload.js';
@@ -21,7 +22,6 @@ const __dirname = path.dirname(__filename);
 
 const uploadsRoot = path.join(__dirname, '../../uploads');
 const filesDir = path.join(uploadsRoot, 'files');
-const novelsDir = path.join(uploadsRoot, 'novels');
 const DEFAULT_MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1GiB
 const MAX_UPLOAD_SIZE = parseEnvByteSize(
   'FILE_MAX_UPLOAD_SIZE',
@@ -32,8 +32,13 @@ const MAX_UPLOAD_FILES = Math.max(
   parseEnvNumber('FILE_MAX_UPLOAD_FILES', 10)
 );
 
-// 允许所有文件类型上传 - 移除限制
-const allowAllFiles = true;
+// 允许所有文件类型上传 - 可通过环境变量 FILE_ALLOW_ALL_TYPES=false 开启过滤
+
+function isAllowedFile(file) {
+  if (process.env.FILE_ALLOW_ALL_TYPES !== 'false') return true;
+  const category = detectTypeCategory(file.mimetype, file.originalname);
+  return category !== FILE_CATEGORIES.OTHER;
+}
 
 if (!fs.existsSync(filesDir)) {
   try {
@@ -55,12 +60,6 @@ function resolveBaseUrl(req) {
   const host = (req.get('host') || '').trim();
   if (!host) return '';
   return `${protocol}://${host}`.replace(/\/+$/, '');
-}
-
-function isAllowedFile(_file) {
-  // 允许所有文件类型上传
-  if (allowAllFiles) return true;
-  return true;
 }
 
 const fileFilter = (_req, file, cb) => {
@@ -91,36 +90,9 @@ const upload = multer({
   fileFilter,
 });
 
-// Ensure novels upload directory exists and provide a dedicated storage for novels
-if (!fs.existsSync(novelsDir)) {
-  try {
-    fs.mkdirSync(novelsDir, { recursive: true });
-  } catch (e) {
-    fileLogger.warn('无法创建 novels 上传目录', { error: e.message });
-  }
-}
-
-const storageNovels = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, novelsDir);
-  },
-  filename: (req, file, cb) => {
-    normaliseUploadedFileName(file);
-    const ext = path.extname(file.originalname) || '';
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
-
-const uploadNovels = multer({
-  storage: storageNovels,
-  limits: { fileSize: MAX_UPLOAD_SIZE },
-  fileFilter,
-});
-
 export function createFileRoutes(db) {
   const router = express.Router();
   const service = new FileService(db);
-  const novelModel = new NovelModel(db);
   const adminGuard = createFilesAdminGuard();
 
   // 上传（支持多文件）
@@ -173,116 +145,6 @@ export function createFileRoutes(db) {
         res
           .status(201)
           .json({ code: 201, success: true, data, message: '上传成功' });
-      } catch (error) {
-        next(error);
-      }
-    }
-  );
-
-  // 专用于小说上传的端点，保存到 uploads/novels
-  router.post(
-    '/upload/novel',
-    adminGuard,
-    uploadNovels.array('file', MAX_UPLOAD_FILES),
-    async (req, res, next) => {
-      try {
-        const baseUrl = resolveBaseUrl(req);
-        const files = req.files || [];
-        if (!files.length)
-          return res
-            .status(400)
-            .json({ code: 400, success: false, message: '请选择文件' });
-
-        const fileResults = [];
-        const novelResults = [];
-        for (const f of files) {
-          const webPath = path.posix.join('uploads', 'novels', f.filename);
-          const diskPath = path.join(novelsDir, f.filename);
-          // 统一检测编码并转换为 UTF-8，覆盖磁盘文件以便后续读取一致
-          try {
-            const buf = await fsPromises.readFile(diskPath);
-            const detected = jschardet.detect(buf) || {};
-            const enc = (detected.encoding || '').toLowerCase();
-            if (!enc || !enc.includes('utf')) {
-              const fromEnc = /gb/.test(enc) ? 'gb18030' : enc || 'gb18030';
-              const str = iconv.decode(buf, fromEnc);
-              await fsPromises.writeFile(diskPath, Buffer.from(str, 'utf8'));
-            }
-          } catch (convErr) {
-            fileLogger.warn('小说文件编码转换失败', {
-              path: diskPath,
-              error: convErr && convErr.message,
-            });
-          }
-          // 将 files 与 novels 的写入包裹在同一事务中
-          const db = service.model.db;
-          const txn = db.transaction(() => {
-            const fileRow = service.create({
-              originalName: f.originalname,
-              storedName: f.filename,
-              filePath: webPath,
-              mimeType: f.mimetype,
-              fileSize: f.size,
-              uploaderId: null,
-              baseUrl,
-              typeCategory: 'novel',
-            });
-            const novelRow = novelModel.create({
-              title: f.originalname.replace(/\.[^/.]+$/, ''),
-              author: null,
-              originalName: f.originalname,
-              storedName: f.filename,
-              filePath: webPath,
-              mimeType: f.mimetype,
-              fileSize: f.size,
-              fileUrl: fileRow.file_url || fileRow.fileUrl || null,
-              uploaderId: null,
-            });
-            fileResults.push(fileRow);
-            novelResults.push(novelRow);
-          });
-
-          try {
-            txn();
-          } catch (dbErr) {
-            // 单文件失败时仅清理当前文件，继续处理其它文件
-            try {
-              await fsPromises.unlink(diskPath);
-            } catch (unlinkErr) {
-              fileLogger.warn('无法删除失败交易产生的文件', {
-                path: diskPath,
-                error: unlinkErr && unlinkErr.message,
-              });
-            }
-            fileLogger.warn('novel upload transaction failed', {
-              path: diskPath,
-              error: dbErr && dbErr.message,
-            });
-            continue;
-          }
-        }
-
-        if (fileResults.length === 0) {
-          return res
-            .status(500)
-            .json({ code: 500, success: false, message: '小说上传失败' });
-        }
-
-        const data =
-          Array.isArray(fileResults) && fileResults.length === 1
-            ? fileResults[0]
-            : fileResults;
-        const novels =
-          Array.isArray(novelResults) && novelResults.length === 1
-            ? novelResults[0]
-            : novelResults;
-        res.status(201).json({
-          code: 201,
-          success: true,
-          data,
-          novels,
-          message: '小说上传成功',
-        });
       } catch (error) {
         next(error);
       }

@@ -2,8 +2,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { FileModel } from '../models/file.model.js';
-import { NovelModel } from '../models/novel.model.js';
-import { NovelBookmarkModel } from '../models/novel-bookmark.model.js';
 import logger from '../utils/logger.js';
 
 const fileServiceLogger = logger.child('FileService');
@@ -19,7 +17,6 @@ const FILE_CATEGORIES = {
   IMAGE: 'image',
   VIDEO: 'video',
   AUDIO: 'audio',
-  MUSIC: 'music',
   WORD: 'word',
   EXCEL: 'excel',
   PPT: 'ppt',
@@ -27,7 +24,6 @@ const FILE_CATEGORIES = {
   TEXT: 'text',
   CODE: 'code',
   ARCHIVE: 'archive',
-  NOVEL: 'novel',
   OTHER: 'other',
 };
 
@@ -61,21 +57,21 @@ const MIME_TYPE_MAP = {
   'video/x-ms-wmv': FILE_CATEGORIES.VIDEO,
 
   // 音频类型
-  'audio/mpeg': FILE_CATEGORIES.MUSIC,
-  'audio/mp3': FILE_CATEGORIES.MUSIC,
-  'audio/wav': FILE_CATEGORIES.MUSIC,
-  'audio/x-wav': FILE_CATEGORIES.MUSIC,
-  'audio/flac': FILE_CATEGORIES.MUSIC,
-  'audio/x-flac': FILE_CATEGORIES.MUSIC,
-  'audio/aac': FILE_CATEGORIES.MUSIC,
-  'audio/ogg': FILE_CATEGORIES.MUSIC,
-  'audio/m4a': FILE_CATEGORIES.MUSIC,
-  'audio/x-m4a': FILE_CATEGORIES.MUSIC,
-  'audio/mp4': FILE_CATEGORIES.MUSIC,
-  'audio/x-ms-wma': FILE_CATEGORIES.MUSIC,
-  'audio/aiff': FILE_CATEGORIES.MUSIC,
-  'audio/x-aiff': FILE_CATEGORIES.MUSIC,
-  'audio/webm': FILE_CATEGORIES.MUSIC,
+  'audio/mpeg': FILE_CATEGORIES.AUDIO,
+  'audio/mp3': FILE_CATEGORIES.AUDIO,
+  'audio/wav': FILE_CATEGORIES.AUDIO,
+  'audio/x-wav': FILE_CATEGORIES.AUDIO,
+  'audio/flac': FILE_CATEGORIES.AUDIO,
+  'audio/x-flac': FILE_CATEGORIES.AUDIO,
+  'audio/aac': FILE_CATEGORIES.AUDIO,
+  'audio/ogg': FILE_CATEGORIES.AUDIO,
+  'audio/m4a': FILE_CATEGORIES.AUDIO,
+  'audio/x-m4a': FILE_CATEGORIES.AUDIO,
+  'audio/mp4': FILE_CATEGORIES.AUDIO,
+  'audio/x-ms-wma': FILE_CATEGORIES.AUDIO,
+  'audio/aiff': FILE_CATEGORIES.AUDIO,
+  'audio/x-aiff': FILE_CATEGORIES.AUDIO,
+  'audio/webm': FILE_CATEGORIES.AUDIO,
   'audio/midi': FILE_CATEGORIES.AUDIO,
   'audio/x-midi': FILE_CATEGORIES.AUDIO,
 
@@ -187,18 +183,18 @@ const EXTENSION_TYPE_MAP = {
   '.mpg': FILE_CATEGORIES.VIDEO,
 
   // 音乐/音频
-  '.mp3': FILE_CATEGORIES.MUSIC,
-  '.wav': FILE_CATEGORIES.MUSIC,
-  '.flac': FILE_CATEGORIES.MUSIC,
-  '.aac': FILE_CATEGORIES.MUSIC,
-  '.ogg': FILE_CATEGORIES.MUSIC,
-  '.m4a': FILE_CATEGORIES.MUSIC,
-  '.wma': FILE_CATEGORIES.MUSIC,
-  '.aiff': FILE_CATEGORIES.MUSIC,
-  '.aif': FILE_CATEGORIES.MUSIC,
-  '.alac': FILE_CATEGORIES.MUSIC,
-  '.ape': FILE_CATEGORIES.MUSIC,
-  '.opus': FILE_CATEGORIES.MUSIC,
+  '.mp3': FILE_CATEGORIES.AUDIO,
+  '.wav': FILE_CATEGORIES.AUDIO,
+  '.flac': FILE_CATEGORIES.AUDIO,
+  '.aac': FILE_CATEGORIES.AUDIO,
+  '.ogg': FILE_CATEGORIES.AUDIO,
+  '.m4a': FILE_CATEGORIES.AUDIO,
+  '.wma': FILE_CATEGORIES.AUDIO,
+  '.aiff': FILE_CATEGORIES.AUDIO,
+  '.aif': FILE_CATEGORIES.AUDIO,
+  '.alac': FILE_CATEGORIES.AUDIO,
+  '.ape': FILE_CATEGORIES.AUDIO,
+  '.opus': FILE_CATEGORIES.AUDIO,
   '.mid': FILE_CATEGORIES.AUDIO,
   '.midi': FILE_CATEGORIES.AUDIO,
 
@@ -292,13 +288,6 @@ const EXTENSION_TYPE_MAP = {
   '.xz': FILE_CATEGORIES.ARCHIVE,
   '.lzma': FILE_CATEGORIES.ARCHIVE,
   '.z': FILE_CATEGORIES.ARCHIVE,
-
-  // 小说/电子书
-  '.epub': FILE_CATEGORIES.NOVEL,
-  '.mobi': FILE_CATEGORIES.NOVEL,
-  '.azw': FILE_CATEGORIES.NOVEL,
-  '.azw3': FILE_CATEGORIES.NOVEL,
-  '.fb2': FILE_CATEGORIES.NOVEL,
 };
 
 /**
@@ -317,7 +306,7 @@ function detectTypeCategory(mimeType, originalName = '') {
   // 使用通用MIME类型前缀判断
   if (mt.startsWith('image/')) return FILE_CATEGORIES.IMAGE;
   if (mt.startsWith('video/')) return FILE_CATEGORIES.VIDEO;
-  if (mt.startsWith('audio/')) return FILE_CATEGORIES.MUSIC;
+  if (mt.startsWith('audio/')) return FILE_CATEGORIES.AUDIO;
   if (mt.startsWith('text/')) return FILE_CATEGORIES.TEXT;
 
   // 通过文件扩展名判断
@@ -368,8 +357,6 @@ function buildFileUrl(baseUrl, relativePath) {
 export class FileService {
   constructor(db) {
     this.model = new FileModel(db);
-    this.novelModel = new NovelModel(db);
-    this.bookmarkModel = new NovelBookmarkModel(db);
   }
 
   list({ page = 1, limit = 20, type = null, search = null } = {}) {
@@ -425,31 +412,14 @@ export class FileService {
   }
 
   async remove(id) {
-    // 先事务性删除 DB（files + novels），再尽力删除磁盘文件，保证前端与 DB 一致
+    // 先事务性删除 DB，再尽力删除磁盘文件，保证前端与 DB 一致
     const db = this.model.db;
     const file = this.get(id);
     const filePath = file.file_path;
 
-    // 1) 事务：删除 files 记录与 novels 关联记录
+    // 1) 事务：删除 files 记录
     const transaction = db.transaction(() => {
-      const normalizedCategory = (file.type_category || file.typeCategory || '')
-        .toLowerCase()
-        .trim();
-      const novelRow =
-        normalizedCategory === 'novel'
-          ? this.novelModel.findByFilePath(filePath)
-          : null;
-
       this.model.delete(id);
-
-      if (normalizedCategory === 'novel') {
-        this.novelModel.deleteByFilePath(filePath);
-        if (novelRow) {
-          this.bookmarkModel.deleteByBookId(novelRow.id);
-        }
-      }
-
-      this.bookmarkModel.deleteByFileId(id);
     });
 
     transaction();

@@ -11,12 +11,9 @@ import { createAppRoutes } from './routes/apps.routes.js';
 import { createFileRoutes } from './routes/files.routes.js';
 import { createNotebookNotesRoutes } from './routes/notebook-notes.routes.js';
 import { createWorkTimerRoutes } from './routes/worktimer.routes.js';
-import { createNovelBookmarkRoutes } from './routes/novel-bookmarks.routes.js';
-import { createSnakeMultiplayerRoutes } from './routes/snake-multiplayer.routes.js';
 import messageRoutes from './routes/messages.routes.js';
 import { createAuthRoutes } from './routes/auth.routes.js';
 import { createInternalLogsRoutes } from './routes/internal.logs.routes.js';
-import { createMusicRoutes } from './routes/music.routes.js';
 import errorHandler from './middleware/error.middleware.js';
 import {
   normalizeRequestKeys,
@@ -159,9 +156,6 @@ export async function createApp(options = {}) {
   app.use('/api/files', createFileRoutes(db));
   app.use('/api/notebook', createNotebookNotesRoutes(db));
   app.use('/api/work-timer', createWorkTimerRoutes(db));
-  app.use('/api/novel-bookmarks', createNovelBookmarkRoutes(db));
-  app.use('/api/music', createMusicRoutes(db));
-  app.use('/api/snake-multiplayer', createSnakeMultiplayerRoutes());
   app.use('/api/messages', messageRoutes);
   app.use('/api/auth', createAuthRoutes());
 
@@ -177,9 +171,6 @@ export async function createApp(options = {}) {
         files: '/api/files',
         notebook: '/api/notebook',
         workTimer: '/api/work-timer',
-        novelBookmarks: '/api/novel-bookmarks',
-        music: '/api/music',
-        snakeMultiplayer: '/api/snake-multiplayer',
         messages: '/api/messages',
       },
     });

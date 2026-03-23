@@ -3,8 +3,6 @@ import * as migration from '../../../src/db/migration.js';
 import { ensureWallpaperColumns } from '../../../src/db/migrations/wallpapers.js';
 import { ensureFilesTypeCategoryIncludesNovel } from '../../../src/db/migrations/files.js';
 import { ensureAppsColumns } from '../../../src/db/migrations/apps.js';
-import { ensureSnakeMultiplayerColumns } from '../../../src/db/migrations/snakeMultiplayer.js';
-import { ensureNovelRelations } from '../../../src/db/migrations/novels.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -20,11 +18,6 @@ assert(
   'ensureFilesTypeCategoryIncludesNovel re-export mismatch'
 );
 assert(migration.ensureAppsColumns === ensureAppsColumns, 'ensureAppsColumns re-export mismatch');
-assert(
-  migration.ensureSnakeMultiplayerColumns === ensureSnakeMultiplayerColumns,
-  'ensureSnakeMultiplayerColumns re-export mismatch'
-);
-assert(migration.ensureNovelRelations === ensureNovelRelations, 'ensureNovelRelations re-export mismatch');
 
 const db = new Database(':memory:');
 db.pragma('foreign_keys = OFF');
@@ -107,31 +100,5 @@ const filesTableSql = db
 
 assert(/'novel'/.test(filesTableSql), 'files table should include novel in CHECK constraint');
 assert(/'music'/.test(filesTableSql), 'files table should include music in CHECK constraint');
-
-db.exec(`
-  CREATE TABLE snake_players (id INTEGER PRIMARY KEY AUTOINCREMENT);
-  CREATE TABLE snake_rooms (id INTEGER PRIMARY KEY AUTOINCREMENT);
-  CREATE TABLE snake_game_records (id INTEGER PRIMARY KEY AUTOINCREMENT);
-`);
-
-ensureSnakeMultiplayerColumns(db);
-
-const roomColumns = new Set(
-  db.prepare('PRAGMA table_info(snake_rooms)').all().map(col => col.name)
-);
-const playerColumns = new Set(
-  db.prepare('PRAGMA table_info(snake_players)').all().map(col => col.name)
-);
-const recordColumns = new Set(
-  db
-    .prepare('PRAGMA table_info(snake_game_records)')
-    .all()
-    .map(col => col.name)
-);
-
-assert(roomColumns.has('game_type'), 'snake_rooms should have game_type');
-assert(roomColumns.has('updated_at'), 'snake_rooms should have updated_at');
-assert(playerColumns.has('updated_at'), 'snake_players should have updated_at');
-assert(recordColumns.has('end_reason'), 'snake_game_records should have end_reason');
 
 db.close();

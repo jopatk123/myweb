@@ -1,9 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  AUTH_STORAGE_KEY,
-  AUTH_TTL_DAYS,
-  DEFAULT_APP_PASSWORD,
-} from '@/constants/auth.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MS_PER_DAY,
   clearAuth,
@@ -12,6 +7,9 @@ import {
   saveAuth,
   validatePassword,
 } from '@/utils/passwordGate.js';
+import { AUTH_STORAGE_KEY, AUTH_TTL_DAYS } from '@/constants/auth.js';
+
+const TEST_PASSWORD = 'test-password-123';
 
 describe('passwordGate utils', () => {
   const createMemoryStorage = () => {
@@ -33,11 +31,12 @@ describe('passwordGate utils', () => {
   let storage;
 
   beforeEach(() => {
+    vi.stubEnv('VITE_APP_PASSWORD', TEST_PASSWORD);
     storage = createMemoryStorage();
   });
 
   it('validates password against default', () => {
-    expect(validatePassword(DEFAULT_APP_PASSWORD)).toBe(true);
+    expect(validatePassword(TEST_PASSWORD)).toBe(true);
     expect(validatePassword('wrong-password')).toBe(false);
   });
 

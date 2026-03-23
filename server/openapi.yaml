@@ -42,18 +42,6 @@ paths:
   /api/files/upload:
     $ref: './openapi/paths/files.yaml#/upload'
 
-  /api/music/upload:
-    $ref: './openapi/paths/music.yaml#/upload'
-
-  /api/music/tracks:
-    $ref: './openapi/paths/music.yaml#/tracks'
-
-  /api/music/tracks/{id}:
-    $ref: './openapi/paths/music.yaml#/trackById'
-
-  /api/music/tracks/{id}/stream:
-    $ref: './openapi/paths/music.yaml#/trackStream'
-
 components:
   schemas:
     Wallpaper:
@@ -70,13 +58,3 @@ components:
       $ref: './openapi/components/schemas/app.yaml#/AppCreate'
     AppUpdate:
       $ref: './openapi/components/schemas/app.yaml#/AppUpdate'
-    MusicTrack:
-      $ref: './openapi/components/schemas/music.yaml#/MusicTrack'
-    MusicTrackUpdate:
-      $ref: './openapi/components/schemas/music.yaml#/MusicTrackUpdate'
-    ResponseMusicTrack:
-      $ref: './openapi/components/schemas/music.yaml#/ResponseMusicTrack'
-    ResponseMusicTrackList:
-      $ref: './openapi/components/schemas/music.yaml#/ResponseMusicTrackList'
-    ResponseMusicTracks:
-      $ref: './openapi/components/schemas/music.yaml#/ResponseMusicTracks'

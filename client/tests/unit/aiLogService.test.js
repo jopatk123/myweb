@@ -11,15 +11,26 @@ const baseLogPayload = {
 
 describe('AILogService', () => {
   let service;
+  let storage;
 
   beforeEach(() => {
+    storage = {};
+    vi.stubGlobal('localStorage', {
+      getItem: key => (key in storage ? storage[key] : null),
+      setItem: (key, value) => {
+        storage[key] = String(value);
+      },
+      removeItem: key => {
+        delete storage[key];
+      },
+      clear: () => {
+        storage = {};
+      },
+    });
     vi.stubEnv('VITE_ENABLE_AI_LOGGING', 'true');
     service = new AILogService();
     service.clearQueue();
     service.setEnabled(true);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.clear();
-    }
   });
 
   it('sends conversation logs when enabled', async () => {

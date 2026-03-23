@@ -25,17 +25,6 @@ vi.mock('@/composables/useAppWindowResize.js', () => ({
   })),
 }));
 
-const autoMinimizeHandlers = {
-  onMouseEnter: vi.fn(),
-  onMouseLeave: vi.fn(),
-  onFocusIn: vi.fn(),
-  onFocusOut: vi.fn(),
-};
-
-vi.mock('@/composables/useNovelReaderAutoMinimize.js', () => ({
-  useNovelReaderAutoMinimize: vi.fn(() => autoMinimizeHandlers),
-}));
-
 import AppWindow from '@/components/desktop/AppWindow.vue';
 
 function createWindow(overrides = {}) {
@@ -60,11 +49,6 @@ function createWindow(overrides = {}) {
 describe('AppWindow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // 重置 auto minimize 监听函数
-    autoMinimizeHandlers.onMouseEnter.mockClear();
-    autoMinimizeHandlers.onMouseLeave.mockClear();
-    autoMinimizeHandlers.onFocusIn.mockClear();
-    autoMinimizeHandlers.onFocusOut.mockClear();
     mockResizeStart.mockClear();
   });
 

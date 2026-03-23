@@ -34,8 +34,7 @@
           <option value="word">Word</option>
           <option value="excel">Excel</option>
           <option value="archive">压缩包</option>
-          <option value="music">音频</option>
-          <option value="novel">小说</option>
+          <option value="audio">音频</option>
           <option value="other">其他</option>
         </select>
       </div>
@@ -237,8 +236,7 @@
       word: '📝',
       excel: '📊',
       archive: '📦',
-      music: '🎵',
-      novel: '📖',
+      audio: '🎵',
       other: '📄',
     };
     return icons[type] || '📄';

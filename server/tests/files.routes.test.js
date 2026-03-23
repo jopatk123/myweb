@@ -32,7 +32,6 @@ describe('Files API routes', () => {
       await fs.rm(filePath, { force: true });
     }
     db.prepare('DELETE FROM files').run();
-    db.prepare('DELETE FROM novels').run();
   });
 
   test('rejects upload without admin token', async () => {
@@ -77,15 +76,22 @@ describe('Files API routes', () => {
   });
 
   test('blocks disallowed file types', async () => {
-    const res = await request(app)
-      .post('/api/files/upload')
-      .set('X-Admin-Token', ADMIN_TOKEN)
-      .attach('file', Buffer.from('MZ'), 'malware.exe')
-      .expect(400);
+    process.env.FILE_ALLOW_ALL_TYPES = 'false';
+    try {
+      const res = await request(app)
+        .post('/api/files/upload')
+        .set('X-Admin-Token', ADMIN_TOKEN)
+        .attach('file', Buffer.from('MZ'), 'malware.exe')
+        .expect(400);
 
-    expect(res.body.message).toBe('不支持的文件类型');
-    const total = db.prepare('SELECT COUNT(*) as total FROM files').get().total;
-    expect(total).toBe(0);
+      expect(res.body.message).toBe('不支持的文件类型');
+      const total = db
+        .prepare('SELECT COUNT(*) as total FROM files')
+        .get().total;
+      expect(total).toBe(0);
+    } finally {
+      delete process.env.FILE_ALLOW_ALL_TYPES;
+    }
   });
 
   test('clamps pagination limit to 100', async () => {

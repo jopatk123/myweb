@@ -19,7 +19,6 @@ describe('fileTypes constants', () => {
       expect(FILE_CATEGORIES.IMAGE).toBe('image');
       expect(FILE_CATEGORIES.VIDEO).toBe('video');
       expect(FILE_CATEGORIES.AUDIO).toBe('audio');
-      expect(FILE_CATEGORIES.MUSIC).toBe('music');
       expect(FILE_CATEGORIES.WORD).toBe('word');
       expect(FILE_CATEGORIES.EXCEL).toBe('excel');
       expect(FILE_CATEGORIES.PPT).toBe('ppt');
@@ -27,7 +26,6 @@ describe('fileTypes constants', () => {
       expect(FILE_CATEGORIES.TEXT).toBe('text');
       expect(FILE_CATEGORIES.CODE).toBe('code');
       expect(FILE_CATEGORIES.ARCHIVE).toBe('archive');
-      expect(FILE_CATEGORIES.NOVEL).toBe('novel');
       expect(FILE_CATEGORIES.OTHER).toBe('other');
     });
   });
@@ -48,9 +46,9 @@ describe('fileTypes constants', () => {
     });
 
     it('should map audio MIME types correctly', () => {
-      expect(MIME_TYPE_MAP['audio/mpeg']).toBe(FILE_CATEGORIES.MUSIC);
-      expect(MIME_TYPE_MAP['audio/wav']).toBe(FILE_CATEGORIES.MUSIC);
-      expect(MIME_TYPE_MAP['audio/flac']).toBe(FILE_CATEGORIES.MUSIC);
+      expect(MIME_TYPE_MAP['audio/mpeg']).toBe(FILE_CATEGORIES.AUDIO);
+      expect(MIME_TYPE_MAP['audio/wav']).toBe(FILE_CATEGORIES.AUDIO);
+      expect(MIME_TYPE_MAP['audio/flac']).toBe(FILE_CATEGORIES.AUDIO);
     });
 
     it('should map document MIME types correctly', () => {
@@ -100,9 +98,9 @@ describe('fileTypes constants', () => {
     });
 
     it('should map audio extensions correctly', () => {
-      expect(EXTENSION_TYPE_MAP['.mp3']).toBe(FILE_CATEGORIES.MUSIC);
-      expect(EXTENSION_TYPE_MAP['.wav']).toBe(FILE_CATEGORIES.MUSIC);
-      expect(EXTENSION_TYPE_MAP['.flac']).toBe(FILE_CATEGORIES.MUSIC);
+      expect(EXTENSION_TYPE_MAP['.mp3']).toBe(FILE_CATEGORIES.AUDIO);
+      expect(EXTENSION_TYPE_MAP['.wav']).toBe(FILE_CATEGORIES.AUDIO);
+      expect(EXTENSION_TYPE_MAP['.flac']).toBe(FILE_CATEGORIES.AUDIO);
     });
 
     it('should map document extensions correctly', () => {
@@ -129,11 +127,6 @@ describe('fileTypes constants', () => {
       expect(EXTENSION_TYPE_MAP['.7z']).toBe(FILE_CATEGORIES.ARCHIVE);
       expect(EXTENSION_TYPE_MAP['.tar']).toBe(FILE_CATEGORIES.ARCHIVE);
     });
-
-    it('should map novel extensions correctly', () => {
-      expect(EXTENSION_TYPE_MAP['.epub']).toBe(FILE_CATEGORIES.NOVEL);
-      expect(EXTENSION_TYPE_MAP['.mobi']).toBe(FILE_CATEGORIES.NOVEL);
-    });
   });
 
   describe('FILE_TYPE_ICONS', () => {
@@ -158,7 +151,7 @@ describe('getFileCategory', () => {
   it('should return category based on MIME type', () => {
     expect(getFileCategory('image/jpeg')).toBe(FILE_CATEGORIES.IMAGE);
     expect(getFileCategory('video/mp4')).toBe(FILE_CATEGORIES.VIDEO);
-    expect(getFileCategory('audio/mpeg')).toBe(FILE_CATEGORIES.MUSIC);
+    expect(getFileCategory('audio/mpeg')).toBe(FILE_CATEGORIES.AUDIO);
     expect(getFileCategory('application/pdf')).toBe(FILE_CATEGORIES.PDF);
   });
 
@@ -170,7 +163,7 @@ describe('getFileCategory', () => {
   it('should use generic MIME type prefix fallback', () => {
     expect(getFileCategory('image/unknown')).toBe(FILE_CATEGORIES.IMAGE);
     expect(getFileCategory('video/unknown')).toBe(FILE_CATEGORIES.VIDEO);
-    expect(getFileCategory('audio/unknown')).toBe(FILE_CATEGORIES.MUSIC);
+    expect(getFileCategory('audio/unknown')).toBe(FILE_CATEGORIES.AUDIO);
     expect(getFileCategory('text/unknown')).toBe(FILE_CATEGORIES.TEXT);
   });
 
@@ -240,7 +233,7 @@ describe('isPreviewable', () => {
 
   it('should return false for non-previewable categories', () => {
     expect(isPreviewable(FILE_CATEGORIES.ARCHIVE)).toBe(false);
-    expect(isPreviewable(FILE_CATEGORIES.MUSIC)).toBe(false);
+    expect(isPreviewable(FILE_CATEGORIES.AUDIO)).toBe(false);
     expect(isPreviewable(FILE_CATEGORIES.OTHER)).toBe(false);
   });
 });

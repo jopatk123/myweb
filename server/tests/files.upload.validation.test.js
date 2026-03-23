@@ -6,6 +6,7 @@ describe('file upload validation', () => {
     delete process.env.FILE_MAX_UPLOAD_SIZE;
     delete process.env.FILES_ADMIN_TOKEN;
     delete process.env.FILES_ADMIN_TOKEN_HASH;
+    delete process.env.FILE_ALLOW_ALL_TYPES;
     jest.resetModules();
   });
 
@@ -37,6 +38,7 @@ describe('file upload validation', () => {
 
   test('rejects unsupported file types', async () => {
     process.env.FILE_MAX_UPLOAD_SIZE = '1mb';
+    process.env.FILE_ALLOW_ALL_TYPES = 'false';
 
     jest.resetModules();
     const { createApp } = await import('../src/appFactory.js');

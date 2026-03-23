@@ -18,8 +18,6 @@ export function checkDatabaseTables() {
     'app_groups',
     'files',
     'notebook_notes',
-    'novels',
-    'novel_bookmarks',
     'work_sessions',
     'work_daily_totals',
     'work_stats',

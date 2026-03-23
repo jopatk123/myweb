@@ -7,20 +7,14 @@ import {
   initWallpaperTables,
   initAppTables,
   initFileTables,
-  initNovelTables,
-  initNovelBookmarkTables,
   initNotebookTables,
   initMessageTables,
-  initSnakeMultiplayerTables,
   initWorkTimerTables,
-  initMusicTables,
 } from '../db/schema.js';
 import {
   ensureWallpaperColumns,
   ensureAppsColumns,
-  ensureNovelRelations,
   ensureFilesTypeCategoryIncludesNovel,
-  ensureSnakeMultiplayerColumns,
 } from '../db/migration.js';
 import { ensureBuiltinApps, seedAppsIfEmpty } from '../db/seeding.js';
 import logger from '../utils/logger.js';
@@ -88,28 +82,12 @@ export async function initDatabase(options = {}) {
     initWallpaperTables(db);
     initAppTables(db);
     initFileTables(db);
-    initNovelTables(db);
-    initMusicTables(db);
-    try {
-      initNovelBookmarkTables(db);
-    } catch (e) {
-      dbLogger.warn('无法初始化 novel_bookmarks 表（非致命）', {
-        error: e,
-      });
-    }
     initNotebookTables(db);
     initWorkTimerTables(db);
     try {
       initMessageTables(db);
     } catch (e) {
       dbLogger.warn('无法初始化 message board 表（非致命）', {
-        error: e,
-      });
-    }
-    try {
-      initSnakeMultiplayerTables(db);
-    } catch (e) {
-      dbLogger.warn('无法初始化 snake multiplayer 表（非致命）', {
         error: e,
       });
     }
@@ -133,28 +111,6 @@ export async function initDatabase(options = {}) {
     ensureFilesTypeCategoryIncludesNovel(db);
   } catch (e) {
     dbLogger.warn('文件类型分类迁移检查失败（非致命）', {
-      error: e,
-    });
-  }
-  try {
-    ensureNovelRelations(db);
-  } catch (e) {
-    dbLogger.warn('小说相关表迁移失败（非致命）', {
-      error: e,
-    });
-  }
-  // 迁移: 确保贪吃蛇多人游戏表包含必要列
-  try {
-    ensureSnakeMultiplayerColumns(db);
-  } catch (e) {
-    dbLogger.warn('snake multiplayer 列迁移检查失败（非致命）', {
-      error: e,
-    });
-  }
-  try {
-    initMusicTables(db);
-  } catch (e) {
-    dbLogger.warn('无法初始化 music_tracks 表（非致命）', {
       error: e,
     });
   }

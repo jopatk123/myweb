@@ -1,6 +1,6 @@
 # MyWeb · 桌面风格 Web 平台
 
-**MyWeb** 是一个以 Vue 3 前端 + Express/SQLite 后端构建的多应用桌面工作空间，使用 npm workspaces 分离 client/server，封装音频、文件、笔记、游戏等多种体验，并通过 WebSocket 提供实时协作。
+**MyWeb** 是一个以 Vue 3 前端 + Express/SQLite 后端构建的多应用桌面工作空间，使用 npm workspaces 分离 client/server，封装文件、笔记、留言等多种体验，并通过 WebSocket 提供实时协作。
 
 ## 核心快照
 
@@ -41,8 +41,8 @@
 
 ## 目录概览
 
-- `client/`：Vue 3 桌面 Shell，内置 calculator、music-player、notebook、novel-reader、snake、gomoku、work-timer 等应用；composables、components、api、styles 等模块分层。
-- `server/`：Express app + WebSocket、路由/控制器/服务/模型/DTO、Knex 迁移+seed、uploads（files/music/etc）、data/myweb.db、logs、OpenAPI。
+- `client/`：Vue 3 桌面 Shell，内置 calculator、notebook、work-timer 等应用；composables、components、api、styles 等模块分层。
+- `server/`：Express app + WebSocket、路由/控制器/服务/模型/DTO、Knex 迁移+seed、uploads（files/etc）、data/myweb.db、logs、OpenAPI。
 - `docker-compose.yml` + `Dockerfile` + `deploy.sh`：一键构建并带环境变量支持；`build_myweb_images_tar.sh` 可离线打包镜像。
 
 ## 重点脚本
@@ -79,7 +79,7 @@
 ## 数据与存储
 
 - **数据库**：`server/data/myweb.db`（SQLite + Knex），使用 `npm run db:setup -w server` 初始化。
-- **上传目录**：`server/uploads/{files,music,wallpapers,novels,apps,message-images}`，Docker volumes `myweb-data`, `myweb-uploads`, `myweb-logs` 保持持久。
+- **上传目录**：`server/uploads/{files,wallpapers,apps,message-images}`，Docker volumes `myweb-data`, `myweb-uploads`, `myweb-logs` 保持持久。
 - **API 文档**：`server/openapi.yaml`（Spectral 校验结果输出到 `contract-report.json`）。
 
 ## 测试与验证

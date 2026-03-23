@@ -11,10 +11,6 @@
     }"
     :style="windowStyle"
     @pointerdown.capture="onWindowClick"
-    @mouseenter="onMouseEnter"
-    @mouseleave="onMouseLeave"
-    @focusin="onFocusIn"
-    @focusout="onFocusOut"
   >
     <AppWindowHeader
       :title="window.title"
@@ -74,7 +70,6 @@
   import AppWindowHeader from '@/components/desktop/AppWindowHeader.vue';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
   import { useAppWindowResize } from '@/composables/useAppWindowResize.js';
-  import { useNovelReaderAutoMinimize } from '@/composables/useNovelReaderAutoMinimize.js';
 
   const props = defineProps({
     window: {
@@ -94,9 +89,6 @@
 
   const { modalRef, modalStyle, onHeaderPointerDown, pos, savePosition } =
     useDraggableModal(props.window.storageKey);
-
-  const { onMouseEnter, onMouseLeave, onFocusIn, onFocusOut } =
-    useNovelReaderAutoMinimize(windowRef, isActiveRef);
 
   const { onResizeStart } = useAppWindowResize(windowRef, pos, savePosition);
 

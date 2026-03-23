@@ -1,8 +1,6 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { ConnectionStore } from './websocket/connection-store.js';
-import { SnakeMessageHandler } from './websocket/handlers/snake-handler.js';
-import { GomokuMessageHandler } from './websocket/handlers/gomoku-handler.js';
 import logger from '../utils/logger.js';
 
 const wsLogger = logger.child('WebSocketService');
@@ -11,9 +9,7 @@ export class WebSocketService {
   constructor() {
     this.wss = null;
     this.connections = new ConnectionStore();
-    this.snakeHandler = new SnakeMessageHandler(this);
-    this.gomokuHandler = new GomokuMessageHandler(this);
-    this.handlers = [this.snakeHandler, this.gomokuHandler];
+    this.handlers = [];
   }
 
   init(server) {
@@ -151,9 +147,6 @@ export class WebSocketService {
   }
 
   broadcastToRoom(roomId, eventType, data) {
-    if (typeof this.snakeHandler.broadcastToRoom === 'function') {
-      return this.snakeHandler.broadcastToRoom(roomId, eventType, data);
-    }
     return undefined;
   }
 

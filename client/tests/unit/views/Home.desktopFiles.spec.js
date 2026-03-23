@@ -218,12 +218,11 @@ describe('Home desktop files filtering', () => {
     filesRef.value = [];
   });
 
-  it('excludes music files from desktop listing', async () => {
+  it('shows all files on desktop listing', async () => {
     filesRef.value = [
-      { id: 1, typeCategory: 'music' },
+      { id: 1, typeCategory: 'audio' },
       { id: 2, typeCategory: 'image' },
-      { id: 3, type_category: 'novel' },
-      { id: 4, typeCategory: 'other' },
+      { id: 3, type_category: 'other' },
     ];
 
     const wrapper = mount(Home);
@@ -232,7 +231,7 @@ describe('Home desktop files filtering', () => {
 
     const fileIcons = wrapper.findComponent({ name: 'FileIconsStub' });
     expect(fileIcons.exists()).toBe(true);
-    expect(fileIcons.props('files').map(file => file.id)).toEqual([2, 4]);
+    expect(fileIcons.props('files').map(file => file.id)).toEqual([1, 2, 3]);
 
     wrapper.unmount();
   });

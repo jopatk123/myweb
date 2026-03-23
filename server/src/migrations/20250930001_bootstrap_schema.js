@@ -3,19 +3,14 @@ import {
   initWallpaperTables,
   initAppTables,
   initFileTables,
-  initNovelTables,
-  initNovelBookmarkTables,
   initNotebookTables,
   initMessageTables,
-  initSnakeMultiplayerTables,
   initWorkTimerTables,
 } from '../db/schema.js';
 import {
   ensureWallpaperColumns,
   ensureAppsColumns,
   ensureFilesTypeCategoryIncludesNovel,
-  ensureNovelRelations,
-  ensureSnakeMultiplayerColumns,
 } from '../db/migration.js';
 
 export const up = async knex => {
@@ -29,18 +24,13 @@ export const up = async knex => {
     initWallpaperTables(db);
     initAppTables(db);
     initFileTables(db);
-    initNovelTables(db);
-    initNovelBookmarkTables(db);
     initNotebookTables(db);
     initWorkTimerTables(db);
     initMessageTables(db);
-    initSnakeMultiplayerTables(db);
 
     ensureWallpaperColumns(db);
     ensureAppsColumns(db);
     ensureFilesTypeCategoryIncludesNovel(db);
-    ensureNovelRelations(db);
-    ensureSnakeMultiplayerColumns(db);
   } finally {
     db.close();
   }

@@ -64,7 +64,6 @@ const bodyLimit = rawEnv.BODY_LIMIT || '100mb';
 const enableHttpsSecurity = rawEnv.ENABLE_HTTPS_SECURITY === '1';
 const logConfig = resolveLogConfig(rawEnv);
 const databaseDefaultFile = path.join(__dirname, '../../data/myweb.db');
-const snakeCleanupDebug = Boolean(rawEnv.SNAKE_CLEANUP_DEBUG);
 const uploadsCacheMaxAgeSeconds = parseEnvNumber(
   'UPLOADS_CACHE_MAX_AGE',
   60 * 60 * 24 * 30
@@ -87,9 +86,6 @@ export const appEnv = Object.freeze({
   }),
   staticAssets: Object.freeze({
     uploadsCacheMaxAgeSeconds,
-  }),
-  snake: Object.freeze({
-    cleanupDebug: snakeCleanupDebug,
   }),
 });
 

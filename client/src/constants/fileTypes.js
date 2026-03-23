@@ -10,7 +10,6 @@ export const FILE_CATEGORIES = {
   IMAGE: 'image',
   VIDEO: 'video',
   AUDIO: 'audio',
-  MUSIC: 'music', // 音乐文件（与audio区分，用于音乐播放器）
   WORD: 'word',
   EXCEL: 'excel',
   PPT: 'ppt',
@@ -18,7 +17,6 @@ export const FILE_CATEGORIES = {
   TEXT: 'text',
   CODE: 'code',
   ARCHIVE: 'archive',
-  NOVEL: 'novel',
   OTHER: 'other',
 };
 
@@ -52,21 +50,21 @@ export const MIME_TYPE_MAP = {
   'video/x-ms-wmv': FILE_CATEGORIES.VIDEO,
 
   // 音频类型
-  'audio/mpeg': FILE_CATEGORIES.MUSIC,
-  'audio/mp3': FILE_CATEGORIES.MUSIC,
-  'audio/wav': FILE_CATEGORIES.MUSIC,
-  'audio/x-wav': FILE_CATEGORIES.MUSIC,
-  'audio/flac': FILE_CATEGORIES.MUSIC,
-  'audio/x-flac': FILE_CATEGORIES.MUSIC,
-  'audio/aac': FILE_CATEGORIES.MUSIC,
-  'audio/ogg': FILE_CATEGORIES.MUSIC,
-  'audio/m4a': FILE_CATEGORIES.MUSIC,
-  'audio/x-m4a': FILE_CATEGORIES.MUSIC,
-  'audio/mp4': FILE_CATEGORIES.MUSIC,
-  'audio/x-ms-wma': FILE_CATEGORIES.MUSIC,
-  'audio/aiff': FILE_CATEGORIES.MUSIC,
-  'audio/x-aiff': FILE_CATEGORIES.MUSIC,
-  'audio/webm': FILE_CATEGORIES.MUSIC,
+  'audio/mpeg': FILE_CATEGORIES.AUDIO,
+  'audio/mp3': FILE_CATEGORIES.AUDIO,
+  'audio/wav': FILE_CATEGORIES.AUDIO,
+  'audio/x-wav': FILE_CATEGORIES.AUDIO,
+  'audio/flac': FILE_CATEGORIES.AUDIO,
+  'audio/x-flac': FILE_CATEGORIES.AUDIO,
+  'audio/aac': FILE_CATEGORIES.AUDIO,
+  'audio/ogg': FILE_CATEGORIES.AUDIO,
+  'audio/m4a': FILE_CATEGORIES.AUDIO,
+  'audio/x-m4a': FILE_CATEGORIES.AUDIO,
+  'audio/mp4': FILE_CATEGORIES.AUDIO,
+  'audio/x-ms-wma': FILE_CATEGORIES.AUDIO,
+  'audio/aiff': FILE_CATEGORIES.AUDIO,
+  'audio/x-aiff': FILE_CATEGORIES.AUDIO,
+  'audio/webm': FILE_CATEGORIES.AUDIO,
   'audio/midi': FILE_CATEGORIES.AUDIO,
   'audio/x-midi': FILE_CATEGORIES.AUDIO,
 
@@ -178,18 +176,18 @@ export const EXTENSION_TYPE_MAP = {
   '.mpg': FILE_CATEGORIES.VIDEO,
 
   // 音乐/音频
-  '.mp3': FILE_CATEGORIES.MUSIC,
-  '.wav': FILE_CATEGORIES.MUSIC,
-  '.flac': FILE_CATEGORIES.MUSIC,
-  '.aac': FILE_CATEGORIES.MUSIC,
-  '.ogg': FILE_CATEGORIES.MUSIC,
-  '.m4a': FILE_CATEGORIES.MUSIC,
-  '.wma': FILE_CATEGORIES.MUSIC,
-  '.aiff': FILE_CATEGORIES.MUSIC,
-  '.aif': FILE_CATEGORIES.MUSIC,
-  '.alac': FILE_CATEGORIES.MUSIC,
-  '.ape': FILE_CATEGORIES.MUSIC,
-  '.opus': FILE_CATEGORIES.MUSIC,
+  '.mp3': FILE_CATEGORIES.AUDIO,
+  '.wav': FILE_CATEGORIES.AUDIO,
+  '.flac': FILE_CATEGORIES.AUDIO,
+  '.aac': FILE_CATEGORIES.AUDIO,
+  '.ogg': FILE_CATEGORIES.AUDIO,
+  '.m4a': FILE_CATEGORIES.AUDIO,
+  '.wma': FILE_CATEGORIES.AUDIO,
+  '.aiff': FILE_CATEGORIES.AUDIO,
+  '.aif': FILE_CATEGORIES.AUDIO,
+  '.alac': FILE_CATEGORIES.AUDIO,
+  '.ape': FILE_CATEGORIES.AUDIO,
+  '.opus': FILE_CATEGORIES.AUDIO,
   '.mid': FILE_CATEGORIES.AUDIO,
   '.midi': FILE_CATEGORIES.AUDIO,
 
@@ -290,13 +288,6 @@ export const EXTENSION_TYPE_MAP = {
   '.xz': FILE_CATEGORIES.ARCHIVE,
   '.lzma': FILE_CATEGORIES.ARCHIVE,
   '.z': FILE_CATEGORIES.ARCHIVE,
-
-  // 小说/电子书
-  '.epub': FILE_CATEGORIES.NOVEL,
-  '.mobi': FILE_CATEGORIES.NOVEL,
-  '.azw': FILE_CATEGORIES.NOVEL,
-  '.azw3': FILE_CATEGORIES.NOVEL,
-  '.fb2': FILE_CATEGORIES.NOVEL,
 };
 
 /**
@@ -306,7 +297,6 @@ export const FILE_TYPE_ICONS = {
   [FILE_CATEGORIES.IMAGE]: '/apps/icons/image-128.svg',
   [FILE_CATEGORIES.VIDEO]: '/apps/icons/video-128.svg',
   [FILE_CATEGORIES.AUDIO]: '/apps/icons/audio-128.svg',
-  [FILE_CATEGORIES.MUSIC]: '/apps/icons/music-128.svg',
   [FILE_CATEGORIES.WORD]: '/apps/icons/word-128.svg',
   [FILE_CATEGORIES.EXCEL]: '/apps/icons/excel-128.svg',
   [FILE_CATEGORIES.PPT]: '/apps/icons/ppt-128.svg',
@@ -314,7 +304,6 @@ export const FILE_TYPE_ICONS = {
   [FILE_CATEGORIES.TEXT]: '/apps/icons/text-128.svg',
   [FILE_CATEGORIES.CODE]: '/apps/icons/code-128.svg',
   [FILE_CATEGORIES.ARCHIVE]: '/apps/icons/archive-128.svg',
-  [FILE_CATEGORIES.NOVEL]: '/apps/icons/novel-128.svg',
   [FILE_CATEGORIES.OTHER]: '/apps/icons/file-128.svg',
 };
 
@@ -334,7 +323,7 @@ export function getFileCategory(mimeType, fileName = '') {
   const mt = String(mimeType || '').toLowerCase();
   if (mt.startsWith('image/')) return FILE_CATEGORIES.IMAGE;
   if (mt.startsWith('video/')) return FILE_CATEGORIES.VIDEO;
-  if (mt.startsWith('audio/')) return FILE_CATEGORIES.MUSIC;
+  if (mt.startsWith('audio/')) return FILE_CATEGORIES.AUDIO;
   if (mt.startsWith('text/')) return FILE_CATEGORIES.TEXT;
 
   // 通过文件扩展名判断
