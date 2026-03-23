@@ -52,6 +52,10 @@
 
 <script setup>
   import { ref, watch } from 'vue';
+  import {
+    BUILTIN_APP_DEFINITIONS,
+    getBuiltinAppPublicIconPath,
+  } from '@shared/builtin-apps.js';
 
   const props = defineProps({
     modelValue: String, // 当前选中的图标路径或文件名
@@ -73,12 +77,17 @@
 
   // 丰富的预选图标库
   // 仅保留与 client/public/apps/icons 目录中实际存在的图标对应的预设项
+  const builtinPresetIcons = BUILTIN_APP_DEFINITIONS.map(app => ({
+    name: app.name,
+    path: getBuiltinAppPublicIconPath(app.slug),
+    category: 'app',
+  }));
+
   const presetIcons = ref([
     // 应用类图标
     { name: '浏览器', path: '/apps/icons/browser.svg', category: 'app' },
     { name: '邮件', path: '/apps/icons/email.svg', category: 'app' },
-    { name: '计算器', path: '/apps/icons/calculator-128.png', category: 'app' },
-    { name: '记事本', path: '/apps/icons/notebook-128.svg', category: 'app' },
+    ...builtinPresetIcons,
     { name: '设置', path: '/apps/icons/settings.svg', category: 'app' },
     { name: '视频', path: '/apps/icons/video-128.svg', category: 'app' },
 
@@ -97,12 +106,6 @@
     { name: 'Excel', path: '/apps/icons/excel-128.svg', category: 'tool' },
     { name: '下载', path: '/apps/icons/download.svg', category: 'tool' },
     { name: '地图', path: '/apps/icons/map.svg', category: 'tool' },
-    {
-      name: '留言板',
-      path: '/apps/icons/message-board-128.svg',
-      category: 'tool',
-    },
-
     // 游戏类图标
     { name: '扑克', path: '/apps/icons/cards.svg', category: 'game' },
 
@@ -112,11 +115,6 @@
 
     // 其他常用图标
     { name: '时钟', path: '/apps/icons/clock.svg', category: 'other' },
-    {
-      name: '计时器',
-      path: '/apps/icons/work-timer-128.svg',
-      category: 'other',
-    },
   ]);
 
   // 监听外部传入的值变化

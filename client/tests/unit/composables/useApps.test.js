@@ -63,7 +63,7 @@ describe('useApps composable', () => {
     });
     await state.fetchApps({}, false);
 
-    expect(apiFetch).toHaveBeenCalledWith('/myapps?');
+    expect(apiFetch).toHaveBeenCalledWith('/myapps');
     expect(state.apps.value).toHaveLength(3);
     expect(state.total.value).toBe(3);
 
@@ -76,6 +76,31 @@ describe('useApps composable', () => {
     expect(state.loading.value).toBe(false);
     expect(state.error.value).toBe('加载失败');
     expect(state.lastError.value).toBeInstanceOf(Error);
+  });
+
+  it('fetchAppsList returns unpaginated list without mutating shared state', async () => {
+    state.apps.value = [{ id: 99, name: 'Existing App' }];
+    state.total.value = 1;
+
+    apiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 1, name: 'Desktop App' },
+          { id: 2, name: 'Autostart App' },
+        ],
+      }),
+    });
+
+    const result = await state.fetchAppsList({ visible: true });
+
+    expect(apiFetch).toHaveBeenCalledWith('/myapps?visible=1');
+    expect(result.map(app => app.name)).toEqual([
+      'Desktop App',
+      'Autostart App',
+    ]);
+    expect(state.apps.value).toEqual([{ id: 99, name: 'Existing App' }]);
+    expect(state.total.value).toBe(1);
   });
 
   it('setAutostart validates id, forwards request and surfaces backend errors', async () => {

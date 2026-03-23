@@ -2,42 +2,20 @@
 // 后续新增应用时在此处注册
 
 import { defineAsyncComponent } from 'vue';
+import { BUILTIN_APP_DEFINITIONS } from '@shared/builtin-apps.js';
 
-export const internalApps = [
-  {
-    slug: 'calculator',
-    name: '计算器',
-    preferredSize: { width: 450, height: 680 },
-    // 异步加载，避免初次加载体积增长
-    component: defineAsyncComponent(
-      () => import('./calculator/CalculatorApp.vue')
-    ),
-  },
-  {
-    slug: 'notebook',
-    name: '笔记本',
-    preferredSize: { width: 500, height: 800 },
-    // 异步加载，避免初次加载体积增长
-    component: defineAsyncComponent(() => import('./notebook/NotebookApp.vue')),
-  },
-  {
-    slug: 'work-timer',
-    name: '下班计时器',
-    preferredSize: { width: 400, height: 700 },
-    // 异步加载，避免初次加载体积增长
-    component: defineAsyncComponent(
-      () => import('./work-timer/WorkTimerApp.vue')
-    ),
-  },
-  {
-    slug: 'message-board',
-    name: '留言板',
-    preferredSize: { width: 530, height: 800 },
-    component: defineAsyncComponent(
-      () => import('../components/message-board/MessageBoardWindow.vue')
-    ),
-  },
-];
+const appComponentLoaders = {
+  calculator: () => import('./calculator/CalculatorApp.vue'),
+  notebook: () => import('./notebook/NotebookApp.vue'),
+  'work-timer': () => import('./work-timer/WorkTimerApp.vue'),
+  'message-board': () =>
+    import('../components/message-board/MessageBoardWindow.vue'),
+};
+
+export const internalApps = BUILTIN_APP_DEFINITIONS.map(app => ({
+  ...app,
+  component: defineAsyncComponent(appComponentLoaders[app.slug]),
+}));
 
 export function getAppComponentBySlug(slug) {
   const app = internalApps.find(a => a.slug === slug);

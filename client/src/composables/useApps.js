@@ -12,6 +12,24 @@ const page = ref(1);
 const limit = ref(20);
 const total = ref(0);
 
+function buildAppsUrl(
+  { groupId = null, visible = null } = {},
+  withPagination = true
+) {
+  const params = new URLSearchParams();
+  if (groupId) params.append('groupId', groupId);
+  if (visible !== null && visible !== undefined) {
+    params.append('visible', visible ? '1' : '0');
+  }
+  if (withPagination) {
+    params.append('page', String(page.value));
+    params.append('limit', String(limit.value));
+  }
+
+  const query = params.toString();
+  return query ? `/myapps?${query}` : '/myapps';
+}
+
 async function fetchApps(
   { groupId = null, visible = null } = {},
   withPagination = true
@@ -20,15 +38,9 @@ async function fetchApps(
     loading.value = true;
     error.value = '';
     lastError.value = null;
-    const params = new URLSearchParams();
-    if (groupId) params.append('groupId', groupId);
-    if (visible !== null && visible !== undefined)
-      params.append('visible', visible ? '1' : '0');
-    if (withPagination) {
-      params.append('page', String(page.value));
-      params.append('limit', String(limit.value));
-    }
-    const resp = await apiFetch(`/myapps?${params.toString()}`);
+    const resp = await apiFetch(
+      buildAppsUrl({ groupId, visible }, withPagination)
+    );
     const json = await resp.json();
     if (resp.ok && json?.data) {
       if (withPagination && json.data.items) {
@@ -48,6 +60,20 @@ async function fetchApps(
   } finally {
     loading.value = false;
   }
+}
+
+async function fetchAppsList({ groupId = null, visible = null } = {}) {
+  const resp = await apiFetch(buildAppsUrl({ groupId, visible }, false));
+  const json = await resp.json();
+  if (!resp.ok || !json?.data) {
+    throw new Error(json?.message || '加载失败');
+  }
+
+  if (Array.isArray(json.data)) {
+    return json.data;
+  }
+
+  return Array.isArray(json.data.items) ? json.data.items : [];
 }
 
 async function fetchGroups() {
@@ -280,6 +306,7 @@ export function useApps() {
     limit,
     total,
     fetchApps,
+    fetchAppsList,
     fetchGroups,
     createApp,
     updateApp,

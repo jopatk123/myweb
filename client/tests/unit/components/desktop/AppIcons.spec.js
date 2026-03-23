@@ -3,11 +3,12 @@ import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import AppIcons from '@/components/desktop/AppIcons.vue';
 
+const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
+
 // Mock composables
 vi.mock('@/composables/useApps.js', () => ({
   useApps: vi.fn(() => ({
-    apps: { value: [] },
-    fetchApps: vi.fn(),
+    fetchAppsList: vi.fn(async () => []),
     getAppIconUrl: vi.fn(app => app.iconFilename || '/apps/icons/file-128.svg'),
     setVisible: vi.fn(),
   })),
@@ -54,15 +55,18 @@ describe('AppIcons', () => {
   });
 
   describe('右键菜单功能', () => {
-    it('右键点击图标应该显示菜单但不触发拖动', async () => {
-      const mockApps = [
-        { id: 1, name: 'Test App', slug: 'test-app', isVisible: true },
-      ];
+    it('挂载时应读取未分页的桌面应用列表', async () => {
+      const mockApps = Array.from({ length: 25 }, (_, index) => ({
+        id: index + 1,
+        name: `App ${index + 1}`,
+        slug: `app-${index + 1}`,
+        isVisible: true,
+      }));
 
+      const fetchAppsList = vi.fn(async () => mockApps);
       const { useApps } = await import('@/composables/useApps.js');
       useApps.mockReturnValue({
-        apps: { value: mockApps },
-        fetchApps: vi.fn(),
+        fetchAppsList,
         getAppIconUrl: vi.fn(() => '/apps/icons/test.svg'),
         setVisible: vi.fn(),
       });
@@ -78,6 +82,39 @@ describe('AppIcons', () => {
         },
       });
 
+      await nextTick();
+      await flushPromises();
+      await nextTick();
+
+      expect(fetchAppsList).toHaveBeenCalledWith({ visible: true });
+      expect(wrapper.findAll('.icon-item')).toHaveLength(25);
+    });
+
+    it('右键点击图标应该显示菜单但不触发拖动', async () => {
+      const mockApps = [
+        { id: 1, name: 'Test App', slug: 'test-app', isVisible: true },
+      ];
+
+      const { useApps } = await import('@/composables/useApps.js');
+      useApps.mockReturnValue({
+        fetchAppsList: vi.fn(async () => mockApps),
+        getAppIconUrl: vi.fn(() => '/apps/icons/test.svg'),
+        setVisible: vi.fn(),
+      });
+
+      wrapper = mount(AppIcons, {
+        global: {
+          stubs: {
+            ContextMenu: {
+              template: '<div class="context-menu-stub" />',
+              props: ['modelValue', 'x', 'y', 'items'],
+            },
+          },
+        },
+      });
+
+      await nextTick();
+      await flushPromises();
       await nextTick();
 
       const iconItem = wrapper.find('.icon-item');
@@ -116,8 +153,7 @@ describe('AppIcons', () => {
 
       const { useApps } = await import('@/composables/useApps.js');
       useApps.mockReturnValue({
-        apps: { value: mockApps },
-        fetchApps: vi.fn(),
+        fetchAppsList: vi.fn(async () => mockApps),
         getAppIconUrl: vi.fn(() => '/apps/icons/test.svg'),
         setVisible: vi.fn(),
       });
@@ -133,6 +169,8 @@ describe('AppIcons', () => {
         },
       });
 
+      await nextTick();
+      await flushPromises();
       await nextTick();
 
       const iconItem = wrapper.find('.icon-item');
@@ -165,8 +203,7 @@ describe('AppIcons', () => {
 
       const { useApps } = await import('@/composables/useApps.js');
       useApps.mockReturnValue({
-        apps: { value: mockApps },
-        fetchApps: vi.fn(),
+        fetchAppsList: vi.fn(async () => mockApps),
         getAppIconUrl: vi.fn(() => '/apps/icons/test.svg'),
         setVisible: vi.fn(),
       });
@@ -182,6 +219,8 @@ describe('AppIcons', () => {
         },
       });
 
+      await nextTick();
+      await flushPromises();
       await nextTick();
 
       const iconItem = wrapper.find('.icon-item');

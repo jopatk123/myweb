@@ -2,6 +2,41 @@
  * Seeding helpers: insert builtin apps and seed example apps when empty.
  */
 
+import { BUILTIN_APP_DEFINITIONS } from '../../../shared/builtin-apps.js';
+
+export const BUILTIN_APPS = BUILTIN_APP_DEFINITIONS.map(app => ({
+  name: app.name,
+  slug: app.slug,
+  description: app.description,
+  icon_filename: app.iconFilename,
+  is_visible: app.visible ? 1 : 0,
+  is_builtin: 1,
+  target_url: null,
+}));
+
+function removeObsoleteBuiltinApps(db) {
+  const builtinSlugs = BUILTIN_APPS.map(app => app.slug);
+  const placeholders = builtinSlugs.map(() => '?').join(',');
+  const rows = db
+    .prepare(
+      `SELECT id, slug FROM apps WHERE is_builtin = 1 AND is_deleted = 0 AND slug NOT IN (${placeholders})`
+    )
+    .all(...builtinSlugs);
+
+  if (!rows.length) {
+    return;
+  }
+
+  const deleteStmt = db.prepare(
+    'UPDATE apps SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+  );
+
+  for (const row of rows) {
+    deleteStmt.run(row.id);
+    console.log(`🧹 Removed obsolete builtin app: ${row.slug}`);
+  }
+}
+
 export function seedAppsIfEmpty(db) {
   try {
     const row = db
@@ -58,44 +93,7 @@ export function seedAppsIfEmpty(db) {
 
 export function ensureBuiltinApps(db) {
   try {
-    const builtins = [
-      {
-        name: '计算器',
-        slug: 'calculator',
-        description: '科学计算器，支持基本运算和内存功能',
-        icon_filename: 'calculator-128.png',
-        is_visible: 1,
-        is_builtin: 1,
-        target_url: null,
-      },
-      {
-        name: '笔记本',
-        slug: 'notebook',
-        description: '待办事项管理，记录和跟踪日常任务',
-        icon_filename: 'notebook-128.svg',
-        is_visible: 1,
-        is_builtin: 1,
-        target_url: null,
-      },
-      {
-        name: '下班计时器',
-        slug: 'work-timer',
-        description: '工作时间管理和下班倒计时',
-        icon_filename: 'work-timer-128.svg',
-        is_visible: 1,
-        is_builtin: 1,
-        target_url: null,
-      },
-      {
-        name: '留言板',
-        slug: 'message-board',
-        description: '用于站内留言与通知展示',
-        icon_filename: 'message-board-128.svg',
-        is_visible: 0,
-        is_builtin: 1,
-        target_url: null,
-      },
-    ];
+    const builtins = BUILTIN_APPS;
 
     const findStmt = db.prepare(
       'SELECT id, is_deleted, is_builtin, description, icon_filename, target_url, is_visible FROM apps WHERE slug = ?'
@@ -114,6 +112,8 @@ export function ensureBuiltinApps(db) {
       )
       .get();
     const gid = g ? g.id : null;
+
+    removeObsoleteBuiltinApps(db);
 
     for (const b of builtins) {
       const row = findStmt.get(b.slug);

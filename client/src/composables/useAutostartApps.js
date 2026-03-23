@@ -5,12 +5,11 @@ import { useWindowManager } from '@/composables/useWindowManager.js';
 
 export default function useAutostartApps() {
   const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
+  const { fetchAppsList } = useApps();
 
   async function startAutostartApps() {
     try {
-      const { fetchApps, apps } = useApps();
-      await fetchApps({ visible: true }, false);
-      const list = Array.isArray(apps.value) ? apps.value : [];
+      const list = await fetchAppsList({ visible: true });
       const autostartApps = list.filter(
         a =>
           (a.isAutostart ?? a.is_autostart) === 1 ||

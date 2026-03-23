@@ -38,6 +38,7 @@
 
 <script setup>
   import { ref, computed, onMounted, watch } from 'vue';
+  import { getBuiltinAppPublicIconPath } from '@shared/builtin-apps.js';
   import { useApps } from '@/composables/useApps.js';
   import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
   import { useWindowManager } from '@/composables/useWindowManager.js';
@@ -53,8 +54,9 @@
     loadPositionsFromStorage: gridLoadPositionsToStorage,
   } = useDesktopGrid();
 
-  const { apps, fetchApps, getAppIconUrl, setVisible } = useApps();
+  const { fetchAppsList, getAppIconUrl, setVisible } = useApps();
   const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
+  const desktopApps = ref([]);
   const selectedId = ref(null);
   const selectedIds = ref(new Set()); // 支持多选
   const positions = ref({}); // { [appId]: { x, y } }
@@ -64,8 +66,12 @@
   // 网格配置由 useDesktopGrid 提供
 
   const visibleApps = computed(() =>
-    (apps.value || []).filter(a => a.isVisible ?? a.is_visible)
+    (desktopApps.value || []).filter(a => a.isVisible ?? a.is_visible)
   );
+
+  async function refreshVisibleApps() {
+    desktopApps.value = await fetchAppsList({ visible: true });
+  }
 
   // 优先使用后端提供的图标路径，否则根据 slug 推断本地 public 目录下的图标
   function getIconUrl(app) {
@@ -73,13 +79,9 @@
     if (filename) {
       return getAppIconUrl({ iconFilename: filename }); // 使用 useApps 中的方法
     }
-    // 后端未提供图标，根据 slug 推断本地路径
-    // 注意：这里假设了图标文件的命名规范
-    if (app.slug === 'calculator') {
-      return `/apps/icons/calculator-128.png`;
-    }
-    if (app.slug === 'work-timer') {
-      return `/apps/icons/work-timer-128.svg`;
+    const builtinIconPath = getBuiltinAppPublicIconPath(app.slug);
+    if (builtinIconPath) {
+      return builtinIconPath;
     }
     return '/apps/icons/file-128.svg'; // 提供一个默认图标
   }
@@ -158,7 +160,7 @@
     if (key === 'toggleVisible') {
       try {
         await setVisible(app.id, !(app.isVisible ?? app.is_visible));
-        await fetchApps({ visible: true }, true);
+        await refreshVisibleApps();
       } catch (error) {
         void error;
       }
@@ -388,7 +390,7 @@
   }
 
   onMounted(async () => {
-    await fetchApps({ visible: true }, true);
+    await refreshVisibleApps();
     loadPositionsFromStorage();
   });
 
