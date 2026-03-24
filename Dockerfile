@@ -31,7 +31,8 @@ RUN if [ "$USE_LOCAL_CLIENT" = "0" ]; then \
         fi; \
     fi
 
-# 复制客户端源代码
+# 复制共享代码和客户端源代码（@shared alias 依赖）
+COPY shared/ ./shared/
 COPY client/ ./client/
 
 # 构建客户端应用
@@ -92,6 +93,9 @@ COPY package*.json ./
 
 # 复制服务端应用
 COPY server/ ./server/
+
+# 复制运行时需要的共享模块（后端 seeding 会直接导入）
+COPY shared/ ./shared/
 
 # 获取构建参数
 ARG SKIP_SERVER_NPM_INSTALL=0
