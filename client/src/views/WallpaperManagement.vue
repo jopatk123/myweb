@@ -63,7 +63,7 @@
         v-model="selectedIds"
         :wallpapers="filteredWallpapers"
         :active-wallpaper="activeWallpaper"
-        @delete="deleteWallpaper($event, selectedGroupId.value || null)"
+        @delete="deleteWallpaper($event, selectedGroupId || null)"
         @edit="openEditModal"
       />
 

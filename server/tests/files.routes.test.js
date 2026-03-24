@@ -75,6 +75,29 @@ describe('Files API routes', () => {
     expect(row).toBeTruthy();
   });
 
+  test('ignores untrusted x-api-base header when building file url', async () => {
+    const res = await request(app)
+      .post('/api/files/upload')
+      .set('X-Admin-Token', ADMIN_TOKEN)
+      .set('X-Api-Base', 'https://evil.example.com/api')
+      .attach('file', Buffer.from('hello world'), 'safe.txt')
+      .expect(201);
+
+    const payload = Array.isArray(res.body.data)
+      ? res.body.data[0]
+      : res.body.data;
+    const storedName = payload.stored_name || payload.storedName;
+    const fileUrl = payload.file_url || payload.fileUrl;
+
+    expect(fileUrl).toBeTruthy();
+    expect(fileUrl).not.toContain('evil.example.com');
+    expect(fileUrl).toContain(`/uploads/files/${storedName}`);
+
+    if (storedName) {
+      createdFiles.push(path.join(uploadsDir, storedName));
+    }
+  });
+
   test('blocks disallowed file types', async () => {
     process.env.FILE_ALLOW_ALL_TYPES = 'false';
     try {

@@ -3,22 +3,27 @@ import multer from 'multer';
 import path from 'path';
 import { createReadStream, existsSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { fileURLToPath } from 'url';
 import { normalizeKeys } from '../utils/case-helper.js';
 import { parseEnvByteSize } from '../utils/env.js';
 import archiver from 'archiver';
 import logger from '../utils/logger.js';
+import {
+  WALLPAPERS_DIR,
+  toUploadsAbsolutePath,
+  toUploadsRelativePath,
+} from '../utils/upload-path.js';
 
 const wallpaperLogger = logger.child('WallpaperController');
 
-// 解析当前模块目录（ESM 无 __dirname）
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+function sanitizePositiveIds(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return [];
+  return ids.map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0);
+}
 
 // 配置文件上传
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads/wallpapers'));
+    cb(null, WALLPAPERS_DIR);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
@@ -151,11 +156,7 @@ export class WallpaperController {
       const { groupId, name } = normalizedBody;
       // 存储到数据库的 file_path 应为 web 可访问的相对路径（例如: uploads/wallpapers/<filename>）
       // 这样前端可以直接用 `${API_BASE}/${file_path}` 访问；同时删除时再解析到磁盘路径
-      const webPath = path.posix.join(
-        'uploads',
-        'wallpapers',
-        req.file.filename
-      );
+      const webPath = toUploadsRelativePath('wallpapers', req.file.filename);
 
       // 使用 camelCase 字段传给 service 层
       const fileData = {
@@ -220,9 +221,7 @@ export class WallpaperController {
         return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
       }
       // 规范化 ids：转换为整数并过滤非法值
-      const sanitizedIds = ids
-        .map(i => Number(i))
-        .filter(n => Number.isInteger(n) && n > 0);
+      const sanitizedIds = sanitizePositiveIds(ids);
       if (sanitizedIds.length === 0) {
         return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
       }
@@ -251,9 +250,7 @@ export class WallpaperController {
         return res.status(400).json({ code: 400, message: '请提供目标分组ID' });
       }
       // 规范化 ids
-      const sanitizedIds = ids
-        .map(i => Number(i))
-        .filter(n => Number.isInteger(n) && n > 0);
+      const sanitizedIds = sanitizePositiveIds(ids);
       if (sanitizedIds.length === 0) {
         return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
       }
@@ -387,9 +384,7 @@ export class WallpaperController {
       }
 
       // 规范化 ids：转换为整数并过滤非法值
-      const sanitizedIds = ids
-        .map(i => Number(i))
-        .filter(n => Number.isInteger(n) && n > 0);
+      const sanitizedIds = sanitizePositiveIds(ids);
       if (sanitizedIds.length === 0) {
         return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
       }
@@ -405,7 +400,13 @@ export class WallpaperController {
       // 如果只有一张壁纸，直接下载该文件
       if (wallpapers.length === 1) {
         const wallpaper = wallpapers[0];
-        const filePath = path.join(__dirname, '../../', wallpaper.file_path);
+        const filePath = toUploadsAbsolutePath(wallpaper.file_path);
+
+        if (!filePath) {
+          return res
+            .status(400)
+            .json({ code: 400, message: '壁纸文件路径无效' });
+        }
 
         if (!existsSync(filePath)) {
           return res.status(404).json({ code: 404, message: '壁纸文件不存在' });
@@ -439,8 +440,8 @@ export class WallpaperController {
 
       // 添加所有壁纸文件到 ZIP
       for (const wallpaper of wallpapers) {
-        const filePath = path.join(__dirname, '../../', wallpaper.file_path);
-        if (existsSync(filePath)) {
+        const filePath = toUploadsAbsolutePath(wallpaper.file_path);
+        if (filePath && existsSync(filePath)) {
           const fileName =
             wallpaper.original_name || `wallpaper_${wallpaper.id}`;
           archive.file(filePath, { name: fileName });

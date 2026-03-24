@@ -141,4 +141,36 @@ describe('Wallpaper thumbnail endpoint', () => {
     await expect(fs.stat(cachedThumbPath)).rejects.toThrow();
     cleanupTargets.delete(cachedThumbPath);
   });
+
+  test('download rejects wallpaper paths outside uploads directory', async () => {
+    const imageBuffer = await sharp({
+      create: {
+        width: 320,
+        height: 180,
+        channels: 3,
+        background: { r: 30, g: 60, b: 90 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const uploadResponse = await request(app)
+      .post('/api/wallpapers')
+      .attach('image', imageBuffer, 'unsafe.png')
+      .expect(201);
+
+    const wallpaperId = uploadResponse.body.data.id;
+
+    db.prepare('UPDATE wallpapers SET file_path = ? WHERE id = ?').run(
+      '../escape.png',
+      wallpaperId
+    );
+
+    const response = await request(app)
+      .post('/api/wallpapers/download')
+      .send({ ids: [wallpaperId] })
+      .expect(400);
+
+    expect(response.body.message).toBe('壁纸文件路径无效');
+  });
 });

@@ -3,9 +3,12 @@ import { WallpaperGroupModel } from '../models/wallpaper-group.model.js';
 import { mapToSnake } from '../utils/field-mapper.js';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 import logger from '../utils/logger.js';
+import {
+  WALLPAPER_THUMBNAILS_DIR,
+  toUploadsAbsolutePath,
+} from '../utils/upload-path.js';
 
 const wallpaperLogger = logger.child('WallpaperService');
 
@@ -20,13 +23,24 @@ const SUPPORTED_THUMBNAIL_FORMATS = new Set([
   'avif',
 ]);
 
-// ESM 下没有 __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const THUMBNAIL_DIR = path.join(
-  __dirname,
-  '../../uploads/wallpapers/thumbnails'
-);
+const THUMBNAIL_DIR = WALLPAPER_THUMBNAILS_DIR;
+
+function normalizeWallpaperUploadPayload(fileData = {}) {
+  return {
+    filename: fileData.filename || fileData.file_name,
+    originalName:
+      fileData.originalName || fileData.original_name || fileData.originalname,
+    filePath: fileData.filePath || fileData.file_path,
+    fileSize: fileData.fileSize || fileData.file_size || fileData.size,
+    mimeType: fileData.mimeType || fileData.mime_type || fileData.mimetype,
+    name:
+      fileData.name ||
+      fileData.title ||
+      fileData.originalName ||
+      fileData.original_name ||
+      fileData.originalname,
+  };
+}
 
 export class WallpaperService {
   constructor(db) {
@@ -58,15 +72,8 @@ export class WallpaperService {
   }
 
   async uploadWallpaper(fileData, groupId = null) {
-    // 期望 controller 传入 camelCase 的 fileData；在此做一次必要的 fallback 兼容
-    const filename = fileData.filename || fileData.file_name;
-    const originalName =
-      fileData.originalName || fileData.original_name || fileData.originalname;
-    const filePath = fileData.filePath || fileData.file_path;
-    const fileSize = fileData.fileSize || fileData.file_size || fileData.size;
-    const mimeType =
-      fileData.mimeType || fileData.mime_type || fileData.mimetype;
-    const name = fileData.name || fileData.title || originalName;
+    const { filename, originalName, filePath, fileSize, mimeType, name } =
+      normalizeWallpaperUploadPayload(fileData);
 
     // 验证文件类型
     if (!mimeType || !mimeType.startsWith('image/')) {
@@ -96,11 +103,10 @@ export class WallpaperService {
     } catch (error) {
       // DB 插入失败时，尝试回滚删除已落盘文件，避免产生孤儿文件
       try {
-        let diskPath = dbPayload.file_path;
-        if (!path.isAbsolute(diskPath)) {
-          diskPath = path.join(__dirname, '../../', diskPath);
+        const diskPath = toUploadsAbsolutePath(dbPayload.file_path);
+        if (diskPath) {
+          await fs.unlink(diskPath);
         }
-        await fs.unlink(diskPath);
       } catch (cleanupErr) {
         if (cleanupErr.code !== 'ENOENT') {
           wallpaperLogger.warn('壁纸上传失败后的文件清理失败', {
@@ -134,11 +140,14 @@ export class WallpaperService {
 
     // 再尽力删除物理文件（失败不影响已完成的 DB 变更）
     try {
-      let diskPath = wallpaper.file_path;
-      if (!path.isAbsolute(diskPath)) {
-        diskPath = path.join(__dirname, '../../', diskPath);
+      const diskPath = toUploadsAbsolutePath(wallpaper.file_path);
+      if (!diskPath) {
+        wallpaperLogger.warn('跳过删除非法壁纸路径', {
+          path: wallpaper.file_path,
+        });
+      } else {
+        await fs.unlink(diskPath);
       }
-      await fs.unlink(diskPath);
     } catch (error) {
       if (error.code !== 'ENOENT') {
         wallpaperLogger.warn('删除壁纸物理文件失败（已忽略）', {
@@ -162,11 +171,14 @@ export class WallpaperService {
     // 2. 再尽力批量删除物理文件（失败仅记录，不影响 DB 已生效的变更）
     for (const wallpaper of wallpapers) {
       try {
-        let diskPath = wallpaper.file_path;
-        if (!path.isAbsolute(diskPath)) {
-          diskPath = path.join(__dirname, '../../', diskPath);
+        const diskPath = toUploadsAbsolutePath(wallpaper.file_path);
+        if (!diskPath) {
+          wallpaperLogger.warn('跳过删除非法壁纸路径', {
+            path: wallpaper.file_path,
+          });
+        } else {
+          await fs.unlink(diskPath);
         }
-        await fs.unlink(diskPath);
       } catch (error) {
         if (error.code !== 'ENOENT') {
           wallpaperLogger.warn(
@@ -212,8 +224,11 @@ export class WallpaperService {
       throw err;
     }
 
-    if (!path.isAbsolute(originalPath)) {
-      originalPath = path.join(__dirname, '../../', originalPath);
+    originalPath = toUploadsAbsolutePath(originalPath);
+    if (!originalPath) {
+      const err = new Error('壁纸文件路径无效');
+      err.status = 400;
+      throw err;
     }
 
     let stats;

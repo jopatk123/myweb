@@ -1,14 +1,10 @@
 import path from 'path';
 import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
 import { FileModel } from '../models/file.model.js';
 import logger from '../utils/logger.js';
+import { toUploadsAbsolutePath } from '../utils/upload-path.js';
 
 const fileServiceLogger = logger.child('FileService');
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadsRoot = path.resolve(__dirname, '../../uploads');
 
 /**
  * 文件类型分类枚举
@@ -354,6 +350,12 @@ function buildFileUrl(baseUrl, relativePath) {
   return `${sanitizedBase}/${normalizedPath}`;
 }
 
+function normalizeStoredPath(filePath) {
+  return path.posix
+    .normalize(String(filePath || '').replace(/\\/g, '/'))
+    .replace(/^\/+/, '');
+}
+
 export class FileService {
   constructor(db) {
     this.model = new FileModel(db);
@@ -385,7 +387,7 @@ export class FileService {
   }) {
     const typeCategory =
       explicitTypeCategory || detectTypeCategory(mimeType, originalName);
-    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPath = normalizeStoredPath(filePath);
     const fileUrl = buildFileUrl(baseUrl, normalizedPath);
 
     const payload = {
@@ -412,24 +414,17 @@ export class FileService {
   }
 
   async remove(id) {
-    // 先事务性删除 DB，再尽力删除磁盘文件，保证前端与 DB 一致
-    const db = this.model.db;
     const file = this.get(id);
     const filePath = file.file_path;
 
-    // 1) 事务：删除 files 记录
-    const transaction = db.transaction(() => {
-      this.model.delete(id);
-    });
+    this.model.delete(id);
 
-    transaction();
-
-    // 2) 尝试删除磁盘文件（失败仅记录，不影响已完成的 DB 状态）
+    // 尝试删除磁盘文件（失败仅记录，不影响已完成的 DB 状态）
     try {
-      const absolutePath = path.resolve(__dirname, '../../', filePath);
-      if (!absolutePath.startsWith(uploadsRoot)) {
+      const absolutePath = toUploadsAbsolutePath(filePath);
+      if (!absolutePath) {
         fileServiceLogger.warn('拒绝删除非上传目录文件', {
-          path: absolutePath,
+          path: filePath,
         });
         return true;
       }

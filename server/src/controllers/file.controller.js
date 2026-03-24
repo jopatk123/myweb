@@ -4,7 +4,6 @@ import path from 'path';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
-import { fileURLToPath } from 'url';
 import {
   FileService,
   detectTypeCategory,
@@ -14,14 +13,14 @@ import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import { normaliseUploadedFileName } from '../utils/upload.js';
 import logger from '../utils/logger.js';
+import {
+  FILES_DIR,
+  toUploadsAbsolutePath,
+  toUploadsRelativePath,
+} from '../utils/upload-path.js';
 
 const fileLogger = logger.child('FileController');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const uploadsRoot = path.join(__dirname, '../../uploads');
-const filesDir = path.join(uploadsRoot, 'files');
 const DEFAULT_MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1GiB
 const MAX_UPLOAD_SIZE = parseEnvByteSize(
   'FILE_MAX_UPLOAD_SIZE',
@@ -40,17 +39,35 @@ function isAllowedFile(file) {
   return category !== FILE_CATEGORIES.OTHER;
 }
 
-if (!fs.existsSync(filesDir)) {
+if (!fs.existsSync(FILES_DIR)) {
   try {
-    fs.mkdirSync(filesDir, { recursive: true });
+    fs.mkdirSync(FILES_DIR, { recursive: true });
   } catch (e) {
     fileLogger.warn('无法创建 files 上传目录', { error: e.message });
   }
 }
 
+function isTrustedBaseUrl(req, value) {
+  try {
+    const candidate = new URL(value);
+    if (!['http:', 'https:'].includes(candidate.protocol)) {
+      return false;
+    }
+
+    const requestHost = (req.get('host') || '').trim().toLowerCase();
+    if (!requestHost) {
+      return true;
+    }
+
+    return candidate.host.toLowerCase() === requestHost;
+  } catch {
+    return false;
+  }
+}
+
 function resolveBaseUrl(req) {
   const headerBase = (req.get('x-api-base') || '').trim();
-  if (headerBase) {
+  if (headerBase && isTrustedBaseUrl(req, headerBase)) {
     return headerBase.replace(/\/+$/, '');
   }
   const forwardedProto = (req.get('x-forwarded-proto') || '')
@@ -76,7 +93,7 @@ const fileFilter = (_req, file, cb) => {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, filesDir);
+    cb(null, FILES_DIR);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname) || '';
@@ -112,7 +129,7 @@ export function createFileRoutes(db) {
         const payloads = files.map(f => ({
           originalName: f.originalname,
           storedName: f.filename,
-          filePath: path.posix.join('uploads', 'files', f.filename),
+          filePath: toUploadsRelativePath('files', f.filename),
           mimeType: f.mimetype,
           fileSize: f.size,
           uploaderId: null,
@@ -125,7 +142,8 @@ export function createFileRoutes(db) {
         } catch (createErr) {
           await Promise.allSettled(
             payloads.map(async p => {
-              const diskPath = path.join(__dirname, '../../', p.filePath);
+              const diskPath = toUploadsAbsolutePath(p.filePath);
+              if (!diskPath) return;
               try {
                 await fsPromises.unlink(diskPath);
               } catch (unlinkErr) {
@@ -205,9 +223,8 @@ export function createFileRoutes(db) {
         throw err;
       }
 
-      const absolutePath = path.resolve(__dirname, '../../', storedPath);
-      const uploadsRootResolved = path.resolve(uploadsRoot);
-      if (!absolutePath.startsWith(uploadsRootResolved)) {
+      const absolutePath = toUploadsAbsolutePath(storedPath);
+      if (!absolutePath) {
         const err = new Error('非法的文件路径');
         err.status = 400;
         throw err;
