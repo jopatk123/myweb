@@ -103,6 +103,198 @@ describe('useApps composable', () => {
     expect(state.total.value).toBe(1);
   });
 
+  it('fetchAppsList handles paginated payload and error payload', async () => {
+    apiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: {
+          items: [{ id: 1, name: 'Only Item' }],
+          total: 1,
+        },
+      }),
+    });
+
+    await expect(state.fetchAppsList({ groupId: 'g1' })).resolves.toEqual([
+      { id: 1, name: 'Only Item' },
+    ]);
+    expect(apiFetch).toHaveBeenCalledWith('/myapps?groupId=g1');
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '列表加载失败' }),
+    });
+
+    await expect(state.fetchAppsList()).rejects.toThrow('列表加载失败');
+  });
+
+  it('fetchGroups success and error branches', async () => {
+    apiFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: [{ id: 'default', name: '默认分组' }] }),
+    });
+
+    await state.fetchGroups();
+    expect(apiFetch).toHaveBeenCalledWith('/myapps/groups/all');
+    expect(state.groups.value).toEqual([{ id: 'default', name: '默认分组' }]);
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '加载分组失败-后端' }),
+    });
+
+    await expect(state.fetchGroups()).rejects.toThrow('加载分组失败-后端');
+    expect(state.error.value).toBe('加载分组失败-后端');
+    expect(state.lastError.value).toBeInstanceOf(Error);
+  });
+
+  it('createGroup refreshes groups and returns created data', async () => {
+    const created = { id: 'g2', name: '新分组' };
+    apiFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: created }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [created] }),
+      });
+
+    const result = await state.createGroup({ name: '新分组' });
+    expect(result).toEqual(created);
+    expect(apiFetch).toHaveBeenNthCalledWith(1, '/myapps/groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: '新分组' }),
+    });
+    expect(apiFetch).toHaveBeenNthCalledWith(2, '/myapps/groups/all');
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '创建分组失败-后端' }),
+    });
+    await expect(state.createGroup({ name: '坏请求' })).rejects.toThrow(
+      '创建分组失败-后端'
+    );
+  });
+
+  it('updateGroup and deleteGroup cover success and failure', async () => {
+    apiFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { id: 'g3', name: '改名后' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [{ id: 'g3', name: '改名后' }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [] }),
+      });
+
+    await expect(state.updateGroup('g3', { name: '改名后' })).resolves.toEqual({
+      id: 'g3',
+      name: '改名后',
+    });
+    await expect(state.deleteGroup('g3')).resolves.toBe(true);
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '更新分组失败-后端' }),
+    });
+    await expect(state.updateGroup('g4', { name: 'x' })).rejects.toThrow(
+      '更新分组失败-后端'
+    );
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '删除分组失败-后端' }),
+    });
+    await expect(state.deleteGroup('g4')).rejects.toThrow('删除分组失败-后端');
+  });
+
+  it('createApp deleteApp setVisible setVisibleBulk moveApps cover key branches', async () => {
+    apiFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { id: 1, name: 'new app' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { id: 1, visible: true } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { moved: 2 } }),
+      });
+
+    await expect(state.createApp({ name: 'new app' })).resolves.toEqual({
+      id: 1,
+      name: 'new app',
+    });
+    await expect(state.deleteApp(1)).resolves.toBe(true);
+    await expect(state.setVisible(1, true)).resolves.toEqual({
+      id: 1,
+      visible: true,
+    });
+    await expect(state.setVisibleBulk([1, 2], false)).resolves.toBe(true);
+    await expect(state.moveApps([1, 2], 'g2')).resolves.toEqual({ moved: 2 });
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '创建失败-后端' }),
+    });
+    await expect(state.createApp({ name: 'bad' })).rejects.toThrow(
+      '创建失败-后端'
+    );
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '删除失败-后端' }),
+    });
+    await expect(state.deleteApp(2)).rejects.toThrow('删除失败-后端');
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '设置失败-后端' }),
+    });
+    await expect(state.setVisible(2, false)).rejects.toThrow('设置失败-后端');
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '批量设置失败-后端' }),
+    });
+    await expect(state.setVisibleBulk([2], true)).rejects.toThrow(
+      '批量设置失败-后端'
+    );
+
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ message: '移动失败-后端' }),
+    });
+    await expect(state.moveApps([2], 'g1')).rejects.toThrow('移动失败-后端');
+  });
+
+  it('setPage and setLimit update pagination refs', () => {
+    state.setPage(3);
+    state.setLimit(50);
+
+    expect(state.page.value).toBe(3);
+    expect(state.limit.value).toBe(50);
+  });
+
   it('setAutostart validates id, forwards request and surfaces backend errors', async () => {
     await expect(state.setAutostart('', true)).rejects.toThrow('invalid id');
     expect(state.error.value).toBe('invalid id');
@@ -175,5 +367,24 @@ describe('useApps composable', () => {
     ).rejects.toThrow('内置应用不允许编辑');
     expect(state.error.value).toBe('内置应用不允许编辑');
     expect(state.lastError.value).toBeInstanceOf(Error);
+  });
+
+  it('setAutostart handles non-json error response and id encoding', async () => {
+    apiFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      json: async () => {
+        throw new Error('invalid json');
+      },
+    });
+
+    await expect(state.setAutostart('space id/1', true)).rejects.toThrow(
+      'Request failed: 503'
+    );
+    expect(apiFetch).toHaveBeenCalledWith('/myapps/space%20id%2F1/autostart', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_autostart: true }),
+    });
   });
 });
