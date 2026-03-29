@@ -1,10 +1,18 @@
 import request from 'supertest';
 import { createApp } from '../src/appFactory.js';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+
+const testAppIconDir = path.join(os.tmpdir(), 'myweb-test-app-icons');
 
 let app;
 let db;
 
 beforeAll(async () => {
+  process.env.APP_ICON_UPLOAD_DIR = testAppIconDir;
+  await fs.mkdir(testAppIconDir, { recursive: true });
+
   ({ app, db } = await createApp({
     dbPath: ':memory:',
     seedBuiltinApps: false,
@@ -14,11 +22,27 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db?.close?.();
+  try {
+    await fs.rm(testAppIconDir, { recursive: true, force: true });
+  } catch (e) {
+    // ignore
+  }
 });
 
 beforeEach(() => {
   db.prepare('DELETE FROM apps WHERE is_builtin = 0').run();
   db.prepare('DELETE FROM app_groups WHERE is_default = 0').run();
+});
+
+afterEach(async () => {
+  try {
+    const files = await fs.readdir(testAppIconDir);
+    await Promise.all(
+      files.map(file => fs.unlink(path.join(testAppIconDir, file)))
+    );
+  } catch (e) {
+    // ignore cleanup errors
+  }
 });
 
 function insertApp(overrides = {}) {

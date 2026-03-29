@@ -17,7 +17,12 @@ export class AppService {
     // 获取目录路径
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    this.uploadsDir = path.join(__dirname, '../../uploads/apps/icons');
+    const DEFAULT_APP_ICON_UPLOAD_DIR = path.join(
+      __dirname,
+      '../../uploads/apps/icons'
+    );
+    this.uploadsDir =
+      process.env.APP_ICON_UPLOAD_DIR || DEFAULT_APP_ICON_UPLOAD_DIR;
     this.publicIconsDir = path.join(
       __dirname,
       '../../../client/public/apps/icons'

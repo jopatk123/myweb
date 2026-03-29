@@ -2,6 +2,7 @@ import express from 'express';
 import { AppController } from '../controllers/app.controller.js';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import { parseEnvByteSize } from '../utils/env.js';
@@ -12,16 +13,27 @@ export function createAppRoutes(db) {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
 
-  // 图标上传配置：保存到 uploads/apps/icons
+  // 图标上传配置：保存到 uploads/apps/icons，测试场景可通过 APP_ICON_UPLOAD_DIR 覆盖
   const DEFAULT_APP_ICON_UPLOAD_SIZE = 500 * 1024 * 1024;
   const APP_ICON_UPLOAD_SIZE = parseEnvByteSize(
     'APP_ICON_MAX_UPLOAD_SIZE',
     DEFAULT_APP_ICON_UPLOAD_SIZE
   );
+  const DEFAULT_APP_ICON_UPLOAD_DIR = path.join(
+    __dirname,
+    '../../uploads/apps/icons'
+  );
+  const APP_ICON_UPLOAD_DIR =
+    process.env.APP_ICON_UPLOAD_DIR || DEFAULT_APP_ICON_UPLOAD_DIR;
 
   const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, path.join(__dirname, '../../uploads/apps/icons'));
+    destination: async (req, file, cb) => {
+      try {
+        await fs.promises.mkdir(APP_ICON_UPLOAD_DIR, { recursive: true });
+      } catch (e) {
+        // ignore if exists or cannot create, multer will error if needed
+      }
+      cb(null, APP_ICON_UPLOAD_DIR);
     },
     filename: (req, file, cb) => {
       const ext = path.extname(file.originalname) || '';
