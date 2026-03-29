@@ -16,4 +16,12 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.js', '!src/server.js'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
+  coverageThreshold: {
+    global: {
+      statements: 40,
+      branches: 30,
+      functions: 35,
+      lines: 40,
+    },
+  },
 };
