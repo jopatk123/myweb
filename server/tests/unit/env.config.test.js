@@ -43,10 +43,21 @@ describe('config/env', () => {
   test('respects wildcard CORS configuration', async () => {
     process.env.CORS_ORIGIN = '*';
 
-    const { appEnv, isCorsOriginAllowed } = await loadEnvModule();
+    const { appEnv, isCorsOriginAllowed, getCorsEffectiveOrigins } =
+      await loadEnvModule();
 
     expect(appEnv.cors.allowAll).toBe(true);
     expect(isCorsOriginAllowed('http://anywhere.test')).toBe(true);
+    expect(getCorsEffectiveOrigins()).toEqual(['*']);
+  });
+
+  test('falls back to development when NODE_ENV is undefined', async () => {
+    delete process.env.NODE_ENV;
+
+    const { appEnv } = await loadEnvModule();
+
+    expect(appEnv.nodeEnv).toBe('development');
+    expect(appEnv.isDevelopment).toBe(true);
   });
 
   test('applies database path override helper', async () => {
@@ -69,5 +80,49 @@ describe('config/env', () => {
     const config = getAdminTokenConfig('FILES_ADMIN_TOKEN');
 
     expect(config).toEqual({ token: 'plain-token', tokenHash: 'hashed-token' });
+  });
+
+  test('supports explicit CORS origin list and effective origins helper', async () => {
+    process.env.CORS_ORIGIN = 'http://example.com, http://foo.test';
+
+    const { appEnv, isCorsOriginAllowed, getCorsEffectiveOrigins } =
+      await loadEnvModule();
+
+    expect(appEnv.cors.allowAll).toBe(false);
+    expect(isCorsOriginAllowed('http://example.com')).toBe(true);
+    expect(isCorsOriginAllowed('http://not-allowed.test')).toBe(false);
+    expect(getCorsEffectiveOrigins()).toEqual([
+      'http://example.com',
+      'http://foo.test',
+    ]);
+  });
+
+  test('resolveDatabasePath prefers process.env.DB_PATH when no override', async () => {
+    process.env.DB_PATH = '/tmp/env-db-path-test.sqlite';
+
+    const { resolveDatabasePath } = await loadEnvModule();
+    expect(resolveDatabasePath()).toBe('/tmp/env-db-path-test.sqlite');
+  });
+
+  test('applyDatabasePathOverride ignores empty override', async () => {
+    delete process.env.DB_PATH;
+
+    const { applyDatabasePathOverride } = await loadEnvModule();
+    applyDatabasePathOverride('');
+
+    expect(process.env.DB_PATH).toBeUndefined();
+  });
+
+  test('isCorsOriginAllowed returns true for empty origin', async () => {
+    const { isCorsOriginAllowed } = await loadEnvModule();
+    expect(isCorsOriginAllowed('')).toBe(true);
+    expect(isCorsOriginAllowed(null)).toBe(true);
+  });
+
+  test('respects LOG_FILE override in log config', async () => {
+    process.env.LOG_FILE = '/tmp/myweb-custom.log';
+
+    const { appEnv } = await loadEnvModule();
+    expect(appEnv.log.file).toBe('/tmp/myweb-custom.log');
   });
 });

@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -78,6 +79,22 @@ test('deleteApp removes icon file when no other references exist', async () => {
   await expect(fs.access(iconPath)).rejects.toThrow();
 });
 
+test('deleteApp continues when icon reference counting throws', async () => {
+  const created = await service.createApp({
+    name: '计数异常应用',
+    slug: 'count-error-app',
+    iconFilename: 'count-error.png',
+    description: 'desc',
+  });
+
+  jest.spyOn(service.appModel, 'countByIconFilename').mockImplementation(() => {
+    throw new Error('count failed');
+  });
+
+  const result = await service.deleteApp(created.id);
+  expect(result).toBe(true);
+});
+
 test('copyPresetIcon copies from public icons directory', async () => {
   const sourceIcon = path.join(service.publicIconsDir, 'preset.svg');
   await fs.writeFile(sourceIcon, '<svg></svg>');
@@ -103,6 +120,18 @@ test('deleteIconFileIfExists handles existing and missing files', async () => {
     true
   );
   await expect(service.deleteIconFileIfExists('to-remove.png')).resolves.toBe(
+    false
+  );
+});
+
+test('deleteIconFileIfExists returns false for non-ENOENT unlink errors', async () => {
+  jest
+    .spyOn(fs, 'unlink')
+    .mockRejectedValueOnce(
+      Object.assign(new Error('permission denied'), { code: 'EACCES' })
+    );
+
+  await expect(service.deleteIconFileIfExists('locked-file.png')).resolves.toBe(
     false
   );
 });

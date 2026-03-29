@@ -29,6 +29,7 @@ afterEach(async () => {
   db.prepare('DELETE FROM wallpapers').run();
   await fs.rm(tempDir, { recursive: true, force: true });
   await fs.mkdir(tempDir, { recursive: true });
+  jest.restoreAllMocks();
 });
 
 test('uploadWallpaper accepts camelCase payload and stores snake_case columns', async () => {
@@ -131,4 +132,263 @@ test('deleteMultipleWallpapers attempts to cleanup files and returns changes cou
   expect(unlinkSpy).toHaveBeenCalledTimes(2);
 
   unlinkSpy.mockRestore();
+});
+
+test('deleteWallpaper skips file deletion when file_path is null', async () => {
+  // Insert a wallpaper with null file_path directly
+  const row = db
+    .prepare(
+      `
+    INSERT INTO wallpapers (name, filename, original_name, file_path, file_size, mime_type)
+    VALUES ('nullpath', 'nullpath.jpg', 'nullpath.jpg', NULL, 0, 'image/jpeg')
+  `
+    )
+    .run();
+  const id = Number(row.lastInsertRowid);
+
+  // Should not throw even though file_path is null
+  const result = await service.deleteWallpaper(id);
+  expect(result).toBeDefined();
+  expect(service.wallpaperModel.findById(id)).toBeUndefined();
+});
+
+test('deleteGroup throws when group has wallpapers', async () => {
+  // Create a group
+  const group = service.createGroup({ name: '有壁纸测试分组' });
+
+  // Insert a wallpaper in the group
+  db.prepare(
+    `
+    INSERT INTO wallpapers (name, filename, original_name, file_path, file_size, mime_type, group_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `
+  ).run(
+    'in-group',
+    'ingroup.jpg',
+    'ingroup.jpg',
+    'uploads/wallpapers/ingroup.jpg',
+    100,
+    'image/jpeg',
+    group.id
+  );
+
+  // Should throw
+  await expect(async () => service.deleteGroup(group.id)).rejects.toThrow(
+    '分组下还有壁纸'
+  );
+});
+
+test('updateGroup throws when group does not exist', () => {
+  expect(() => service.updateGroup(999999, { name: '不存在' })).toThrow(
+    '分组不存在'
+  );
+});
+
+test('deleteGroup throws when group does not exist', () => {
+  expect(() => service.deleteGroup(999999)).toThrow('分组不存在');
+});
+
+test('setCurrentGroup throws when group does not exist', () => {
+  expect(() => service.setCurrentGroup(999999)).toThrow('分组不存在');
+});
+
+test('getWallpaperThumbnail throws when wallpaper path is null', async () => {
+  // Insert a wallpaper with null file_path
+  const row = db
+    .prepare(
+      `
+    INSERT INTO wallpapers (name, filename, original_name, file_path, file_size, mime_type)
+    VALUES ('nullthumb', 'nullthumb.jpg', 'nullthumb.jpg', NULL, 0, 'image/jpeg')
+  `
+    )
+    .run();
+  const id = Number(row.lastInsertRowid);
+
+  await expect(service.getWallpaperThumbnail(id, {})).rejects.toMatchObject({
+    status: 404,
+  });
+});
+
+test('getWallpaperThumbnail throws when file does not exist on disk', async () => {
+  const created = await service.uploadWallpaper({
+    filename: 'ghost-thumb.jpg',
+    originalName: 'ghost-thumb.jpg',
+    filePath: 'uploads/wallpapers/ghost-completely-missing.jpg',
+    fileSize: 100,
+    mimeType: 'image/jpeg',
+    name: 'Ghost',
+  });
+
+  await expect(
+    service.getWallpaperThumbnail(created.id, {})
+  ).rejects.toMatchObject({ status: 404 });
+});
+
+test('uploadWallpaper cleans up disk file when model create fails', async () => {
+  const createSpy = jest
+    .spyOn(service.wallpaperModel, 'create')
+    .mockImplementation(() => {
+      throw new Error('db insert failed');
+    });
+  const unlinkSpy = jest.spyOn(fs, 'unlink').mockResolvedValue();
+
+  await expect(
+    service.uploadWallpaper({
+      filename: 'failed-create.jpg',
+      originalName: 'failed-create.jpg',
+      filePath: 'uploads/wallpapers/failed-create.jpg',
+      fileSize: 11,
+      mimeType: 'image/jpeg',
+      name: 'failed-create',
+    })
+  ).rejects.toThrow('db insert failed');
+
+  expect(createSpy).toHaveBeenCalled();
+  expect(unlinkSpy).toHaveBeenCalled();
+});
+
+test('uploadWallpaper ignores cleanup ENOENT and warns on other cleanup errors', async () => {
+  jest.spyOn(service.wallpaperModel, 'create').mockImplementation(() => {
+    throw new Error('db create error');
+  });
+  const unlinkSpy = jest
+    .spyOn(fs, 'unlink')
+    .mockRejectedValueOnce(
+      Object.assign(new Error('permission denied'), { code: 'EACCES' })
+    );
+
+  await expect(
+    service.uploadWallpaper({
+      filename: 'cleanup-warn.jpg',
+      originalName: 'cleanup-warn.jpg',
+      filePath: 'uploads/wallpapers/cleanup-warn.jpg',
+      fileSize: 22,
+      mimeType: 'image/jpeg',
+      name: 'cleanup-warn',
+    })
+  ).rejects.toThrow('db create error');
+
+  expect(unlinkSpy).toHaveBeenCalled();
+});
+
+test('deleteWallpaper ignores non-ENOENT unlink error', async () => {
+  const row = db
+    .prepare(
+      `
+    INSERT INTO wallpapers (name, filename, original_name, file_path, file_size, mime_type)
+    VALUES ('unlink-error', 'unlink-error.jpg', 'unlink-error.jpg', 'uploads/wallpapers/unlink-error.jpg', 1, 'image/jpeg')
+  `
+    )
+    .run();
+  const id = Number(row.lastInsertRowid);
+
+  const unlinkSpy = jest
+    .spyOn(fs, 'unlink')
+    .mockRejectedValueOnce(Object.assign(new Error('busy'), { code: 'EBUSY' }));
+
+  const result = await service.deleteWallpaper(id);
+  expect(result).toBeDefined();
+  expect(unlinkSpy).toHaveBeenCalled();
+});
+
+test('deleteMultipleWallpapers handles invalid absolute path entries', async () => {
+  const row = db
+    .prepare(
+      `
+    INSERT INTO wallpapers (name, filename, original_name, file_path, file_size, mime_type)
+    VALUES ('invalid-path', 'invalid-path.jpg', 'invalid-path.jpg', '/etc/passwd', 1, 'image/jpeg')
+  `
+    )
+    .run();
+  const id = Number(row.lastInsertRowid);
+
+  const result = await service.deleteMultipleWallpapers([id]);
+  expect(result).toBeDefined();
+});
+
+test('getWallpaperThumbnail returns 400 when file path is outside uploads root', async () => {
+  const row = db
+    .prepare(
+      `
+    INSERT INTO wallpapers (name, filename, original_name, file_path, file_size, mime_type)
+    VALUES ('outside-path', 'outside.jpg', 'outside.jpg', '/etc/passwd', 1, 'image/jpeg')
+  `
+    )
+    .run();
+  const id = Number(row.lastInsertRowid);
+
+  await expect(service.getWallpaperThumbnail(id, {})).rejects.toMatchObject({
+    status: 400,
+  });
+});
+
+test('getWallpaperThumbnail supports png and unsupported format fallback', async () => {
+  const srcPath = path.join(tempDir, 'thumb-source.png');
+  const tinyPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Zk4QAAAAASUVORK5CYII=',
+    'base64'
+  );
+  await fs.writeFile(srcPath, tinyPng);
+
+  const created = await service.uploadWallpaper({
+    filename: 'thumb-source.png',
+    originalName: 'thumb-source.png',
+    filePath: srcPath,
+    fileSize: tinyPng.length,
+    mimeType: 'image/png',
+    name: 'thumb-source',
+  });
+
+  const pngThumb = await service.getWallpaperThumbnail(created.id, {
+    width: 32,
+    format: 'png',
+  });
+  expect(pngThumb.mimeType).toBe('image/png');
+
+  const fallbackThumb = await service.getWallpaperThumbnail(created.id, {
+    width: 32,
+    format: 'tiff',
+  });
+  expect(fallbackThumb.mimeType).toBe('image/webp');
+});
+
+test('deleteWallpaper handles thumbnail cache read/unlink errors', async () => {
+  const row = db
+    .prepare(
+      `
+    INSERT INTO wallpapers (name, filename, original_name, file_path, file_size, mime_type)
+    VALUES ('purge-errors', 'purge-errors.jpg', 'purge-errors.jpg', 'uploads/wallpapers/purge-errors.jpg', 1, 'image/jpeg')
+  `
+    )
+    .run();
+  const id = Number(row.lastInsertRowid);
+
+  const readdirSpy = jest
+    .spyOn(fs, 'readdir')
+    .mockRejectedValueOnce(
+      Object.assign(new Error('dir access denied'), { code: 'EACCES' })
+    )
+    .mockResolvedValueOnce(['purge-errors-100xauto.webp']);
+
+  const unlinkSpy = jest
+    .spyOn(fs, 'unlink')
+    .mockResolvedValueOnce()
+    .mockRejectedValueOnce(
+      Object.assign(new Error('cannot delete cache'), { code: 'EACCES' })
+    );
+
+  await service.deleteWallpaper(id);
+
+  const row2 = db
+    .prepare(
+      `
+    INSERT INTO wallpapers (name, filename, original_name, file_path, file_size, mime_type)
+    VALUES ('purge-errors-2', 'purge-errors-2.jpg', 'purge-errors-2.jpg', 'uploads/wallpapers/purge-errors.jpg', 1, 'image/jpeg')
+  `
+    )
+    .run();
+  await service.deleteWallpaper(Number(row2.lastInsertRowid));
+
+  expect(readdirSpy).toHaveBeenCalled();
+  expect(unlinkSpy).toHaveBeenCalled();
 });

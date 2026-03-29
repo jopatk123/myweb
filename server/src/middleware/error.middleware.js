@@ -9,6 +9,12 @@ export default function errorHandler(err, req, res, _next) {
   let status = err?.status || 500;
   let message = err?.message || 'Internal Server Error';
 
+  // Joi 验证错误
+  if (err.isJoi) {
+    status = 400;
+    message = err.details?.[0]?.message || err.message;
+  }
+
   // 数据库错误
   if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
     status = 400;

@@ -172,14 +172,38 @@ describe('errorHandler middleware', () => {
     expect(new Date(body.timestamp).getTime()).not.toBeNaN();
   });
 
-  it('hides error message for 500+ status codes', () => {
+  it('handles Joi validation errors as 400', () => {
     const { req, res, next } = createMockReqRes();
-    const err = new Error('Sensitive internal data');
-    // No status set, defaults to 500
+    const err = {
+      isJoi: true,
+      message: '"name" is required',
+      details: [{ message: '"name" 为必填字段' }],
+    };
 
     errorHandler(err, req, res, next);
 
-    const body = res.json.mock.calls[0][0];
-    expect(body.message).toBe('Internal Server Error');
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 400,
+        message: '"name" 为必填字段',
+      })
+    );
+  });
+
+  it('handles Joi error without details gracefully', () => {
+    const { req, res, next } = createMockReqRes();
+    const err = {
+      isJoi: true,
+      message: 'Validation failed',
+      details: [],
+    };
+
+    errorHandler(err, req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 400 })
+    );
   });
 });

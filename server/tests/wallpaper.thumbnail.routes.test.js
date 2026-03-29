@@ -173,4 +173,90 @@ describe('Wallpaper thumbnail endpoint', () => {
 
     expect(response.body.message).toBe('壁纸文件路径无效');
   });
+
+  test('thumbnail with format=jpg uses jpg format', async () => {
+    const imageBuffer = await sharp({
+      create: {
+        width: 200,
+        height: 200,
+        channels: 3,
+        background: { r: 100, g: 150, b: 200 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const uploadResponse = await request(app)
+      .post('/api/wallpapers')
+      .attach('image', imageBuffer, 'format-jpg-test.png')
+      .expect(201);
+
+    const wallpaperId = uploadResponse.body.data.id;
+    const storedFilename =
+      uploadResponse.body.data.filename || uploadResponse.body.data.file_name;
+    const filePath =
+      uploadResponse.body.data.file_path || uploadResponse.body.data.filePath;
+    cleanupTargets.add(
+      path.isAbsolute(filePath)
+        ? filePath
+        : path.join(__dirname, '..', filePath)
+    );
+
+    const thumbName = `${path.parse(storedFilename).name}-160xauto.jpg`;
+    cleanupTargets.add(path.join(thumbnailsDir, thumbName));
+
+    const res = await request(app)
+      .get(`/api/wallpapers/${wallpaperId}/thumbnail`)
+      .query({ w: 160, format: 'jpg' })
+      .buffer()
+      .parse((r, cb) => {
+        const chunks = [];
+        r.on('data', c => chunks.push(c));
+        r.on('end', () => cb(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    expect(res.headers['content-type']).toMatch(/image/);
+  });
+
+  test('thumbnail with invalid dimension falls back to default width', async () => {
+    const imageBuffer = await sharp({
+      create: {
+        width: 200,
+        height: 200,
+        channels: 3,
+        background: { r: 80, g: 80, b: 80 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const uploadResponse = await request(app)
+      .post('/api/wallpapers')
+      .attach('image', imageBuffer, 'invalid-dim-test.png')
+      .expect(201);
+
+    const wallpaperId = uploadResponse.body.data.id;
+    const filePath =
+      uploadResponse.body.data.file_path || uploadResponse.body.data.filePath;
+    cleanupTargets.add(
+      path.isAbsolute(filePath)
+        ? filePath
+        : path.join(__dirname, '..', filePath)
+    );
+
+    // w=-1 should trigger the "invalid dimension" branch (covered by #sanitizeDimension)
+    const res = await request(app)
+      .get(`/api/wallpapers/${wallpaperId}/thumbnail`)
+      .query({ w: -1, format: 'webp' })
+      .buffer()
+      .parse((r, cb) => {
+        const chunks = [];
+        r.on('data', c => chunks.push(c));
+        r.on('end', () => cb(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    expect(res.headers['content-type']).toMatch(/image/);
+  });
 });
