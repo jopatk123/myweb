@@ -60,7 +60,7 @@ export function useWebSocket() {
       try {
         ws.value.send(JSON.stringify(msg));
       } catch (e) {
-        console.warn('Queued msg send failed', e);
+        void e;
       }
     }
   };
@@ -80,17 +80,14 @@ export function useWebSocket() {
           localStorage.setItem('sessionId', sessionId);
         }
 
-        const wsUrl = getWebSocketUrl();
+        const baseUrl = getWebSocketUrl();
+        // 将 sessionId 作为查询参数传入，服务端可在升级阶段验证身份
+        const wsUrl = `${baseUrl}?sessionId=${encodeURIComponent(sessionId)}`;
         if (ws.value && ws.value.readyState === WebSocket.OPEN) {
           resolve();
           return; // 已连接
         }
         ws.value = new WebSocket(wsUrl);
-
-        // 设置会话ID头部（如果支持）
-        if (sessionId) {
-          ws.value.sessionId = sessionId;
-        }
 
         ws.value.onopen = () => {
           isConnected.value = true;
@@ -103,12 +100,9 @@ export function useWebSocket() {
         ws.value.onmessage = event => {
           try {
             const data = JSON.parse(event.data);
-            // 原始日志（可注释）
-            // console.debug('[WS][raw]', data);
             handleMessage(data);
           } catch (_error) {
             void _error;
-            console.error('WebSocket message parse error');
           }
         };
 
@@ -123,11 +117,11 @@ export function useWebSocket() {
         };
 
         ws.value.onerror = error => {
-          console.error('WebSocket connection error:', error);
+          void error;
           reject(error);
         };
       } catch (error) {
-        console.error('WebSocket connection setup error:', error);
+        void error;
         reject(error);
       }
     });
@@ -146,7 +140,7 @@ export function useWebSocket() {
       try {
         h(payload);
       } catch (e) {
-        console.error('WebSocket handler error', e);
+        void e;
       }
     });
   };

@@ -2,6 +2,10 @@
  * Ensure files.type_category includes novel and music in CHECK constraint.
  * @param {import('better-sqlite3').Database} db
  */
+import logger from '../../utils/logger.js';
+
+const migrationLogger = logger.child('FilesMigration');
+
 export function ensureFilesTypeCategoryIncludesNovel(db) {
   try {
     const row = db
@@ -19,8 +23,8 @@ export function ensureFilesTypeCategoryIncludesNovel(db) {
       return;
     }
 
-    console.log(
-      '🛠️ Migrating files table to include “novel” and “music” in type_category CHECK'
+    migrationLogger.info(
+      'Migrating files table to include "novel" and "music" in type_category CHECK'
     );
 
     const migrateFiles = db.transaction(() => {
@@ -67,11 +71,11 @@ export function ensureFilesTypeCategoryIncludesNovel(db) {
 
     migrateFiles();
 
-    console.log('✅ files table migration complete');
+    migrationLogger.info('files table migration complete');
   } catch (err) {
-    console.error(
-      '❌ Failed to ensure files.type_category includes novel:',
-      err
+    migrationLogger.error(
+      'Failed to ensure files.type_category includes novel',
+      { error: err }
     );
     throw err;
   }

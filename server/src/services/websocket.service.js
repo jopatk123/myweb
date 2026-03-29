@@ -26,9 +26,33 @@ export class WebSocketService {
   }
 
   handleConnection(socket, req) {
-    const serverSessionId = req.headers['x-session-id'] || uuidv4();
+    const serverSessionId = uuidv4();
+
+    // 从 URL 查询参数中提取客户端 sessionId（客户端连接时附加: /ws?sessionId=xxx）
+    let clientSessionIdFromUrl = '';
+    try {
+      const url = new URL(req.url, 'http://localhost');
+      const candidate = (url.searchParams.get('sessionId') || '').trim();
+      // 仅接受合理长度的 sessionId（防止超长输入）
+      if (candidate && candidate.length <= 200) {
+        clientSessionIdFromUrl = candidate;
+      }
+    } catch {
+      // URL 解析失败时忽略，仍允许连接
+    }
 
     this.connections.register(serverSessionId, socket);
+
+    // 若 URL 中已带有 sessionId，立即完成关联，无需等待 join 消息
+    if (clientSessionIdFromUrl) {
+      this.connections.associate(serverSessionId, clientSessionIdFromUrl);
+      const s = this.connections.getSocket(serverSessionId);
+      if (s) s._clientSessionId = clientSessionIdFromUrl;
+      wsLogger.info('Client pre-associated from URL param', {
+        serverSessionId,
+        clientSessionId: clientSessionIdFromUrl,
+      });
+    }
 
     socket.send(
       JSON.stringify({

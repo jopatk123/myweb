@@ -3,14 +3,16 @@
  */
 import { MessageService } from '../services/message.service.js';
 import { UserSessionService } from '../services/userSession.service.js';
-import multer from 'multer';
-import path from 'path';
 import fs from 'fs';
-import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
 import { fileURLToPath } from 'url';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
-import { normaliseUploadedFileName } from '../utils/upload.js';
 import logger from '../utils/logger.js';
+import { createUploader, imageUploadFilter } from '../utils/uploader.js';
+import {
+  DEFAULT_MESSAGE_IMAGE_MAX_SIZE,
+  DEFAULT_MESSAGE_IMAGE_MAX_FILES,
+} from '../constants/limits.js';
 
 const msgLogger = logger.child('MessageController');
 
@@ -42,46 +44,21 @@ if (!fs.existsSync(imagesDir)) {
   }
 }
 
-// 配置图片上传
-const DEFAULT_MESSAGE_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const DEFAULT_MESSAGE_IMAGE_FILES = 5;
-
 export const MESSAGE_IMAGE_MAX_SIZE = parseEnvByteSize(
   'MESSAGE_IMAGE_MAX_SIZE',
-  DEFAULT_MESSAGE_IMAGE_SIZE
+  DEFAULT_MESSAGE_IMAGE_MAX_SIZE
 );
 export const MESSAGE_IMAGE_MAX_FILES = Math.max(
   1,
-  parseEnvNumber('MESSAGE_IMAGE_MAX_FILES', DEFAULT_MESSAGE_IMAGE_FILES)
+  parseEnvNumber('MESSAGE_IMAGE_MAX_FILES', DEFAULT_MESSAGE_IMAGE_MAX_FILES)
 );
 
-const imageStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, imagesDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
-
-const imageFilter = (req, file, cb) => {
-  // 只允许图片文件
-  if (file.mimetype.startsWith('image/')) {
-    normaliseUploadedFileName(file);
-    cb(null, true);
-  } else {
-    cb(new Error('只允许上传图片文件'), false);
-  }
-};
-
-const uploadImage = multer({
-  storage: imageStorage,
-  fileFilter: imageFilter,
-  limits: {
-    fileSize: MESSAGE_IMAGE_MAX_SIZE,
-    files: MESSAGE_IMAGE_MAX_FILES,
-  },
+const uploadImage = createUploader({
+  destination: imagesDir,
+  maxFileSize: MESSAGE_IMAGE_MAX_SIZE,
+  maxFiles: MESSAGE_IMAGE_MAX_FILES,
+  defaultExt: '.jpg',
+  fileFilter: imageUploadFilter,
 });
 
 export class MessageController {

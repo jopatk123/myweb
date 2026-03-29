@@ -61,13 +61,19 @@ describe('WebSocketService', () => {
         readyState: 1,
       };
       const mockReq = {
-        headers: { 'x-session-id': 'custom-session-id' },
+        url: '/ws?sessionId=custom-session-id',
+        headers: {},
       };
 
       service.handleConnection(mockSocket, mockReq);
 
+      // Server always sends back its own generated UUID as serverSessionId
       expect(mockSocket.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'connected', sessionId: 'custom-session-id' })
+        JSON.stringify({ type: 'connected', sessionId: 'mock-uuid-1234' })
+      );
+      // Client sessionId from URL is pre-associated
+      expect(service.connections.getClientSessionId('mock-uuid-1234')).toBe(
+        'custom-session-id'
       );
       expect(mockSocket.on).toHaveBeenCalledWith(
         'message',
@@ -77,13 +83,13 @@ describe('WebSocketService', () => {
       expect(mockSocket.on).toHaveBeenCalledWith('error', expect.any(Function));
     });
 
-    it('generates UUID when no x-session-id header', () => {
+    it('generates UUID when no sessionId in URL', () => {
       const mockSocket = {
         send: jest.fn(),
         on: jest.fn(),
         readyState: 1,
       };
-      const mockReq = { headers: {} };
+      const mockReq = { url: '/ws', headers: {} };
 
       service.handleConnection(mockSocket, mockReq);
 

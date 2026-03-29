@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { ONE_DAY_MS } from '../constants/limits.js';
 
 export { validateBody } from './wallpaper.dto.js';
 
@@ -10,7 +11,7 @@ export const startTimerSchema = Joi.object({
 
 export const heartbeatSchema = Joi.object({
   sessionId: Joi.string().max(100).required(),
-  incrementMs: Joi.number().integer().min(0).max(86400000).default(0),
+  incrementMs: Joi.number().integer().min(0).max(ONE_DAY_MS).default(0),
   lastUpdate: Joi.string().isoDate().allow(null).optional(),
 });
 
@@ -20,7 +21,7 @@ export const stopTimerSchema = Joi.object({
   finalIncrementMs: Joi.number()
     .integer()
     .min(0)
-    .max(86400000)
+    .max(ONE_DAY_MS)
     .allow(null)
     .optional(),
 });

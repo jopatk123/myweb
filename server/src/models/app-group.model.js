@@ -1,6 +1,10 @@
 /**
  * 应用分组模型（单分组）
  */
+import logger from '../utils/logger.js';
+
+const groupLogger = logger.child('AppGroupModel');
+
 export class AppGroupModel {
   constructor(db) {
     this.db = db;
@@ -104,10 +108,7 @@ export class AppGroupModel {
         )
         .run('默认', 'default', 1);
       defaultId = insert.lastInsertRowid;
-      console.log(
-        '[AppGroupModel.softDelete] created default group id=',
-        defaultId
-      );
+      groupLogger.info('[softDelete] created default group', { defaultId });
     }
 
     // 将属于该分组的应用移动到默认分组
@@ -116,19 +117,15 @@ export class AppGroupModel {
         'UPDATE apps SET group_id = ? WHERE group_id = ?'
       );
       const infoUpd = upd.run(defaultId, id);
-      console.log(
-        '[AppGroupModel.softDelete] moved apps count=',
-        infoUpd.changes,
-        'from group=',
-        id,
-        'to default=',
-        defaultId
-      );
+      groupLogger.info('[softDelete] moved apps to default group', {
+        count: infoUpd.changes,
+        fromGroup: id,
+        toDefault: defaultId,
+      });
     } catch (e) {
-      console.warn(
-        '[AppGroupModel.softDelete] failed to move apps:',
-        e?.message || e
-      );
+      groupLogger.warn('[softDelete] failed to move apps', {
+        error: e?.message || String(e),
+      });
     }
 
     // 标记软删除
@@ -140,12 +137,10 @@ export class AppGroupModel {
       WHERE id = ?
     `;
     const info = this.db.prepare(sql).run(id);
-    console.log(
-      '[AppGroupModel.softDelete] soft-deleted id=',
+    groupLogger.info('[softDelete] soft-deleted group', {
       id,
-      'changes=',
-      info.changes
-    );
+      changes: info.changes,
+    });
     return info.changes === undefined ? true : info.changes;
   }
 }

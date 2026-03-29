@@ -1,12 +1,11 @@
 import { WallpaperService } from '../services/wallpaper.service.js';
-import multer from 'multer';
-import path from 'path';
 import { createReadStream, existsSync } from 'fs';
-import { v4 as uuidv4 } from 'uuid';
 import { normalizeKeys } from '../utils/case-helper.js';
 import { parseEnvByteSize } from '../utils/env.js';
 import archiver from 'archiver';
 import logger from '../utils/logger.js';
+import { createUploader, imageOnlyFilter } from '../utils/uploader.js';
+import { DEFAULT_WALLPAPER_MAX_SIZE } from '../constants/limits.js';
 import {
   WALLPAPERS_DIR,
   toUploadsAbsolutePath,
@@ -20,36 +19,13 @@ function sanitizePositiveIds(ids) {
   return ids.map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0);
 }
 
-// 配置文件上传
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, WALLPAPERS_DIR);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const filename = `${uuidv4()}${ext}`;
-    cb(null, filename);
-  },
-});
-
-const DEFAULT_WALLPAPER_UPLOAD_SIZE = 500 * 1024 * 1024; // 500MB
-const WALLPAPER_UPLOAD_SIZE = parseEnvByteSize(
-  'WALLPAPER_MAX_UPLOAD_SIZE',
-  DEFAULT_WALLPAPER_UPLOAD_SIZE
-);
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: WALLPAPER_UPLOAD_SIZE,
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('只支持图片文件'), false);
-    }
-  },
+const upload = createUploader({
+  destination: WALLPAPERS_DIR,
+  maxFileSize: parseEnvByteSize(
+    'WALLPAPER_MAX_UPLOAD_SIZE',
+    DEFAULT_WALLPAPER_MAX_SIZE
+  ),
+  fileFilter: imageOnlyFilter,
 });
 
 export class WallpaperController {

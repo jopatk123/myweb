@@ -4,6 +4,9 @@
  */
 import { getDb } from '../../utils/dbPool.js';
 import { AbstractPlayerModel } from '../../services/multiplayer/abstract-models.js';
+import logger from '../../utils/logger.js';
+
+const playerLogger = logger.child('GenericPlayerModel');
 
 export class GenericPlayerModel extends AbstractPlayerModel {
   constructor(tableName = 'game_players', options = {}) {
@@ -382,7 +385,7 @@ export class GenericPlayerModel extends AbstractPlayerModel {
         deleted_at: player.deleted_at ? new Date(player.deleted_at) : null,
       };
     } catch (error) {
-      console.error('解析玩家数据失败:', error);
+      playerLogger.error('解析玩家数据失败', { error });
       return {
         ...player,
         is_ready: Boolean(player.is_ready),
@@ -462,6 +465,6 @@ export class GenericPlayerModel extends AbstractPlayerModel {
       db.exec(indexSql);
     });
 
-    console.log(`数据表 ${tableName} 创建完成`);
+    playerLogger.info(`数据表 ${tableName} 创建完成`);
   }
 }

@@ -1,9 +1,6 @@
 import express from 'express';
-import multer from 'multer';
-import path from 'path';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
-import { v4 as uuidv4 } from 'uuid';
 import {
   FileService,
   detectTypeCategory,
@@ -13,6 +10,9 @@ import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import { normaliseUploadedFileName } from '../utils/upload.js';
 import logger from '../utils/logger.js';
+import { createUploader } from '../utils/uploader.js';
+import { DEFAULT_FILE_MAX_SIZE } from '../constants/limits.js';
+import { validateQuery, validateId, listFilesSchema } from '../dto/file.dto.js';
 import {
   FILES_DIR,
   toUploadsAbsolutePath,
@@ -21,10 +21,9 @@ import {
 
 const fileLogger = logger.child('FileController');
 
-const DEFAULT_MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1GiB
 const MAX_UPLOAD_SIZE = parseEnvByteSize(
   'FILE_MAX_UPLOAD_SIZE',
-  DEFAULT_MAX_UPLOAD_SIZE
+  DEFAULT_FILE_MAX_SIZE
 );
 const MAX_UPLOAD_FILES = Math.max(
   1,
@@ -91,19 +90,9 @@ const fileFilter = (_req, file, cb) => {
   return cb(err);
 };
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, FILES_DIR);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '';
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: MAX_UPLOAD_SIZE },
+const upload = createUploader({
+  destination: FILES_DIR,
+  maxFileSize: MAX_UPLOAD_SIZE,
   fileFilter,
 });
 
@@ -169,8 +158,8 @@ export function createFileRoutes(db) {
     }
   );
 
-  // 列表
-  router.get('/', async (req, res, next) => {
+  // 列表（带 Joi 查询参数验证）
+  router.get('/', validateQuery(listFilesSchema), async (req, res, next) => {
     try {
       const { page = 1, limit = 20, type = '', search = '' } = req.query;
       const result = service.list({
@@ -201,8 +190,8 @@ export function createFileRoutes(db) {
     }
   });
 
-  // 详情
-  router.get('/:id', async (req, res, next) => {
+  // 详情（带 id 校验）
+  router.get('/:id', validateId('id'), async (req, res, next) => {
     try {
       const row = service.get(req.params.id);
       res.json({ code: 200, success: true, data: row, message: '获取成功' });
@@ -211,8 +200,8 @@ export function createFileRoutes(db) {
     }
   });
 
-  // 下载
-  router.get('/:id/download', async (req, res, next) => {
+  // 下载（带 id 校验）
+  router.get('/:id/download', validateId('id'), async (req, res, next) => {
     try {
       const row = service.get(req.params.id);
       // 将相对路径解析为磁盘路径
@@ -255,15 +244,20 @@ export function createFileRoutes(db) {
     }
   });
 
-  // 删除
-  router.delete('/:id', adminGuard, async (req, res, next) => {
-    try {
-      await service.remove(req.params.id);
-      res.json({ code: 200, success: true, message: '文件删除成功' });
-    } catch (error) {
-      next(error);
+  // 删除（带 id 校验）
+  router.delete(
+    '/:id',
+    adminGuard,
+    validateId('id'),
+    async (req, res, next) => {
+      try {
+        await service.remove(req.params.id);
+        res.json({ code: 200, success: true, message: '文件删除成功' });
+      } catch (error) {
+        next(error);
+      }
     }
-  });
+  );
 
   return router;
 }

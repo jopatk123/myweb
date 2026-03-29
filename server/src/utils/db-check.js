@@ -3,6 +3,9 @@
  */
 import { getDb, setDb } from './dbPool.js';
 import { initDatabase } from '../config/database.js';
+import logger from './logger.js';
+
+const dbCheckLogger = logger.child('DbCheck');
 
 /**
  * 检查数据库表是否存在
@@ -41,7 +44,9 @@ export function checkDatabaseTables() {
         missingTables.push(tableName);
       }
     } catch (error) {
-      console.error(`检查表 ${tableName} 时出错:`, error.message);
+      dbCheckLogger.error(`检查表 ${tableName} 时出错`, {
+        error: error.message,
+      });
       missingTables.push(tableName);
     }
   }
@@ -64,7 +69,7 @@ export function checkDatabaseConnection() {
     const result = stmt.get();
     return result && result.test === 1;
   } catch (error) {
-    console.error('数据库连接检查失败:', error.message);
+    dbCheckLogger.error('数据库连接检查失败', { error: error.message });
     return false;
   }
 }
@@ -87,7 +92,7 @@ export function getDatabaseStatus() {
  * 主检查函数
  */
 export async function performDatabaseCheck() {
-  console.log('🔍 检查数据库状态...');
+  dbCheckLogger.info('检查数据库状态...');
 
   try {
     // 初始化数据库连接
@@ -97,27 +102,26 @@ export async function performDatabaseCheck() {
     const status = getDatabaseStatus();
 
     if (status.connection === 'error') {
-      console.error('❌ 数据库连接失败');
+      dbCheckLogger.error('数据库连接失败');
       return false;
     }
 
-    console.log('✅ 数据库连接正常');
+    dbCheckLogger.info('数据库连接正常');
 
     if (status.tables.missingTables.length > 0) {
-      console.warn('⚠️ 缺少以下数据库表:');
-      status.tables.missingTables.forEach(table => {
-        console.warn(`   - ${table}`);
+      dbCheckLogger.warn('缺少数据库表', {
+        missing: status.tables.missingTables,
       });
-      console.log('💡 请运行 npm run migrate 来创建缺失的表');
+      dbCheckLogger.info('请运行 npm run migrate 来创建缺失的表');
       return false;
     }
 
-    console.log('✅ 所有必要的数据库表都存在');
-    console.log(`📊 数据库状态: ${status.status}`);
+    dbCheckLogger.info('所有必要的数据库表都存在');
+    dbCheckLogger.info(`数据库状态: ${status.status}`);
 
     return status.status === 'healthy';
   } catch (error) {
-    console.error('❌ 数据库检查过程中发生错误:', error.message);
+    dbCheckLogger.error('数据库检查过程中发生错误', { error: error.message });
     return false;
   }
 }
@@ -129,7 +133,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(isHealthy ? 0 : 1);
     })
     .catch(error => {
-      console.error('❌ 数据库检查失败:', error.message);
+      // 独立 CLI 脚本 - 使用 console.error 确保输出到 stderr
+      console.error('\u274c 数据库检查失败:', error.message);
       process.exit(1);
     });
 }

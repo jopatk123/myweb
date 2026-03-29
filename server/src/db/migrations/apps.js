@@ -2,6 +2,10 @@
  * Ensure apps table has required columns like is_builtin and target_url.
  * @param {import('better-sqlite3').Database} db
  */
+import logger from '../../utils/logger.js';
+
+const migrationLogger = logger.child('AppsMigration');
+
 export function ensureAppsColumns(db) {
   const existingColumns = db.prepare('PRAGMA table_info(apps)').all();
   const existingColumnNames = new Set(existingColumns.map(col => col.name));
@@ -9,7 +13,7 @@ export function ensureAppsColumns(db) {
   const maybeAddColumn = (name, type) => {
     if (!existingColumnNames.has(name)) {
       db.prepare(`ALTER TABLE apps ADD COLUMN ${name} ${type}`).run();
-      console.log(`🛠️ Added column to apps: ${name} ${type}`);
+      migrationLogger.info(`Added column to apps: ${name} ${type}`);
     }
   };
 

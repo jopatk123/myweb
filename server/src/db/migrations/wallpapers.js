@@ -2,6 +2,10 @@
  * Ensure wallpapers table has required columns and perform migrations to remove deprecated columns.
  * @param {import('better-sqlite3').Database} db
  */
+import logger from '../../utils/logger.js';
+
+const migrationLogger = logger.child('WallpaperMigration');
+
 export function ensureWallpaperColumns(db) {
   const existingColumns = db.prepare('PRAGMA table_info(wallpapers)').all();
   const existingColumnNames = new Set(existingColumns.map(col => col.name));
@@ -9,7 +13,7 @@ export function ensureWallpaperColumns(db) {
   const maybeAddColumn = (name, type) => {
     if (!existingColumnNames.has(name)) {
       db.prepare(`ALTER TABLE wallpapers ADD COLUMN ${name} ${type}`).run();
-      console.log(`🛠️ Added column to wallpapers: ${name} ${type}`);
+      migrationLogger.info(`Added column to wallpapers: ${name} ${type}`);
     }
   };
 
@@ -21,8 +25,8 @@ export function ensureWallpaperColumns(db) {
 
   if (existingColumnNames.has('description')) {
     try {
-      console.log(
-        '🛠️ Detected deprecated `description` column on wallpapers, starting migration to remove it'
+      migrationLogger.info(
+        'Detected deprecated `description` column on wallpapers, starting migration to remove it'
       );
       const migrateWallpapers = db.transaction(() => {
         db.exec(`
@@ -63,13 +67,13 @@ export function ensureWallpaperColumns(db) {
 
       migrateWallpapers();
 
-      console.log(
-        '✅ Migration complete: `description` column removed from wallpapers'
+      migrationLogger.info(
+        'Migration complete: `description` column removed from wallpapers'
       );
     } catch (err) {
-      console.error(
-        '❌ Failed to migrate wallpapers table to remove description column:',
-        err
+      migrationLogger.error(
+        'Failed to migrate wallpapers table to remove description column',
+        { error: err }
       );
       throw err;
     }
@@ -82,8 +86,8 @@ export function ensureWallpaperColumns(db) {
     db.prepare(
       'ALTER TABLE wallpaper_groups ADD COLUMN is_current BOOLEAN DEFAULT 0'
     ).run();
-    console.log(
-      '🛠️ Added column to wallpaper_groups: is_current BOOLEAN DEFAULT 0'
+    migrationLogger.info(
+      'Added column to wallpaper_groups: is_current BOOLEAN DEFAULT 0'
     );
     try {
       const cnt = db
@@ -95,19 +99,21 @@ export function ensureWallpaperColumns(db) {
         db.prepare(
           'UPDATE wallpaper_groups SET is_current = 1 WHERE is_default = 1 AND deleted_at IS NULL'
         ).run();
-        console.log(
-          '✅ Set default group as current after adding is_current column'
+        migrationLogger.info(
+          'Set default group as current after adding is_current column'
         );
       }
     } catch (e) {
-      console.warn('Could not set default group as current:', e);
+      migrationLogger.warn('Could not set default group as current', {
+        error: e?.message,
+      });
     }
   }
 
   if (groupColumnNames.has('description')) {
     try {
-      console.log(
-        '🛠️ Detected deprecated `description` column on wallpaper_groups, starting migration to remove it'
+      migrationLogger.info(
+        'Detected deprecated `description` column on wallpaper_groups, starting migration to remove it'
       );
       const migrateGroups = db.transaction(() => {
         db.exec(`
@@ -140,13 +146,13 @@ export function ensureWallpaperColumns(db) {
 
       migrateGroups();
 
-      console.log(
-        '✅ Migration complete: `description` column removed from wallpaper_groups'
+      migrationLogger.info(
+        'Migration complete: `description` column removed from wallpaper_groups'
       );
     } catch (err) {
-      console.error(
-        '❌ Failed to migrate wallpaper_groups table to remove description column:',
-        err
+      migrationLogger.error(
+        'Failed to migrate wallpaper_groups table to remove description column',
+        { error: err }
       );
       throw err;
     }

@@ -133,9 +133,10 @@ describe('Files API routes', () => {
       null
     );
 
+    // Joi 验证最大 limit 为 200，底层 model 会再钳到 100
     const res = await request(app)
       .get('/api/files')
-      .query({ limit: 1000 })
+      .query({ limit: 200 })
       .expect(200);
 
     expect(res.body.data.pagination.limit).toBeLessThanOrEqual(100);
