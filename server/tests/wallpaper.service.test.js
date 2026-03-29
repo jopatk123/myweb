@@ -4,10 +4,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createTestDatabase, closeTestDatabase } from './helpers/test-db.js';
 import { WallpaperService } from '../src/services/wallpaper.service.js';
+import { WALLPAPERS_DIR } from '../src/utils/upload-path.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const tempDir = path.join(__dirname, 'tmp-wallpapers');
+const tempDir = path.join(WALLPAPERS_DIR, 'tmp-wallpapers');
 
 let db;
 let service;
