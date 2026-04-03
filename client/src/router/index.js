@@ -12,7 +12,7 @@ const routes = [
     component: () => import('@/views/WallpaperManagement.vue'),
   },
   {
-    path: '/myapps',
+    path: '/apps',
     name: 'AppManagement',
     component: () => import('@/views/AppManagement.vue'),
   },

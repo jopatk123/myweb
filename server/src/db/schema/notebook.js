@@ -13,7 +13,7 @@ export function initNotebookTables(db) {
       title TEXT NOT NULL,
       description TEXT,
       category TEXT,
-      priority TEXT DEFAULT 'medium',
+      priority TEXT DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high')),
       completed INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

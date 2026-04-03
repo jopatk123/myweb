@@ -95,7 +95,7 @@ export function createAppRoutes(db) {
     controller.deleteGroup(req, res, next)
   );
 
-  // 调试：未匹配到的 myapps 子路由
+  // 调试：未匹配到的 apps 子路由
   router.use((req, res) => {
     res.status(404).json({
       code: 404,

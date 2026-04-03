@@ -33,10 +33,10 @@ paths:
   /api/wallpapers/groups/current:
     $ref: './openapi/paths/wallpapers.yaml#/groupsCurrent'
 
-  /api/myapps:
+  /api/apps:
     $ref: './openapi/paths/apps.yaml#/list'
 
-  /api/myapps/{id}:
+  /api/apps/{id}:
     $ref: './openapi/paths/apps.yaml#/byId'
 
   /api/files/upload:

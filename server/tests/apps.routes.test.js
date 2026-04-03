@@ -45,7 +45,7 @@ describe('Apps routes - autostart toggles', () => {
     const id = insertApp({ name: '数字ID应用', slug: 'by-id-app' });
 
     const res = await request(app)
-      .put(`/api/myapps/${id}/autostart`)
+      .put(`/api/apps/${id}/autostart`)
       .send({ is_autostart: true })
       .expect(200);
 
@@ -65,7 +65,7 @@ describe('Apps routes - autostart toggles', () => {
     insertApp({ name: '自定义Slug应用', slug: 'custom-slug', isAutostart: 0 });
 
     const res = await request(app)
-      .put('/api/myapps/custom-slug/autostart')
+      .put('/api/apps/custom-slug/autostart')
       .send({ is_autostart: true })
       .expect(200);
 
@@ -78,7 +78,7 @@ describe('Apps routes - autostart toggles', () => {
 
   it('returns 404 when toggling autostart for missing app', async () => {
     const res = await request(app)
-      .put('/api/myapps/missing-app/autostart')
+      .put('/api/apps/missing-app/autostart')
       .send({ is_autostart: true })
       .expect(404);
 
@@ -95,7 +95,7 @@ describe('Apps routes - update app', () => {
     });
 
     const res = await request(app)
-      .put(`/api/myapps/${id}`)
+      .put(`/api/apps/${id}`)
       .send({
         name: '更新后的应用名称',
         target_url: 'https://updated.example.com',
@@ -124,7 +124,7 @@ describe('Apps routes - update app', () => {
     });
 
     const res = await request(app)
-      .put(`/api/myapps/${id}`)
+      .put(`/api/apps/${id}`)
       .send({
         name: '尝试修改内置应用',
       })
@@ -135,7 +135,7 @@ describe('Apps routes - update app', () => {
 
   it('returns 404 when updating non-existent app', async () => {
     const res = await request(app)
-      .put('/api/myapps/99999')
+      .put('/api/apps/99999')
       .send({
         name: '更新不存在的应用',
       })
@@ -152,7 +152,7 @@ describe('Apps routes - update app', () => {
     });
 
     const res = await request(app)
-      .put(`/api/myapps/${id}`)
+      .put(`/api/apps/${id}`)
       .send({
         name: '更新应用',
         is_builtin: true, // 应该被忽略
@@ -173,7 +173,7 @@ describe('Apps routes - update app', () => {
     });
 
     const res = await request(app)
-      .put(`/api/myapps/${id}`)
+      .put(`/api/apps/${id}`)
       .send({
         name: '更新应用',
         icon_filename: 'custom-icon.png', // 直接提供图标文件名

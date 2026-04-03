@@ -45,7 +45,7 @@ describe('useApps composable', () => {
 
     await state.fetchApps();
 
-    expect(apiFetch).toHaveBeenCalledWith('/myapps?page=1&limit=20');
+    expect(apiFetch).toHaveBeenCalledWith('/apps?page=1&limit=20');
     expect(state.apps.value.map(app => app.name)).toEqual([
       'App One',
       'App Two',
@@ -63,7 +63,7 @@ describe('useApps composable', () => {
     });
     await state.fetchApps({}, false);
 
-    expect(apiFetch).toHaveBeenCalledWith('/myapps');
+    expect(apiFetch).toHaveBeenCalledWith('/apps');
     expect(state.apps.value).toHaveLength(3);
     expect(state.total.value).toBe(3);
 
@@ -94,7 +94,7 @@ describe('useApps composable', () => {
 
     const result = await state.fetchAppsList({ visible: true });
 
-    expect(apiFetch).toHaveBeenCalledWith('/myapps?visible=1');
+    expect(apiFetch).toHaveBeenCalledWith('/apps?visible=1');
     expect(result.map(app => app.name)).toEqual([
       'Desktop App',
       'Autostart App',
@@ -117,7 +117,7 @@ describe('useApps composable', () => {
     await expect(state.fetchAppsList({ groupId: 'g1' })).resolves.toEqual([
       { id: 1, name: 'Only Item' },
     ]);
-    expect(apiFetch).toHaveBeenCalledWith('/myapps?groupId=g1');
+    expect(apiFetch).toHaveBeenCalledWith('/apps?groupId=g1');
 
     apiFetch.mockResolvedValueOnce({
       ok: false,
@@ -134,7 +134,7 @@ describe('useApps composable', () => {
     });
 
     await state.fetchGroups();
-    expect(apiFetch).toHaveBeenCalledWith('/myapps/groups/all');
+    expect(apiFetch).toHaveBeenCalledWith('/apps/groups/all');
     expect(state.groups.value).toEqual([{ id: 'default', name: '默认分组' }]);
 
     apiFetch.mockResolvedValueOnce({
@@ -161,12 +161,12 @@ describe('useApps composable', () => {
 
     const result = await state.createGroup({ name: '新分组' });
     expect(result).toEqual(created);
-    expect(apiFetch).toHaveBeenNthCalledWith(1, '/myapps/groups', {
+    expect(apiFetch).toHaveBeenNthCalledWith(1, '/apps/groups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: '新分组' }),
     });
-    expect(apiFetch).toHaveBeenNthCalledWith(2, '/myapps/groups/all');
+    expect(apiFetch).toHaveBeenNthCalledWith(2, '/apps/groups/all');
 
     apiFetch.mockResolvedValueOnce({
       ok: false,
@@ -308,10 +308,10 @@ describe('useApps composable', () => {
     await expect(state.setAutostart('test-app', true)).rejects.toThrow(
       'Server boom'
     );
-    expect(apiFetch).toHaveBeenCalledWith('/myapps/test-app/autostart', {
+    expect(apiFetch).toHaveBeenCalledWith('/apps/test-app/autostart', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_autostart: true }),
+      body: JSON.stringify({ isAutostart: true }),
     });
 
     apiFetch.mockResolvedValueOnce({
@@ -345,7 +345,7 @@ describe('useApps composable', () => {
     const payload = { name: 'Updated App', target_url: 'https://example.com' };
     const result = await state.updateApp(1, payload);
 
-    expect(apiFetch).toHaveBeenCalledWith('/myapps/1', {
+    expect(apiFetch).toHaveBeenCalledWith('/apps/1', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -381,10 +381,10 @@ describe('useApps composable', () => {
     await expect(state.setAutostart('space id/1', true)).rejects.toThrow(
       'Request failed: 503'
     );
-    expect(apiFetch).toHaveBeenCalledWith('/myapps/space%20id%2F1/autostart', {
+    expect(apiFetch).toHaveBeenCalledWith('/apps/space%20id%2F1/autostart', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_autostart: true }),
+      body: JSON.stringify({ isAutostart: true }),
     });
   });
 });

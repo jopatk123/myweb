@@ -18,6 +18,7 @@ export function initFileTables(db) {
       type_category TEXT NOT NULL CHECK(type_category IN ('image', 'video', 'audio', 'word', 'excel', 'ppt', 'pdf', 'text', 'code', 'archive', 'other')),
       file_url TEXT,
       uploader_id TEXT,
+      deleted_at DATETIME DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -25,6 +26,7 @@ export function initFileTables(db) {
     CREATE INDEX IF NOT EXISTS idx_files_uploader_id ON files(uploader_id);
     CREATE INDEX IF NOT EXISTS idx_files_type_category ON files(type_category);
     CREATE INDEX IF NOT EXISTS idx_files_created_at ON files(created_at);
+    CREATE INDEX IF NOT EXISTS idx_files_deleted_at ON files(deleted_at);
   `;
 
   db.exec(filesTableSql);

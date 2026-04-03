@@ -41,7 +41,7 @@ function createSeedingDb() {
       is_autostart INTEGER DEFAULT 0,
       is_builtin INTEGER DEFAULT 0,
       target_url TEXT,
-      is_deleted INTEGER DEFAULT 0,
+      deleted_at DATETIME DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -59,11 +59,11 @@ describe('ensureBuiltinApps', () => {
     const db = createSeedingDb();
 
     const insert = db.prepare(
-      `INSERT INTO apps (name, slug, description, icon_filename, is_visible, is_builtin, is_deleted)
+      `INSERT INTO apps (name, slug, description, icon_filename, is_visible, is_builtin, deleted_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     );
 
-    insert.run('贪吃蛇', 'snake', 'old builtin', 'snake-128.png', 1, 1, 0);
+    insert.run('贪吃蛇', 'snake', 'old builtin', 'snake-128.png', 1, 1, null);
     insert.run(
       '计算器',
       'calculator',
@@ -71,24 +71,24 @@ describe('ensureBuiltinApps', () => {
       'calculator-128.png',
       1,
       1,
-      0
+      null
     );
 
     ensureBuiltinApps(db);
 
     const snake = db
-      .prepare('SELECT is_deleted FROM apps WHERE slug = ?')
+      .prepare('SELECT deleted_at FROM apps WHERE slug = ?')
       .get('snake');
     const calculator = db
-      .prepare('SELECT is_deleted, is_builtin FROM apps WHERE slug = ?')
+      .prepare('SELECT deleted_at, is_builtin FROM apps WHERE slug = ?')
       .get('calculator');
     const notebook = db
-      .prepare('SELECT is_deleted, is_builtin FROM apps WHERE slug = ?')
+      .prepare('SELECT deleted_at, is_builtin FROM apps WHERE slug = ?')
       .get('notebook');
 
-    expect(snake.is_deleted).toBe(1);
-    expect(calculator).toMatchObject({ is_deleted: 0, is_builtin: 1 });
-    expect(notebook).toMatchObject({ is_deleted: 0, is_builtin: 1 });
+    expect(snake.deleted_at).not.toBeNull();
+    expect(calculator).toMatchObject({ deleted_at: null, is_builtin: 1 });
+    expect(notebook).toMatchObject({ deleted_at: null, is_builtin: 1 });
 
     db.close();
   });
@@ -97,21 +97,29 @@ describe('ensureBuiltinApps', () => {
     const db = createSeedingDb();
 
     const insert = db.prepare(
-      `INSERT INTO apps (name, slug, description, icon_filename, is_visible, is_builtin, is_deleted)
+      `INSERT INTO apps (name, slug, description, icon_filename, is_visible, is_builtin, deleted_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     );
 
-    insert.run('旧笔记本', 'notebook', null, null, 1, 0, 1);
+    insert.run(
+      '旧笔记本',
+      'notebook',
+      null,
+      null,
+      1,
+      0,
+      new Date().toISOString()
+    );
 
     ensureBuiltinApps(db);
 
     const notebook = db
       .prepare(
-        'SELECT is_deleted, is_builtin, description, icon_filename FROM apps WHERE slug = ?'
+        'SELECT deleted_at, is_builtin, description, icon_filename FROM apps WHERE slug = ?'
       )
       .get('notebook');
 
-    expect(notebook.is_deleted).toBe(0);
+    expect(notebook.deleted_at).toBeNull();
     expect(notebook.is_builtin).toBe(1);
     expect(notebook.description).toBeTruthy();
     expect(notebook.icon_filename).toBeTruthy();
@@ -154,14 +162,14 @@ describe('seedAppsIfEmpty', () => {
   test('does not seed when non-deleted apps already exist', () => {
     const db = createSeedingDb();
     db.prepare(
-      `INSERT INTO apps (name, slug, description, icon_filename, is_visible, is_builtin, is_deleted)
+      `INSERT INTO apps (name, slug, description, icon_filename, is_visible, is_builtin, deleted_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run('Existing App', 'existing-app', 'existing', 'x.png', 1, 0, 0);
+    ).run('Existing App', 'existing-app', 'existing', 'x.png', 1, 0, null);
 
     seedAppsIfEmpty(db);
 
     const count = db
-      .prepare('SELECT COUNT(1) AS c FROM apps WHERE is_deleted = 0')
+      .prepare('SELECT COUNT(1) AS c FROM apps WHERE deleted_at IS NULL')
       .get();
     expect(count.c).toBe(1);
 

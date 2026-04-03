@@ -22,7 +22,7 @@ function removeObsoleteBuiltinApps(db) {
   const placeholders = builtinSlugs.map(() => '?').join(',');
   const rows = db
     .prepare(
-      `SELECT id, slug FROM apps WHERE is_builtin = 1 AND is_deleted = 0 AND slug NOT IN (${placeholders})`
+      `SELECT id, slug FROM apps WHERE is_builtin = 1 AND deleted_at IS NULL AND slug NOT IN (${placeholders})`
     )
     .all(...builtinSlugs);
 
@@ -31,7 +31,7 @@ function removeObsoleteBuiltinApps(db) {
   }
 
   const deleteStmt = db.prepare(
-    'UPDATE apps SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    'UPDATE apps SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
   );
 
   for (const row of rows) {
@@ -43,7 +43,7 @@ function removeObsoleteBuiltinApps(db) {
 export function seedAppsIfEmpty(db) {
   try {
     const row = db
-      .prepare('SELECT COUNT(1) AS c FROM apps WHERE is_deleted = 0')
+      .prepare('SELECT COUNT(1) AS c FROM apps WHERE deleted_at IS NULL')
       .get();
     if (row && row.c === 0) {
       // 确保默认分组存在
@@ -69,7 +69,7 @@ export function seedAppsIfEmpty(db) {
       seedLogger.info('Seeded example app: calculator');
 
       const hasNotebook = db
-        .prepare('SELECT id FROM apps WHERE slug = ? AND is_deleted = 0')
+        .prepare('SELECT id FROM apps WHERE slug = ? AND deleted_at IS NULL')
         .get('notebook');
       if (!hasNotebook) {
         try {
@@ -99,13 +99,13 @@ export function ensureBuiltinApps(db) {
     const builtins = BUILTIN_APPS;
 
     const findStmt = db.prepare(
-      'SELECT id, is_deleted, is_builtin, description, icon_filename, target_url, is_visible FROM apps WHERE slug = ?'
+      'SELECT id, deleted_at, is_builtin, description, icon_filename, target_url, is_visible FROM apps WHERE slug = ?'
     );
     const insertStmt = db.prepare(
-      `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_builtin, target_url, is_deleted) VALUES (?,?,?,?,?,?,?,?,?)`
+      `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_builtin, target_url) VALUES (?,?,?,?,?,?,?,?)`
     );
     const restoreStmt = db.prepare(
-      `UPDATE apps SET is_deleted = 0, is_builtin = 1, updated_at = CURRENT_TIMESTAMP WHERE slug = ?`
+      `UPDATE apps SET deleted_at = NULL, is_builtin = 1, updated_at = CURRENT_TIMESTAMP WHERE slug = ?`
     );
 
     // ensure default group id exists
@@ -129,14 +129,13 @@ export function ensureBuiltinApps(db) {
           gid,
           b.is_visible,
           b.is_builtin,
-          b.target_url,
-          0
+          b.target_url
         );
         seedLogger.info(`Inserted builtin app: ${b.slug}`);
         continue;
       }
 
-      if (row.is_deleted === 1) {
+      if (row.deleted_at !== null && row.deleted_at !== undefined) {
         restoreStmt.run(b.slug);
         seedLogger.info(`Restored builtin app: ${b.slug}`);
       }

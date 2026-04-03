@@ -1,7 +1,7 @@
 /**
  * 留言服务（构造函数注入 db）
  */
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { MessageModel } from '../models/message.model.js';
@@ -87,15 +87,15 @@ export class MessageService {
             if (image.path) {
               const imagePath = path.join(__dirname, '../../', image.path);
               try {
-                if (fs.existsSync(imagePath)) {
-                  fs.unlinkSync(imagePath);
-                  msgServiceLogger.info('删除图片文件', { path: imagePath });
-                }
+                await fs.unlink(imagePath);
+                msgServiceLogger.info('删除图片文件', { path: imagePath });
               } catch (error) {
-                msgServiceLogger.error('删除图片文件失败', {
-                  path: imagePath,
-                  error,
-                });
+                if (error.code !== 'ENOENT') {
+                  msgServiceLogger.error('删除图片文件失败', {
+                    path: imagePath,
+                    error,
+                  });
+                }
               }
             }
           }

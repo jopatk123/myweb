@@ -161,7 +161,7 @@ export async function createApp(options = {}) {
   setDb(db);
 
   app.use('/api/wallpapers', createWallpaperRoutes(db));
-  app.use('/api/myapps', createAppRoutes(db));
+  app.use('/api/apps', createAppRoutes(db));
   app.use('/api/files', createFileRoutes(db));
   app.use('/api/notebook', createNotebookNotesRoutes(db));
   app.use('/api/work-timer', createWorkTimerRoutes(db));
@@ -176,7 +176,7 @@ export async function createApp(options = {}) {
       version: '1.0.0',
       endpoints: {
         wallpapers: '/api/wallpapers',
-        apps: '/api/myapps',
+        apps: '/api/apps',
         files: '/api/files',
         notebook: '/api/notebook',
         workTimer: '/api/work-timer',
