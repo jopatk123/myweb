@@ -24,8 +24,9 @@ jest.unstable_mockModule('../../src/utils/logger.js', () => {
   return { default: childLogger, logger: childLogger };
 });
 
-const { WebSocketService } =
-  await import('../../src/services/websocket.service.js');
+const { WebSocketService } = await import(
+  '../../src/services/websocket.service.js'
+);
 
 describe('WebSocketService', () => {
   let service;
@@ -277,6 +278,202 @@ describe('WebSocketService', () => {
       service.connections.associate('s1', 'c1');
       expect(service.serverToClient.get('s1')).toBe('c1');
       expect(service.clientToServer.get('c1')).toBe('s1');
+    });
+  });
+
+  describe('连接数限制', () => {
+    it('超出最大连接数时拒绝新连接并调用 close', () => {
+      // 填满连接池
+      for (let i = 0; i < 200; i++) {
+        const s = {
+          send: jest.fn(),
+          on: jest.fn(),
+          readyState: 1,
+          terminate: jest.fn(),
+        };
+        service.connections.register(`server-${i}`, s);
+      }
+
+      const newSocket = {
+        send: jest.fn(),
+        on: jest.fn(),
+        close: jest.fn(),
+        readyState: 1,
+        terminate: jest.fn(),
+      };
+      const req = { url: '/ws', headers: {} };
+
+      service.handleConnection(newSocket, req);
+
+      // 拒绝：socket.close 被调用，socket 未注册到 connections
+      expect(newSocket.close).toHaveBeenCalledWith(1013, 'Server overloaded');
+      // 连接数保持 200，没有增加
+      expect(service.getOnlineCount()).toBe(200);
+    });
+
+    it('未超出最大连接数时正常接受连接', () => {
+      const socket = {
+        send: jest.fn(),
+        on: jest.fn(),
+        close: jest.fn(),
+        readyState: 1,
+        terminate: jest.fn(),
+      };
+      const req = { url: '/ws', headers: {} };
+
+      service.handleConnection(socket, req);
+
+      expect(socket.close).not.toHaveBeenCalled();
+      expect(service.getOnlineCount()).toBe(1);
+    });
+  });
+
+  describe('消息频率限制', () => {
+    it('_isRateLimited 在限额内返回 false', () => {
+      const id = 'rate-test-1';
+      // 连续调用 MSG_RATE_LIMIT 次（30 次），应全部不限流
+      for (let i = 0; i < 30; i++) {
+        expect(service._isRateLimited(id)).toBe(false);
+      }
+    });
+
+    it('_isRateLimited 超过限额后返回 true', () => {
+      const id = 'rate-test-2';
+      for (let i = 0; i < 30; i++) {
+        service._isRateLimited(id); // 消耗配额
+      }
+      // 第 31 次应超限
+      expect(service._isRateLimited(id)).toBe(true);
+    });
+
+    it('超出消息频率的消息不被处理', async () => {
+      const handler = {
+        canHandle: jest.fn(() => true),
+        handle: jest.fn(),
+      };
+      service.handlers.push(handler);
+
+      const socket = {
+        send: jest.fn(),
+        on: jest.fn(),
+        close: jest.fn(),
+        readyState: 1,
+        terminate: jest.fn(),
+      };
+      const req = { url: '/ws', headers: {} };
+      service.handleConnection(socket, req);
+
+      const serverSessionId = 'mock-uuid-1234';
+
+      // 强制耗尽配额
+      for (let i = 0; i < 30; i++) {
+        service._isRateLimited(serverSessionId);
+      }
+
+      // 直接调用 handleMessage，此时应因限流不处理
+      // 通过 on('message') 触发——找到对应的 message 监听器并调用
+      const messageListener = socket.on.mock.calls.find(
+        c => c[0] === 'message'
+      )?.[1];
+      if (messageListener) {
+        messageListener(JSON.stringify({ type: 'customEvent' }));
+      }
+
+      // handler.handle 不应被调用（被限流）
+      expect(handler.handle).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('心跳机制', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      service.stopHeartbeat();
+      jest.useRealTimers();
+    });
+
+    it('stopHeartbeat 清除定时器', () => {
+      const mockServer = {};
+      service.init(mockServer);
+      expect(service._heartbeatTimer).not.toBeNull();
+      service.stopHeartbeat();
+      expect(service._heartbeatTimer).toBeNull();
+    });
+
+    it('心跳发送 ping 并标记 _waitingForPong', () => {
+      const socket = {
+        send: jest.fn(),
+        on: jest.fn(),
+        close: jest.fn(),
+        readyState: 1,
+        terminate: jest.fn(),
+        ping: jest.fn(),
+      };
+      service.connections.register('heartbeat-test', socket);
+
+      const mockServer = {};
+      service.init(mockServer);
+
+      // 触发一次心跳
+      jest.advanceTimersByTime(30_000);
+
+      expect(socket._waitingForPong).toBe(true);
+      expect(socket.ping).toHaveBeenCalled();
+    });
+
+    it('连续两次心跳未收到 pong 时强制断开', () => {
+      const socket = {
+        send: jest.fn(),
+        on: jest.fn(),
+        close: jest.fn(),
+        readyState: 1,
+        terminate: jest.fn(),
+        ping: jest.fn(),
+      };
+      service.connections.register('zombie-conn', socket);
+
+      const mockServer = {};
+      service.init(mockServer);
+
+      // 第一次心跳：标记等待 pong
+      jest.advanceTimersByTime(30_000);
+      expect(socket._waitingForPong).toBe(true);
+
+      // 第二次心跳：没有 pong 回来，应终止连接
+      jest.advanceTimersByTime(30_000);
+
+      expect(socket.terminate).toHaveBeenCalled();
+      expect(service.getOnlineCount()).toBe(0);
+    });
+
+    it('收到 pong 后清除等待标记', () => {
+      const socket = {
+        send: jest.fn(),
+        on: jest.fn(),
+        close: jest.fn(),
+        readyState: 1,
+        terminate: jest.fn(),
+        ping: jest.fn(),
+      };
+      const req = { url: '/ws', headers: {} };
+      service.handleConnection(socket, req);
+
+      const mockServer = {};
+      service.init(mockServer);
+
+      // 触发心跳，标记等待 pong
+      jest.advanceTimersByTime(30_000);
+      expect(socket._waitingForPong).toBe(true);
+
+      // 找到 pong 监听器并触发
+      const pongListener = socket.on.mock.calls.find(c => c[0] === 'pong')?.[1];
+      expect(pongListener).toBeDefined();
+      pongListener();
+
+      // 标记应被清除
+      expect(socket._waitingForPong).toBe(false);
     });
   });
 });

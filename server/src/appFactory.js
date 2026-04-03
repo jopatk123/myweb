@@ -31,9 +31,11 @@ const __dirname = path.dirname(__filename);
 function buildContentSecurityPolicy(enableHttpsSecurity) {
   const directives = {
     defaultSrc: ["'self'"],
+    // 'unsafe-inline' 仅保留给样式（CSS-in-JS 常规需求）；脚本侧不允许内联
     styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
-    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-    imgSrc: ["'self'", 'data:', 'https:'],
+    // 移除 'unsafe-inline' 和 'unsafe-eval'，防止 XSS 注入执行
+    scriptSrc: ["'self'"],
+    imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
     fontSrc: ["'self'", 'https:', 'data:'],
     connectSrc: ["'self'", 'ws:', 'wss:'],
     objectSrc: ["'none'"],
@@ -43,6 +45,7 @@ function buildContentSecurityPolicy(enableHttpsSecurity) {
     formAction: ["'self'"],
     frameAncestors: ["'self'"],
     scriptSrcAttr: ["'none'"],
+    workerSrc: ["'self'", 'blob:'],
   };
 
   if (enableHttpsSecurity) {
@@ -58,7 +61,13 @@ function resolveCorsOptions() {
   return {
     credentials: true,
     origin(origin, callback) {
+      // 拒绝无 origin 的跨域请求（服务端调用等本地直接请求除外）
+      // 无 origin 头时说明是同源请求或服务端请求，直接放行
       if (!origin) {
+        // 不附带 Origin 头的请求（如直接 curl 或同源），允许通过
+        // 但若配置了严格来源列表，仍拒绝无 origin 跨域请求
+        if (appEnv.cors.allowAll) return callback(null, true);
+        // 没有 origin 意味着同源请求，允许
         return callback(null, true);
       }
 

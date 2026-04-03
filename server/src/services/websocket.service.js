@@ -5,11 +5,28 @@ import logger from '../utils/logger.js';
 
 const wsLogger = logger.child('WebSocketService');
 
+/** 最大并发连接数（防止内存耗尽 DoS） */
+const MAX_CONNECTIONS = Number(process.env.WS_MAX_CONNECTIONS) || 200;
+
+/** 消息频率限制：每个连接每秒最多处理的消息数 */
+const MSG_RATE_LIMIT = Number(process.env.WS_MSG_RATE_LIMIT) || 30;
+
+/** 心跳间隔（ms）：服务器主动发送 ping，客户端须在此时间内回 pong */
+const HEARTBEAT_INTERVAL_MS =
+  Number(process.env.WS_HEARTBEAT_INTERVAL) || 30_000;
+
+/** 心跳超时（ms）：超过此时间未收到 pong，强制断开 */
+const HEARTBEAT_TIMEOUT_MS = Number(process.env.WS_HEARTBEAT_TIMEOUT) || 10_000;
+
 export class WebSocketService {
   constructor() {
     this.wss = null;
     this.connections = new ConnectionStore();
     this.handlers = [];
+    /** 消息计数器 Map：serverSessionId -> { count, resetAt } */
+    this._rateLimitMap = new Map();
+    /** 心跳定时器 */
+    this._heartbeatTimer = null;
   }
 
   init(server) {
@@ -22,10 +39,84 @@ export class WebSocketService {
       this.handleConnection(socket, req)
     );
 
+    // 启动服务端心跳检测
+    this._startHeartbeat();
+
     return this.wss;
   }
 
+  /**
+   * 服务端心跳：周期性向所有连接发 ping，若客户端未在超时时间内回 pong 则强制断开
+   */
+  _startHeartbeat() {
+    this._heartbeatTimer = setInterval(() => {
+      this.connections.clients.forEach((socket, serverSessionId) => {
+        if (socket._waitingForPong) {
+          // 上次 ping 未收到 pong，视为僵尸连接，强制断开
+          wsLogger.warn('WebSocket heartbeat timeout, terminating', {
+            serverSessionId,
+          });
+          socket.terminate();
+          this.connections.unregister(serverSessionId);
+          return;
+        }
+        // 标记等待 pong
+        socket._waitingForPong = true;
+        try {
+          socket.ping();
+        } catch {
+          // socket 已断开，忽略
+        }
+      });
+    }, HEARTBEAT_INTERVAL_MS);
+
+    // 避免心跳定时器阻止进程退出
+    if (this._heartbeatTimer.unref) {
+      this._heartbeatTimer.unref();
+    }
+  }
+
+  /**
+   * 停止心跳定时器（测试或关闭时调用）
+   */
+  stopHeartbeat() {
+    if (this._heartbeatTimer) {
+      clearInterval(this._heartbeatTimer);
+      this._heartbeatTimer = null;
+    }
+  }
+
+  /**
+   * 检查消息频率是否超限
+   * @param {string} serverSessionId
+   * @returns {boolean} true 表示超限
+   */
+  _isRateLimited(serverSessionId) {
+    const now = Date.now();
+    let state = this._rateLimitMap.get(serverSessionId);
+    if (!state || now >= state.resetAt) {
+      state = { count: 0, resetAt: now + 1000 };
+      this._rateLimitMap.set(serverSessionId, state);
+    }
+    state.count += 1;
+    return state.count > MSG_RATE_LIMIT;
+  }
+
   handleConnection(socket, req) {
+    // 超出最大连接数，立即拒绝
+    if (this.connections.size >= MAX_CONNECTIONS) {
+      wsLogger.warn('WebSocket max connections reached, rejecting new client', {
+        current: this.connections.size,
+        max: MAX_CONNECTIONS,
+      });
+      try {
+        socket.close(1013, 'Server overloaded');
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
     const serverSessionId = uuidv4();
 
     // 从 URL 查询参数中提取客户端 sessionId（客户端连接时附加: /ws?sessionId=xxx）
@@ -61,7 +152,20 @@ export class WebSocketService {
       })
     );
 
+    // 处理心跳 pong 回包
+    socket.on('pong', () => {
+      socket._waitingForPong = false;
+    });
+
     socket.on('message', raw => {
+      // 消息频率限制
+      if (this._isRateLimited(serverSessionId)) {
+        wsLogger.warn('WebSocket message rate limit exceeded', {
+          serverSessionId,
+        });
+        return;
+      }
+
       let message;
       try {
         message = JSON.parse(raw.toString());
@@ -83,6 +187,7 @@ export class WebSocketService {
     });
 
     socket.on('close', () => {
+      this._rateLimitMap.delete(serverSessionId);
       this.handleDisconnect(serverSessionId).catch(err => {
         wsLogger.error('WebSocket disconnect handling failed', {
           serverSessionId,
@@ -97,6 +202,7 @@ export class WebSocketService {
         serverSessionId,
         error,
       });
+      this._rateLimitMap.delete(serverSessionId);
       this.handleDisconnect(serverSessionId).catch(err => {
         wsLogger.error('WebSocket disconnect handling failed', {
           serverSessionId,

@@ -9,6 +9,7 @@ import {
   WALLPAPER_THUMBNAILS_DIR,
   toUploadsAbsolutePath,
 } from '../utils/upload-path.js';
+import { assertValidImageFile } from '../utils/magic-bytes.js';
 
 const wallpaperLogger = logger.child('WallpaperService');
 
@@ -75,9 +76,17 @@ export class WallpaperService {
     const { filename, originalName, filePath, fileSize, mimeType, name } =
       normalizeWallpaperUploadPayload(fileData);
 
-    // 验证文件类型
+    // 验证文件类型（一级：MIME 类型头检查）
     if (!mimeType || !mimeType.startsWith('image/')) {
       throw new Error('只支持图片文件');
+    }
+
+    // 验证文件内容（二级：魔数验证，防止 MIME 欺骗攻击）
+    if (filePath) {
+      const diskPath = toUploadsAbsolutePath(filePath);
+      if (diskPath) {
+        await assertValidImageFile(diskPath, mimeType);
+      }
     }
 
     // 如果未指定分组，使用默认分组

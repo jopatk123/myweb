@@ -6,6 +6,18 @@ import { createTestDatabase, closeTestDatabase } from './helpers/test-db.js';
 import { WallpaperService } from '../src/services/wallpaper.service.js';
 import { WALLPAPERS_DIR } from '../src/utils/upload-path.js';
 
+/** 最小有效 JPEG 文件头（3 字节魔数 + 填充） */
+const MINIMAL_JPEG = Buffer.from([
+  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01,
+  0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+]);
+
+/** 最小有效 PNG 文件头（8 字节魔数 + IHDR chunk 填充） */
+const MINIMAL_PNG = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49,
+  0x48, 0x44, 0x52,
+]);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const tempDir = path.join(WALLPAPERS_DIR, 'tmp-wallpapers');
@@ -81,7 +93,7 @@ test('uploadWallpaper rejects non-image mime types and preserves error', async (
 
 test('deleteWallpaper removes db record and deletes physical file', async () => {
   const filePathOnDisk = path.join(tempDir, 'delete-me.png');
-  await fs.writeFile(filePathOnDisk, 'fake image data');
+  await fs.writeFile(filePathOnDisk, MINIMAL_PNG);
 
   const created = await service.uploadWallpaper({
     filename: 'delete-me.png',
@@ -116,7 +128,7 @@ test('deleteMultipleWallpapers attempts to cleanup files and returns changes cou
   }));
 
   for (const payload of payloads) {
-    await fs.writeFile(payload.filePath, 'fake data');
+    await fs.writeFile(payload.filePath, MINIMAL_PNG);
   }
 
   const items = [];

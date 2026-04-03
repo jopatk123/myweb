@@ -1,29 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Home from '@/views/Home.vue';
-import WallpaperManagement from '@/views/WallpaperManagement.vue';
-import AppManagement from '@/views/AppManagement.vue';
-import FileManagement from '@/views/FileManagement.vue';
 
 const routes = [
   {
     path: '/',
     name: 'Home',
-    component: Home,
+    component: () => import('@/views/Home.vue'),
   },
   {
     path: '/wallpapers',
     name: 'WallpaperManagement',
-    component: WallpaperManagement,
+    component: () => import('@/views/WallpaperManagement.vue'),
   },
   {
     path: '/myapps',
     name: 'AppManagement',
-    component: AppManagement,
+    component: () => import('@/views/AppManagement.vue'),
   },
   {
     path: '/files',
     name: 'FileManagement',
-    component: FileManagement,
+    component: () => import('@/views/FileManagement.vue'),
   },
 ];
 
