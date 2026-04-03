@@ -11,15 +11,13 @@ export default function useAutostartApps() {
     try {
       const list = await fetchAppsList({ visible: true });
       const autostartApps = list.filter(
-        a =>
-          (a.isAutostart ?? a.is_autostart) === 1 ||
-          (a.isAutostart ?? a.is_autostart) === true
+        a => a.isAutostart === 1 || a.isAutostart === true
       );
 
       // 延迟执行，避免阻塞首次渲染
       setTimeout(() => {
         for (const app of autostartApps) {
-          const url = app.targetUrl || app.target_url;
+          const url = app.targetUrl;
           if (url) {
             try {
               window.open(url, '_blank');

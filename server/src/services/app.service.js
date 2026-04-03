@@ -1,6 +1,7 @@
 import { AppModel } from '../models/app.model.js';
 import { AppGroupModel } from '../models/app-group.model.js';
 import { generateUniqueSlug } from '../utils/slug.js';
+import { mapToSnake } from '../utils/field-mapper.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -40,29 +41,14 @@ export class AppService {
   }
 
   async createApp(payload) {
-    // 接受 camelCase payload，映射为 snake_case 给 model
-    try {
-      const { mapToSnake } = await import('../utils/field-mapper.js');
-      const snakePayload = mapToSnake(payload);
-      // 自动生成 slug（若未提供）
-      if (!snakePayload.slug) {
-        snakePayload.slug = generateUniqueSlug(
-          snakePayload.name,
-          slug => !!this.appModel.findBySlug(slug)
-        );
-      }
-      return this.appModel.create(snakePayload);
-    } catch (error) {
-      void error;
-      // 回退：若动态 import 失败，则直接传入 payload（model 层会兼容）
-      if (!payload.slug) {
-        payload.slug = generateUniqueSlug(
-          payload.name,
-          slug => !!this.appModel.findBySlug(slug)
-        );
-      }
-      return this.appModel.create(payload);
+    const snakePayload = mapToSnake(payload);
+    if (!snakePayload.slug) {
+      snakePayload.slug = generateUniqueSlug(
+        snakePayload.name,
+        slug => !!this.appModel.findBySlug(slug)
+      );
     }
+    return this.appModel.create(snakePayload);
   }
 
   updateApp(id, payload) {

@@ -54,3 +54,19 @@ export function buildServerUrl(path = '') {
   if (!origin) return suffix;
   return `${origin}${suffix}`;
 }
+
+/**
+ * 剥离后端 { code, data: { data: ... } } 嵌套包装，直到拿到实际数据。
+ * 用于统一处理各 composable 中的响应解包逻辑。
+ */
+export function unwrapData(resp) {
+  let r = resp;
+  while (
+    r &&
+    typeof r === 'object' &&
+    Object.prototype.hasOwnProperty.call(r, 'data')
+  ) {
+    r = r.data;
+  }
+  return r;
+}

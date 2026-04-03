@@ -18,21 +18,12 @@ export function createInternalLogsRoutes() {
   // 内部调试：接收 AI 请求/回复，统一通过日志系统输出（无数据库持久化）
   router.post('/ai', (req, res) => {
     try {
-      const {
-        requestText,
-        responseText,
-        timestamp,
-        model,
-        playerType,
-        gameState,
-        parsedResult,
-      } = req.body || {};
+      const { requestText, responseText, timestamp, model } = req.body || {};
 
       const ts = timestamp || new Date().toISOString();
       const summary = {
         ts,
         model: model || 'unknown',
-        playerType: playerType || 'unknown',
         requestChars: requestText ? requestText.length : 0,
         responseChars: responseText ? responseText.length : 0,
       };
@@ -48,16 +39,6 @@ export function createInternalLogsRoutes() {
         aiLogger.debug('AI response payload', {
           length: responseText.length,
           preview: truncateText(responseText),
-        });
-      }
-      if (parsedResult) {
-        aiLogger.debug('AI parsed result', { parsedResult });
-      }
-      if (gameState) {
-        aiLogger.debug('AI game state snapshot', {
-          currentPlayer: gameState.currentPlayer,
-          totalMoves: gameState.totalMoves,
-          boardSize: gameState.boardSize,
         });
       }
 

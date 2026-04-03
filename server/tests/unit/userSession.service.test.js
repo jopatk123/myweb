@@ -1,14 +1,16 @@
 import { createTestDatabase, closeTestDatabase } from '../helpers/test-db.js';
-import { setDb } from '../../src/utils/dbPool.js';
 import { UserSessionService } from '../../src/services/userSession.service.js';
 import { UserSessionModel } from '../../src/models/userSession.model.js';
 
 describe('UserSessionService', () => {
   let db;
+  let service;
+  let userSessionModel;
 
   beforeAll(async () => {
     db = await createTestDatabase();
-    setDb(db);
+    service = new UserSessionService(db);
+    userSessionModel = new UserSessionModel(db);
   });
 
   afterAll(() => {
@@ -21,7 +23,7 @@ describe('UserSessionService', () => {
 
   describe('updateUserSettings()', () => {
     test('creates new session with provided settings', async () => {
-      const result = await UserSessionService.updateUserSettings({
+      const result = await service.updateUserSettings({
         sessionId: 'sess-1',
         nickname: 'Alice',
         avatarColor: '#ff0000',
@@ -33,11 +35,11 @@ describe('UserSessionService', () => {
     });
 
     test('updates existing session', async () => {
-      await UserSessionService.updateUserSettings({
+      await service.updateUserSettings({
         sessionId: 'sess-2',
         nickname: 'Bob',
       });
-      const updated = await UserSessionService.updateUserSettings({
+      const updated = await service.updateUserSettings({
         sessionId: 'sess-2',
         nickname: 'Charlie',
         avatarColor: '#00ff00',
@@ -47,7 +49,7 @@ describe('UserSessionService', () => {
 
     test('throws when nickname exceeds 50 characters', async () => {
       await expect(
-        UserSessionService.updateUserSettings({
+        service.updateUserSettings({
           sessionId: 'sess-long',
           nickname: 'a'.repeat(51),
         })
@@ -56,7 +58,7 @@ describe('UserSessionService', () => {
 
     test('throws when avatarColor format is invalid', async () => {
       await expect(
-        UserSessionService.updateUserSettings({
+        service.updateUserSettings({
           sessionId: 'sess-color',
           avatarColor: 'red',
         })
@@ -64,7 +66,7 @@ describe('UserSessionService', () => {
     });
 
     test('accepts valid 6-digit hex color', async () => {
-      const result = await UserSessionService.updateUserSettings({
+      const result = await service.updateUserSettings({
         sessionId: 'sess-hex',
         avatarColor: '#A3B4C5',
       });
@@ -72,21 +74,21 @@ describe('UserSessionService', () => {
     });
 
     test('uses Anonymous when nickname not provided', async () => {
-      const result = await UserSessionService.updateUserSettings({
+      const result = await service.updateUserSettings({
         sessionId: 'sess-anon',
       });
       expect(result.nickname).toBe('Anonymous');
     });
 
     test('uses default color when avatarColor not provided', async () => {
-      const result = await UserSessionService.updateUserSettings({
+      const result = await service.updateUserSettings({
         sessionId: 'sess-def-color',
       });
       expect(result.avatarColor).toBe('#007bff');
     });
 
     test('defaults autoOpenEnabled to true when undefined', async () => {
-      const result = await UserSessionService.updateUserSettings({
+      const result = await service.updateUserSettings({
         sessionId: 'sess-auto',
         autoOpenEnabled: undefined,
       });
@@ -94,7 +96,7 @@ describe('UserSessionService', () => {
     });
 
     test('sets autoOpenEnabled to false', async () => {
-      const result = await UserSessionService.updateUserSettings({
+      const result = await service.updateUserSettings({
         sessionId: 'sess-no-auto',
         autoOpenEnabled: false,
       });
@@ -104,18 +106,18 @@ describe('UserSessionService', () => {
 
   describe('getUserSettings()', () => {
     test('returns existing session settings', async () => {
-      UserSessionModel.upsert({
+      userSessionModel.upsert({
         sessionId: 'get-sess',
         nickname: 'Dave',
         avatarColor: '#123456',
       });
-      const result = await UserSessionService.getUserSettings('get-sess');
+      const result = await service.getUserSettings('get-sess');
       expect(result).toBeDefined();
       expect(result.nickname).toBe('Dave');
     });
 
     test('creates default settings when session does not exist', async () => {
-      const result = await UserSessionService.getUserSettings('new-sess-xyz');
+      const result = await service.getUserSettings('new-sess-xyz');
       expect(result).toBeDefined();
       expect(result.nickname).toBe('Anonymous');
       expect(result.avatarColor).toBe('#007bff');
@@ -125,14 +127,14 @@ describe('UserSessionService', () => {
 
   describe('updateActivity()', () => {
     test('updates last active without error', async () => {
-      UserSessionModel.upsert({ sessionId: 'activity-sess', nickname: 'Eve' });
-      const result = await UserSessionService.updateActivity('activity-sess');
+      userSessionModel.upsert({ sessionId: 'activity-sess', nickname: 'Eve' });
+      const result = await service.updateActivity('activity-sess');
       expect(result).toEqual({ success: true });
     });
 
     test('does not throw for non-existent session', async () => {
       await expect(
-        UserSessionService.updateActivity('non-existent-sess')
+        service.updateActivity('non-existent-sess')
       ).resolves.toEqual({ success: true });
     });
   });

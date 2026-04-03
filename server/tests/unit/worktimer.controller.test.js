@@ -20,8 +20,6 @@ describe('WorkTimerController', () => {
 
   beforeEach(() => {
     db.prepare('DELETE FROM work_sessions').run();
-    db.prepare('DELETE FROM work_daily_totals').run();
-    db.prepare('UPDATE work_stats SET total_ms = 0 WHERE id = 1').run();
 
     req = { body: {}, query: {}, params: {} };
     res = {

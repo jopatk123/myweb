@@ -11,7 +11,7 @@ import { createAppRoutes } from './routes/apps.routes.js';
 import { createFileRoutes } from './controllers/file.controller.js';
 import { createNotebookNotesRoutes } from './routes/notebook-notes.routes.js';
 import { createWorkTimerRoutes } from './routes/worktimer.routes.js';
-import messageRoutes from './routes/messages.routes.js';
+import { createMessageRoutes } from './routes/messages.routes.js';
 import { createAuthRoutes } from './routes/auth.routes.js';
 import { createInternalLogsRoutes } from './routes/internal.logs.routes.js';
 import errorHandler from './middleware/error.middleware.js';
@@ -156,7 +156,7 @@ export async function createApp(options = {}) {
   app.use('/api/files', createFileRoutes(db));
   app.use('/api/notebook', createNotebookNotesRoutes(db));
   app.use('/api/work-timer', createWorkTimerRoutes(db));
-  app.use('/api/messages', messageRoutes);
+  app.use('/api/messages', createMessageRoutes(db));
   app.use('/api/auth', createAuthRoutes());
 
   app.use('/internal/logs', createInternalLogsRoutes());

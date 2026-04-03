@@ -7,11 +7,7 @@ import {
   initMessageTables,
   initWorkTimerTables,
 } from '../db/schema.js';
-import {
-  ensureWallpaperColumns,
-  ensureAppsColumns,
-  ensureFilesTypeCategoryIncludesNovel,
-} from '../db/migration.js';
+import { ensureWallpaperColumns, ensureAppsColumns } from '../db/migration.js';
 
 export const up = async knex => {
   const filename = knex.client.config.connection.filename;
@@ -30,7 +26,6 @@ export const up = async knex => {
 
     ensureWallpaperColumns(db);
     ensureAppsColumns(db);
-    ensureFilesTypeCategoryIncludesNovel(db);
   } finally {
     db.close();
   }

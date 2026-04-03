@@ -39,36 +39,6 @@ export class WorkTimerService {
     `);
     upd.run(newDuration, lastUpdateIso, id);
 
-    // 维护总时长（可选）
-    try {
-      const statsRow = this.db
-        .prepare(`SELECT total_ms FROM work_stats WHERE id = 1`)
-        .get();
-      if (statsRow) {
-        const updStats = this.db.prepare(
-          `UPDATE work_stats SET total_ms = total_ms + ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
-        );
-        updStats.run(Number(incrementMs || 0));
-      }
-    } catch {
-      // 静默处理数据库错误
-    }
-
-    // 按本地日累计
-    try {
-      const localDate = this.getLocalDateString(lastUpdateIso);
-      const upsertDaily = this.db.prepare(`
-        INSERT INTO work_daily_totals (date, total_ms, updated_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(date) DO UPDATE SET
-          total_ms = work_daily_totals.total_ms + excluded.total_ms,
-          updated_at = CURRENT_TIMESTAMP
-      `);
-      upsertDaily.run(localDate, Number(incrementMs || 0));
-    } catch {
-      // 静默处理数据库错误
-    }
-
     return this.getTotals();
   }
 

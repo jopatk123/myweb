@@ -25,40 +25,7 @@ export function initWorkTimerTables(db) {
     CREATE INDEX IF NOT EXISTS idx_work_sessions_is_active ON work_sessions(is_active);
   `;
 
-  const workStatsSql = `
-    CREATE TABLE IF NOT EXISTS work_stats (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      total_ms INTEGER DEFAULT 0,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    -- ensure there is at least one row to simplify upserts
-  `;
-
-  const workDailyTotalsSql = `
-    CREATE TABLE IF NOT EXISTS work_daily_totals (
-      date TEXT PRIMARY KEY,
-      total_ms INTEGER DEFAULT 0,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_work_daily_totals_date ON work_daily_totals(date);
-  `;
-
   db.exec(workSessionsSql);
-  db.exec(workStatsSql);
-  db.exec(workDailyTotalsSql);
-
-  const insertStats = db.prepare(
-    `INSERT OR IGNORE INTO work_stats (id, total_ms) VALUES (1, 0)`
-  );
-  try {
-    insertStats.run();
-  } catch (e) {
-    schemaLogger.warn('初始化 work_stats 失败（非致命）', {
-      error: e.message || e,
-    });
-  }
 
   schemaLogger.info('Work timer tables initialized');
 }

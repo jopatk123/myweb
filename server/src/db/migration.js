@@ -4,5 +4,4 @@
  */
 
 export { ensureWallpaperColumns } from './migrations/wallpapers.js';
-export { ensureFilesTypeCategoryIncludesNovel } from './migrations/files.js';
 export { ensureAppsColumns } from './migrations/apps.js';

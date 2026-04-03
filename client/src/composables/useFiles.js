@@ -1,5 +1,6 @@
 import { ref, computed, onScopeDispose } from 'vue';
 import { filesApi } from '@/api/files.js';
+import { unwrapData } from '@/api/httpClient.js';
 
 export function useFiles() {
   const items = ref([]);
@@ -24,18 +25,6 @@ export function useFiles() {
     Math.ceil((total.value || 0) / (limit.value || 1))
   );
 
-  function unwrap(resp) {
-    let r = resp;
-    while (
-      r &&
-      typeof r === 'object' &&
-      Object.prototype.hasOwnProperty.call(r, 'data')
-    ) {
-      r = r.data;
-    }
-    return r;
-  }
-
   async function fetchList() {
     if (isDisposed) return;
     loading.value = true;
@@ -48,7 +37,7 @@ export function useFiles() {
         type: type.value || undefined,
         search: (search.value || '').trim() || undefined,
       });
-      const data = unwrap(raw);
+      const data = unwrapData(raw);
       items.value = data.files || [];
       total.value = data.pagination?.total || 0;
     } catch (e) {

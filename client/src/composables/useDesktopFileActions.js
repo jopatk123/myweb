@@ -1,14 +1,11 @@
 import { computed, ref, watch } from 'vue';
+import { openFilePreviewWindow } from '@/utils/openFilePreview.js';
 
 /**
- * 管理桌面文件打开、预览、下载确认等状态
+ * 管理桌面文件打开、预览、下载确认等状态。
+ * 预览窗口统一通过 openFilePreviewWindow 工具函数创建，无需额外注入。
  */
-export function useDesktopFileActions({
-  getDownloadUrl,
-  openFilePreviewWindow,
-  createWindow,
-  FilePreviewWindow,
-} = {}) {
+export function useDesktopFileActions({ getDownloadUrl } = {}) {
   const showConfirm = ref(false);
   const selectedFileName = ref('');
   const selectedDownloadUrl = ref('');
@@ -25,8 +22,8 @@ export function useDesktopFileActions({
   function openFile(file) {
     if (!file) return;
 
-    // 预览类文件直接打开内置窗口
-    if (file.__preview && typeof openFilePreviewWindow === 'function') {
+    // 预览类文件直接打开桌面窗口
+    if (file.__preview) {
       openFilePreviewWindow(file);
       return;
     }
@@ -43,21 +40,8 @@ export function useDesktopFileActions({
   }
 
   function handlePreviewFromConfirm(file) {
-    if (file && typeof createWindow === 'function' && FilePreviewWindow) {
-      createWindow({
-        component: FilePreviewWindow,
-        title: file.originalName || file.original_name || '文件预览',
-        appSlug: 'filePreview',
-        width: Math.min(1200, window.innerWidth * 0.9),
-        height: Math.min(800, window.innerHeight * 0.9),
-        props: { file },
-        storageKey: `previewPos:${file.id}`,
-      });
-      return;
-    }
-
-    previewFile.value = file || null;
-    showPreview.value = true;
+    // 统一使用工具函数，不再重复窗口创建逻辑
+    openFilePreviewWindow(file);
   }
 
   function closePreview() {
@@ -66,9 +50,7 @@ export function useDesktopFileActions({
   }
 
   watch(showPreview, value => {
-    if (!value) {
-      previewFile.value = null;
-    }
+    if (!value) previewFile.value = null;
   });
 
   const canPreviewSelected = computed(() => {

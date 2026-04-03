@@ -11,11 +11,7 @@ import {
   initMessageTables,
   initWorkTimerTables,
 } from '../db/schema.js';
-import {
-  ensureWallpaperColumns,
-  ensureAppsColumns,
-  ensureFilesTypeCategoryIncludesNovel,
-} from '../db/migration.js';
+import { ensureWallpaperColumns, ensureAppsColumns } from '../db/migration.js';
 import { ensureBuiltinApps, seedAppsIfEmpty } from '../db/seeding.js';
 import logger from '../utils/logger.js';
 import { resolveDatabasePath, applyDatabasePathOverride } from './env.js';
@@ -105,15 +101,6 @@ export async function initDatabase(options = {}) {
   }
   // 迁移: 初始化应用管理相关表与缺失列
   // ensureAppTablesAndColumns 的列检查逻辑直接放在 migration.js 的后续版本
-  // 迁移: 初始化文件管理相关表（已由 schema 负责）
-  // 确保 files.type_category 包含 'novel'（若旧库未包含）
-  try {
-    ensureFilesTypeCategoryIncludesNovel(db);
-  } catch (e) {
-    dbLogger.warn('文件类型分类迁移检查失败（非致命）', {
-      error: e,
-    });
-  }
   // 确保内置应用存在（用于恢复误删或旧库缺失）
   if (seedBuiltinApps) {
     ensureBuiltinApps(db);

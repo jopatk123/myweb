@@ -1,7 +1,6 @@
 import Database from 'better-sqlite3';
 import * as migration from '../../../src/db/migration.js';
 import { ensureWallpaperColumns } from '../../../src/db/migrations/wallpapers.js';
-import { ensureFilesTypeCategoryIncludesNovel } from '../../../src/db/migrations/files.js';
 import { ensureAppsColumns } from '../../../src/db/migrations/apps.js';
 
 function assert(condition, message) {
@@ -13,10 +12,6 @@ function assert(condition, message) {
 }
 
 assert(migration.ensureWallpaperColumns === ensureWallpaperColumns, 'ensureWallpaperColumns re-export mismatch');
-assert(
-  migration.ensureFilesTypeCategoryIncludesNovel === ensureFilesTypeCategoryIncludesNovel,
-  'ensureFilesTypeCategoryIncludesNovel re-export mismatch'
-);
 assert(migration.ensureAppsColumns === ensureAppsColumns, 'ensureAppsColumns re-export mismatch');
 
 const db = new Database(':memory:');
@@ -75,30 +70,5 @@ const appColumnNames = new Set(
 ['is_builtin', 'target_url', 'is_autostart'].forEach(col =>
   assert(appColumnNames.has(col), `apps column ${col} should exist`)
 );
-
-db.exec(`
-  CREATE TABLE files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    original_name TEXT NOT NULL,
-    stored_name TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    mime_type TEXT NOT NULL,
-    file_size INTEGER NOT NULL,
-    type_category TEXT NOT NULL CHECK(type_category IN ('image','video','word','excel','archive','other')),
-    file_url TEXT,
-    uploader_id TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-
-ensureFilesTypeCategoryIncludesNovel(db);
-
-const filesTableSql = db
-  .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='files'")
-  .get().sql;
-
-assert(/'novel'/.test(filesTableSql), 'files table should include novel in CHECK constraint');
-assert(/'music'/.test(filesTableSql), 'files table should include music in CHECK constraint');
 
 db.close();

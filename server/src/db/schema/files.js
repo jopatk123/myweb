@@ -15,7 +15,7 @@ export function initFileTables(db) {
       file_path TEXT NOT NULL,
       mime_type TEXT NOT NULL,
       file_size INTEGER NOT NULL,
-      type_category TEXT NOT NULL CHECK(type_category IN ('image', 'video', 'audio', 'word', 'excel', 'ppt', 'pdf', 'text', 'code', 'archive', 'other', 'novel', 'music')),
+      type_category TEXT NOT NULL CHECK(type_category IN ('image', 'video', 'audio', 'word', 'excel', 'ppt', 'pdf', 'text', 'code', 'archive', 'other')),
       file_url TEXT,
       uploader_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

@@ -16,8 +16,6 @@ describe('WorkTimerService database integration', () => {
 
   beforeEach(() => {
     db.prepare('DELETE FROM work_sessions').run();
-    db.prepare('DELETE FROM work_daily_totals').run();
-    db.prepare('UPDATE work_stats SET total_ms = 0 WHERE id = 1').run();
   });
 
   test('upsertSession inserts new records and updates existing ones', () => {
@@ -87,17 +85,6 @@ describe('WorkTimerService database integration', () => {
       .get('session-2');
     expect(sessionRow.duration).toBe(10000);
     expect(sessionRow.last_update).toBe(nowIso);
-
-    const statsRow = db
-      .prepare('SELECT total_ms FROM work_stats WHERE id = 1')
-      .get();
-    expect(statsRow.total_ms).toBe(9000);
-
-    const localDate = service.getLocalDateString(nowIso);
-    const dailyRow = db
-      .prepare('SELECT total_ms FROM work_daily_totals WHERE date = ?')
-      .get(localDate);
-    expect(dailyRow.total_ms).toBe(9000);
   });
 
   test('endSession marks session inactive and retains totals', () => {

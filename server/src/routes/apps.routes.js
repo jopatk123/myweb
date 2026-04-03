@@ -14,7 +14,7 @@ export function createAppRoutes(db) {
   const __dirname = path.dirname(__filename);
 
   // 图标上传配置：保存到 uploads/apps/icons，测试场景可通过 APP_ICON_UPLOAD_DIR 覆盖
-  const DEFAULT_APP_ICON_UPLOAD_SIZE = 500 * 1024 * 1024;
+  const DEFAULT_APP_ICON_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MiB
   const APP_ICON_UPLOAD_SIZE = parseEnvByteSize(
     'APP_ICON_MAX_UPLOAD_SIZE',
     DEFAULT_APP_ICON_UPLOAD_SIZE

@@ -1,5 +1,5 @@
 /**
- * 留言控制器
+ * 留言控制器（构造函数注入 db）
  */
 import { MessageService } from '../services/message.service.js';
 import { UserSessionService } from '../services/userSession.service.js';
@@ -19,28 +19,12 @@ const msgLogger = logger.child('MessageController');
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 确保图片上传目录存在
 const imagesDir = path.join(__dirname, '../../uploads/message-images');
 if (!fs.existsSync(imagesDir)) {
   try {
     fs.mkdirSync(imagesDir, { recursive: true, mode: 0o755 });
-    msgLogger.info('创建 message-images 上传目录成功', { path: imagesDir });
   } catch (e) {
     msgLogger.error('无法创建 message-images 上传目录', { error: e.message });
-  }
-} else {
-  // 检查目录权限
-  try {
-    const stats = fs.statSync(imagesDir);
-    if (!stats.isDirectory()) {
-      throw new Error('路径存在但不是目录');
-    }
-    // 检查写权限
-    fs.accessSync(imagesDir, fs.constants.W_OK);
-  } catch (permError) {
-    msgLogger.error('message-images 目录权限问题', {
-      error: permError.message,
-    });
   }
 }
 
@@ -53,7 +37,8 @@ export const MESSAGE_IMAGE_MAX_FILES = Math.max(
   parseEnvNumber('MESSAGE_IMAGE_MAX_FILES', DEFAULT_MESSAGE_IMAGE_MAX_FILES)
 );
 
-const uploadImage = createUploader({
+// multer 实例无需 db，保持模块级导出
+export const uploadImage = createUploader({
   destination: imagesDir,
   maxFileSize: MESSAGE_IMAGE_MAX_SIZE,
   maxFiles: MESSAGE_IMAGE_MAX_FILES,
@@ -62,16 +47,17 @@ const uploadImage = createUploader({
 });
 
 export class MessageController {
-  /**
-   * 发送留言
-   */
-  static async sendMessage(req, res, next) {
+  constructor(db) {
+    this.service = new MessageService(db);
+    this.sessionService = new UserSessionService(db);
+  }
+
+  async sendMessage(req, res, next) {
     try {
       const { content, authorName, authorColor, images, imageType } = req.body;
-      const sessionId =
-        req.headers['x-session-id'] || req.sessionID || 'anonymous';
+      const sessionId = req.headers['x-session-id'] || 'anonymous';
 
-      const message = await MessageService.sendMessage({
+      const message = await this.service.sendMessage({
         content,
         sessionId,
         authorName,
@@ -80,141 +66,82 @@ export class MessageController {
         imageType,
       });
 
-      // 通过WebSocket广播新留言
       if (req.app.get('wsServer')) {
-        const autoOpenSessions = MessageService.getAutoOpenSessions();
-        req.app.get('wsServer').broadcast('newMessage', {
-          message,
-          autoOpenSessions,
-        });
+        const autoOpenSessions = this.service.getAutoOpenSessions();
+        req.app
+          .get('wsServer')
+          .broadcast('newMessage', { message, autoOpenSessions });
       }
 
-      res.json({
-        code: 200,
-        message: '留言发送成功',
-        data: message,
-      });
+      res.json({ code: 200, message: '留言发送成功', data: message });
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * 获取留言列表
-   */
-  static async getMessages(req, res, next) {
+  async getMessages(req, res, next) {
     try {
       const { page, limit, q } = req.query;
-      const result = await MessageService.getMessages({
+      const result = await this.service.getMessages({
         page: parseInt(page) || 1,
         limit: parseInt(limit) || 50,
         search: q,
       });
-
-      res.json({
-        code: 200,
-        message: '获取留言列表成功',
-        data: result,
-      });
+      res.json({ code: 200, message: '获取留言列表成功', data: result });
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * 删除留言
-   */
-  static async deleteMessage(req, res, next) {
+  async deleteMessage(req, res, next) {
     try {
       const { id } = req.params;
-      await MessageService.deleteMessage(parseInt(id));
+      await this.service.deleteMessage(parseInt(id));
 
-      // 通过WebSocket广播留言删除
       if (req.app.get('wsServer')) {
         req.app
           .get('wsServer')
           .broadcast('messageDeleted', { messageId: parseInt(id) });
       }
 
-      res.json({
-        code: 200,
-        message: '留言删除成功',
-      });
+      res.json({ code: 200, message: '留言删除成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * 更新用户设置
-   */
-  static async updateUserSettings(req, res, next) {
+  async updateUserSettings(req, res, next) {
     try {
       const { nickname, avatarColor, autoOpenEnabled } = req.body;
-      const sessionId =
-        req.headers['x-session-id'] || req.sessionID || 'anonymous';
-
-      const userSession = await UserSessionService.updateUserSettings({
+      const sessionId = req.headers['x-session-id'] || 'anonymous';
+      const userSession = await this.sessionService.updateUserSettings({
         sessionId,
         nickname,
         avatarColor,
         autoOpenEnabled,
       });
-
-      res.json({
-        code: 200,
-        message: '用户设置更新成功',
-        data: userSession,
-      });
+      res.json({ code: 200, message: '用户设置更新成功', data: userSession });
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * 获取用户设置
-   */
-  static async getUserSettings(req, res, next) {
+  async getUserSettings(req, res, next) {
     try {
-      const sessionId =
-        req.headers['x-session-id'] || req.sessionID || 'anonymous';
-      const userSession = await UserSessionService.getUserSettings(sessionId);
-
-      res.json({
-        code: 200,
-        message: '获取用户设置成功',
-        data: userSession,
-      });
+      const sessionId = req.headers['x-session-id'] || 'anonymous';
+      const userSession = await this.sessionService.getUserSettings(sessionId);
+      res.json({ code: 200, message: '获取用户设置成功', data: userSession });
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * 上传图片
-   */
-  static async uploadImage(req, res, next) {
+  async uploadImageHandler(req, res, next) {
     try {
       const files = req.files || [];
       if (!files.length) {
-        return res.status(400).json({
-          code: 400,
-          message: '请选择图片文件',
-        });
+        return res.status(400).json({ code: 400, message: '请选择图片文件' });
       }
-
-      // 验证目录权限
-      try {
-        fs.accessSync(imagesDir, fs.constants.W_OK);
-      } catch (permError) {
-        msgLogger.error('上传目录权限不足', { error: permError.message });
-        return res.status(500).json({
-          code: 500,
-          message: '服务器配置错误：上传目录权限不足',
-          error: 'UPLOAD_PERMISSION_ERROR',
-        });
-      }
-
       const images = files.map(file => ({
         filename: file.filename,
         originalName: file.originalname,
@@ -222,50 +149,29 @@ export class MessageController {
         size: file.size,
         path: `uploads/message-images/${file.filename}`,
       }));
-
       msgLogger.info('图片上传成功', { count: images.length });
-      res.json({
-        code: 200,
-        message: '图片上传成功',
-        data: images,
-      });
+      res.json({ code: 200, message: '图片上传成功', data: images });
     } catch (error) {
       msgLogger.error('图片上传失败', { error: error.message });
       next(error);
     }
   }
 
-  /**
-   * 清除所有留言
-   */
-  static async clearAllMessages(req, res, next) {
+  async clearAllMessages(req, res, next) {
     try {
       const { confirm } = req.body;
-
       if (!confirm) {
-        return res.status(400).json({
-          code: 400,
-          message: '需要确认才能清除所有留言',
-        });
+        return res
+          .status(400)
+          .json({ code: 400, message: '需要确认才能清除所有留言' });
       }
-
-      const result = await MessageService.clearAllMessages();
-
-      // 通过WebSocket广播留言板清空
+      const result = await this.service.clearAllMessages();
       if (req.app.get('wsServer')) {
         req.app.get('wsServer').broadcast('messagesCleared', {});
       }
-
-      res.json({
-        code: 200,
-        message: '留言板已清空',
-        data: result,
-      });
+      res.json({ code: 200, message: '留言板已清空', data: result });
     } catch (error) {
       next(error);
     }
   }
 }
-
-// 导出上传中间件供路由使用
-export { uploadImage };

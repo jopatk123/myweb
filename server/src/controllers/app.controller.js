@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { AppService } from '../services/app.service.js';
+import { mapToSnake } from '../utils/field-mapper.js';
 import logger from '../utils/logger.js';
 
 const appCtrlLogger = logger.child('AppController');
@@ -61,7 +62,6 @@ export class AppController {
   async create(req, res, next) {
     try {
       // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
-      const { mapToSnake } = await import('../utils/field-mapper.js');
       const bodySnake = mapToSnake(req.body || {});
       // 启用 Joi 的类型转换（例如字符串数字 -> number）以确保 group_id 被转换为 number
       const payload = await appSchema.validateAsync(bodySnake, {
@@ -113,7 +113,6 @@ export class AppController {
       }
 
       // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
-      const { mapToSnake } = await import('../utils/field-mapper.js');
       const bodySnake = mapToSnake(req.body || {});
 
       // 开启 Joi 类型转换，兼容前端字符串数字等情况

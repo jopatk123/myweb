@@ -1,6 +1,7 @@
 import { ref, computed, unref } from 'vue';
 import { wallpaperApi } from '@/api/wallpaper.js';
 import { appEnv } from '@/constants/env.js';
+import { unwrapData } from '@/api/httpClient.js';
 
 export function useWallpaper() {
   const wallpapers = ref([]);
@@ -17,20 +18,6 @@ export function useWallpaper() {
   const limit = ref(20);
   const total = ref(0);
 
-  // 通用响应解包：后端可能返回 { code, data, message } 格式
-  const unwrap = res => {
-    let r = res;
-    // 一直剥离包装直到获得实际数据或 null
-    while (
-      r &&
-      typeof r === 'object' &&
-      Object.prototype.hasOwnProperty.call(r, 'data')
-    ) {
-      r = r.data;
-    }
-    return r;
-  };
-
   // 获取所有壁纸，默认使用分页（向后兼容也可传 false）
   const fetchWallpapers = async (groupId = null, usePaging = true) => {
     const resolvedGroupId = unref(groupId);
@@ -43,7 +30,7 @@ export function useWallpaper() {
         usePaging ? page.value : null,
         usePaging ? limit.value : null
       );
-      const data = unwrap(raw);
+      const data = unwrapData(raw);
       // 支持两种返回格式：分页 { items, total } 或者直接数组
       if (usePaging && data) {
         wallpapers.value = data.items || [];
@@ -65,7 +52,7 @@ export function useWallpaper() {
   const fetchGroups = async () => {
     try {
       const raw = await wallpaperApi.getGroups();
-      const data = unwrap(raw);
+      const data = unwrapData(raw);
       // data 可能直接是数组，或是包装 { items: [] }
       if (Array.isArray(data)) {
         groups.value = data;
@@ -84,7 +71,7 @@ export function useWallpaper() {
   const fetchCurrentGroup = async () => {
     try {
       const raw = await wallpaperApi.getCurrentGroup();
-      const data = unwrap(raw);
+      const data = unwrapData(raw);
       currentGroup.value = data || null;
       return currentGroup.value;
     } catch (err) {
@@ -97,7 +84,7 @@ export function useWallpaper() {
   const fetchActiveWallpaper = async () => {
     try {
       const raw = await wallpaperApi.getActiveWallpaper();
-      const data = unwrap(raw);
+      const data = unwrapData(raw);
       activeWallpaper.value = data || null;
     } catch (err) {
       console.warn('获取活跃壁纸失败:', err);
@@ -123,7 +110,7 @@ export function useWallpaper() {
         name,
         onUploadProgress
       );
-      const data = unwrap(raw);
+      const data = unwrapData(raw);
       await fetchWallpapers(resolvedGroupId); // 刷新列表
       return data;
     } catch (err) {
@@ -155,7 +142,7 @@ export function useWallpaper() {
   const updateWallpaper = async (id, data) => {
     try {
       const raw = await wallpaperApi.updateWallpaper(id, data);
-      const res = unwrap(raw);
+      const res = unwrapData(raw);
       await fetchWallpapers();
       return res;
     } catch (err) {
@@ -191,7 +178,7 @@ export function useWallpaper() {
       for (let i = 0; i < need; i++) {
         try {
           const raw = await wallpaperApi.getRandomWallpaper(key);
-          const w = unwrap(raw) || null;
+          const w = unwrapData(raw) || null;
           if (!w) continue;
           // 预加载图片资源
           await new Promise(resolve => {
@@ -234,7 +221,7 @@ export function useWallpaper() {
     error.value = null;
     try {
       const raw = await wallpaperApi.getRandomWallpaper(groupId);
-      const image = unwrap(raw) || null;
+      const image = unwrapData(raw) || null;
       if (image) {
         // 尝试预加载图片（使用 getWallpaperUrl 拼接最终 URL）
         await new Promise(resolve => {

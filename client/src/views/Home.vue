@@ -83,14 +83,11 @@
   import FileUploadProgress from '@/components/file/FileUploadProgress.vue';
   import ConfirmDownloadModal from '@/components/file/ConfirmDownloadModal.vue';
   import FilePreviewModal from '@/components/file/FilePreviewModal.vue';
-  import { openFilePreviewWindow } from '@/composables/filePreview.js';
   import useDesktopSelection from '@/composables/useDesktopSelection.js';
-  import { useWindowManager } from '@/composables/useWindowManager.js';
   import useAutostartApps from '@/composables/useAutostartApps.js';
   import { useMessageBoardAutoOpen } from '@/composables/useMessageBoardAutoOpen.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
   import FloatingControls from '@/components/common/FloatingControls.vue';
-  import FilePreviewWindow from '@/components/file/FilePreviewWindow.vue';
   import { useDesktopDropZone } from '@/composables/useDesktopDropZone.js';
   import { useDesktopFileActions } from '@/composables/useDesktopFileActions.js';
   import { useDesktopContextMenu } from '@/composables/useDesktopContextMenu.js';
@@ -166,7 +163,6 @@
     },
   });
 
-  const { createWindow } = useWindowManager();
   const {
     showConfirm,
     selectedFileName,
@@ -177,12 +173,7 @@
     canPreviewSelected,
     openFile,
     handlePreviewFromConfirm,
-  } = useDesktopFileActions({
-    getDownloadUrl,
-    openFilePreviewWindow,
-    createWindow,
-    FilePreviewWindow,
-  });
+  } = useDesktopFileActions({ getDownloadUrl });
 
   const { manualOpenMessageBoard } = useMessageBoardAutoOpen();
   const openMessageBoard = () => {
