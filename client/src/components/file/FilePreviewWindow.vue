@@ -3,7 +3,7 @@
     <div class="viewer">
       <div class="header">
         <div class="title">
-          预览：{{ file?.original_name || file?.originalName || '' }}
+          预览：{{ file?.originalName || file?.original_name || '' }}
         </div>
       </div>
       <div class="content">

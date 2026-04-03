@@ -2,7 +2,9 @@
   <div v-if="modelValue" class="backdrop" @click.self="close">
     <div class="viewer" ref="viewerRef" :style="viewerStyle">
       <div class="header" @pointerdown.stop.prevent="onHeaderPointerDown">
-        <div class="title">预览：{{ file?.original_name || '' }}</div>
+        <div class="title">
+          预览：{{ file?.originalName || file?.original_name || '' }}
+        </div>
         <button class="close" @click="close">✕</button>
       </div>
       <div class="content">

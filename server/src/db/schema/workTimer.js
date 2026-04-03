@@ -1,5 +1,5 @@
 /**
- * Initializes work timer related tables: `work_sessions`, `work_stats`, and `work_daily_totals`.
+ * Initializes work timer related tables: `work_sessions`.
  * @param {import('better-sqlite3').Database} db
  */
 import logger from '../../utils/logger.js';

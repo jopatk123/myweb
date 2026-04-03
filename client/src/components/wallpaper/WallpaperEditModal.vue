@@ -52,7 +52,7 @@
   watch(
     () => props.wallpaper,
     w => {
-      localName.value = w.name || w.original_name || '';
+      localName.value = w.name || w.originalName || w.original_name || '';
     }
   );
 

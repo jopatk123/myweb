@@ -22,8 +22,6 @@ export function checkDatabaseTables() {
     'files',
     'notebook_notes',
     'work_sessions',
-    'work_daily_totals',
-    'work_stats',
   ];
 
   const missingTables = [];

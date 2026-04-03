@@ -55,7 +55,7 @@ export function useDesktopFileActions({ getDownloadUrl } = {}) {
 
   const canPreviewSelected = computed(() => {
     const file = selectedFile.value || {};
-    const typeCategory = String(file.type_category || file.typeCategory || '')
+    const typeCategory = String(file.typeCategory || file.type_category || '')
       .toLowerCase()
       .trim();
 

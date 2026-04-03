@@ -36,7 +36,7 @@
   <ConfirmDialog
     v-model="confirm.visible"
     title="确认删除"
-    :message="`是否删除文件：${confirm.file?.original_name || ''}？`"
+    :message="`是否删除文件：${confirm.file?.originalName || confirm.file?.original_name || ''}？`"
     @confirm="onConfirmDelete"
   />
 </template>

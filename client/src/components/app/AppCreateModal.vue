@@ -13,15 +13,15 @@
 
         <div class="form-row">
           <label>URL</label>
-          <input v-model="form.target_url" placeholder="https://example.com" />
+          <input v-model="form.targetUrl" placeholder="https://example.com" />
         </div>
         <div class="form-row icon-row">
           <label>图标</label>
           <div class="icon-selector-container">
             <IconSelector
               v-model="selectedIconPath"
-              :icon-filename="form.icon_filename"
-              @update:icon-filename="form.icon_filename = $event"
+              :icon-filename="form.iconFilename"
+              @update:icon-filename="form.iconFilename = $event"
               @select-file="onSelectLocalFile"
               ref="iconSelectorRef"
             />
@@ -50,10 +50,10 @@
 
   const initialFormState = {
     name: '',
-    target_url: '',
-    icon_filename: null,
-    group_id: null,
-    is_visible: true,
+    targetUrl: '',
+    iconFilename: null,
+    groupId: null,
+    isVisible: true,
   };
 
   const form = ref({ ...initialFormState });
@@ -66,7 +66,7 @@
     newVal => {
       if (newVal) {
         // Reset form when modal opens
-        form.value = { ...initialFormState, group_id: props.groupId };
+        form.value = { ...initialFormState, groupId: props.groupId };
         selectedIconPath.value = '';
         pendingFile.value = null;
         if (iconSelectorRef.value) {
@@ -84,25 +84,25 @@
     const payload = {
       ...form.value,
       name: form.value.name.trim(),
-      target_url: form.value.target_url?.trim() || null,
-      group_id: form.value.group_id || null,
-      is_visible:
-        form.value.is_visible !== undefined ? form.value.is_visible : true,
-      is_builtin: false,
+      targetUrl: form.value.targetUrl?.trim() || null,
+      groupId: form.value.groupId || null,
+      isVisible:
+        form.value.isVisible !== undefined ? form.value.isVisible : true,
+      isBuiltin: false,
     };
 
     if (!payload.name) {
       alert('请填写名称');
       return;
     }
-    if (!payload.target_url) {
+    if (!payload.targetUrl) {
       alert('请填写URL');
       return;
     }
 
     // 前端 URL 校验：确保是可解析的 URL 且协议为 http/https，友好提示错误
     try {
-      const parsed = new URL(payload.target_url);
+      const parsed = new URL(payload.targetUrl);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
         alert('URL 必须以 http:// 或 https:// 开头');
         return;
@@ -115,12 +115,12 @@
     // 如果选择了预选图标且还未有上传文件名
     if (
       selectedIconPath.value &&
-      !form.value.icon_filename &&
+      !form.value.iconFilename &&
       !pendingFile.value
     ) {
       const iconPath = selectedIconPath.value;
       const filename = iconPath.split('/').pop();
-      payload.preset_icon = filename;
+      payload.presetIcon = filename;
     }
 
     // 若存在延迟上传的本地文件，则先上传获取 filename
@@ -134,7 +134,7 @@
         });
         const json = await resp.json();
         if (resp.ok && json?.data?.filename) {
-          payload.icon_filename = json.data.filename;
+          payload.iconFilename = json.data.filename;
         } else {
           alert(json?.message || '上传失败');
           return;

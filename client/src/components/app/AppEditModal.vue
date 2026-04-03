@@ -12,15 +12,15 @@
         </div>
         <div class="form-row">
           <label>URL</label>
-          <input v-model="form.target_url" placeholder="https://example.com" />
+          <input v-model="form.targetUrl" placeholder="https://example.com" />
         </div>
         <div class="form-row icon-row">
           <label>图标</label>
           <div class="icon-selector-container">
             <IconSelector
               v-model="selectedIconPath"
-              :icon-filename="form.icon_filename"
-              @update:icon-filename="form.icon_filename = $event"
+              :icon-filename="form.iconFilename"
+              @update:icon-filename="form.iconFilename = $event"
               @select-file="onSelectLocalFile"
               ref="iconSelectorRef"
             />
@@ -52,8 +52,8 @@
 
   const initialFormState = {
     name: '',
-    target_url: '',
-    icon_filename: null,
+    targetUrl: '',
+    iconFilename: null,
   };
 
   const form = ref({ ...initialFormState });
@@ -68,9 +68,8 @@
         // 填充现有应用数据
         form.value = {
           name: props.app.name || '',
-          target_url: props.app.target_url || props.app.targetUrl || '',
-          icon_filename:
-            props.app.icon_filename || props.app.iconFilename || null,
+          targetUrl: props.app.targetUrl || '',
+          iconFilename: props.app.iconFilename || null,
         };
         selectedIconPath.value = '';
         pendingFile.value = null;
@@ -93,21 +92,21 @@
   const submit = async () => {
     const payload = {
       name: form.value.name.trim(),
-      target_url: form.value.target_url?.trim() || null,
+      targetUrl: form.value.targetUrl?.trim() || null,
     };
 
     if (!payload.name) {
       alert('请填写名称');
       return;
     }
-    if (!payload.target_url) {
+    if (!payload.targetUrl) {
       alert('请填写URL');
       return;
     }
 
     // 前端 URL 校验：确保是可解析的 URL 且协议为 http/https，友好提示错误
     try {
-      const parsed = new URL(payload.target_url);
+      const parsed = new URL(payload.targetUrl);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
         alert('URL 必须以 http:// 或 https:// 开头');
         return;
@@ -128,7 +127,7 @@
         });
         const json = await resp.json();
         if (resp.ok && json?.data?.filename) {
-          payload.icon_filename = json.data.filename;
+          payload.iconFilename = json.data.filename;
         } else {
           alert(json?.message || '上传失败');
           return;
@@ -142,10 +141,10 @@
       // 如果选择了预选图标（且没有上传新文件）
       const iconPath = selectedIconPath.value;
       const filename = iconPath.split('/').pop();
-      payload.preset_icon = filename;
-    } else if (form.value.icon_filename) {
+      payload.presetIcon = filename;
+    } else if (form.value.iconFilename) {
       // 保持原有图标（既没有上传新文件，也没有选择预设图标）
-      payload.icon_filename = form.value.icon_filename;
+      payload.iconFilename = form.value.iconFilename;
     }
 
     emit('submit', payload);

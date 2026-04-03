@@ -105,7 +105,7 @@
               <tr v-for="f in items" :key="f.id" class="file-row">
                 <td class="file-name">
                   <span class="file-icon">{{
-                    getFileIcon(f.type_category)
+                    getFileIcon(f.typeCategory || f.type_category)
                   }}</span>
                   <span class="name-text">{{
                     f.originalName || f.original_name
@@ -115,7 +115,9 @@
                   {{ formatFileSize(f.fileSize || f.file_size) }}
                 </td>
                 <td class="file-type">
-                  <span class="type-badge">{{ f.type_category }}</span>
+                  <span class="type-badge">{{
+                    f.typeCategory || f.type_category
+                  }}</span>
                 </td>
                 <td class="file-actions">
                   <a

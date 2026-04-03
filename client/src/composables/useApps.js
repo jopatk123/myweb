@@ -244,7 +244,7 @@ async function setAutostart(id, autostart) {
     const resp = await apiFetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_autostart: !!autostart }),
+      body: JSON.stringify({ isAutostart: !!autostart }),
     });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) {

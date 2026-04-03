@@ -1,9 +1,14 @@
 /**
  * 留言服务（构造函数注入 db）
  */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { MessageModel } from '../models/message.model.js';
 import { UserSessionModel } from '../models/userSession.model.js';
 import logger from '../utils/logger.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const msgServiceLogger = logger.child('MessageService');
 
@@ -80,10 +85,6 @@ export class MessageService {
         if (Array.isArray(message.images)) {
           for (const image of message.images) {
             if (image.path) {
-              const { default: fs } = await import('fs');
-              const { default: path } = await import('path');
-              const { fileURLToPath } = await import('url');
-              const __dirname = path.dirname(fileURLToPath(import.meta.url));
               const imagePath = path.join(__dirname, '../../', image.path);
               try {
                 if (fs.existsSync(imagePath)) {

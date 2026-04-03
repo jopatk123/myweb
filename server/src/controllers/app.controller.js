@@ -169,14 +169,9 @@ export class AppController {
       if (!paramRaw) {
         return res.status(400).json({ code: 400, message: '缺少应用标识' });
       }
-      // 兼容前端可能发送的字段名：autostart / is_autostart / isAutostart
+      // middleware 已将请求体归一化为 camelCase，直接读取 isAutostart
       const body = req.body || {};
-      const autostartRaw =
-        body.autostart !== undefined
-          ? body.autostart
-          : body.is_autostart !== undefined
-            ? body.is_autostart
-            : body.isAutostart;
+      const autostartRaw = body.isAutostart;
       // 强制布尔化（支持字符串 '0'/'1' 或数字）
       const autostart = !!(autostartRaw === '0' || autostartRaw === 0
         ? false
