@@ -2,6 +2,10 @@
  * Initializes message board related tables: `messages` and `user_sessions`.
  * @param {import('better-sqlite3').Database} db - The database instance.
  */
+import logger from '../../utils/logger.js';
+
+const schemaLogger = logger.child('Schema:MessageBoard');
+
 export function initMessageTables(db) {
   const messagesTableSql = `
     CREATE TABLE IF NOT EXISTS messages (
@@ -39,5 +43,5 @@ export function initMessageTables(db) {
   db.exec(messagesTableSql);
   db.exec(userSessionsTableSql);
 
-  console.log('💬 Message board tables initialized');
+  schemaLogger.info('Message board tables initialized');
 }

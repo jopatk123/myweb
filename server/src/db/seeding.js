@@ -3,6 +3,9 @@
  */
 
 import { BUILTIN_APP_DEFINITIONS } from '../../../shared/builtin-apps.js';
+import logger from '../utils/logger.js';
+
+const seedLogger = logger.child('Seeding');
 
 export const BUILTIN_APPS = BUILTIN_APP_DEFINITIONS.map(app => ({
   name: app.name,
@@ -33,7 +36,7 @@ function removeObsoleteBuiltinApps(db) {
 
   for (const row of rows) {
     deleteStmt.run(row.id);
-    console.log(`🧹 Removed obsolete builtin app: ${row.slug}`);
+    seedLogger.info(`Removed obsolete builtin app: ${row.slug}`);
   }
 }
 
@@ -63,7 +66,7 @@ export function seedAppsIfEmpty(db) {
         1,
         null
       );
-      console.log('🌱 Seeded example app: calculator');
+      seedLogger.info('Seeded example app: calculator');
 
       const hasNotebook = db
         .prepare('SELECT id FROM apps WHERE slug = ? AND is_deleted = 0')
@@ -80,14 +83,14 @@ export function seedAppsIfEmpty(db) {
             1,
             null
           );
-          console.log('🌱 Seeded example app: notebook');
+          seedLogger.info('Seeded example app: notebook');
         } catch (e) {
           // ignore duplicate
         }
       }
     }
   } catch (e) {
-    console.warn('seedAppsIfEmpty warning:', e?.message || e);
+    seedLogger.warn('seedAppsIfEmpty warning', { error: e?.message || e });
   }
 }
 
@@ -129,13 +132,13 @@ export function ensureBuiltinApps(db) {
           b.target_url,
           0
         );
-        console.log(`🌱 Inserted builtin app: ${b.slug}`);
+        seedLogger.info(`Inserted builtin app: ${b.slug}`);
         continue;
       }
 
       if (row.is_deleted === 1) {
         restoreStmt.run(b.slug);
-        console.log(`♻️ Restored builtin app: ${b.slug}`);
+        seedLogger.info(`Restored builtin app: ${b.slug}`);
       }
 
       const patch = [];
@@ -167,6 +170,6 @@ export function ensureBuiltinApps(db) {
       }
     }
   } catch (e) {
-    console.warn('ensureBuiltinApps warning:', e?.message || e);
+    seedLogger.warn('ensureBuiltinApps warning', { error: e?.message || e });
   }
 }

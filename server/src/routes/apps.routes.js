@@ -47,13 +47,12 @@ export function createAppRoutes(db) {
 
   // 应用
   router.get('/', (req, res, next) => controller.list(req, res, next));
-  router.get('/autostart-test', (req, res) => res.json({ ok: true }));
   router.get('/:id(\\d+)', (req, res, next) => controller.get(req, res, next));
   router.post('/', (req, res, next) => controller.create(req, res, next));
   router.put('/:id(\\d+)/visible', (req, res, next) =>
     controller.setVisible(req, res, next)
   );
-  // 自启动开关（兼容旧环境路由解析问题，提供两种匹配方式）
+  // slug 模式：支持按 slug 切换自启动
   router.put('/:id/autostart', (req, res, next) =>
     controller.setAutostart(req, res, next)
   );

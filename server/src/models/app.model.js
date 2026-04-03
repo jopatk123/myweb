@@ -1,6 +1,10 @@
 /**
  * 应用模型
  */
+import logger from '../utils/logger.js';
+
+const appModelLogger = logger.child('AppModel');
+
 export class AppModel {
   constructor(db) {
     this.db = db;
@@ -170,14 +174,11 @@ export class AppModel {
     const info = this.db.prepare(sql).run(targetGroupId, ...ids);
     // Log for debugging: which ids were updated and how many rows affected
     try {
-      console.log(
-        '[AppModel.moveToGroup] sql=',
+      appModelLogger.debug('moveToGroup', {
         sql,
-        'params=',
-        [targetGroupId, ...ids],
-        'changes=',
-        info.changes
-      );
+        params: [targetGroupId, ...ids],
+        changes: info.changes,
+      });
     } catch (_error) {
       void _error;
       // ignore logging errors

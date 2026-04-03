@@ -31,10 +31,6 @@ export function createAxiosClient(config = {}) {
   });
 }
 
-export function withApiBase(path) {
-  return buildApiUrl(path);
-}
-
 export function getServerOrigin() {
   const base = getApiBase();
   if (/^https?:/i.test(base)) {

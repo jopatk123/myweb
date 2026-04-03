@@ -3,6 +3,10 @@
  * Also inserts a default wallpaper group.
  * @param {import('better-sqlite3').Database} db - The database instance.
  */
+import logger from '../../utils/logger.js';
+
+const schemaLogger = logger.child('Schema:Wallpapers');
+
 export function initWallpaperTables(db) {
   const groupTableSql = `
     CREATE TABLE IF NOT EXISTS wallpaper_groups (
@@ -45,5 +49,5 @@ export function initWallpaperTables(db) {
   `);
   insertDefaultGroup.run('默认', 1);
 
-  console.log('📊 Wallpaper tables initialized');
+  schemaLogger.info('Wallpaper tables initialized');
 }

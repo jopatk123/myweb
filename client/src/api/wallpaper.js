@@ -7,10 +7,7 @@ const api = createAxiosClient({
 // 响应拦截器
 api.interceptors.response.use(
   response => response.data,
-  error => {
-    console.error('API Error:', error);
-    return Promise.reject(error.response?.data || error);
-  }
+  error => Promise.reject(error.response?.data || error)
 );
 
 export const wallpaperApi = {

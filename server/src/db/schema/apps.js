@@ -3,6 +3,10 @@
  * Also inserts a default app group.
  * @param {import('better-sqlite3').Database} db - The database instance.
  */
+import logger from '../../utils/logger.js';
+
+const schemaLogger = logger.child('Schema:Apps');
+
 export function initAppTables(db) {
   const appGroupTableSql = `
     CREATE TABLE IF NOT EXISTS app_groups (
@@ -52,5 +56,5 @@ export function initAppTables(db) {
   `);
   insertDefaultAppGroup.run('默认', 'default', 1);
 
-  console.log('📊 App tables initialized');
+  schemaLogger.info('App tables initialized');
 }

@@ -3,15 +3,6 @@ import { buildApiUrl } from '@/api/httpClient.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-/**
- * 本地密码校验（当配置了 VITE_APP_PASSWORD 时可用）
- */
-export function validatePassword(input) {
-  const expected = (import.meta.env.VITE_APP_PASSWORD || '').trim();
-  if (!expected) return false;
-  return String(input) === expected;
-}
-
 function getStorage() {
   if (typeof window === 'undefined') return null;
   try {

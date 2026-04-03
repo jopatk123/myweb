@@ -1,6 +1,10 @@
 // 本项目基于 better-sqlite3，同一进程内无需复杂的连接池管理
 // 但提供一些小工具以便未来扩展或集中管理 DB 实例
 
+import logger from './logger.js';
+
+const poolLogger = logger.child('DbPool');
+
 let dbInstance = null;
 
 export function setDb(db) {
@@ -23,7 +27,7 @@ export function runSafe(db, fn) {
   try {
     return fn(db);
   } catch (e) {
-    console.error('dbPool.runSafe error:', e);
+    poolLogger.error('dbPool.runSafe error', { error: e });
     throw e;
   }
 }

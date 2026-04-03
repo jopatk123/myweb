@@ -2,6 +2,10 @@
  * Initializes notebook notes table.
  * @param {import('better-sqlite3').Database} db
  */
+import logger from '../../utils/logger.js';
+
+const schemaLogger = logger.child('Schema:Notebook');
+
 export function initNotebookTables(db) {
   const notesTableSql = `
     CREATE TABLE IF NOT EXISTS notebook_notes (
@@ -21,5 +25,5 @@ export function initNotebookTables(db) {
   `;
 
   db.exec(notesTableSql);
-  console.log('📝 Notebook notes table initialized');
+  schemaLogger.info('Notebook notes table initialized');
 }

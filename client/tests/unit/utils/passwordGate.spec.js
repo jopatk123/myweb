@@ -5,7 +5,6 @@ import {
   isAuthValid,
   loadAuthPayload,
   saveAuth,
-  validatePassword,
 } from '@/utils/passwordGate.js';
 import { AUTH_STORAGE_KEY, AUTH_TTL_DAYS } from '@/constants/auth.js';
 
@@ -33,11 +32,6 @@ describe('passwordGate utils', () => {
   beforeEach(() => {
     vi.stubEnv('VITE_APP_PASSWORD', TEST_PASSWORD);
     storage = createMemoryStorage();
-  });
-
-  it('validates password against default', () => {
-    expect(validatePassword(TEST_PASSWORD)).toBe(true);
-    expect(validatePassword('wrong-password')).toBe(false);
   });
 
   it('returns false when no auth payload', () => {

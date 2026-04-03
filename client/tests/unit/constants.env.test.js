@@ -26,13 +26,11 @@ describe('constants/env', () => {
 
   it('hydrates appEnv from Vite env variables', async () => {
     vi.stubEnv('VITE_API_BASE', 'https://api.example.com/');
-    vi.stubEnv('VITE_ENABLE_AI_LOGGING', 'true');
     vi.stubEnv('MODE', 'production');
 
     const { appEnv } = await loadEnvModule();
 
     expect(appEnv.apiBase).toBe('https://api.example.com');
-    expect(appEnv.enableAiLogging).toBe(true);
     expect(appEnv.isProduction).toBe(true);
   });
 });

@@ -2,6 +2,10 @@
  * Initializes work timer related tables: `work_sessions`, `work_stats`, and `work_daily_totals`.
  * @param {import('better-sqlite3').Database} db
  */
+import logger from '../../utils/logger.js';
+
+const schemaLogger = logger.child('Schema:WorkTimer');
+
 export function initWorkTimerTables(db) {
   const workSessionsSql = `
     CREATE TABLE IF NOT EXISTS work_sessions (
@@ -51,8 +55,10 @@ export function initWorkTimerTables(db) {
   try {
     insertStats.run();
   } catch (e) {
-    console.warn('初始化 work_stats 失败（非致命）:', e.message || e);
+    schemaLogger.warn('初始化 work_stats 失败（非致命）', {
+      error: e.message || e,
+    });
   }
 
-  console.log('⏱️ Work timer tables initialized');
+  schemaLogger.info('Work timer tables initialized');
 }

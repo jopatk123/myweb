@@ -9,7 +9,7 @@ import { useWindowManager } from './useWindowManager.js';
  * @param {boolean} options.enabled - 是否启用，默认 true
  */
 export function useAutoMinimize(options = {}) {
-  const { appSlug, delay = 100, enabled: _enabled = true } = options;
+  const { appSlug, delay = 100, enabled = true } = options;
   const { findWindowByApp, minimizeWindow, getActiveWindow } =
     useWindowManager();
 
@@ -18,7 +18,7 @@ export function useAutoMinimize(options = {}) {
   const minimizeTimer = ref(null);
 
   // 检查当前窗口是否为指定应用且处于活动状态
-  function _isAppActive() {
+  function isAppActive() {
     const activeWindow = getActiveWindow();
     return (
       activeWindow &&
@@ -27,17 +27,16 @@ export function useAutoMinimize(options = {}) {
     );
   }
 
-  // 标注未使用的参数以消除 lint 警告（功能保留以备未来使用）
-  void _enabled;
-  void _isAppActive;
-
   // 安排最小化
   function scheduleMinimize(customDelay = delay) {
+    if (!enabled) return;
     cancelMinimize();
     minimizeTimer.value = setTimeout(() => {
-      const window = findWindowByApp(appSlug);
-      if (window && !window.minimized) {
-        minimizeWindow(window.id);
+      if (isAppActive()) {
+        const window = findWindowByApp(appSlug);
+        if (window && !window.minimized) {
+          minimizeWindow(window.id);
+        }
       }
     }, customDelay);
   }

@@ -16,6 +16,12 @@ messageApi.interceptors.request.use(config => {
   return config;
 });
 
+// 响应拦截器 - 统一取 data 层
+messageApi.interceptors.response.use(
+  response => response.data,
+  error => Promise.reject(error.response?.data || error)
+);
+
 // 生成会话ID
 function generateSessionId() {
   const sessionId =
@@ -29,40 +35,35 @@ export const messageAPI = {
    * 获取留言列表
    */
   async getMessages(params = {}) {
-    const response = await messageApi.get('/', { params });
-    return response.data;
+    return messageApi.get('/', { params });
   },
 
   /**
    * 发送留言
    */
   async sendMessage(data) {
-    const response = await messageApi.post('/', data);
-    return response.data;
+    return messageApi.post('/', data);
   },
 
   /**
    * 删除留言
    */
   async deleteMessage(id) {
-    const response = await messageApi.delete(`/${id}`);
-    return response.data;
+    return messageApi.delete(`/${id}`);
   },
 
   /**
    * 获取用户设置
    */
   async getUserSettings() {
-    const response = await messageApi.get('/user-settings');
-    return response.data;
+    return messageApi.get('/user-settings');
   },
 
   /**
    * 更新用户设置
    */
   async updateUserSettings(data) {
-    const response = await messageApi.put('/user-settings', data);
-    return response.data;
+    return messageApi.put('/user-settings', data);
   },
 
   /**
@@ -74,22 +75,20 @@ export const messageAPI = {
       formData.append('images', files[i]);
     }
 
-    const response = await messageApi.post('/upload-image', formData, {
+    return messageApi.post('/upload-image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
   },
 
   /**
    * 清除所有留言
    */
   async clearAllMessages() {
-    const response = await messageApi.delete('/clear-all', {
+    return messageApi.delete('/clear-all', {
       data: { confirm: true },
     });
-    return response.data;
   },
 };
 

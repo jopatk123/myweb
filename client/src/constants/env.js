@@ -12,7 +12,6 @@ export const appEnv = Object.freeze({
   isProduction: (rawEnv.MODE ?? 'development') === 'production',
   rawApiBase: rawEnv.VITE_API_BASE,
   apiBase: normalizeApiBase(rawEnv.VITE_API_BASE ?? '/api'),
-  enableAiLogging: rawEnv.VITE_ENABLE_AI_LOGGING === 'true',
 });
 
 export { normalizeApiBase };

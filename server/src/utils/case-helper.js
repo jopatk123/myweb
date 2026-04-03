@@ -1,4 +1,8 @@
 // 将 camelCase 键转换为 snake_case 的工具
+import logger from './logger.js';
+
+const helperLogger = logger.child('CaseHelper');
+
 export function camelToSnake(str) {
   return String(str)
     .replace(/([A-Z])/g, '_$1')
@@ -36,7 +40,9 @@ export function normalizeRequestKeys(req, res, next) {
     }
   } catch (e) {
     // 归一化失败时不阻塞请求
-    console.warn('normalizeRequestKeys warning:', e?.message || e);
+    helperLogger.warn('normalizeRequestKeys warning', {
+      error: e?.message || e,
+    });
   }
   next();
 }
@@ -69,7 +75,9 @@ export function normalizeResponseMiddleware(req, res, next) {
         }
       }
     } catch (e) {
-      console.warn('normalizeResponseMiddleware warning:', e?.message || e);
+      helperLogger.warn('normalizeResponseMiddleware warning', {
+        error: e?.message || e,
+      });
     }
     return originalJson(body);
   };

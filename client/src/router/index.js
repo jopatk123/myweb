@@ -3,7 +3,6 @@ import Home from '@/views/Home.vue';
 import WallpaperManagement from '@/views/WallpaperManagement.vue';
 import AppManagement from '@/views/AppManagement.vue';
 import FileManagement from '@/views/FileManagement.vue';
-import AILogsView from '@/views/AILogsView.vue';
 
 const routes = [
   {
@@ -25,11 +24,6 @@ const routes = [
     path: '/files',
     name: 'FileManagement',
     component: FileManagement,
-  },
-  {
-    path: '/ai-logs',
-    name: 'AILogs',
-    component: AILogsView,
   },
 ];
 

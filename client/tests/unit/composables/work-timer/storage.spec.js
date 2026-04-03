@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   saveWorkSessions,
   loadWorkSessions,
@@ -14,9 +14,35 @@ import {
   clearPendingStarts,
 } from '@/composables/work-timer/storage.js';
 
+// jsdom 22 + vitest 0.34 下 localStorage 可能没有 setItem/clear 等标准方法，
+// 用内存实现替换以统一测试行为
+function createMemoryStorage() {
+  const data = {};
+  return {
+    getItem: key => (key in data ? data[key] : null),
+    setItem: (key, value) => {
+      data[key] = String(value);
+    },
+    removeItem: key => {
+      delete data[key];
+    },
+    clear: () => {
+      for (const k of Object.keys(data)) delete data[k];
+    },
+    get length() {
+      return Object.keys(data).length;
+    },
+    key: idx => Object.keys(data)[idx] ?? null,
+  };
+}
+
 describe('work-timer storage', () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.stubGlobal('localStorage', createMemoryStorage());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('saveWorkSessions / loadWorkSessions', () => {

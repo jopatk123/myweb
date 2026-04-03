@@ -2,6 +2,10 @@
  * Initializes file-related tables: `files`.
  * @param {import('better-sqlite3').Database} db - The database instance.
  */
+import logger from '../../utils/logger.js';
+
+const schemaLogger = logger.child('Schema:Files');
+
 export function initFileTables(db) {
   const filesTableSql = `
     CREATE TABLE IF NOT EXISTS files (
@@ -24,5 +28,5 @@ export function initFileTables(db) {
   `;
 
   db.exec(filesTableSql);
-  console.log('📁 File management tables initialized');
+  schemaLogger.info('File management tables initialized');
 }

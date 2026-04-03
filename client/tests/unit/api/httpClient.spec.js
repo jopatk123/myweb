@@ -14,7 +14,6 @@ import {
   buildApiUrl,
   getServerOrigin,
   buildServerUrl,
-  withApiBase,
 } from '@/api/httpClient.js';
 
 describe('httpClient', () => {
@@ -50,12 +49,6 @@ describe('httpClient', () => {
     it('returns full URL for http paths', () => {
       const url = buildApiUrl('http://localhost:3000/api');
       expect(url).toBe('http://localhost:3000/api');
-    });
-  });
-
-  describe('withApiBase', () => {
-    it('is an alias for buildApiUrl', () => {
-      expect(withApiBase('test')).toBe(buildApiUrl('test'));
     });
   });
 

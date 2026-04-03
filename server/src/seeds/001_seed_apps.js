@@ -1,31 +1,15 @@
+import { BUILTIN_APP_DEFINITIONS } from '../../../shared/builtin-apps.js';
+
 export async function seed(knex) {
-  // Deletes ALL existing entries
   await knex('apps').del();
-  // Inserts seed entries
-  await knex('apps').insert([
-    {
-      name: '计算器',
-      slug: 'calculator',
-      description: '科学计算器',
-      icon_filename: 'calculator-128.png',
+  await knex('apps').insert(
+    BUILTIN_APP_DEFINITIONS.filter(app => app.visible).map(app => ({
+      name: app.name,
+      slug: app.slug,
+      description: app.description,
+      icon_filename: app.iconFilename,
       is_visible: 1,
       is_builtin: 1,
-    },
-    {
-      name: '笔记本',
-      slug: 'notebook',
-      description: '待办事项管理',
-      icon_filename: 'notebook-128.svg',
-      is_visible: 1,
-      is_builtin: 1,
-    },
-    {
-      name: '下班计时器',
-      slug: 'work-timer',
-      description: '工作时间管理和下班倒计时',
-      icon_filename: 'work-timer-128.svg',
-      is_visible: 1,
-      is_builtin: 1,
-    },
-  ]);
+    }))
+  );
 }

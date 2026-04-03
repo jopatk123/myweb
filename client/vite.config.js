@@ -38,9 +38,6 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './tests/setup/vitest.setup.js',
-    env: {
-      VITE_ENABLE_AI_LOGGING: 'true',
-    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

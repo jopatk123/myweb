@@ -1,6 +1,23 @@
 import Database from 'better-sqlite3';
 import { jest } from '@jest/globals';
-import { ensureBuiltinApps, seedAppsIfEmpty } from '../src/db/seeding.js';
+
+// Mock logger so seedLogger.warn / .info are captured
+const mockWarn = jest.fn();
+const mockInfo = jest.fn();
+jest.unstable_mockModule('../../src/utils/logger.js', () => {
+  const childLogger = {
+    debug: jest.fn(),
+    info: mockInfo,
+    warn: mockWarn,
+    error: jest.fn(),
+    child: () => childLogger,
+  };
+  return { default: childLogger, logger: childLogger };
+});
+
+const { ensureBuiltinApps, seedAppsIfEmpty } = await import(
+  '../src/db/seeding.js'
+);
 
 function createSeedingDb() {
   const db = new Database(':memory:');
@@ -103,7 +120,7 @@ describe('ensureBuiltinApps', () => {
   });
 
   test('handles db errors without throwing', () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockWarn.mockClear();
     const badDb = {
       prepare() {
         throw new Error('boom');
@@ -111,15 +128,12 @@ describe('ensureBuiltinApps', () => {
     };
 
     expect(() => ensureBuiltinApps(badDb)).not.toThrow();
-    expect(warnSpy).toHaveBeenCalled();
-
-    warnSpy.mockRestore();
+    expect(mockWarn).toHaveBeenCalled();
   });
 });
 
 describe('seedAppsIfEmpty', () => {
   test('seeds calculator and notebook when apps table is empty', () => {
-    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     const db = createSeedingDb();
 
     seedAppsIfEmpty(db);
@@ -135,7 +149,6 @@ describe('seedAppsIfEmpty', () => {
     expect(notebook).toMatchObject({ slug: 'notebook', is_builtin: 1 });
 
     db.close();
-    logSpy.mockRestore();
   });
 
   test('does not seed when non-deleted apps already exist', () => {
@@ -156,7 +169,7 @@ describe('seedAppsIfEmpty', () => {
   });
 
   test('handles db errors without throwing', () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockWarn.mockClear();
     const badDb = {
       prepare() {
         throw new Error('seed-fail');
@@ -164,8 +177,6 @@ describe('seedAppsIfEmpty', () => {
     };
 
     expect(() => seedAppsIfEmpty(badDb)).not.toThrow();
-    expect(warnSpy).toHaveBeenCalled();
-
-    warnSpy.mockRestore();
+    expect(mockWarn).toHaveBeenCalled();
   });
 });

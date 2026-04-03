@@ -1,11 +1,22 @@
 import { jest } from '@jest/globals';
-import Database from 'better-sqlite3';
-import {
-  setDb,
-  getDb,
-  wrapTransaction,
-  runSafe,
-} from '../../src/utils/dbPool.js';
+
+// Mock logger so poolLogger.error is captured
+const mockError = jest.fn();
+jest.unstable_mockModule('../../src/utils/logger.js', () => {
+  const childLogger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: mockError,
+    child: () => childLogger,
+  };
+  return { default: childLogger, logger: childLogger };
+});
+
+const Database = (await import('better-sqlite3')).default;
+const { setDb, getDb, wrapTransaction, runSafe } = await import(
+  '../../src/utils/dbPool.js'
+);
 
 let db;
 
@@ -65,15 +76,14 @@ describe('runSafe()', () => {
     expect(result).toBe(true);
   });
 
-  test('rethrows error and logs via console.error', () => {
-    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  test('rethrows error and logs via logger', () => {
+    mockError.mockClear();
     const err = new Error('safe-test-error');
     expect(() =>
       runSafe(db, () => {
         throw err;
       })
     ).toThrow('safe-test-error');
-    expect(spy).toHaveBeenCalledWith('dbPool.runSafe error:', err);
-    spy.mockRestore();
+    expect(mockError).toHaveBeenCalled();
   });
 });
