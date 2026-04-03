@@ -34,6 +34,7 @@ export function initAppTables(db) {
       is_visible INTEGER DEFAULT 1,
       is_autostart INTEGER DEFAULT 0,
       is_deleted INTEGER DEFAULT 0,
+      deleted_at DATETIME DEFAULT NULL,
       is_builtin INTEGER DEFAULT 0,
       target_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -43,7 +44,7 @@ export function initAppTables(db) {
     CREATE INDEX IF NOT EXISTS idx_apps_group_id ON apps(group_id);
     CREATE INDEX IF NOT EXISTS idx_apps_is_visible ON apps(is_visible);
     CREATE INDEX IF NOT EXISTS idx_apps_is_autostart ON apps(is_autostart);
-    CREATE INDEX IF NOT EXISTS idx_apps_is_deleted ON apps(is_deleted);
+    CREATE INDEX IF NOT EXISTS idx_apps_deleted_at ON apps(deleted_at);
     CREATE INDEX IF NOT EXISTS idx_apps_slug ON apps(slug);
   `;
 

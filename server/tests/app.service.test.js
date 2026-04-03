@@ -70,7 +70,7 @@ test('deleteApp removes icon file when no other references exist', async () => {
   const app = await service.createApp({
     name: '测试应用',
     slug: 'test-app',
-    iconFilename,
+    icon_filename: iconFilename,
     description: 'desc',
   });
 
@@ -83,7 +83,7 @@ test('deleteApp continues when icon reference counting throws', async () => {
   const created = await service.createApp({
     name: '计数异常应用',
     slug: 'count-error-app',
-    iconFilename: 'count-error.png',
+    icon_filename: 'count-error.png',
     description: 'desc',
   });
 

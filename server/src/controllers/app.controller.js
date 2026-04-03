@@ -41,7 +41,6 @@ export class AppController {
         limit: limit ? Number(limit) : null,
       };
       const result = await this.service.getApps(query);
-      void result;
       res.json({ code: 200, data: result, message: '获取成功' });
     } catch (error) {
       next(error);
@@ -229,10 +228,10 @@ export class AppController {
     try {
       const schema = Joi.object({
         name: Joi.string().min(1).max(100).required(),
-        is_default: Joi.boolean().optional(),
+        isDefault: Joi.boolean().optional(),
       });
       const payload = await schema.validateAsync(req.body);
-      const group = await this.service.createGroup(payload);
+      const group = await this.service.createGroup(mapToSnake(payload));
       res.status(201).json({ code: 201, data: group, message: '创建成功' });
     } catch (error) {
       next(error);
@@ -244,10 +243,10 @@ export class AppController {
       const id = Number(req.params.id);
       const schema = Joi.object({
         name: Joi.string().min(1).max(100).optional(),
-        is_default: Joi.boolean().optional(),
+        isDefault: Joi.boolean().optional(),
       });
       const payload = await schema.validateAsync(req.body);
-      const group = await this.service.updateGroup(id, payload);
+      const group = await this.service.updateGroup(id, mapToSnake(payload));
       res.json({ code: 200, data: group, message: '更新成功' });
     } catch (err) {
       next(err);

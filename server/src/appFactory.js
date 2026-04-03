@@ -8,12 +8,12 @@ import { initDatabase } from './config/database.js';
 import { appEnv, isCorsOriginAllowed } from './config/env.js';
 import { createWallpaperRoutes } from './routes/wallpapers.routes.js';
 import { createAppRoutes } from './routes/apps.routes.js';
-import { createFileRoutes } from './controllers/file.controller.js';
+import { createFileRoutes } from './routes/files.routes.js';
 import { createNotebookNotesRoutes } from './routes/notebook-notes.routes.js';
 import { createWorkTimerRoutes } from './routes/worktimer.routes.js';
 import { createMessageRoutes } from './routes/messages.routes.js';
 import { createAuthRoutes } from './routes/auth.routes.js';
-import { createInternalLogsRoutes } from './routes/internal.logs.routes.js';
+import { createInternalLogsRoutes } from './routes/internal-logs.routes.js';
 import errorHandler from './middleware/error.middleware.js';
 import {
   normalizeRequestKeys,

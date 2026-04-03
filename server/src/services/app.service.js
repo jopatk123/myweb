@@ -1,12 +1,12 @@
 import { AppModel } from '../models/app.model.js';
 import { AppGroupModel } from '../models/app-group.model.js';
 import { generateUniqueSlug } from '../utils/slug.js';
-import { mapToSnake } from '../utils/field-mapper.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../utils/logger.js';
+import { APP_ICONS_DIR, PUBLIC_APP_ICONS_DIR } from '../utils/upload-path.js';
 
 const appServiceLogger = logger.child('AppService');
 
@@ -15,19 +15,11 @@ export class AppService {
     this.appModel = new AppModel(db);
     this.groupModel = new AppGroupModel(db);
 
-    // 获取目录路径
+    this.uploadsDir = process.env.APP_ICON_UPLOAD_DIR || APP_ICONS_DIR;
+    this.publicIconsDir = PUBLIC_APP_ICONS_DIR;
+
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const DEFAULT_APP_ICON_UPLOAD_DIR = path.join(
-      __dirname,
-      '../../uploads/apps/icons'
-    );
-    this.uploadsDir =
-      process.env.APP_ICON_UPLOAD_DIR || DEFAULT_APP_ICON_UPLOAD_DIR;
-    this.publicIconsDir = path.join(
-      __dirname,
-      '../../../client/public/apps/icons'
-    );
     this.presetIconsDir = path.join(__dirname, '../../preset-icons');
   }
 
@@ -41,14 +33,13 @@ export class AppService {
   }
 
   async createApp(payload) {
-    const snakePayload = mapToSnake(payload);
-    if (!snakePayload.slug) {
-      snakePayload.slug = generateUniqueSlug(
-        snakePayload.name,
+    if (!payload.slug) {
+      payload.slug = generateUniqueSlug(
+        payload.name,
         slug => !!this.appModel.findBySlug(slug)
       );
     }
-    return this.appModel.create(snakePayload);
+    return this.appModel.create(payload);
   }
 
   updateApp(id, payload) {
@@ -79,7 +70,7 @@ export class AppService {
     }
 
     // 删除前尝试清理图标文件（仅当无其他未删除应用引用该文件时）
-    const iconFilename = app.icon_filename || app.iconFilename;
+    const iconFilename = app.icon_filename;
     if (iconFilename) {
       try {
         const count = this.appModel.countByIconFilename(iconFilename);
@@ -148,9 +139,7 @@ export class AppService {
     // 自动生成 slug（若未提供）
     if (!payload.slug && payload.name) {
       payload.slug = generateUniqueSlug(payload.name, slug => {
-        const existing = this.groupModel.db
-          .prepare('SELECT id FROM app_groups WHERE slug = ?')
-          .get(slug);
+        const existing = this.groupModel.findBySlug(slug);
         return !!existing;
       });
     }
@@ -163,9 +152,7 @@ export class AppService {
       const existing = this.groupModel.findById(id);
       if (existing && existing.name !== payload.name) {
         payload.slug = generateUniqueSlug(payload.name, slug => {
-          const found = this.groupModel.db
-            .prepare('SELECT id FROM app_groups WHERE slug = ? AND id != ?')
-            .get(slug, id);
+          const found = this.groupModel.findBySlug(slug, id);
           return !!found;
         });
       }

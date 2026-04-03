@@ -1,7 +1,7 @@
 import express from 'express';
-import { createHash, timingSafeEqual } from 'crypto';
 import rateLimit from 'express-rate-limit';
 import logger from '../utils/logger.js';
+import { verifyToken } from '../utils/crypto.js';
 
 const authLogger = logger.child('AuthRoute');
 
@@ -20,16 +20,6 @@ const loginLimiter = rateLimit({
     message: '登录尝试次数过多，请 5 分钟后重试',
   },
 });
-
-function constantTimeEquals(a, b) {
-  const bufA = Buffer.from(String(a));
-  const bufB = Buffer.from(String(b));
-  if (bufA.length !== bufB.length) {
-    timingSafeEqual(bufA, bufA);
-    return false;
-  }
-  return timingSafeEqual(bufA, bufB);
-}
 
 export function createAuthRoutes() {
   const router = express.Router();
@@ -55,13 +45,7 @@ export function createAuthRoutes() {
     const provided = password.trim();
 
     // 支持明文和 sha256 哈希两种比对
-    let match = false;
-    if (appPassword.startsWith('sha256:')) {
-      const hash = createHash('sha256').update(provided).digest('hex');
-      match = constantTimeEquals(`sha256:${hash}`, appPassword);
-    } else {
-      match = constantTimeEquals(provided, appPassword);
-    }
+    const match = verifyToken(appPassword, provided);
 
     if (match) {
       authLogger.info('密码验证成功', { ip: req.ip });

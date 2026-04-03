@@ -53,7 +53,7 @@ export class WallpaperService {
    * 否则返回数组（向后兼容）
    */
   getAllWallpapers(groupId = null, page = null, limit = null) {
-    return this.wallpaperModel.findAll(groupId, false, page, limit);
+    return this.wallpaperModel.findAll({ groupId, page, limit });
   }
 
   getWallpaperById(id) {
@@ -120,7 +120,8 @@ export class WallpaperService {
 
   async updateWallpaper(id, data) {
     const existing = this.getWallpaperById(id); // 验证壁纸存在
-    const updated = this.wallpaperModel.update(id, data);
+    // 确保 data 是 snake_case（controller 传来的是 camelCase，model 只接受 snake_case）
+    const updated = this.wallpaperModel.update(id, mapToSnake(data));
 
     const existingPath = existing?.file_path;
     const updatedPath = updated?.file_path;
@@ -436,7 +437,7 @@ export class WallpaperService {
     this.getGroupById(id); // 验证分组存在
 
     // 检查分组下是否有壁纸
-    const wallpapers = this.wallpaperModel.findAll(id);
+    const wallpapers = this.wallpaperModel.findAll({ groupId: id });
     if (wallpapers.length > 0) {
       throw new Error('分组下还有壁纸，无法删除');
     }

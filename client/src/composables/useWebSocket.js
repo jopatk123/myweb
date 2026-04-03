@@ -65,28 +65,26 @@ export function useWebSocket() {
     }
   };
 
-  const connect = () => {
+  const connect = async () => {
+    let sessionId = localStorage.getItem('sessionId');
+
+    // 如果没有sessionId，生成一个
+    if (!sessionId) {
+      const { v4: uuidv4 } = await import('uuid');
+      sessionId = uuidv4();
+      localStorage.setItem('sessionId', sessionId);
+    }
+
+    const baseUrl = getWebSocketUrl();
+    // 将 sessionId 作为查询参数传入，服务端可在升级阶段验证身份
+    const wsUrl = `${baseUrl}?sessionId=${encodeURIComponent(sessionId)}`;
+
+    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+      return; // 已连接
+    }
+
     return new Promise((resolve, reject) => {
       try {
-        let sessionId = localStorage.getItem('sessionId');
-
-        // 如果没有sessionId，生成一个
-        if (!sessionId) {
-          sessionId =
-            'session_' +
-            Date.now() +
-            '_' +
-            Math.random().toString(36).substr(2, 9);
-          localStorage.setItem('sessionId', sessionId);
-        }
-
-        const baseUrl = getWebSocketUrl();
-        // 将 sessionId 作为查询参数传入，服务端可在升级阶段验证身份
-        const wsUrl = `${baseUrl}?sessionId=${encodeURIComponent(sessionId)}`;
-        if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-          resolve();
-          return; // 已连接
-        }
         ws.value = new WebSocket(wsUrl);
 
         ws.value.onopen = () => {

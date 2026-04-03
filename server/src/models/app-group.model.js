@@ -20,6 +20,24 @@ export class AppGroupModel {
     return this.db.prepare(sql).get(id);
   }
 
+  /**
+   * 按 slug 查找分组（包含软删除的记录）
+   * @param {string} slug
+   * @param {number|null} excludeId - 排除指定 id（用于更新时避免自身充突）
+   */
+  findBySlug(slug, excludeId = null) {
+    if (excludeId) {
+      return this.db
+        .prepare(
+          'SELECT id, deleted_at FROM app_groups WHERE slug = ? AND id != ?'
+        )
+        .get(slug, excludeId);
+    }
+    return this.db
+      .prepare('SELECT id, deleted_at FROM app_groups WHERE slug = ?')
+      .get(slug);
+  }
+
   create({ name, slug, is_default = 0 }) {
     // 如果提供了 slug，先检查是否存在（包含已被软删除的记录）
     if (slug) {
@@ -46,32 +64,20 @@ export class AppGroupModel {
   }
 
   update(id, { name, slug, is_default }) {
-    // 兼容 camelCase 或 snake_case 的输入
-    const payload = { name, slug, is_default };
-    const fieldMap = {
-      name: 'name',
-      slug: 'slug',
-      isDefault: 'is_default',
-      is_default: 'is_default',
-    };
-
     const fields = [];
     const params = [];
 
-    for (const [key, value] of Object.entries(payload)) {
-      if (value === undefined) continue;
-      const col =
-        fieldMap[key] || (fieldMap[key] === undefined ? null : fieldMap[key]);
-      // 如果键已是 camelCase（如 isDefault），尝试映射
-      const mapped =
-        col ||
-        fieldMap[
-          Object.keys(fieldMap).find(k => k.toLowerCase() === key.toLowerCase())
-        ];
-      if (!mapped) continue;
-      if (mapped === 'is_default') params.push(value ? 1 : 0);
-      else params.push(value);
-      fields.push(`${mapped} = ?`);
+    if (name !== undefined) {
+      fields.push('name = ?');
+      params.push(name);
+    }
+    if (slug !== undefined) {
+      fields.push('slug = ?');
+      params.push(slug);
+    }
+    if (is_default !== undefined) {
+      fields.push('is_default = ?');
+      params.push(is_default ? 1 : 0);
     }
 
     if (fields.length === 0) return this.findById(id);

@@ -3,15 +3,13 @@ import { AppController } from '../controllers/app.controller.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import { parseEnvByteSize } from '../utils/env.js';
+import { APP_ICONS_DIR } from '../utils/upload-path.js';
 
 export function createAppRoutes(db) {
   const router = express.Router();
   const controller = new AppController(db);
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
 
   // 图标上传配置：保存到 uploads/apps/icons，测试场景可通过 APP_ICON_UPLOAD_DIR 覆盖
   const DEFAULT_APP_ICON_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MiB
@@ -19,12 +17,7 @@ export function createAppRoutes(db) {
     'APP_ICON_MAX_UPLOAD_SIZE',
     DEFAULT_APP_ICON_UPLOAD_SIZE
   );
-  const DEFAULT_APP_ICON_UPLOAD_DIR = path.join(
-    __dirname,
-    '../../uploads/apps/icons'
-  );
-  const APP_ICON_UPLOAD_DIR =
-    process.env.APP_ICON_UPLOAD_DIR || DEFAULT_APP_ICON_UPLOAD_DIR;
+  const APP_ICON_UPLOAD_DIR = process.env.APP_ICON_UPLOAD_DIR || APP_ICONS_DIR;
 
   const storage = multer.diskStorage({
     destination: async (req, file, cb) => {

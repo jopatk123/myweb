@@ -1,63 +1,30 @@
-import { createHash, timingSafeEqual } from 'crypto';
 import { getAdminTokenConfig } from '../config/env.js';
+import { verifyToken } from '../utils/crypto.js';
 
 function normalizeToken(raw) {
   return (raw || '').trim();
 }
 
-function hashTokenIfNeeded(token) {
-  const value = normalizeToken(token);
-  if (!value) return '';
-  // Allow storing hashed token via FILES_ADMIN_TOKEN_HASH to avoid plaintext in env
-  if (value.startsWith('sha256:')) {
-    return value;
-  }
-  return value;
-}
-
-function constantTimeEquals(a, b) {
-  const bufA = Buffer.from(String(a));
-  const bufB = Buffer.from(String(b));
-  if (bufA.length !== bufB.length) {
-    // Compare against self to consume constant time, then return false
-    timingSafeEqual(bufA, bufA);
-    return false;
-  }
-  return timingSafeEqual(bufA, bufB);
-}
-
-function verifyToken(expected, provided) {
-  const safeExpected = normalizeToken(expected);
-  const safeProvided = normalizeToken(provided);
-
-  if (!safeExpected) return true;
-  if (!safeProvided) return false;
-
-  if (safeExpected.startsWith('sha256:')) {
-    const hash = createHash('sha256').update(safeProvided).digest('hex');
-    return constantTimeEquals(`sha256:${hash}`, safeExpected);
-  }
-
-  return constantTimeEquals(safeExpected, safeProvided);
-}
-
 export function createFilesAdminGuard(envVar = 'FILES_ADMIN_TOKEN') {
   const { token: configuredToken, tokenHash: hashedToken } =
     getAdminTokenConfig(envVar);
-  const expected = hashedToken
-    ? `sha256:${normalizeToken(hashedToken)}`
-    : hashTokenIfNeeded(configuredToken);
 
-  if (!normalizeToken(expected)) {
+  // 若配置了显式哈希值，使用 sha256: 前缀格式；否则使用明文存储
+  const rawExpected = normalizeToken(configuredToken);
+  const rawHash = normalizeToken(hashedToken);
+  const expected = rawHash
+    ? `sha256:${rawHash}`
+    : rawExpected.startsWith('sha256:')
+      ? rawExpected
+      : rawExpected;
+
+  if (!expected) {
     return (_req, _res, next) => next();
   }
 
   return (req, res, next) => {
-    const headerToken = req.get('x-admin-token') || req.get('x-admin-key');
-    const queryToken = req.query?.adminToken;
-    const bodyToken = req.body?.adminToken;
-
-    const provided = headerToken || queryToken || bodyToken || '';
+    // 仅接受 Header 方式传递 token，避免 token 出现在 URL/日志中
+    const provided = req.get('x-admin-token') || req.get('x-admin-key') || '';
 
     if (verifyToken(expected, provided)) {
       return next();

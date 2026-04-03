@@ -15,7 +15,7 @@ export class AppModel {
    * 若未传 page/limit，则返回数组
    */
   findAll({ groupId = null, visible = null, page = null, limit = null } = {}) {
-    const whereClauses = ['is_deleted = 0'];
+    const whereClauses = ['deleted_at IS NULL'];
     const params = [];
     if (groupId) {
       whereClauses.push('group_id = ?');
@@ -51,12 +51,12 @@ export class AppModel {
   }
 
   findById(id) {
-    const sql = `SELECT * FROM apps WHERE id = ? AND is_deleted = 0`;
+    const sql = `SELECT * FROM apps WHERE id = ? AND deleted_at IS NULL`;
     return this.db.prepare(sql).get(id);
   }
 
   findBySlug(slug) {
-    const sql = `SELECT * FROM apps WHERE slug = ? AND is_deleted = 0`;
+    const sql = `SELECT * FROM apps WHERE slug = ? AND deleted_at IS NULL`;
     return this.db.prepare(sql).get(slug);
   }
 
@@ -89,22 +89,16 @@ export class AppModel {
   }
 
   update(id, payload) {
-    // 允许前端使用 camelCase 或 snake_case，映射到数据库列名
+    // controller 调用前已通过 mapToSnake 转换，此处仅接受 snake_case 字段
     const fieldMap = {
       name: 'name',
       slug: 'slug',
       description: 'description',
-      iconFilename: 'icon_filename',
       icon_filename: 'icon_filename',
-      groupId: 'group_id',
       group_id: 'group_id',
-      isVisible: 'is_visible',
       is_visible: 'is_visible',
-      isBuiltin: 'is_builtin',
       is_builtin: 'is_builtin',
-      targetUrl: 'target_url',
       target_url: 'target_url',
-      isAutostart: 'is_autostart',
       is_autostart: 'is_autostart',
     };
 
@@ -142,13 +136,13 @@ export class AppModel {
   }
 
   setAutostartBySlug(slug, autostart) {
-    const sql = `UPDATE apps SET is_autostart = ?, updated_at = CURRENT_TIMESTAMP WHERE slug = ? AND is_deleted = 0`;
+    const sql = `UPDATE apps SET is_autostart = ?, updated_at = CURRENT_TIMESTAMP WHERE slug = ? AND deleted_at IS NULL`;
     this.db.prepare(sql).run(autostart ? 1 : 0, slug);
     return this.findBySlug(slug);
   }
 
   softDelete(id) {
-    const sql = `UPDATE apps SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    const sql = `UPDATE apps SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
     this.db.prepare(sql).run(id);
     return true;
   }
@@ -163,7 +157,7 @@ export class AppModel {
    * 统计指定图标文件在未删除的应用中的引用数量
    */
   countByIconFilename(iconFilename) {
-    const sql = `SELECT COUNT(1) AS cnt FROM apps WHERE is_deleted = 0 AND icon_filename = ?`;
+    const sql = `SELECT COUNT(1) AS cnt FROM apps WHERE deleted_at IS NULL AND icon_filename = ?`;
     const row = this.db.prepare(sql).get(iconFilename);
     return row ? Number(row.cnt) : 0;
   }
@@ -172,17 +166,10 @@ export class AppModel {
     const placeholders = ids.map(() => '?').join(',');
     const sql = `UPDATE apps SET group_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`;
     const info = this.db.prepare(sql).run(targetGroupId, ...ids);
-    // Log for debugging: which ids were updated and how many rows affected
-    try {
-      appModelLogger.debug('moveToGroup', {
-        sql,
-        params: [targetGroupId, ...ids],
-        changes: info.changes,
-      });
-    } catch (_error) {
-      void _error;
-      // ignore logging errors
-    }
+    appModelLogger.debug('moveToGroup', {
+      params: [targetGroupId, ...ids],
+      changes: info.changes,
+    });
     return info.changes === undefined ? true : info.changes;
   }
 }

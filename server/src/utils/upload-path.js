@@ -9,6 +9,11 @@ export const UPLOADS_ROOT = path.join(PROJECT_ROOT, 'uploads');
 export const WALLPAPERS_DIR = path.join(UPLOADS_ROOT, 'wallpapers');
 export const WALLPAPER_THUMBNAILS_DIR = path.join(WALLPAPERS_DIR, 'thumbnails');
 export const FILES_DIR = path.join(UPLOADS_ROOT, 'files');
+export const APP_ICONS_DIR = path.join(UPLOADS_ROOT, 'apps', 'icons');
+export const PUBLIC_APP_ICONS_DIR = path.resolve(
+  __dirname,
+  '../../../client/public/apps/icons'
+);
 
 export function toUploadsAbsolutePath(filePath) {
   const candidate = String(filePath || '').trim();

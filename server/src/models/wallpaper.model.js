@@ -11,7 +11,12 @@ export class WallpaperModel {
    * - 未传入 page/limit 时：保持向后兼容，返回所有匹配的数组
    * - 传入 page 和 limit 时：返回分页对象 { items: [], total: number }
    */
-  findAll(groupId = null, activeOnly = false, page = null, limit = null) {
+  findAll({
+    groupId = null,
+    activeOnly = false,
+    page = null,
+    limit = null,
+  } = {}) {
     const whereClauses = ['deleted_at IS NULL'];
     const params = [];
 
@@ -62,43 +67,35 @@ export class WallpaperModel {
   }
 
   create(data) {
-    // 支持接受 camelCase 或已被 mapToSnake 转换后的 snake_case 字段
-    const filename = data.filename || data.file_name;
-    const originalName =
-      data.originalName || data.original_name || data.originalname;
-    const filePath = data.filePath || data.file_path;
-    const fileSize = data.fileSize || data.file_size || data.size;
-    const mimeType = data.mimeType || data.mime_type || data.mimetype;
-    const groupId = data.groupId || data.group_id || null;
-    const name =
-      data.name || data.title || data.originalName || data.original_name;
+    // service 层调用前已通过 mapToSnake 转换，此处仅接受 snake_case 字段
     const sql = `
       INSERT INTO wallpapers (filename, original_name, file_path, file_size, mime_type, group_id, name)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-    // 将 camelCase 字段映射为 snake_case 列值
     const result = this.db
       .prepare(sql)
-      .run(filename, originalName, filePath, fileSize, mimeType, groupId, name);
+      .run(
+        data.filename,
+        data.original_name,
+        data.file_path,
+        data.file_size,
+        data.mime_type,
+        data.group_id ?? null,
+        data.name
+      );
     return this.findById(result.lastInsertRowid);
   }
 
   update(id, data) {
-    // 支持前端以 camelCase 或 snake_case 传入字段，映射到数据库列名（snake_case）
+    // 接受 snake_case 字段（wallpaper.service 层调用前已转换）
     const fieldMap = {
       filename: 'filename',
-      originalName: 'original_name',
       original_name: 'original_name',
-      filePath: 'file_path',
       file_path: 'file_path',
-      fileSize: 'file_size',
       file_size: 'file_size',
-      mimeType: 'mime_type',
       mime_type: 'mime_type',
-      groupId: 'group_id',
       group_id: 'group_id',
       name: 'name',
-      isActive: 'is_active',
       is_active: 'is_active',
     };
 

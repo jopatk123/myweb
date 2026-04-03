@@ -1,11 +1,4 @@
-import {
-  ref,
-  reactive,
-  nextTick as _nextTick,
-  markRaw,
-  onScopeDispose,
-  getCurrentScope,
-} from 'vue';
+import { ref, reactive, markRaw, onScopeDispose, getCurrentScope } from 'vue';
 
 // 全局窗口管理器
 const windows = ref([]);
@@ -19,7 +12,6 @@ let baseZIndex = 1000;
 export function useWindowManager(options = {}) {
   const { autoCleanup = true } = options;
   const ownedWindowIds = new Set();
-  void _nextTick;
   /**
    * 创建新窗口
    * @param {Object} options - 窗口配置

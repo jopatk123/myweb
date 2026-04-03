@@ -21,17 +21,21 @@ describe('WallpaperModel', () => {
   const insertWallpaper = (overrides = {}) => {
     return model.create({
       filename: overrides.filename || 'test.jpg',
-      originalName: overrides.originalName || 'original.jpg',
-      filePath: overrides.filePath || 'uploads/wallpapers/test.jpg',
-      fileSize: overrides.fileSize || 1024,
-      mimeType: overrides.mimeType || 'image/jpeg',
-      groupId: overrides.groupId || null,
+      original_name:
+        overrides.original_name || overrides.originalName || 'original.jpg',
+      file_path:
+        overrides.file_path ||
+        overrides.filePath ||
+        'uploads/wallpapers/test.jpg',
+      file_size: overrides.file_size || overrides.fileSize || 1024,
+      mime_type: overrides.mime_type || overrides.mimeType || 'image/jpeg',
+      group_id: overrides.group_id || overrides.groupId || null,
       name: overrides.name || '测试壁纸',
     });
   };
 
   describe('create()', () => {
-    test('creates a wallpaper with camelCase fields', () => {
+    test('creates a wallpaper with snake_case fields (direct model call)', () => {
       const w = insertWallpaper();
       expect(w).toBeDefined();
       expect(w.filename).toBe('test.jpg');
@@ -72,7 +76,7 @@ describe('WallpaperModel', () => {
       insertWallpaper({ filename: 'd.jpg', groupId: null });
 
       if (gid) {
-        const filtered = model.findAll(gid);
+        const filtered = model.findAll({ groupId: gid });
         expect(filtered.every(w => w.group_id === gid)).toBe(true);
       }
     });
@@ -80,7 +84,7 @@ describe('WallpaperModel', () => {
     test('filters by activeOnly', () => {
       const w = insertWallpaper({ filename: 'active-only.jpg' });
       model.setActive(w.id);
-      const active = model.findAll(null, true);
+      const active = model.findAll({ activeOnly: true });
       expect(active.length).toBe(1);
       expect(active[0].is_active).toBe(1);
     });
@@ -89,7 +93,7 @@ describe('WallpaperModel', () => {
       insertWallpaper({ filename: 'p1.jpg' });
       insertWallpaper({ filename: 'p2.jpg' });
       insertWallpaper({ filename: 'p3.jpg' });
-      const result = model.findAll(null, false, 1, 2);
+      const result = model.findAll({ page: 1, limit: 2 });
       expect(result).toHaveProperty('items');
       expect(result).toHaveProperty('total');
       expect(result.items.length).toBeLessThanOrEqual(2);
@@ -142,7 +146,7 @@ describe('WallpaperModel', () => {
 
     test('updates is_active as boolean', () => {
       const w = insertWallpaper({ filename: 'active-upd.jpg' });
-      const updated = model.update(w.id, { isActive: true });
+      const updated = model.update(w.id, { is_active: true });
       expect(updated.is_active).toBe(1);
     });
 
