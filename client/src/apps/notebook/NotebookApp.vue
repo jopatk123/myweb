@@ -8,16 +8,29 @@
 
     <div class="notebook-container">
       <NotebookToolbar
+        v-if="!showAddForm && !editingNote"
         v-model:search="searchQuery"
         v-model:filter="filterStatus"
-        v-model:category="selectedCategory"
         v-model:compact-view="compactView"
-        :categories="categories"
         @add-note="showAddForm = true"
       />
 
       <div class="notebook-content">
-        <!-- 快速添加输入框 -->
+        <div v-if="loading" class="notebook-status-banner is-loading">
+          正在加载笔记...
+        </div>
+
+        <div v-else-if="error" class="notebook-status-banner">
+          {{ error }}
+        </div>
+
+        <div
+          v-if="!serverReady && notes.length > 0"
+          class="notebook-status-banner is-local"
+        >
+          当前处于本地模式，联网后新改动不会自动回传服务器。
+        </div>
+
         <QuickAddNote
           v-if="!showAddForm && !editingNote"
           :on-quick-add="handleQuickAdd"
@@ -25,15 +38,14 @@
 
         <NotebookForm
           v-if="showAddForm || editingNote"
+          :class="{ 'is-expanded': showAddForm || !!editingNote }"
           :note="editingNote"
-          :categories="categories"
           @save="handleSaveNote"
           @cancel="handleCancelEdit"
-          @add-category="handleAddCategory"
         />
 
-        <!-- 始终渲染列表（即使过滤后为空），以便列表区域可以占满空间 -->
         <NotebookList
+          v-if="!showAddForm && !editingNote"
           :notes="filteredNotes"
           :compact-view="compactView"
           @edit="handleEditNote"
@@ -41,14 +53,13 @@
           @toggle-status="handleToggleStatus"
         />
 
-        <!-- 加载更多按钮 -->
         <LoadMoreButton
+          v-if="!showAddForm && !editingNote"
           :show="filteredNotes.length > 0 && hasMoreNotes"
           :remaining-count="notes.length - displayLimit"
           :on-load-more="loadMoreNotes"
         />
 
-        <!-- 仅当完全没有任何笔记时显示空状态提示 -->
         <NotebookEmptyState
           v-if="notes.length === 0 && !showAddForm"
           :has-notes="notes.length > 0"
@@ -73,38 +84,31 @@
   import { useNotebookFilters } from '../../composables/useNotebookFilters.js';
   import './NotebookApp.css';
 
-  // 使用composables
   const {
     notes,
-    categories,
     compactView,
+    serverReady,
     displayLimit,
+    loading,
+    error,
     completedCount,
     pendingCount,
     saveNote,
     deleteNote,
     toggleNoteStatus,
-    addCategory,
     quickAddNote,
     loadMoreNotes,
     resetDisplayLimit,
     initializeData,
   } = useNotebook();
 
-  const {
-    searchQuery,
-    filterStatus,
-    selectedCategory,
-    filteredNotes,
-    hasMoreNotes,
-  } = useNotebookFilters(notes, displayLimit, resetDisplayLimit);
+  const { searchQuery, filterStatus, filteredNotes, hasMoreNotes } =
+    useNotebookFilters(notes, displayLimit, resetDisplayLimit);
 
-  // 本地状态
   const appEl = ref(null);
   const showAddForm = ref(false);
   const editingNote = ref(null);
 
-  // 方法
   function focusApp() {
     if (appEl.value && typeof appEl.value.focus === 'function') {
       appEl.value.focus();
@@ -135,15 +139,10 @@
     await toggleNoteStatus(noteId);
   }
 
-  function handleAddCategory(categoryName) {
-    addCategory(categoryName);
-  }
-
   async function handleQuickAdd(text) {
     await quickAddNote(text);
   }
 
-  // 组件挂载时初始化数据
   onMounted(() => {
     initializeData();
     focusApp();

@@ -9,7 +9,6 @@
     }"
   >
     <div class="item-content">
-      <!-- 状态切换按钮 -->
       <button
         class="status-btn"
         :class="{ completed: note.completed }"
@@ -20,14 +19,10 @@
         <span v-else>⭕</span>
       </button>
 
-      <!-- 笔记内容 -->
       <div class="note-content">
         <div class="note-header">
           <h4 class="note-title">{{ note.title }}</h4>
           <div class="note-meta">
-            <span v-if="note.category" class="note-category">{{
-              note.category
-            }}</span>
             <span class="note-priority" :class="`priority-${note.priority}`">
               {{ getPriorityText(note.priority) }}
             </span>
@@ -45,7 +40,6 @@
         </div>
       </div>
 
-      <!-- 操作按钮 -->
       <div class="item-actions">
         <button class="action-btn edit-btn" @click="$emit('edit')" title="编辑">
           ✏️
@@ -114,18 +108,18 @@
 
 <style scoped>
   .notebook-item {
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 6px;
-    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    padding: 10px 12px;
     transition: all 0.2s ease;
-    border-left: 3px solid #667eea;
-    min-height: 60px;
+    border-left: 4px solid #667eea;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    margin-bottom: 8px;
   }
 
   .notebook-item:hover {
-    background: rgba(255, 255, 255, 0.95);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
   .notebook-item.completed {
@@ -142,47 +136,13 @@
   }
 
   .notebook-item.compact-view {
-    padding: 4px 6px;
-    min-height: 36px;
-  }
-
-  .notebook-item.compact-view .item-content {
-    gap: 6px;
-    min-height: 28px;
-  }
-
-  .notebook-item.compact-view .note-title {
-    font-size: 13px;
-    line-height: 1.1;
-  }
-
-  .notebook-item.compact-view .note-meta {
-    gap: 4px;
-  }
-
-  .notebook-item.compact-view .note-category,
-  .notebook-item.compact-view .note-priority {
-    padding: 1px 3px;
-    font-size: 9px;
-  }
-
-  .notebook-item.compact-view .status-btn {
-    font-size: 14px;
-    min-width: 18px;
-    height: 18px;
-  }
-
-  .notebook-item.compact-view .action-btn {
-    font-size: 11px;
-    width: 18px;
-    height: 18px;
+    padding: 6px 10px;
   }
 
   .item-content {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    min-height: 44px;
+    gap: 10px;
   }
 
   .status-btn {
@@ -193,8 +153,8 @@
     padding: 2px;
     border-radius: 4px;
     transition: all 0.2s ease;
-    min-width: 20px;
-    height: 20px;
+    min-width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -202,7 +162,7 @@
   }
 
   .status-btn:hover {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.05);
     transform: scale(1.1);
   }
 
@@ -214,23 +174,23 @@
   .note-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 4px;
-    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 8px;
   }
 
   .note-title {
     margin: 0;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
-    color: #333;
-    line-height: 1.2;
+    color: #2d3748;
+    line-height: 1.3;
     word-break: break-word;
   }
 
   .notebook-item.completed .note-title {
     text-decoration: line-through;
-    color: #666;
+    color: #718096;
   }
 
   .note-meta {
@@ -239,19 +199,10 @@
     flex-shrink: 0;
   }
 
-  .note-category {
-    background: #e5e7eb;
-    color: #374151;
-    padding: 1px 4px;
-    border-radius: 3px;
-    font-size: 10px;
-    font-weight: 500;
-  }
-
   .note-priority {
-    padding: 1px 4px;
-    border-radius: 3px;
-    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
     font-weight: 500;
   }
 
@@ -271,49 +222,49 @@
   }
 
   .note-description {
-    margin: 0 0 4px 0;
-    font-size: 12px;
-    color: #666;
-    line-height: 1.3;
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    color: #4a5568;
+    line-height: 1.4;
     word-break: break-word;
     display: -webkit-box;
-    line-clamp: 2; /* Added line-clamp property */
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
 
   .notebook-item.completed .note-description {
-    color: #999;
+    color: #a0aec0;
   }
 
   .note-footer {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
   }
 
   .note-date {
-    font-size: 10px;
-    color: #888;
+    font-size: 11px;
+    color: #a0aec0;
   }
 
   .item-actions {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     flex-shrink: 0;
   }
 
   .action-btn {
     background: none;
     border: none;
-    font-size: 12px;
+    font-size: 14px;
     cursor: pointer;
-    padding: 3px;
-    border-radius: 3px;
+    padding: 4px;
+    border-radius: 4px;
     transition: all 0.2s ease;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -321,32 +272,11 @@
   }
 
   .action-btn:hover {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.05);
     transform: scale(1.1);
   }
 
   .delete-btn:hover {
     background: rgba(239, 68, 68, 0.1);
-  }
-
-  @media (max-width: 768px) {
-    .notebook-item {
-      padding: 10px;
-    }
-
-    .note-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 4px;
-    }
-
-    .note-meta {
-      align-self: stretch;
-      justify-content: flex-start;
-    }
-
-    .item-actions {
-      margin-top: 4px;
-    }
   }
 </style>

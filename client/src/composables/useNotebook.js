@@ -1,16 +1,16 @@
 import { ref, computed, watch } from 'vue';
 import { notebookApi } from '../api/notebook.js';
+import { unwrapData } from '../api/httpClient.js';
 import { generateId } from '../utils/idGenerator.js';
 
 export function useNotebook() {
-  // 响应式数据
   const notes = ref([]);
-  const categories = ref(['工作', '个人', '学习', '购物']);
   const compactView = ref(false);
   const serverReady = ref(true);
   const displayLimit = ref(50);
+  const loading = ref(false);
+  const error = ref(null);
 
-  // 计算属性
   const completedCount = computed(
     () => notes.value.filter(note => note.completed).length
   );
@@ -19,190 +19,263 @@ export function useNotebook() {
     () => notes.value.filter(note => !note.completed).length
   );
 
-  function normalizeNote(row) {
-    // 确保和前端使用的字段对齐
+  function normalizeNote(row = {}) {
     return {
-      id: row.id,
+      id: row.id ?? generateId(),
       title: row.title || '',
       description: row.description || '',
       category: row.category || '',
       priority: row.priority || 'medium',
       completed: !!(row.completed === true || row.completed === 1),
-      createdAt: row.createdAt || new Date().toISOString(),
-      updatedAt: row.updatedAt || new Date().toISOString(),
+      createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+      updatedAt:
+        row.updatedAt ||
+        row.updated_at ||
+        row.createdAt ||
+        row.created_at ||
+        new Date().toISOString(),
     };
   }
 
-  async function saveNote(noteData, editingNote = null) {
+  function buildPayload(noteData, completed = false) {
+    return {
+      title: noteData.title?.trim() || '',
+      description: noteData.description?.trim() || '',
+      priority: noteData.priority || 'medium',
+      category: '',
+      completed,
+    };
+  }
+
+  function saveToStorage() {
     try {
-      if (serverReady.value) {
-        if (editingNote) {
-          const res = await notebookApi.update(editingNote.id, noteData);
-          const row = res.data;
-          const idx = notes.value.findIndex(n => n.id === row.id);
-          if (idx !== -1) notes.value[idx] = normalizeNote(row);
-        } else {
-          const res = await notebookApi.create(noteData);
-          const row = res.data;
-          notes.value.unshift(normalizeNote(row));
-        }
-        persistLocalMirror();
-      } else {
-        // 回退：本地
-        if (editingNote) {
-          const index = notes.value.findIndex(
-            note => note.id === editingNote.id
-          );
-          if (index !== -1) {
-            notes.value[index] = {
-              ...notes.value[index],
-              ...noteData,
-              updatedAt: new Date().toISOString(),
-            };
-          }
-        } else {
-          const newNote = {
-            id: generateId(),
-            ...noteData,
-            completed: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          notes.value.unshift(newNote);
-        }
-        saveToStorage();
+      localStorage.setItem('notebook-notes', JSON.stringify(notes.value));
+    } catch (storageError) {
+      console.error('保存笔记失败:', storageError);
+    }
+  }
+
+  function loadFromStorage() {
+    try {
+      const saved = localStorage.getItem('notebook-notes');
+      if (!saved) {
+        notes.value = [];
+        return;
       }
-    } catch (e) {
-      console.warn('保存到服务器失败，回退本地：', e?.message || e);
+
+      const parsed = JSON.parse(saved);
+      notes.value = Array.isArray(parsed) ? parsed.map(normalizeNote) : [];
+    } catch (storageError) {
+      console.error('加载本地笔记失败:', storageError);
+      notes.value = [];
+    }
+  }
+
+  function saveViewSettingsToStorage() {
+    try {
+      localStorage.setItem(
+        'notebook-compact-view',
+        JSON.stringify(compactView.value)
+      );
+    } catch (storageError) {
+      console.error('保存视图设置失败:', storageError);
+    }
+  }
+
+  function loadViewSettingsFromStorage() {
+    try {
+      const saved = localStorage.getItem('notebook-compact-view');
+      if (saved) {
+        compactView.value = JSON.parse(saved);
+      }
+    } catch (storageError) {
+      console.error('加载视图设置失败:', storageError);
+    }
+  }
+
+  function persistLocalMirror() {
+    saveToStorage();
+  }
+
+  function upsertLocalNote(noteData, editingNote = null) {
+    if (editingNote) {
+      const index = notes.value.findIndex(note => note.id === editingNote.id);
+      if (index !== -1) {
+        notes.value[index] = normalizeNote({
+          ...notes.value[index],
+          ...noteData,
+          id: editingNote.id,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      return;
+    }
+
+    notes.value.unshift(
+      normalizeNote({
+        id: generateId(),
+        ...noteData,
+        completed: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+    );
+  }
+
+  async function loadNotes() {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const raw = await notebookApi.list();
+      const data = unwrapData(raw);
+      const items = Array.isArray(data) ? data : data?.items || [];
+      notes.value = items.map(normalizeNote);
+      persistLocalMirror();
+      serverReady.value = true;
+    } catch (requestError) {
+      console.warn(
+        '加载服务器笔记失败，回退本地：',
+        requestError?.message || requestError
+      );
       serverReady.value = false;
-      // 回退
-      if (editingNote) {
+      error.value = '服务器暂不可用，已切换到本地笔记';
+      loadFromStorage();
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function saveNote(noteData, editingNote = null) {
+    error.value = null;
+    const payload = buildPayload(
+      noteData,
+      editingNote ? editingNote.completed : false
+    );
+
+    try {
+      if (serverReady.value && typeof editingNote?.id === 'number') {
+        const raw = await notebookApi.update(editingNote.id, payload);
+        const row = normalizeNote(unwrapData(raw) || {});
         const index = notes.value.findIndex(note => note.id === editingNote.id);
         if (index !== -1) {
-          notes.value[index] = {
-            ...notes.value[index],
-            ...noteData,
-            updatedAt: new Date().toISOString(),
-          };
+          notes.value[index] = row;
         }
+      } else if (serverReady.value) {
+        const raw = await notebookApi.create(payload);
+        const row = normalizeNote(unwrapData(raw) || {});
+        notes.value.unshift(row);
       } else {
-        const newNote = {
-          id: generateId(),
-          ...noteData,
-          completed: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        notes.value.unshift(newNote);
+        upsertLocalNote(payload, editingNote);
       }
+
+      if (serverReady.value) {
+        persistLocalMirror();
+      } else {
+        saveToStorage();
+      }
+    } catch (requestError) {
+      console.warn(
+        '保存到服务器失败，回退本地：',
+        requestError?.message || requestError
+      );
+      serverReady.value = false;
+      error.value = '保存失败，已切换到本地模式';
+      upsertLocalNote(payload, editingNote);
       saveToStorage();
     }
   }
 
   async function deleteNote(noteId) {
+    error.value = null;
+
     try {
       if (serverReady.value && typeof noteId === 'number') {
         await notebookApi.remove(noteId);
       }
-    } catch (e) {
-      console.warn('删除服务器笔记失败，继续删除本地：', e?.message || e);
+    } catch (requestError) {
+      console.warn(
+        '删除服务器笔记失败，继续删除本地：',
+        requestError?.message || requestError
+      );
       serverReady.value = false;
+      error.value = '删除时网络异常，已同步本地结果';
     } finally {
-      const index = notes.value.findIndex(note => note.id === noteId);
-      if (index !== -1) {
-        notes.value.splice(index, 1);
-        serverReady.value ? persistLocalMirror() : saveToStorage();
+      notes.value = notes.value.filter(note => note.id !== noteId);
+      if (serverReady.value) {
+        persistLocalMirror();
+      } else {
+        saveToStorage();
       }
     }
   }
 
   async function toggleNoteStatus(noteId) {
-    const note = notes.value.find(n => n.id === noteId);
-    if (!note) return;
-    const target = { ...note, completed: !note.completed };
+    error.value = null;
+    const index = notes.value.findIndex(note => note.id === noteId);
+
+    if (index === -1) {
+      return;
+    }
+
+    const note = notes.value[index];
+    const completed = !note.completed;
+
     try {
       if (serverReady.value && typeof noteId === 'number') {
-        const res = await notebookApi.update(noteId, {
-          completed: target.completed,
-        });
-        const row = normalizeNote(res.data);
-        const idx = notes.value.findIndex(n => n.id === noteId);
-        if (idx !== -1) notes.value[idx] = row;
+        const raw = await notebookApi.update(noteId, { completed });
+        notes.value[index] = normalizeNote(unwrapData(raw) || {});
         persistLocalMirror();
       } else {
-        const idx = notes.value.findIndex(n => n.id === noteId);
-        if (idx !== -1) {
-          notes.value[idx] = {
-            ...notes.value[idx],
-            completed: target.completed,
-            updatedAt: new Date().toISOString(),
-          };
-          saveToStorage();
-        }
-      }
-    } catch (e) {
-      console.warn('更新完成状态失败，回退本地：', e?.message || e);
-      serverReady.value = false;
-      const idx = notes.value.findIndex(n => n.id === noteId);
-      if (idx !== -1) {
-        notes.value[idx] = {
-          ...notes.value[idx],
-          completed: target.completed,
+        notes.value[index] = normalizeNote({
+          ...note,
+          completed,
           updatedAt: new Date().toISOString(),
-        };
+        });
         saveToStorage();
       }
-    }
-  }
-
-  function addCategory(categoryName) {
-    if (categoryName && !categories.value.includes(categoryName)) {
-      categories.value.push(categoryName);
-      saveCategoriesToStorage();
+    } catch (requestError) {
+      console.warn(
+        '更新完成状态失败，回退本地：',
+        requestError?.message || requestError
+      );
+      serverReady.value = false;
+      error.value = '状态更新失败，已切换到本地模式';
+      notes.value[index] = normalizeNote({
+        ...note,
+        completed,
+        updatedAt: new Date().toISOString(),
+      });
+      saveToStorage();
     }
   }
 
   async function quickAddNote(text) {
-    if (text.trim()) {
-      const noteData = {
-        title: text,
-        description: '',
-        category: '',
-        priority: 'medium',
-        completed: false,
-      };
+    if (!text.trim()) {
+      return false;
+    }
 
-      try {
-        if (serverReady.value) {
-          // 尝试保存到服务器
-          const res = await notebookApi.create(noteData);
-          const row = res.data;
-          notes.value.unshift(normalizeNote(row));
-          persistLocalMirror();
-        } else {
-          // 回退到本地存储
-          const newNote = {
-            id: generateId(),
-            ...noteData,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          notes.value.unshift(newNote);
-          saveToStorage();
-        }
-      } catch (e) {
-        console.warn('快速添加笔记到服务器失败，回退本地：', e?.message || e);
-        serverReady.value = false;
-        // 回退到本地存储
-        const newNote = {
-          id: generateId(),
-          ...noteData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        notes.value.unshift(newNote);
-        saveToStorage();
+    try {
+      const isHighPriority = text.includes('!');
+      let title = text.replace(/!/g, '').trim();
+      let description = '';
+
+      const descMatch = title.match(/\/\/(.+)$/);
+      if (descMatch) {
+        description = descMatch[1].trim();
+        title = title.replace(descMatch[0], '').trim();
       }
+
+      await saveNote({
+        title,
+        description,
+        priority: isHighPriority ? 'high' : 'medium',
+      });
+
+      return true;
+    } catch (requestError) {
+      console.error('快速添加失败:', requestError);
+      throw requestError;
     }
   }
 
@@ -214,120 +287,25 @@ export function useNotebook() {
     displayLimit.value = 50;
   }
 
-  // 存储相关方法
-  function saveToStorage() {
-    try {
-      localStorage.setItem('notebook-notes', JSON.stringify(notes.value));
-    } catch (error) {
-      console.error('保存笔记失败:', error);
-    }
-  }
-
-  function loadFromStorage() {
-    try {
-      const saved = localStorage.getItem('notebook-notes');
-      if (saved) {
-        notes.value = JSON.parse(saved);
-      }
-    } catch (error) {
-      console.error('加载笔记失败:', error);
-      notes.value = [];
-    }
-  }
-
-  function saveCategoriesToStorage() {
-    try {
-      localStorage.setItem(
-        'notebook-categories',
-        JSON.stringify(categories.value)
-      );
-    } catch (error) {
-      console.error('保存分类失败:', error);
-    }
-  }
-
-  function loadCategoriesFromStorage() {
-    try {
-      const saved = localStorage.getItem('notebook-categories');
-      if (saved) {
-        categories.value = JSON.parse(saved);
-      }
-    } catch (error) {
-      console.error('加载分类失败:', error);
-    }
-  }
-
-  function saveViewSettingsToStorage() {
-    try {
-      localStorage.setItem(
-        'notebook-compact-view',
-        JSON.stringify(compactView.value)
-      );
-    } catch (error) {
-      console.error('保存视图设置失败:', error);
-    }
-  }
-
-  function loadViewSettingsFromStorage() {
-    try {
-      const saved = localStorage.getItem('notebook-compact-view');
-      if (saved) {
-        compactView.value = JSON.parse(saved);
-      }
-    } catch (error) {
-      console.error('加载视图设置失败:', error);
-    }
-  }
-
-  function persistLocalMirror() {
-    try {
-      localStorage.setItem('notebook-notes', JSON.stringify(notes.value));
-    } catch (e) {
-      console.warn('持久化本地镜像失败：', e?.message || e);
-    }
-  }
-
-  async function loadNotes() {
-    try {
-      const res = await notebookApi.list();
-      const items = res.data?.items || [];
-      notes.value = items.map(normalizeNote);
-      persistLocalMirror();
-      serverReady.value = true;
-    } catch (e) {
-      console.warn('加载服务器笔记失败，回退本地：', e?.message || e);
-      serverReady.value = false;
-      loadFromStorage();
-    }
-  }
-
-  function initializeData() {
-    loadNotes();
-    loadCategoriesFromStorage();
+  async function initializeData() {
     loadViewSettingsFromStorage();
+    await loadNotes();
   }
 
-  // 监听数据变化自动保存
-  watch(categories, saveCategoriesToStorage, { deep: true });
   watch(compactView, saveViewSettingsToStorage);
 
   return {
-    // 响应式数据
     notes,
-    categories,
     compactView,
     serverReady,
     displayLimit,
-
-    // 计算属性
+    loading,
+    error,
     completedCount,
     pendingCount,
-
-    // 方法
     saveNote,
     deleteNote,
     toggleNoteStatus,
-    addCategory,
     quickAddNote,
     loadMoreNotes,
     resetDisplayLimit,

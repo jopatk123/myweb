@@ -36,6 +36,30 @@
   overflow: hidden;
 }
 
+.notebook-status-banner {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 248, 220, 0.92);
+  color: #7c5a03;
+  border: 1px solid rgba(196, 140, 10, 0.25);
+  font-size: 13px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.notebook-status-banner.is-loading {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.notebook-status-banner.is-local {
+  background: rgba(228, 244, 255, 0.92);
+  color: #0b4f7d;
+  border-color: rgba(43, 134, 197, 0.24);
+}
+
 @media (max-width: 768px) {
   .notebook-app {
     padding: 12px;

@@ -13,7 +13,7 @@ export const BUILTIN_APP_DEFINITIONS = [
     description: '待办事项管理，记录和跟踪日常任务',
     iconFilename: 'notebook-128.svg',
     visible: true,
-    preferredSize: { width: 500, height: 800 },
+    preferredSize: { width: 650, height: 800 },
   },
   {
     slug: 'work-timer',

@@ -5,7 +5,6 @@
     </div>
 
     <form @submit.prevent="handleSubmit" class="form-content">
-      <!-- 标题输入 -->
       <div class="form-group">
         <label class="form-label">标题 *</label>
         <input
@@ -18,74 +17,27 @@
         />
       </div>
 
-      <!-- 描述输入 -->
-      <div class="form-group">
+      <div class="form-group is-description">
         <label class="form-label">描述</label>
         <textarea
           v-model="formData.description"
           placeholder="请输入详细描述..."
           class="form-textarea"
-          rows="3"
+          rows="5"
         ></textarea>
       </div>
 
-      <!-- 分类选择 -->
-      <div class="form-group">
-        <label class="form-label">分类</label>
-        <div class="category-controls">
-          <select v-model="formData.category" class="form-select">
-            <option value="">选择分类</option>
-            <option
-              v-for="category in categories"
-              :key="category"
-              :value="category"
-            >
-              {{ category }}
-            </option>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label class="form-label">优先级</label>
+          <select v-model="formData.priority" class="form-select">
+            <option value="low">低</option>
+            <option value="medium">中</option>
+            <option value="high">高</option>
           </select>
-          <button
-            type="button"
-            @click="showNewCategory = !showNewCategory"
-            class="btn btn-secondary btn-sm"
-          >
-            ➕
-          </button>
         </div>
       </div>
 
-      <!-- 新分类输入 -->
-      <div v-if="showNewCategory" class="form-group">
-        <label class="form-label">新分类</label>
-        <div class="new-category-controls">
-          <input
-            v-model="newCategoryName"
-            type="text"
-            placeholder="输入新分类名称..."
-            class="form-input"
-            @keyup.enter="addNewCategory"
-          />
-          <button
-            type="button"
-            @click="addNewCategory"
-            class="btn btn-primary btn-sm"
-            :disabled="!newCategoryName.trim()"
-          >
-            添加
-          </button>
-        </div>
-      </div>
-
-      <!-- 优先级选择 -->
-      <div class="form-group">
-        <label class="form-label">优先级</label>
-        <select v-model="formData.priority" class="form-select">
-          <option value="low">低</option>
-          <option value="medium">中</option>
-          <option value="high">高</option>
-        </select>
-      </div>
-
-      <!-- 操作按钮 -->
       <div class="form-actions">
         <button
           type="button"
@@ -114,35 +66,24 @@
       type: Object,
       default: null,
     },
-    categories: {
-      type: Array,
-      default: () => [],
-    },
   });
 
-  const emit = defineEmits(['save', 'cancel', 'addCategory']);
+  const emit = defineEmits(['save', 'cancel']);
 
-  // 表单数据
   const formData = reactive({
     title: '',
     description: '',
-    category: '',
     priority: 'medium',
   });
 
-  // 新分类相关
-  const showNewCategory = ref(false);
-  const newCategoryName = ref('');
   const titleInput = ref(null);
 
-  // 监听props变化，初始化表单数据
   watch(
     () => props.note,
     newNote => {
       if (newNote) {
         formData.title = newNote.title || '';
         formData.description = newNote.description || '';
-        formData.category = newNote.category || '';
         formData.priority = newNote.priority || 'medium';
       } else {
         resetForm();
@@ -154,10 +95,7 @@
   function resetForm() {
     formData.title = '';
     formData.description = '';
-    formData.category = '';
     formData.priority = 'medium';
-    showNewCategory.value = false;
-    newCategoryName.value = '';
   }
 
   function handleSubmit() {
@@ -166,7 +104,6 @@
     emit('save', {
       title: formData.title.trim(),
       description: formData.description.trim(),
-      category: formData.category,
       priority: formData.priority,
     });
 
@@ -175,18 +112,7 @@
     }
   }
 
-  function addNewCategory() {
-    const categoryName = newCategoryName.value.trim();
-    if (categoryName) {
-      emit('addCategory', categoryName);
-      formData.category = categoryName;
-      newCategoryName.value = '';
-      showNewCategory.value = false;
-    }
-  }
-
   onMounted(() => {
-    // 自动聚焦到标题输入框
     if (titleInput.value) {
       titleInput.value.focus();
     }
@@ -195,37 +121,67 @@
 
 <style scoped>
   .notebook-form {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
+    background: var(--bg-color, #ffffff);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.05);
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .notebook-form.is-expanded {
+    flex: 1;
+    margin-bottom: 0;
   }
 
   .form-header {
-    margin-bottom: 12px;
-    text-align: center;
+    margin-bottom: 16px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 12px;
   }
 
   .form-header h3 {
     margin: 0;
     color: #333;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     font-weight: 600;
   }
 
   .form-content {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
+    min-height: 0;
+  }
+
+  .notebook-form.is-expanded .form-content {
+    flex: 1;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .flex-1 {
+    flex: 1;
   }
 
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+  }
+
+  .notebook-form.is-expanded .form-group.is-description {
+    flex: 1;
+    min-height: 0;
   }
 
   .form-label {
@@ -237,12 +193,12 @@
   .form-input,
   .form-textarea,
   .form-select {
-    padding: 8px 10px;
-    border: 2px solid #e5e7eb;
-    border-radius: 6px;
-    font-size: 13px;
-    transition: border-color 0.2s ease;
-    background: white;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    background: #fafafa;
   }
 
   .form-input:focus,
@@ -250,90 +206,72 @@
   .form-select:focus {
     outline: none;
     border-color: #667eea;
+    background: white;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
 
   .form-textarea {
     resize: vertical;
-    min-height: 60px;
+    min-height: 100px;
     font-family: inherit;
+    line-height: 1.5;
   }
 
-  .category-controls,
-  .new-category-controls {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .category-controls .form-select {
+  .notebook-form.is-expanded .form-textarea {
     flex: 1;
+    min-height: 220px;
   }
 
   .form-actions {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    margin-top: 8px;
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
   }
 
   .btn {
-    padding: 10px 20px;
+    padding: 8px 24px;
     border: none;
     border-radius: 8px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .btn:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 
   .btn:disabled {
-    opacity: 0.5;
+    opacity: 0.6;
     cursor: not-allowed;
     transform: none;
   }
 
   .btn-primary {
-    background: linear-gradient(45deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(45deg, #5a67d8, #6b46c1);
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
   }
 
   .btn-secondary {
     background: #f3f4f6;
-    color: #374151;
-    border: 1px solid #d1d5db;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
   }
 
   .btn-secondary:hover:not(:disabled) {
     background: #e5e7eb;
-  }
-
-  .btn-sm {
-    padding: 6px 12px;
-    font-size: 13px;
-    min-width: auto;
-  }
-
-  @media (max-width: 768px) {
-    .notebook-form {
-      padding: 16px;
-    }
-
-    .form-actions {
-      flex-direction: column;
-    }
-
-    .btn {
-      width: 100%;
-    }
   }
 </style>
