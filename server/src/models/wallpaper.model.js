@@ -1,15 +1,17 @@
 /**
  * 壁纸模型
  */
-export class WallpaperModel {
+import { BaseModel } from './base.model.js';
+
+export class WallpaperModel extends BaseModel {
   constructor(db) {
-    this.db = db;
+    super(db);
   }
 
   /**
    * findAll 支持两种返回模式：
    * - 未传入 page/limit 时：保持向后兼容，返回所有匹配的数组
-   * - 传入 page 和 limit 时：返回分页对象 { items: [], total: number }
+   * - 传入 page 和 limit 时：返回分页对象 { items: [], total: number, page, limit }
    */
   findAll({
     groupId = null,
@@ -35,17 +37,14 @@ export class WallpaperModel {
 
     // 分页模式
     if (page && limit) {
-      const totalStmt = this.db.prepare(
-        `SELECT COUNT(*) as total FROM wallpapers ${where}`
+      return this.paginate(
+        'wallpapers',
+        where,
+        params,
+        'created_at DESC',
+        Number(limit),
+        Number(page)
       );
-      const totalRow = totalStmt.get(...params);
-      const total = totalRow ? totalRow.total : 0;
-
-      const offset = (Number(page) - 1) * Number(limit);
-      const sql = `SELECT * FROM wallpapers ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-      // 需要将 limit/offset 加到参数列表
-      const rows = this.db.prepare(sql).all(...params, Number(limit), offset);
-      return { items: rows, total };
     }
 
     // 向后兼容：返回所有记录数组

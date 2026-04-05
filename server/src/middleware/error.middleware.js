@@ -1,5 +1,6 @@
 import logger from '../utils/logger.js';
 import { appEnv } from '../config/env.js';
+import { AppError } from '../utils/errors.js';
 
 const errorLogger = logger.child('ErrorHandler');
 
@@ -9,22 +10,28 @@ export default function errorHandler(err, req, res, _next) {
   let status = err?.status || 500;
   let message = err?.message || 'Internal Server Error';
 
+  // 自定义业务错误（AppError 及其子类）— 优先识别
+  if (err instanceof AppError) {
+    status = err.status;
+    message = err.message;
+  }
+
   // Joi 验证错误
   if (err.isJoi) {
     status = 400;
     message = err.details?.[0]?.message || err.message;
   }
 
-  // 数据库错误
+  // 数据库错误（SQLite 约束）
   if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-    status = 400;
+    status = 409;
     message = '数据已存在';
   } else if (err.code === 'SQLITE_CONSTRAINT_FOREIGN') {
     status = 400;
     message = '关联数据不存在';
   }
 
-  // Multer错误
+  // Multer 文件上传错误
   if (err.code === 'LIMIT_FILE_SIZE') {
     status = 400;
     message = '文件大小超出限制';
@@ -49,6 +56,8 @@ export default function errorHandler(err, req, res, _next) {
   const response = {
     code: status,
     message: status < 500 ? message : 'Internal Server Error',
+    // 业务错误码（AppError 子类携带），方便前端精准处理
+    errorCode: err instanceof AppError && err.code ? err.code : undefined,
     timestamp: new Date().toISOString(),
   };
 

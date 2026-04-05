@@ -58,7 +58,7 @@ test('deleteApp rejects deletion for builtin apps', async () => {
 
   await expect(service.deleteApp(created.id)).rejects.toMatchObject({
     message: '内置应用不允许删除',
-    status: 400,
+    status: 403,
   });
 });
 

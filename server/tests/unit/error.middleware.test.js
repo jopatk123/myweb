@@ -20,8 +20,9 @@ jest.unstable_mockModule('../../src/config/env.js', () => ({
   },
 }));
 
-const { default: errorHandler } =
-  await import('../../src/middleware/error.middleware.js');
+const { default: errorHandler } = await import(
+  '../../src/middleware/error.middleware.js'
+);
 
 function createMockReqRes() {
   const req = {
@@ -76,10 +77,10 @@ describe('errorHandler middleware', () => {
 
     errorHandler(err, req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        code: 400,
+        code: 409,
         message: '数据已存在',
       })
     );

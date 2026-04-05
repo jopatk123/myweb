@@ -1,12 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MS_PER_DAY,
   clearAuth,
   isAuthValid,
   loadAuthPayload,
   saveAuth,
+  validatePasswordRemote,
+  checkPasswordRequired,
 } from '@/utils/passwordGate.js';
 import { AUTH_STORAGE_KEY, AUTH_TTL_DAYS } from '@/constants/auth.js';
+
+vi.mock('@/api/httpClient.js', () => ({
+  buildApiUrl: vi.fn(p => `http://localhost:3000/api/${p}`),
+}));
 
 const TEST_PASSWORD = 'test-password-123';
 
@@ -67,5 +73,73 @@ describe('passwordGate utils', () => {
 
     expect(cleared).toBe(true);
     expect(loadAuthPayload(storage)).toBe(null);
+  });
+});
+
+describe('validatePasswordRemote', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('密码正确时返回 true', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: async () => ({ success: true }),
+      })
+    );
+    expect(await validatePasswordRemote('correct')).toBe(true);
+  });
+
+  it('密码错误时返回 false', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: async () => ({ success: false }),
+      })
+    );
+    expect(await validatePasswordRemote('wrong')).toBe(false);
+  });
+
+  it('网络异常时返回 false', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('fail')));
+    expect(await validatePasswordRemote('any')).toBe(false);
+  });
+
+  it('input 为 null 时不崩溃', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: async () => ({ success: false }),
+      })
+    );
+    expect(await validatePasswordRemote(null)).toBe(false);
+  });
+});
+
+describe('checkPasswordRequired', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('后端 required=true 时返回 true', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: async () => ({ data: { required: true } }),
+      })
+    );
+    expect(await checkPasswordRequired()).toBe(true);
+  });
+
+  it('后端 required=false 时返回 false', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: async () => ({ data: { required: false } }),
+      })
+    );
+    expect(await checkPasswordRequired()).toBe(false);
+  });
+
+  it('fetch 失败时默认返回 true', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('timeout')));
+    expect(await checkPasswordRequired()).toBe(true);
   });
 });

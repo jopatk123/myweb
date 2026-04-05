@@ -2,17 +2,18 @@
  * 应用模型
  */
 import logger from '../utils/logger.js';
+import { BaseModel } from './base.model.js';
 
 const appModelLogger = logger.child('AppModel');
 
-export class AppModel {
+export class AppModel extends BaseModel {
   constructor(db) {
-    this.db = db;
+    super(db);
   }
 
   /**
-   * 支持分页：返回 { items, total }
-   * 若未传 page/limit，则返回数组
+   * 支持分页：返回 { items, total, page, limit }
+   * 若未传 page/limit，则返回数组（向后兼容）
    */
   findAll({ groupId = null, visible = null, page = null, limit = null } = {}) {
     const whereClauses = ['deleted_at IS NULL'];
@@ -32,17 +33,14 @@ export class AppModel {
     const pageNum = Number(page);
     const limitNum = Number(limit);
     if (Number.isFinite(pageNum) && Number.isFinite(limitNum) && limitNum > 0) {
-      const totalRow = this.db
-        .prepare(`SELECT COUNT(1) AS total FROM apps ${where}`)
-        .get(...params);
-      const total = totalRow ? totalRow.total : 0;
-      const offset = (Math.max(1, pageNum) - 1) * limitNum;
-      const items = this.db
-        .prepare(
-          `SELECT * FROM apps ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
-        )
-        .all(...params, limitNum, offset);
-      return { items, total };
+      return this.paginate(
+        'apps',
+        where,
+        params,
+        'created_at DESC',
+        limitNum,
+        pageNum
+      );
     }
 
     return this.db

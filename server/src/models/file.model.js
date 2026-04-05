@@ -1,6 +1,8 @@
-export class FileModel {
+import { BaseModel } from './base.model.js';
+
+export class FileModel extends BaseModel {
   constructor(db) {
-    this.db = db;
+    super(db);
   }
 
   findAll({ page = 1, limit = 20, type = null, search = null } = {}) {
@@ -38,18 +40,14 @@ export class FileModel {
       ? `WHERE ${whereClauses.join(' AND ')}`
       : '';
 
-    const totalRow = this.db
-      .prepare(`SELECT COUNT(*) AS total FROM files ${where}`)
-      .get(...params);
-    const total = totalRow?.total || 0;
-    const offset = (safePage - 1) * safeLimit;
-    const rows = this.db
-      .prepare(
-        `SELECT * FROM files ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
-      )
-      .all(...params, safeLimit, offset);
-
-    return { items: rows, total, page: safePage, limit: safeLimit };
+    return this.paginate(
+      'files',
+      where,
+      params,
+      'created_at DESC',
+      safeLimit,
+      safePage
+    );
   }
 
   findById(id) {

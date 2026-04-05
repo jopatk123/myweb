@@ -10,6 +10,7 @@ import {
   toUploadsAbsolutePath,
 } from '../utils/upload-path.js';
 import { assertValidImageFile } from '../utils/magic-bytes.js';
+import { NotFoundError, ValidationError } from '../utils/errors.js';
 
 const wallpaperLogger = logger.child('WallpaperService');
 
@@ -59,11 +60,7 @@ export class WallpaperService {
 
   getWallpaperById(id) {
     const wallpaper = this.wallpaperModel.findById(id);
-    if (!wallpaper) {
-      const err = new Error('壁纸不存在');
-      err.status = 404;
-      throw err;
-    }
+    if (!wallpaper) throw new NotFoundError('壁纸不存在');
     return wallpaper;
   }
 
@@ -228,26 +225,16 @@ export class WallpaperService {
 
     const wallpaper = this.getWallpaperById(id);
     let originalPath = wallpaper.file_path;
-    if (!originalPath) {
-      const err = new Error('壁纸文件路径不存在');
-      err.status = 404;
-      throw err;
-    }
+    if (!originalPath) throw new NotFoundError('壁纸文件路径不存在');
 
     originalPath = toUploadsAbsolutePath(originalPath);
-    if (!originalPath) {
-      const err = new Error('壁纸文件路径无效');
-      err.status = 400;
-      throw err;
-    }
+    if (!originalPath) throw new ValidationError('壁纸文件路径无效');
 
     let stats;
     try {
       stats = await fs.stat(originalPath);
     } catch {
-      const err = new Error('壁纸原始文件不存在');
-      err.status = 404;
-      throw err;
+      throw new NotFoundError('壁纸原始文件不存在');
     }
 
     const sanitizedWidth = this.#sanitizeDimension(rawWidth);

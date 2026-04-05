@@ -7,6 +7,11 @@ import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../utils/logger.js';
 import { APP_ICONS_DIR, PUBLIC_APP_ICONS_DIR } from '../utils/upload-path.js';
+import {
+  NotFoundError,
+  ValidationError,
+  ForbiddenError,
+} from '../utils/errors.js';
 
 const appServiceLogger = logger.child('AppService');
 
@@ -58,16 +63,8 @@ export class AppService {
 
   async deleteApp(id) {
     const app = this.appModel.findById(id);
-    if (!app) {
-      const err = new Error('应用不存在');
-      err.status = 404;
-      throw err;
-    }
-    if (app.is_builtin) {
-      const err = new Error('内置应用不允许删除');
-      err.status = 400;
-      throw err;
-    }
+    if (!app) throw new NotFoundError('应用不存在');
+    if (app.is_builtin) throw new ForbiddenError('内置应用不允许删除');
 
     // 删除前尝试清理图标文件（仅当无其他未删除应用引用该文件时）
     const iconFilename = app.icon_filename;
@@ -97,9 +94,7 @@ export class AppService {
 
   setAppAutostart(idOrSlug, autostart) {
     if (idOrSlug === undefined || idOrSlug === null || idOrSlug === '') {
-      const err = new Error('缺少应用标识');
-      err.status = 400;
-      throw err;
+      throw new ValidationError('缺少应用标识');
     }
 
     const raw = typeof idOrSlug === 'string' ? idOrSlug.trim() : idOrSlug;
@@ -117,11 +112,7 @@ export class AppService {
       app = this.appModel.setAutostartBySlug(String(raw), autostart);
     }
 
-    if (!app) {
-      const err = new Error('应用不存在');
-      err.status = 404;
-      throw err;
-    }
+    if (!app) throw new NotFoundError('应用不存在');
 
     return app;
   }
