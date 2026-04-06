@@ -5,7 +5,7 @@ export const BUILTIN_APP_DEFINITIONS = [
     description: '科学计算器，支持基本运算和内存功能',
     iconFilename: 'calculator-128.png',
     visible: true,
-    preferredSize: { width: 450, height: 680 },
+    preferredSize: { width: 620, height: 560 },
   },
   {
     slug: 'notebook',

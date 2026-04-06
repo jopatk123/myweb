@@ -10,10 +10,9 @@
     @paste="onPaste"
     @click="focusApp"
   >
-    <CalculatorHeader />
-
-    <div class="calculator-container">
-      <CalculatorDisplay :display="display" :history="history" />
+    <!-- 左侧：主计算器区域 -->
+    <div class="calculator-main">
+      <CalculatorDisplay :display="display" :expression="expression" />
 
       <CalculatorKeypad
         @number="handleNumber"
@@ -25,22 +24,31 @@
         @memory="handleMemory"
       />
     </div>
+
+    <!-- 右侧：历史记录侧边栏 -->
+    <CalculatorHistoryPanel
+      :entries="calculationHistory"
+      @clear-history="clearCalculationHistory"
+    />
   </div>
 </template>
 
 <script setup>
   import { ref, onMounted, onBeforeUnmount } from 'vue';
-  import CalculatorHeader from './CalculatorHeader.vue';
   import CalculatorDisplay from './CalculatorDisplay.vue';
+  import CalculatorHistoryPanel from './CalculatorHistoryPanel.vue';
   import CalculatorKeypad from './CalculatorKeypad.vue';
 
   // 计算器状态
   const display = ref('0');
-  const history = ref('');
+  const expression = ref('');
+  const calculationHistory = ref([]);
+  const historyEntryId = ref(0);
   const memory = ref(0);
   const previousValue = ref(null);
   const operator = ref(null);
   const waitingForOperand = ref(false);
+  const MAX_HISTORY_ENTRIES = 6;
   // 聚焦状态 (只有聚焦时才处理键盘事件)
   const isFocused = ref(false);
   const appEl = ref(null);
@@ -142,6 +150,9 @@
     if (waitingForOperand.value) {
       display.value = num;
       waitingForOperand.value = false;
+      if (previousValue.value === null && operator.value === null) {
+        expression.value = '';
+      }
     } else {
       display.value = display.value === '0' ? num : display.value + num;
     }
@@ -165,7 +176,7 @@
 
     waitingForOperand.value = true;
     operator.value = op;
-    history.value = `${previousValue.value} ${getOperatorSymbol(op)}`;
+    expression.value = `${previousValue.value} ${getOperatorSymbol(op)}`;
   }
 
   // 处理等号
@@ -181,8 +192,11 @@
       inputValue,
       operator.value
     );
+    const completedExpression = `${previousValue.value} ${getOperatorSymbol(operator.value)} ${inputValue}`;
+
     display.value = String(result);
-    history.value = `${previousValue.value} ${getOperatorSymbol(operator.value)} ${inputValue} =`;
+    expression.value = `${completedExpression} =`;
+    appendHistoryEntry(completedExpression, String(result));
     previousValue.value = null;
     operator.value = null;
     waitingForOperand.value = true;
@@ -191,7 +205,7 @@
   // 处理清除
   function handleClear() {
     display.value = '0';
-    history.value = '';
+    expression.value = '';
     previousValue.value = null;
     operator.value = null;
     waitingForOperand.value = false;
@@ -239,6 +253,22 @@
     }
   }
 
+  function clearCalculationHistory() {
+    calculationHistory.value = [];
+  }
+
+  function appendHistoryEntry(completedExpression, result) {
+    historyEntryId.value += 1;
+    calculationHistory.value = [
+      {
+        id: historyEntryId.value,
+        expression: completedExpression,
+        result,
+      },
+      ...calculationHistory.value,
+    ].slice(0, MAX_HISTORY_ENTRIES);
+  }
+
   // 执行计算
   function performCalculation(a, b, op) {
     switch (op) {
@@ -272,37 +302,41 @@
 
 <style scoped>
   .calculator-app {
-    display: block;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 12px;
     width: 100%;
     padding: 16px;
+    box-sizing: border-box;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 16px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    /* 允许在容器内占满可用宽度，移除 max-width 限制 */
     min-width: 0;
   }
 
-  .calculator-container {
+  .calculator-main {
+    flex: 1;
+    min-width: 0;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     padding: 16px;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    /* 确保内部内容不超出边界 */
     box-sizing: border-box;
-    width: 100%;
-    /* 使用固定布局：卡片宽度不会随内容缩放 */
-    max-width: none;
+    display: flex;
+    flex-direction: column;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 520px) {
     .calculator-app {
+      flex-direction: column;
       padding: 12px;
-      min-width: 280px;
+      gap: 10px;
     }
 
-    .calculator-container {
+    .calculator-main {
       padding: 12px;
     }
   }

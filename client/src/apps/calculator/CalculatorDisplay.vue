@@ -1,7 +1,11 @@
 <template>
   <div class="calculator-display">
-    <div class="history">{{ history }}</div>
-    <div class="current-display">{{ display }}</div>
+    <div class="expression" data-testid="calculator-expression">
+      {{ expression }}
+    </div>
+    <div class="current-display" data-testid="calculator-display">
+      {{ display }}
+    </div>
   </div>
 </template>
 
@@ -11,7 +15,7 @@
       type: String,
       default: '0',
     },
-    history: {
+    expression: {
       type: String,
       default: '',
     },
@@ -31,7 +35,7 @@
     justify-content: flex-end;
   }
 
-  .history {
+  .expression {
     color: rgba(255, 255, 255, 0.6);
     font-size: 0.9rem;
     margin-bottom: 8px;
@@ -61,7 +65,7 @@
       min-height: 70px;
     }
 
-    .history {
+    .expression {
       font-size: 0.8rem;
     }
 
