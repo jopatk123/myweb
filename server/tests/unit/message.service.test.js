@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+import fs from 'fs/promises';
 import { createTestDatabase, closeTestDatabase } from '../helpers/test-db.js';
 import { MessageService } from '../../src/services/message.service.js';
 import { MessageModel } from '../../src/models/message.model.js';
@@ -177,6 +179,30 @@ describe('MessageService', () => {
       await expect(service.deleteMessage(999999)).rejects.toThrow(
         '留言不存在或已被删除'
       );
+    });
+
+    test('cleans up uploaded images when deleting a message', async () => {
+      const unlinkSpy = jest.spyOn(fs, 'unlink').mockResolvedValue();
+      const images = [
+        { path: 'uploads/message-images/delete-1.jpg' },
+        { path: 'uploads/message-images/delete-2.jpg' },
+      ];
+      const msg = await service.sendMessage({
+        content: '',
+        sessionId: 'del-images',
+        images,
+        imageType: 'upload',
+      });
+
+      const result = await service.deleteMessage(msg.id);
+
+      expect(result.deletedImages).toBe(2);
+      expect(unlinkSpy).toHaveBeenCalledTimes(2);
+      expect(unlinkSpy.mock.calls[0][0]).toContain(
+        'uploads/message-images/delete-1.jpg'
+      );
+
+      unlinkSpy.mockRestore();
     });
   });
 

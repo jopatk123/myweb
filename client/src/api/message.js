@@ -19,7 +19,16 @@ messageApi.interceptors.request.use(config => {
 // 响应拦截器 - 统一取 data 层
 messageApi.interceptors.response.use(
   response => response.data,
-  error => Promise.reject(error.response?.data || error)
+  error => {
+    const payload = error.response?.data;
+    if (payload && typeof payload === 'object') {
+      const err = new Error(payload.message || '请求失败');
+      err.code = payload.code;
+      err.payload = payload;
+      return Promise.reject(err);
+    }
+    return Promise.reject(error);
+  }
 );
 
 // 生成会话ID
@@ -28,6 +37,20 @@ function generateSessionId() {
     'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   localStorage.setItem('sessionId', sessionId);
   return sessionId;
+}
+
+function getAdminToken() {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.localStorage?.getItem('myweb_admin_token') || '';
+  } catch {
+    return '';
+  }
+}
+
+function buildAdminHeaders() {
+  const token = getAdminToken();
+  return token ? { 'X-Admin-Token': token } : {};
 }
 
 export const messageAPI = {
@@ -49,7 +72,9 @@ export const messageAPI = {
    * 删除留言
    */
   async deleteMessage(id) {
-    return messageApi.delete(`/${id}`);
+    return messageApi.delete(`/${id}`, {
+      headers: buildAdminHeaders(),
+    });
   },
 
   /**
@@ -87,6 +112,7 @@ export const messageAPI = {
    */
   async clearAllMessages() {
     return messageApi.delete('/clear-all', {
+      headers: buildAdminHeaders(),
       data: { confirm: true },
     });
   },

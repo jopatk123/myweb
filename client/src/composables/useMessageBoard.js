@@ -1,7 +1,14 @@
 /**
  * 留言板组合式函数
  */
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import {
+  ref,
+  reactive,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+} from 'vue';
 import { useWindowManager } from './useWindowManager.js';
 import { messageAPI } from '@/api/message.js';
 import { useWebSocket } from './useWebSocket.js';
@@ -21,7 +28,7 @@ export function useMessageBoard() {
   });
 
   // WebSocket连接
-  const { isConnected, onMessage } = useWebSocket();
+  const { isConnected, onMessage, offMessage } = useWebSocket();
   // 目前 messageBoard 通过 API 推送并由 WebSocket 接收广播
 
   // 分页信息
@@ -32,13 +39,22 @@ export function useMessageBoard() {
     totalPages: 0,
   });
 
+  const syncPaginationTotal = total => {
+    pagination.total = Math.max(0, total);
+    pagination.totalPages = pagination.limit
+      ? Math.ceil(pagination.total / pagination.limit)
+      : 0;
+  };
+
   // 获取留言列表
-  const fetchMessages = async ({ page = 1, search = searchQuery.value } = {}) => {
+  const fetchMessages = async ({
+    page = 1,
+    search = searchQuery.value,
+  } = {}) => {
     try {
       loading.value = true;
       error.value = null;
-      const normalizedSearch =
-        typeof search === 'string' ? search.trim() : '';
+      const normalizedSearch = typeof search === 'string' ? search.trim() : '';
 
       const response = await messageAPI.getMessages({
         page,
@@ -127,6 +143,7 @@ export function useMessageBoard() {
   // 删除留言
   const deleteMessage = async messageId => {
     try {
+      error.value = null;
       const response = await messageAPI.deleteMessage(messageId);
       if (response.code === 200) {
         // 消息会通过WebSocket实时推送删除事件
@@ -199,6 +216,7 @@ export function useMessageBoard() {
       const exists = messages.value.find(m => m.id === message.id);
       if (!exists) {
         messages.value.push(message);
+        syncPaginationTotal(pagination.total + 1);
         // 保持消息数量在合理范围内
         if (messages.value.length > pagination.limit) {
           messages.value.shift();
@@ -215,7 +233,15 @@ export function useMessageBoard() {
       if (index !== -1) {
         messages.value.splice(index, 1);
       }
+      if (!isSearching.value && pagination.total > 0) {
+        syncPaginationTotal(pagination.total - 1);
+      }
     }
+  };
+
+  const handleMessagesCleared = () => {
+    messages.value = [];
+    syncPaginationTotal(0);
   };
 
   // 格式化时间
@@ -297,6 +323,13 @@ export function useMessageBoard() {
     // 注册WebSocket事件处理器
     onMessage('newMessage', handleNewMessage);
     onMessage('messageDeleted', handleMessageDeleted);
+    onMessage('messagesCleared', handleMessagesCleared);
+  });
+
+  onBeforeUnmount(() => {
+    offMessage('newMessage', handleNewMessage);
+    offMessage('messageDeleted', handleMessageDeleted);
+    offMessage('messagesCleared', handleMessagesCleared);
   });
 
   let searchDebounceTimer = null;

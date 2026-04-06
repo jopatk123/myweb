@@ -28,7 +28,9 @@
       :is-searching="isSearching"
       :search-query="searchQuery"
       :list-ref="messageListRef"
+      :deleting-message-id="deletingMessageId"
       :format-time="formatTime"
+      @request-delete="promptDeleteMessage"
       @retry="fetchMessages()"
     />
 
@@ -40,14 +42,29 @@
 
     <ConfirmDialog
       :visible="showClearConfirm"
+      title="⚠️ 确认清除留言板"
+      :lines="[
+        '此操作将永久删除所有留言和图片文件，无法恢复。',
+        '确定要继续吗？',
+      ]"
+      confirm-text="确认清除"
       @cancel="showClearConfirm = false"
       @confirm="handleClearMessages"
+    />
+
+    <ConfirmDialog
+      :visible="showDeleteConfirm"
+      title="🗑️ 确认删除留言"
+      :lines="deleteDialogLines"
+      confirm-text="确认删除"
+      @cancel="resetDeleteState"
+      @confirm="handleDeleteMessage"
     />
   </div>
 </template>
 
 <script setup>
-  import { ref, nextTick, watch } from 'vue';
+  import { ref, nextTick, watch, computed } from 'vue';
   import { useMessageBoard } from '@/composables/useMessageBoard.js';
   import MessageBoardHeader from './MessageBoardHeader.vue';
   import MessageBoardSettings from './MessageBoardSettings.vue';
@@ -73,6 +90,7 @@
     fetchMessages,
     sendMessage,
     uploadImages,
+    deleteMessage,
     clearAllMessages,
     updateUserSettings,
     formatTime,
@@ -84,6 +102,9 @@
   const showSettings = ref(false);
   const messageListRef = ref(null);
   const showClearConfirm = ref(false);
+  const showDeleteConfirm = ref(false);
+  const pendingDeleteMessage = ref(null);
+  const deletingMessageId = ref(null);
   const sendSuccessToken = ref(0);
 
   // 临时设置（用于编辑）
@@ -111,6 +132,47 @@
       });
     } catch {
       // 错误已在组合式函数中处理
+    }
+  };
+
+  const deleteDialogLines = computed(() => {
+    if (!pendingDeleteMessage.value) {
+      return ['此操作无法恢复。'];
+    }
+
+    const content = (pendingDeleteMessage.value.content || '').trim();
+    const preview = content
+      ? `“${content.slice(0, 40)}${content.length > 40 ? '...' : ''}”`
+      : '这条仅包含图片的留言';
+
+    return [
+      `将删除 ${pendingDeleteMessage.value.authorName} 的留言 ${preview}。`,
+      '此操作无法恢复。',
+    ];
+  });
+
+  const promptDeleteMessage = message => {
+    pendingDeleteMessage.value = message;
+    showDeleteConfirm.value = true;
+  };
+
+  const resetDeleteState = () => {
+    showDeleteConfirm.value = false;
+    pendingDeleteMessage.value = null;
+  };
+
+  const handleDeleteMessage = async () => {
+    if (!pendingDeleteMessage.value) return;
+
+    deletingMessageId.value = pendingDeleteMessage.value.id;
+    try {
+      await deleteMessage(pendingDeleteMessage.value.id);
+      resetDeleteState();
+    } catch (err) {
+      console.error('删除留言失败:', err);
+      alert('删除留言失败: ' + err.message);
+    } finally {
+      deletingMessageId.value = null;
     }
   };
 

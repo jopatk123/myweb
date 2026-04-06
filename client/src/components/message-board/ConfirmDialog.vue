@@ -1,13 +1,14 @@
 <template>
   <div v-if="visible" class="confirm-dialog-overlay" @click="$emit('cancel')">
     <div class="confirm-dialog" @click.stop>
-      <h3>⚠️ 确认清除留言板</h3>
-      <p>此操作将永久删除所有留言和图片文件，无法恢复。</p>
-      <p><strong>确定要继续吗？</strong></p>
+      <h3>{{ title }}</h3>
+      <p v-for="line in normalizedLines" :key="line">{{ line }}</p>
       <div class="confirm-actions">
-        <button @click="$emit('cancel')" class="cancel-btn">取消</button>
-        <button @click="$emit('confirm')" class="confirm-clear-btn">
-          确认清除
+        <button @click="$emit('cancel')" class="cancel-btn">
+          {{ cancelText }}
+        </button>
+        <button @click="$emit('confirm')" class="confirm-btn">
+          {{ confirmText }}
         </button>
       </div>
     </div>
@@ -15,11 +16,21 @@
 </template>
 
 <script setup>
-  defineProps({
+  import { computed } from 'vue';
+
+  const props = defineProps({
     visible: { type: Boolean, default: false },
+    title: { type: String, default: '⚠️ 确认操作' },
+    lines: { type: Array, default: () => [] },
+    confirmText: { type: String, default: '确认' },
+    cancelText: { type: String, default: '取消' },
   });
 
   defineEmits(['cancel', 'confirm']);
+
+  const normalizedLines = computed(() =>
+    props.lines.length ? props.lines : ['确定要继续吗？']
+  );
 </script>
 
 <style scoped>
@@ -65,7 +76,7 @@
     margin-top: 20px;
   }
 
-  .confirm-clear-btn {
+  .confirm-btn {
     background: #dc3545;
     color: white;
     border: none;
@@ -76,7 +87,7 @@
     transition: background-color 0.2s;
   }
 
-  .confirm-clear-btn:hover {
+  .confirm-btn:hover {
     background: #c82333;
   }
 

@@ -8,9 +8,7 @@
     </div>
 
     <div v-if="!loading && !hasMessages" class="empty">
-      <span v-if="isSearching">
-        没有找到与“{{ searchQuery }}”相关的留言
-      </span>
+      <span v-if="isSearching"> 没有找到与“{{ searchQuery }}”相关的留言 </span>
       <span v-else>还没有留言，来发第一条吧！</span>
     </div>
 
@@ -23,8 +21,20 @@
       </div>
       <div class="message-content">
         <div class="message-header">
-          <span class="author-name">{{ message.authorName }}</span>
-          <span class="message-time">{{ formatTime(message.createdAt) }}</span>
+          <div class="message-meta">
+            <span class="author-name">{{ message.authorName }}</span>
+            <span class="message-time">{{
+              formatTime(message.createdAt)
+            }}</span>
+          </div>
+          <button
+            type="button"
+            class="delete-btn"
+            :disabled="deletingMessageId === message.id"
+            @click="$emit('request-delete', message)"
+          >
+            {{ deletingMessageId === message.id ? '删除中...' : '删除' }}
+          </button>
         </div>
         <div class="message-text">{{ message.content }}</div>
         <ImagePreview
@@ -49,9 +59,10 @@
     formatTime: { type: Function, required: true },
     isSearching: { type: Boolean, default: false },
     searchQuery: { type: String, default: '' },
+    deletingMessageId: { type: Number, default: null },
   });
 
-  defineEmits(['retry']);
+  defineEmits(['retry', 'request-delete']);
 
   const internalListRef = ref(null);
   let isUserScrolling = false;
@@ -182,9 +193,17 @@
 
   .message-header {
     display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  .message-meta {
+    display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 4px;
+    min-width: 0;
   }
 
   .author-name {
@@ -196,6 +215,31 @@
   .message-time {
     font-size: 11px;
     color: #adb5bd;
+  }
+
+  .delete-btn {
+    flex-shrink: 0;
+    border: 1px solid #ffd8d8;
+    background: #fff5f5;
+    color: #c92a2a;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      background-color 0.2s,
+      border-color 0.2s,
+      color 0.2s;
+  }
+
+  .delete-btn:hover:not(:disabled) {
+    background: #ffe3e3;
+    border-color: #ffa8a8;
+  }
+
+  .delete-btn:disabled {
+    cursor: wait;
+    opacity: 0.7;
   }
 
   .message-text {

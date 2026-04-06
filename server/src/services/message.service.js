@@ -18,6 +18,27 @@ export class MessageService {
     this.userSessionModel = new UserSessionModel(db);
   }
 
+  async cleanupMessageImages(images = []) {
+    if (!Array.isArray(images)) return;
+
+    for (const image of images) {
+      if (!image?.path) continue;
+
+      const imagePath = path.join(__dirname, '../../', image.path);
+      try {
+        await fs.unlink(imagePath);
+        msgServiceLogger.info('删除图片文件', { path: imagePath });
+      } catch (error) {
+        if (error.code !== 'ENOENT') {
+          msgServiceLogger.error('删除图片文件失败', {
+            path: imagePath,
+            error,
+          });
+        }
+      }
+    }
+  }
+
   async sendMessage({
     content,
     sessionId,
@@ -69,9 +90,18 @@ export class MessageService {
   }
 
   async deleteMessage(id) {
+    const message = this.messageModel.findById(id);
+    if (!message) throw new Error('留言不存在或已被删除');
+
     const result = this.messageModel.deleteById(id);
     if (result.changes === 0) throw new Error('留言不存在或已被删除');
-    return { success: true };
+
+    await this.cleanupMessageImages(message.images);
+
+    return {
+      success: true,
+      deletedImages: Array.isArray(message.images) ? message.images.length : 0,
+    };
   }
 
   getAutoOpenSessions() {
@@ -82,24 +112,7 @@ export class MessageService {
     try {
       const messagesWithImages = this.messageModel.findAllWithImages();
       for (const message of messagesWithImages) {
-        if (Array.isArray(message.images)) {
-          for (const image of message.images) {
-            if (image.path) {
-              const imagePath = path.join(__dirname, '../../', image.path);
-              try {
-                await fs.unlink(imagePath);
-                msgServiceLogger.info('删除图片文件', { path: imagePath });
-              } catch (error) {
-                if (error.code !== 'ENOENT') {
-                  msgServiceLogger.error('删除图片文件失败', {
-                    path: imagePath,
-                    error,
-                  });
-                }
-              }
-            }
-          }
-        }
+        await this.cleanupMessageImages(message.images);
       }
       const result = this.messageModel.deleteAll();
       return {
