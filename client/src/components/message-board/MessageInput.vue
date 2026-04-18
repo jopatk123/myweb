@@ -60,7 +60,8 @@
 
 <script setup>
   import { ref, computed, watch } from 'vue';
-  import { compressImage, formatFileSize } from '@/utils/imageCompressor.js';
+  import { compressImage } from '@/utils/imageCompressor.js';
+  import { formatFileSize } from '@/composables/useImageProcessing.js';
 
   const props = defineProps({
     sending: { type: Boolean, required: true },
@@ -244,7 +245,7 @@
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid #dee2e6;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
 
   .selected-image-item img {

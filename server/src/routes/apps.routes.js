@@ -23,7 +23,7 @@ export function createAppRoutes(db) {
     destination: async (req, file, cb) => {
       try {
         await fs.promises.mkdir(APP_ICON_UPLOAD_DIR, { recursive: true });
-      } catch (e) {
+      } catch {
         // ignore if exists or cannot create, multer will error if needed
       }
       cb(null, APP_ICON_UPLOAD_DIR);
@@ -76,8 +76,8 @@ export function createAppRoutes(db) {
         },
         message: '上传成功',
       });
-    } catch (e) {
-      next(e);
+    } catch (error) {
+      next(error);
     }
   });
 

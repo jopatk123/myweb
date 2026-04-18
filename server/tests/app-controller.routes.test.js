@@ -24,7 +24,7 @@ afterAll(async () => {
   await db?.close?.();
   try {
     await fs.rm(testAppIconDir, { recursive: true, force: true });
-  } catch (e) {
+  } catch {
     // ignore
   }
 });
@@ -40,7 +40,7 @@ afterEach(async () => {
     await Promise.all(
       files.map(file => fs.unlink(path.join(testAppIconDir, file)))
     );
-  } catch (e) {
+  } catch {
     // ignore cleanup errors
   }
 });

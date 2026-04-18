@@ -1,7 +1,6 @@
 /**
  * uploader.js 工厂函数单元测试
  */
-import path from 'path';
 import os from 'os';
 import {
   createUploader,

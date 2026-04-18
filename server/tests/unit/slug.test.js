@@ -61,9 +61,7 @@ describe('slug utilities', () => {
     });
 
     test('appends counter when slug already exists', () => {
-      let callCount = 0;
       const existsCheck = jest.fn(slug => {
-        callCount++;
         return slug === 'hello-world'; // only 'hello-world' already exists
       });
       const result = generateUniqueSlug('Hello World', existsCheck);

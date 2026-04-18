@@ -1,17 +1,6 @@
 import { jest } from '@jest/globals';
 import { createHash } from 'crypto';
 
-// Dynamically import the middleware factory after mocking env
-async function loadMiddleware(token, tokenHash) {
-  jest.unstable_mockModule('../../src/config/env.js', () => ({
-    appEnv: { isProduction: false },
-    getAdminTokenConfig: () => ({ token, tokenHash }),
-  }));
-
-  const mod = await import('../../src/middleware/adminAuth.middleware.js');
-  return mod.createFilesAdminGuard;
-}
-
 function makeReqRes(headers = {}, body = {}, query = {}) {
   const req = {
     get: key => headers[key.toLowerCase()] || headers[key] || null,
@@ -33,8 +22,9 @@ describe('adminAuth middleware - no token configured', () => {
       appEnv: { isProduction: false },
       getAdminTokenConfig: () => ({ token: '', tokenHash: '' }),
     }));
-    const { createFilesAdminGuard } =
-      await import('../../src/middleware/adminAuth.middleware.js');
+    const { createFilesAdminGuard } = await import(
+      '../../src/middleware/adminAuth.middleware.js'
+    );
     const guard = createFilesAdminGuard();
     const { req, res, next } = makeReqRes();
     guard(req, res, next);
@@ -52,8 +42,9 @@ describe('adminAuth middleware - plaintext token', () => {
       appEnv: { isProduction: false },
       getAdminTokenConfig: () => ({ token: 'secret123', tokenHash: '' }),
     }));
-    const { createFilesAdminGuard } =
-      await import('../../src/middleware/adminAuth.middleware.js');
+    const { createFilesAdminGuard } = await import(
+      '../../src/middleware/adminAuth.middleware.js'
+    );
     guard = createFilesAdminGuard();
   });
 
@@ -100,8 +91,9 @@ describe('adminAuth middleware - hashed token', () => {
       appEnv: { isProduction: false },
       getAdminTokenConfig: () => ({ token: '', tokenHash: hash }),
     }));
-    const { createFilesAdminGuard } =
-      await import('../../src/middleware/adminAuth.middleware.js');
+    const { createFilesAdminGuard } = await import(
+      '../../src/middleware/adminAuth.middleware.js'
+    );
     guardHashed = createFilesAdminGuard();
   });
 

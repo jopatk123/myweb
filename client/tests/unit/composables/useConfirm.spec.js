@@ -27,7 +27,6 @@ describe('useConfirm', () => {
     });
 
     it('returns true when window is undefined', () => {
-      const originalWindow = globalThis.window;
       // Simulate no window.confirm
       const saved = window.confirm;
       delete window.confirm;

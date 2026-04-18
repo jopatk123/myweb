@@ -85,7 +85,6 @@
   const emit = defineEmits(['close', 'minimize', 'maximize', 'activate']);
 
   const windowRef = toRef(props, 'window');
-  const isActiveRef = toRef(props, 'isActive');
 
   const { modalRef, modalStyle, onHeaderPointerDown, pos, savePosition } =
     useDraggableModal(props.window.storageKey);

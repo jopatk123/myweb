@@ -45,10 +45,6 @@
   const errorMessage = ref('');
   const isSubmitting = ref(false);
 
-  function refreshAuthState() {
-    isAuthorized.value = isAuthValid();
-  }
-
   async function handleSubmit() {
     if (isSubmitting.value) return;
     isSubmitting.value = true;

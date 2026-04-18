@@ -84,7 +84,7 @@ export function seedAppsIfEmpty(db) {
             null
           );
           seedLogger.info('Seeded example app: notebook');
-        } catch (e) {
+        } catch {
           // ignore duplicate
         }
       }

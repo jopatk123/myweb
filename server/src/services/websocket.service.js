@@ -16,7 +16,6 @@ const HEARTBEAT_INTERVAL_MS =
   Number(process.env.WS_HEARTBEAT_INTERVAL) || 30_000;
 
 /** 心跳超时（ms）：超过此时间未收到 pong，强制断开 */
-const HEARTBEAT_TIMEOUT_MS = Number(process.env.WS_HEARTBEAT_TIMEOUT) || 10_000;
 
 export class WebSocketService {
   constructor() {
@@ -276,7 +275,7 @@ export class WebSocketService {
     this.connections.broadcast({ type, data });
   }
 
-  broadcastToRoom(roomId, eventType, data) {
+  broadcastToRoom(_roomId, _eventType, _data) {
     return undefined;
   }
 

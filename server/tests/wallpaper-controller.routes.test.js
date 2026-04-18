@@ -2,13 +2,9 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import path from 'path';
 import fs from 'fs/promises';
-import { fileURLToPath } from 'url';
 import { createApp } from '../src/appFactory.js';
 import { WALLPAPERS_DIR } from '../src/utils/upload-path.js';
 import { WallpaperService } from '../src/services/wallpaper.service.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 let app;
 let db;

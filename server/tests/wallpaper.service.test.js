@@ -1,16 +1,9 @@
 import { jest } from '@jest/globals';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createTestDatabase, closeTestDatabase } from './helpers/test-db.js';
 import { WallpaperService } from '../src/services/wallpaper.service.js';
 import { WALLPAPERS_DIR } from '../src/utils/upload-path.js';
-
-/** 最小有效 JPEG 文件头（3 字节魔数 + 填充） */
-const MINIMAL_JPEG = Buffer.from([
-  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01,
-  0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
-]);
 
 /** 最小有效 PNG 文件头（8 字节魔数 + IHDR chunk 填充） */
 const MINIMAL_PNG = Buffer.from([
@@ -18,8 +11,6 @@ const MINIMAL_PNG = Buffer.from([
   0x48, 0x44, 0x52,
 ]);
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const tempDir = path.join(WALLPAPERS_DIR, 'tmp-wallpapers');
 
 let db;

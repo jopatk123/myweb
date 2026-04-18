@@ -1,7 +1,7 @@
 /**
  * 留言板自动打开功能
  */
-import { ref, onMounted, defineAsyncComponent } from 'vue';
+import { onMounted, defineAsyncComponent } from 'vue';
 import { useWebSocket } from './useWebSocket.js';
 import { useWindowManager } from './useWindowManager.js';
 import { getAppComponentBySlug } from '@/apps/registry.js';
@@ -13,7 +13,6 @@ const messageBoardComponent =
   );
 
 export function useMessageBoardAutoOpen() {
-  const isAutoOpenEnabled = ref(false);
   const { onMessage } = useWebSocket();
   const {
     createWindow,
@@ -71,27 +70,13 @@ export function useMessageBoardAutoOpen() {
     openMessageBoard();
   };
 
-  // 设置自动打开状态
-  const setAutoOpenEnabled = enabled => {
-    isAutoOpenEnabled.value = enabled;
-    localStorage.setItem('messageBoardAutoOpen', enabled ? 'true' : 'false');
-  };
-
   // 初始化
   onMounted(() => {
-    // 从本地存储恢复自动打开设置
-    const saved = localStorage.getItem('messageBoardAutoOpen');
-    if (saved !== null) {
-      isAutoOpenEnabled.value = saved === 'true';
-    }
-
     // 注册WebSocket事件处理器
     onMessage('newMessage', handleNewMessage);
   });
 
   return {
-    isAutoOpenEnabled,
-    setAutoOpenEnabled,
     manualOpenMessageBoard,
   };
 }

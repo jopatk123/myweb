@@ -78,7 +78,7 @@ function matchesSignature(buffer, offset, expectedBytes) {
  * @param {string} [declaredMime] 请求声明的 MIME 类型（可选，用于附加日志）
  * @returns {Promise<{ valid: boolean; detectedMime: string | null }>}
  */
-export async function validateImageMagicBytes(filePath, declaredMime) {
+export async function validateImageMagicBytes(filePath, _declaredMime) {
   let header;
   try {
     header = await readFileHeader(filePath, 16);

@@ -1,10 +1,7 @@
 import { jest } from '@jest/globals';
-import fs from 'fs';
 import request from 'supertest';
 import { createApp } from '../src/appFactory.js';
 import { setDb } from '../src/utils/dbPool.js';
-import { MessageService } from '../src/services/message.service.js';
-import { UserSessionService } from '../src/services/userSession.service.js';
 
 let app;
 let db;

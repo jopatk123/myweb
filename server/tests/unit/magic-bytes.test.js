@@ -5,8 +5,6 @@
  * validateImageMagicBytes 与 assertValidImageFile 的行为
  */
 import { jest } from '@jest/globals';
-import path from 'path';
-import os from 'os';
 
 // Mock fs/promises，让测试不依赖真实文件系统
 jest.unstable_mockModule('fs/promises', () => ({
