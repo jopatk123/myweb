@@ -42,10 +42,10 @@ describe('Message route validation', () => {
       expect(res.status).toBe(400);
     });
 
-    test('rejects invalid imageType', async () => {
+    test('rejects imageType exceeding max length', async () => {
       const res = await request(app)
         .post('/api/messages')
-        .send({ content: 'hi', imageType: 'invalid' });
+        .send({ content: 'hi', imageType: 'x'.repeat(21) });
       expect(res.status).toBe(400);
     });
   });

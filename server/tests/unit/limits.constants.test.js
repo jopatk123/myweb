@@ -8,6 +8,8 @@ import {
   DEFAULT_MESSAGE_IMAGE_MAX_SIZE,
   DEFAULT_MESSAGE_IMAGE_MAX_FILES,
   SESSION_MAX_AGE_MS,
+  MESSAGE_CONTENT_MAX_LENGTH,
+  MESSAGE_IMAGE_MAX_COUNT,
 } from '../../src/constants/limits.js';
 
 describe('limits constants', () => {
@@ -34,5 +36,17 @@ describe('limits constants', () => {
 
   test('DEFAULT_MESSAGE_IMAGE_MAX_FILES is 5', () => {
     expect(DEFAULT_MESSAGE_IMAGE_MAX_FILES).toBe(5);
+  });
+
+  test('MESSAGE_CONTENT_MAX_LENGTH is 1000', () => {
+    expect(MESSAGE_CONTENT_MAX_LENGTH).toBe(1000);
+  });
+
+  test('MESSAGE_IMAGE_MAX_COUNT is 5', () => {
+    expect(MESSAGE_IMAGE_MAX_COUNT).toBe(5);
+  });
+
+  test('MESSAGE_IMAGE_MAX_COUNT matches DEFAULT_MESSAGE_IMAGE_MAX_FILES', () => {
+    expect(MESSAGE_IMAGE_MAX_COUNT).toBe(DEFAULT_MESSAGE_IMAGE_MAX_FILES);
   });
 });

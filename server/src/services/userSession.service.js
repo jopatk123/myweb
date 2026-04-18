@@ -2,6 +2,10 @@
  * 用户会话服务（构造函数注入 db）
  */
 import { UserSessionModel } from '../models/userSession.model.js';
+import { ValidationError } from '../utils/errors.js';
+
+/** 与 DTO colorPattern 保持一致：仅接受 <input type="color"> 输出的 #rrggbb 格式 */
+const COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
 
 export class UserSessionService {
   constructor(db) {
@@ -14,10 +18,12 @@ export class UserSessionService {
     avatarColor,
     autoOpenEnabled,
   }) {
-    if (nickname && nickname.length > 50)
-      throw new Error('昵称不能超过50个字符');
-    if (avatarColor && !/^#[0-9A-Fa-f]{6}$/.test(avatarColor))
-      throw new Error('颜色格式不正确');
+    if (nickname && nickname.length > 50) {
+      throw new ValidationError('昵称不能超过50个字符');
+    }
+    if (avatarColor && !COLOR_PATTERN.test(avatarColor)) {
+      throw new ValidationError('颜色格式不正确，请使用 #rrggbb 格式');
+    }
     return this.userSessionModel.upsert({
       sessionId,
       nickname: nickname || 'Anonymous',

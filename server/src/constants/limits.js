@@ -24,6 +24,14 @@ export const DEFAULT_MESSAGE_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
 /** 留言板每次请求最多上传图片数量默认值 */
 export const DEFAULT_MESSAGE_IMAGE_MAX_FILES = 5;
 
+// ─── 留言板内容 ───────────────────────────────────────────────────────────────
+
+/** 留言正文最大字符数（前端 textarea maxlength、DTO、service 三端统一使用此值） */
+export const MESSAGE_CONTENT_MAX_LENGTH = 1000;
+
+/** 单条留言最多附带图片数量（前端选图上限、DTO 校验、service 校验三端统一使用此值） */
+export const MESSAGE_IMAGE_MAX_COUNT = 5;
+
 // ─── Session ──────────────────────────────────────────────────────────────────
 
 /** HTTP Session Cookie 最大有效期（24 小时）*/

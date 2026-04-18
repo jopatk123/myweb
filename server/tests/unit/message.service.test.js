@@ -4,6 +4,7 @@ import { createTestDatabase, closeTestDatabase } from '../helpers/test-db.js';
 import { MessageService } from '../../src/services/message.service.js';
 import { MessageModel } from '../../src/models/message.model.js';
 import { UserSessionModel } from '../../src/models/userSession.model.js';
+import { ValidationError, NotFoundError } from '../../src/utils/errors.js';
 
 describe('MessageService', () => {
   let db;
@@ -52,6 +53,9 @@ describe('MessageService', () => {
       await expect(
         service.sendMessage({ content: '', sessionId: 'sess-empty' })
       ).rejects.toThrow('留言内容不能为空');
+      await expect(
+        service.sendMessage({ content: '', sessionId: 'sess-empty' })
+      ).rejects.toBeInstanceOf(ValidationError);
     });
 
     test('throws when content exceeds 1000 characters', async () => {
@@ -61,6 +65,12 @@ describe('MessageService', () => {
           sessionId: 'sess-long',
         })
       ).rejects.toThrow('留言内容不能超过1000字符');
+      await expect(
+        service.sendMessage({
+          content: 'x'.repeat(1001),
+          sessionId: 'sess-long',
+        })
+      ).rejects.toBeInstanceOf(ValidationError);
     });
 
     test('throws when images is not an array', async () => {
@@ -71,6 +81,13 @@ describe('MessageService', () => {
           images: 'not-an-array',
         })
       ).rejects.toThrow('图片数据格式错误');
+      await expect(
+        service.sendMessage({
+          content: '有文字',
+          sessionId: 'sess-bad-img',
+          images: 'not-an-array',
+        })
+      ).rejects.toBeInstanceOf(ValidationError);
     });
 
     test('throws when more than 5 images are provided', async () => {
@@ -84,6 +101,13 @@ describe('MessageService', () => {
           images,
         })
       ).rejects.toThrow('最多只能上传5张图片');
+      await expect(
+        service.sendMessage({
+          content: '图片过多',
+          sessionId: 'sess-many-imgs',
+          images,
+        })
+      ).rejects.toBeInstanceOf(ValidationError);
     });
 
     test('uses existing session nickname if available', async () => {
@@ -178,6 +202,9 @@ describe('MessageService', () => {
     test('throws when message does not exist', async () => {
       await expect(service.deleteMessage(999999)).rejects.toThrow(
         '留言不存在或已被删除'
+      );
+      await expect(service.deleteMessage(999999)).rejects.toBeInstanceOf(
+        NotFoundError
       );
     });
 

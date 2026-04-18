@@ -6,6 +6,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { MessageModel } from '../models/message.model.js';
 import { UserSessionModel } from '../models/userSession.model.js';
+import { ValidationError, NotFoundError } from '../utils/errors.js';
+import {
+  MESSAGE_CONTENT_MAX_LENGTH,
+  MESSAGE_IMAGE_MAX_COUNT,
+} from '../constants/limits.js';
 import logger from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -49,11 +54,20 @@ export class MessageService {
   }) {
     const hasText = content && content.toString().trim().length > 0;
     const hasImages = Array.isArray(images) && images.length > 0;
-    if (!hasText && !hasImages) throw new Error('留言内容不能为空');
-    if (hasText && content.toString().length > 1000)
-      throw new Error('留言内容不能超过1000字符');
-    if (images && !Array.isArray(images)) throw new Error('图片数据格式错误');
-    if (images && images.length > 5) throw new Error('最多只能上传5张图片');
+    if (!hasText && !hasImages) {
+      throw new ValidationError('留言内容不能为空');
+    }
+    if (hasText && content.toString().length > MESSAGE_CONTENT_MAX_LENGTH) {
+      throw new ValidationError(
+        `留言内容不能超过${MESSAGE_CONTENT_MAX_LENGTH}字符`
+      );
+    }
+    if (images && !Array.isArray(images)) {
+      throw new ValidationError('图片数据格式错误');
+    }
+    if (images && images.length > MESSAGE_IMAGE_MAX_COUNT) {
+      throw new ValidationError(`最多只能上传${MESSAGE_IMAGE_MAX_COUNT}张图片`);
+    }
 
     const userSession = this.userSessionModel.findBySessionId(sessionId);
     const finalAuthorName = authorName || userSession?.nickname || 'Anonymous';
@@ -91,11 +105,12 @@ export class MessageService {
 
   async deleteMessage(id) {
     const message = this.messageModel.findById(id);
-    if (!message) throw new Error('留言不存在或已被删除');
+    if (!message) throw new NotFoundError('留言不存在或已被删除');
 
     const result = this.messageModel.deleteById(id);
-    if (result.changes === 0) throw new Error('留言不存在或已被删除');
+    if (result.changes === 0) throw new NotFoundError('留言不存在或已被删除');
 
+    // 先删 DB 再清文件：即使文件清理失败，留言已从用户视角消失，不影响一致性
     await this.cleanupMessageImages(message.images);
 
     return {
@@ -109,22 +124,21 @@ export class MessageService {
   }
 
   async clearAllMessages() {
-    try {
-      const messagesWithImages = this.messageModel.findAllWithImages();
-      for (const message of messagesWithImages) {
-        await this.cleanupMessageImages(message.images);
-      }
-      const result = this.messageModel.deleteAll();
-      return {
-        deletedMessages: result.changes || 0,
-        deletedImages: messagesWithImages.reduce(
-          (c, m) => c + (m.images?.length || 0),
-          0
-        ),
-      };
-    } catch (error) {
-      msgServiceLogger.error('清除留言板失败', { error });
-      throw new Error('清除留言板失败: ' + error.message);
+    // 先收集有图片的留言，再删 DB，最后清理文件
+    // 顺序：DB 删除先行，保证用户侧立即看不到留言；文件清理失败只影响磁盘，不影响正确性
+    const messagesWithImages = this.messageModel.findAllWithImages();
+    const result = this.messageModel.deleteAll();
+
+    for (const message of messagesWithImages) {
+      await this.cleanupMessageImages(message.images);
     }
+
+    return {
+      deletedMessages: result.changes || 0,
+      deletedImages: messagesWithImages.reduce(
+        (c, m) => c + (m.images?.length || 0),
+        0
+      ),
+    };
   }
 }
