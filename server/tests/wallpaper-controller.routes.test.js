@@ -476,3 +476,77 @@ describe('WallpaperController - Groups error paths', () => {
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 });
+
+describe('WallpaperController - updateWallpaper() - mimeType guard', () => {
+  test('PUT /api/wallpapers/:id rejects requests that include mimeType field', async () => {
+    const id = insertWallpaper({ name: 'mime-guard' });
+    const res = await request(app)
+      .put(`/api/wallpapers/${id}`)
+      .send({ name: '新名', mimeType: 'image/png' })
+      .expect(400);
+    expect(res.body.code).toBe(400);
+  });
+
+  test('PUT /api/wallpapers/:id accepts name-only update without mimeType', async () => {
+    const id = insertWallpaper({ name: 'mime-guard-ok' });
+    const res = await request(app)
+      .put(`/api/wallpapers/${id}`)
+      .send({ name: '合法更名' })
+      .expect(200);
+    expect(res.body.code).toBe(200);
+    expect(res.body.data.name).toBe('合法更名');
+  });
+});
+
+describe('WallpaperController - downloadWallpapers() - path validation', () => {
+  test('returns 400 when any wallpaper has a path outside uploads dir', async () => {
+    const id = insertWallpaper({
+      name: '路径逃逸',
+      filePath: '../escape.png',
+    });
+    const res = await request(app)
+      .post('/api/wallpapers/download')
+      .send({ ids: [id] })
+      .expect(400);
+    expect(res.body.code).toBe(400);
+  });
+
+  test('returns 404 when all wallpaper files are missing from disk', async () => {
+    const id1 = insertWallpaper({
+      name: '缺失文件1',
+      filePath: 'uploads/wallpapers/ghost-missing-1.jpg',
+    });
+    const id2 = insertWallpaper({
+      name: '缺失文件2',
+      filePath: 'uploads/wallpapers/ghost-missing-2.jpg',
+    });
+    const res = await request(app)
+      .post('/api/wallpapers/download')
+      .send({ ids: [id1, id2] })
+      .expect(404);
+    expect(res.body.code).toBe(404);
+  });
+
+  test('single download sets RFC 6266 compliant Content-Disposition', async () => {
+    const filename = `cd-test-${Date.now()}.jpg`;
+    const diskPath = path.join(WALLPAPERS_DIR, filename);
+    await fs.writeFile(diskPath, Buffer.from('dummy'));
+
+    const id = insertWallpaper({
+      filename,
+      originalName: '壁纸 美景.jpg',
+      filePath: `uploads/wallpapers/${filename}`,
+      mimeType: 'image/jpeg',
+    });
+
+    const res = await request(app)
+      .post('/api/wallpapers/download')
+      .send({ ids: [id] })
+      .expect(200);
+
+    const disposition = res.headers['content-disposition'] || '';
+    // filename* 优先，用于非 ASCII 文件名
+    expect(disposition).toMatch(/filename\*=UTF-8''/);
+    await fs.rm(diskPath, { force: true });
+  });
+});

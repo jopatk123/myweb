@@ -260,3 +260,65 @@ describe('Wallpaper thumbnail endpoint', () => {
     expect(res.headers['content-type']).toMatch(/image/);
   });
 });
+
+describe('Wallpaper download - Content-Disposition header', () => {
+  let app;
+  let db;
+  const cleanupTargets = new Set();
+
+  beforeAll(async () => {
+    ({ app, db } = await createApp({
+      dbPath: ':memory:',
+      seedBuiltinApps: false,
+      silentDbLogs: true,
+    }));
+  });
+
+  afterAll(async () => {
+    for (const target of cleanupTargets) {
+      await fs.rm(target, { force: true });
+    }
+    await db?.close?.();
+  });
+
+  afterEach(() => {
+    db.prepare('DELETE FROM wallpapers').run();
+  });
+
+  test('single download Content-Disposition uses filename* for non-ASCII names', async () => {
+    const imageBuffer = await sharp({
+      create: {
+        width: 64,
+        height: 64,
+        channels: 3,
+        background: { r: 50, g: 100, b: 150 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const uploadRes = await request(app)
+      .post('/api/wallpapers')
+      .attach('image', imageBuffer, '美丽壁纸.png')
+      .expect(201);
+
+    const wallpaperId = uploadRes.body.data.id;
+    const filePath =
+      uploadRes.body.data.file_path || uploadRes.body.data.filePath;
+    cleanupTargets.add(
+      path.isAbsolute(filePath)
+        ? filePath
+        : path.join(__dirname, '..', filePath)
+    );
+
+    const res = await request(app)
+      .post('/api/wallpapers/download')
+      .send({ ids: [wallpaperId] })
+      .expect(200);
+
+    const disposition = res.headers['content-disposition'] || '';
+    // 必须包含 filename*=UTF-8'' 编码格式，不得裸露未转义的非 ASCII 字符
+    expect(disposition).toMatch(/filename\*=UTF-8''/);
+    expect(disposition).not.toMatch(/[\u0080-\uffff]/);
+  });
+});

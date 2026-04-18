@@ -45,6 +45,9 @@ function normalizeWallpaperUploadPayload(fileData = {}) {
 }
 
 export class WallpaperService {
+  /** 并发缩略图生成锁：cachedPath -> Promise<void>，防止重复写入同一文件 */
+  #thumbnailGenLocks = new Map();
+
   constructor(db) {
     this.wallpaperModel = new WallpaperModel(db);
     this.groupModel = new WallpaperGroupModel(db);
@@ -257,36 +260,25 @@ export class WallpaperService {
     }
 
     if (regenerate) {
-      await fs.mkdir(THUMBNAIL_DIR, { recursive: true });
-      const pipeline = sharp(originalPath).rotate();
-
-      if (sanitizedWidth || sanitizedHeight) {
-        pipeline.resize({
-          width: sanitizedWidth || null,
-          height: sanitizedHeight || null,
-          fit: sanitizedHeight ? 'cover' : 'inside',
-          withoutEnlargement: true,
-        });
+      if (this.#thumbnailGenLocks.has(cachedPath)) {
+        // 已有并发请求正在生成同一缩略图，等待它完成，避免重复写入
+        await this.#thumbnailGenLocks.get(cachedPath);
+      } else {
+        const genTask = this.#generateThumbnailToFile(
+          originalPath,
+          cachedPath,
+          sanitizedWidth,
+          sanitizedHeight,
+          outputExtension,
+          stats.mtime
+        );
+        this.#thumbnailGenLocks.set(cachedPath, genTask);
+        try {
+          await genTask;
+        } finally {
+          this.#thumbnailGenLocks.delete(cachedPath);
+        }
       }
-
-      switch (outputExtension) {
-        case 'jpeg':
-          pipeline.jpeg({ quality: 75, mozjpeg: true });
-          break;
-        case 'png':
-          pipeline.png({ compressionLevel: 8, adaptiveFiltering: true });
-          break;
-        case 'avif':
-          pipeline.avif({ quality: 45 });
-          break;
-        default:
-          pipeline.webp({ quality: 70, smartSubsample: true });
-      }
-
-      await pipeline.toFile(cachedPath);
-      // 将缩略图的 mtime 与原图保持一致，方便比较
-      const timestamp = stats.mtime;
-      await fs.utimes(cachedPath, timestamp, timestamp);
     }
 
     const thumbStats = await fs.stat(cachedPath);
@@ -361,6 +353,60 @@ export class WallpaperService {
     }
     if (normalized === 'jpg') return 'jpg';
     return normalized;
+  }
+
+  /**
+   * 生成单张缩略图并写入缓存目录。
+   * - 生成过程出错时自动清理可能残留的不完整缓存文件
+   * - 生成完成后将缩略图 mtime 与原图对齐，便于后续缓存有效性比较
+   */
+  async #generateThumbnailToFile(
+    originalPath,
+    cachedPath,
+    width,
+    height,
+    format,
+    originalMtime
+  ) {
+    await fs.mkdir(THUMBNAIL_DIR, { recursive: true });
+
+    const pipeline = sharp(originalPath).rotate();
+
+    if (width || height) {
+      pipeline.resize({
+        width: width || null,
+        height: height || null,
+        fit: height ? 'cover' : 'inside',
+        withoutEnlargement: true,
+      });
+    }
+
+    switch (format) {
+      case 'jpeg':
+        pipeline.jpeg({ quality: 75, mozjpeg: true });
+        break;
+      case 'png':
+        pipeline.png({ compressionLevel: 8, adaptiveFiltering: true });
+        break;
+      case 'avif':
+        pipeline.avif({ quality: 45 });
+        break;
+      default:
+        pipeline.webp({ quality: 70, smartSubsample: true });
+    }
+
+    try {
+      await pipeline.toFile(cachedPath);
+      await fs.utimes(cachedPath, originalMtime, originalMtime);
+    } catch (err) {
+      // 清理可能残留的不完整文件，防止下次请求误用脏缓存
+      try {
+        await fs.unlink(cachedPath);
+      } catch {
+        // 文件可能根本没写入，忽略
+      }
+      throw err;
+    }
   }
 
   async #purgeThumbnailCache(filePath) {

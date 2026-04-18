@@ -395,3 +395,72 @@ test('deleteWallpaper handles thumbnail cache read/unlink errors', async () => {
   expect(readdirSpy).toHaveBeenCalled();
   expect(unlinkSpy).toHaveBeenCalled();
 });
+
+test('getWallpaperThumbnail concurrent requests generate thumbnail only once', async () => {
+  const srcPath = path.join(tempDir, 'concurrent-thumb.png');
+  const tinyPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Zk4QAAAAASUVORK5CYII=',
+    'base64'
+  );
+  await fs.writeFile(srcPath, tinyPng);
+
+  const created = await service.uploadWallpaper({
+    filename: 'concurrent-thumb.png',
+    originalName: 'concurrent-thumb.png',
+    filePath: srcPath,
+    fileSize: tinyPng.length,
+    mimeType: 'image/png',
+    name: 'concurrent-thumb',
+  });
+
+  // 追踪 sharp().toFile() 调用次数：并发请求只应生成一次
+  const toFileSpy = jest.spyOn(
+    (await import('sharp')).default.prototype,
+    'toFile'
+  );
+
+  await Promise.all([
+    service.getWallpaperThumbnail(created.id, { width: 48, format: 'webp' }),
+    service.getWallpaperThumbnail(created.id, { width: 48, format: 'webp' }),
+    service.getWallpaperThumbnail(created.id, { width: 48, format: 'webp' }),
+  ]);
+
+  // 因为后两个请求等待了第一个的 lock，toFile 只被调用一次
+  expect(toFileSpy).toHaveBeenCalledTimes(1);
+  toFileSpy.mockRestore();
+});
+
+test('getWallpaperThumbnail cleans up partial cache file on generation error', async () => {
+  const srcPath = path.join(tempDir, 'fail-gen.png');
+  const tinyPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Zk4QAAAAASUVORK5CYII=',
+    'base64'
+  );
+  await fs.writeFile(srcPath, tinyPng);
+
+  const created = await service.uploadWallpaper({
+    filename: 'fail-gen.png',
+    originalName: 'fail-gen.png',
+    filePath: srcPath,
+    fileSize: tinyPng.length,
+    mimeType: 'image/png',
+    name: 'fail-gen',
+  });
+
+  // 让 toFile 抛错，模拟磁盘写入失败
+  const sharpModule = await import('sharp');
+  const toFileSpy = jest
+    .spyOn(sharpModule.default.prototype, 'toFile')
+    .mockRejectedValueOnce(new Error('disk full'));
+  const unlinkSpy = jest.spyOn(fs, 'unlink');
+
+  await expect(
+    service.getWallpaperThumbnail(created.id, { width: 64, format: 'webp' })
+  ).rejects.toThrow('disk full');
+
+  // 生成失败后应尝试清理残缺缓存文件
+  expect(unlinkSpy).toHaveBeenCalled();
+
+  toFileSpy.mockRestore();
+  unlinkSpy.mockRestore();
+});

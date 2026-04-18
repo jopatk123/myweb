@@ -19,6 +19,17 @@ function sanitizePositiveIds(ids) {
   return ids.map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0);
 }
 
+/**
+ * 生成符合 RFC 6266 的 Content-Disposition 头值。
+ * - 使用 filename*=UTF-8'' 确保非 ASCII 文件名正确传递
+ * - 同时提供 ASCII 安全回退，避免旧客户端乱码
+ */
+function buildContentDisposition(name) {
+  const safe = String(name).replace(/[^\w\-. ]/g, '_');
+  const encoded = encodeURIComponent(name);
+  return `attachment; filename="${safe}"; filename*=UTF-8''${encoded}`;
+}
+
 const upload = createUploader({
   destination: WALLPAPERS_DIR,
   maxFileSize: parseEnvByteSize(
@@ -388,19 +399,47 @@ export class WallpaperController {
           return res.status(404).json({ code: 404, message: '壁纸文件不存在' });
         }
 
+        const singleName =
+          wallpaper.original_name || `wallpaper_${wallpaper.id}`;
         res.setHeader(
           'Content-Disposition',
-          `attachment; filename="${wallpaper.original_name || `wallpaper_${wallpaper.id}`}"`
+          buildContentDisposition(singleName)
         );
         res.setHeader('Content-Type', wallpaper.mime_type || 'image/jpeg');
         return createReadStream(filePath).pipe(res);
       }
 
       // 多张壁纸，打包为 ZIP
+      // 预校验所有路径：路径逃逸直接 400；文件不存在仅跳过并记录警告
+      const archiveEntries = [];
+      for (const wallpaper of wallpapers) {
+        const filePath = toUploadsAbsolutePath(wallpaper.file_path);
+        if (!filePath) {
+          return res
+            .status(400)
+            .json({ code: 400, message: '壁纸文件路径无效' });
+        }
+        if (existsSync(filePath)) {
+          archiveEntries.push({
+            filePath,
+            name: wallpaper.original_name || `wallpaper_${wallpaper.id}`,
+          });
+        } else {
+          wallpaperLogger.warn('下载时壁纸文件不存在（已跳过）', {
+            id: wallpaper.id,
+            filePath: wallpaper.file_path,
+          });
+        }
+      }
+
+      if (archiveEntries.length === 0) {
+        return res.status(404).json({ code: 404, message: '壁纸文件不存在' });
+      }
+
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename="wallpapers_${Date.now()}.zip"`
+        `attachment; filename*=UTF-8''wallpapers_${Date.now()}.zip`
       );
 
       const archive = archiver('zip', {
@@ -409,19 +448,16 @@ export class WallpaperController {
 
       archive.on('error', err => {
         wallpaperLogger.error('Archive error', err);
-        res.status(500).json({ code: 500, message: 'ZIP 打包失败' });
+        // 响应头尚未发送时才能写入 JSON 错误；已开始流式传输则只能记录
+        if (!res.headersSent) {
+          res.status(500).json({ code: 500, message: 'ZIP 打包失败' });
+        }
       });
 
       archive.pipe(res);
 
-      // 添加所有壁纸文件到 ZIP
-      for (const wallpaper of wallpapers) {
-        const filePath = toUploadsAbsolutePath(wallpaper.file_path);
-        if (filePath && existsSync(filePath)) {
-          const fileName =
-            wallpaper.original_name || `wallpaper_${wallpaper.id}`;
-          archive.file(filePath, { name: fileName });
-        }
+      for (const { filePath, name } of archiveEntries) {
+        archive.file(filePath, { name });
       }
 
       await archive.finalize();

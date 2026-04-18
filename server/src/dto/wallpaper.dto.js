@@ -56,7 +56,7 @@ export const moveWallpapersSchema = Joi.object({
 
 export const updateWallpaperSchema = Joi.object({
   name: Joi.string().max(255).optional(),
-  mimeType: Joi.string().optional(),
+  // mimeType 不允许通过更新接口修改——变更 MIME 类型需要重新上传文件并重新校验魔数
 });
 
 export const createGroupSchema = Joi.object({
