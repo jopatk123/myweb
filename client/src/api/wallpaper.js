@@ -1,14 +1,8 @@
-import { createAxiosClient } from './httpClient.js';
+import { createApiClient } from './httpClient.js';
 
-const api = createAxiosClient({
+const api = createApiClient({
   timeout: 300000, // 5分钟超时，避免上传大文件超时
 });
-
-// 响应拦截器
-api.interceptors.response.use(
-  response => response.data,
-  error => Promise.reject(error.response?.data || error)
-);
 
 export const wallpaperApi = {
   // 获取所有壁纸，支持分页：传入 page, limit 时返回 { items, total }

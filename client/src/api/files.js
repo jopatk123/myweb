@@ -1,24 +1,6 @@
-import {
-  createAxiosClient,
-  buildApiUrl,
-  getServerOrigin,
-} from './httpClient.js';
+import { createApiClient, buildApiUrl, getServerOrigin } from './httpClient.js';
 
-const api = createAxiosClient({ timeout: 300000 });
-
-api.interceptors.response.use(
-  resp => resp.data,
-  error => {
-    const payload = error.response?.data;
-    if (payload && typeof payload === 'object') {
-      const err = new Error(payload.message || '请求失败');
-      err.code = payload.code;
-      err.payload = payload;
-      return Promise.reject(err);
-    }
-    return Promise.reject(error);
-  }
-);
+const api = createApiClient({ timeout: 300000 });
 
 function getAdminToken() {
   if (typeof window === 'undefined') return '';

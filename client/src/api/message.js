@@ -16,21 +16,6 @@ messageApi.interceptors.request.use(config => {
   return config;
 });
 
-// 响应拦截器 - 统一取 data 层
-messageApi.interceptors.response.use(
-  response => response.data,
-  error => {
-    const payload = error.response?.data;
-    if (payload && typeof payload === 'object') {
-      const err = new Error(payload.message || '请求失败');
-      err.code = payload.code;
-      err.payload = payload;
-      return Promise.reject(err);
-    }
-    return Promise.reject(error);
-  }
-);
-
 // 生成会话ID
 function generateSessionId() {
   const sessionId =

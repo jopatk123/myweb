@@ -31,6 +31,30 @@ export function createAxiosClient(config = {}) {
   });
 }
 
+export function normalizeAxiosError(error) {
+  const payload = error?.response?.data;
+  if (payload && typeof payload === 'object') {
+    const normalizedError = new Error(payload.message || '请求失败');
+    normalizedError.name = 'ApiError';
+    normalizedError.code = payload.code;
+    normalizedError.payload = payload;
+    return Promise.reject(normalizedError);
+  }
+  return Promise.reject(error);
+}
+
+export function attachApiInterceptors(client) {
+  client.interceptors.response.use(
+    response => response.data,
+    normalizeAxiosError
+  );
+  return client;
+}
+
+export function createApiClient(config = {}) {
+  return attachApiInterceptors(createAxiosClient(config));
+}
+
 export function getServerOrigin() {
   const base = getApiBase();
   if (/^https?:/i.test(base)) {

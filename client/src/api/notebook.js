@@ -1,11 +1,6 @@
-import { createAxiosClient } from './httpClient.js';
+import { createApiClient } from './httpClient.js';
 
-const api = createAxiosClient({ timeout: 120000 });
-
-api.interceptors.response.use(
-  resp => resp.data,
-  error => Promise.reject(error?.response?.data || error)
-);
+const api = createApiClient({ timeout: 120000 });
 
 export const notebookApi = {
   list(params = {}) {

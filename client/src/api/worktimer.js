@@ -1,12 +1,6 @@
-import { createAxiosClient } from './httpClient.js';
+import { createApiClient } from './httpClient.js';
 
-const api = createAxiosClient({ timeout: 30000 });
-
-// 响应拦截器：统一取 data 层
-api.interceptors.response.use(
-  response => response.data,
-  error => Promise.reject(error.response?.data || error)
-);
+const api = createApiClient({ timeout: 30000 });
 
 export async function startSession(sessionId, startTime, targetEndTime) {
   const res = await api.post('/work-timer/start', {
