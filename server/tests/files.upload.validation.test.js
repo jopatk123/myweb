@@ -1,6 +1,8 @@
 import request from 'supertest';
 import { jest } from '@jest/globals';
 
+const ADMIN_TOKEN = 'upload-validation-token';
+
 describe('file upload validation', () => {
   afterEach(() => {
     delete process.env.FILE_MAX_UPLOAD_SIZE;
@@ -12,6 +14,7 @@ describe('file upload validation', () => {
 
   test('rejects files larger than configured limit', async () => {
     process.env.FILE_MAX_UPLOAD_SIZE = '10b';
+    process.env.FILES_ADMIN_TOKEN = ADMIN_TOKEN;
 
     jest.resetModules();
     const { createApp } = await import('../src/appFactory.js');
@@ -24,6 +27,7 @@ describe('file upload validation', () => {
     try {
       const response = await request(app)
         .post('/api/files/upload')
+        .set('X-Admin-Token', ADMIN_TOKEN)
         .attach('file', Buffer.alloc(20, 1), {
           filename: 'too-big.txt',
           contentType: 'text/plain',
@@ -39,6 +43,7 @@ describe('file upload validation', () => {
   test('rejects unsupported file types', async () => {
     process.env.FILE_MAX_UPLOAD_SIZE = '1mb';
     process.env.FILE_ALLOW_ALL_TYPES = 'false';
+    process.env.FILES_ADMIN_TOKEN = ADMIN_TOKEN;
 
     jest.resetModules();
     const { createApp } = await import('../src/appFactory.js');
@@ -51,6 +56,7 @@ describe('file upload validation', () => {
     try {
       const response = await request(app)
         .post('/api/files/upload')
+        .set('X-Admin-Token', ADMIN_TOKEN)
         .attach('file', Buffer.from('hello'), {
           filename: 'malware.exe',
           contentType: 'application/octet-stream',
@@ -65,6 +71,7 @@ describe('file upload validation', () => {
 
   test('rejects unexpected multipart field name', async () => {
     process.env.FILE_MAX_UPLOAD_SIZE = '1mb';
+    process.env.FILES_ADMIN_TOKEN = ADMIN_TOKEN;
 
     jest.resetModules();
     const { createApp } = await import('../src/appFactory.js');
@@ -77,6 +84,7 @@ describe('file upload validation', () => {
     try {
       const response = await request(app)
         .post('/api/files/upload')
+        .set('X-Admin-Token', ADMIN_TOKEN)
         .attach('files', Buffer.from('hello'), {
           filename: 'a.txt',
           contentType: 'text/plain',

@@ -1,6 +1,8 @@
 // 负责通用的图片读取、尺寸校验与压缩处理
 // 返回供上传与预览使用的结构
 
+import { formatFileSize as formatFileSizeBase } from '@/utils/fileSize.js';
+
 export const compressImage = (img, maxWidth, maxHeight, quality = 0.8) => {
   return new Promise(resolve => {
     const canvas = document.createElement('canvas');
@@ -34,13 +36,7 @@ export const blobToFile = (blob, fileName) => {
   });
 };
 
-export const formatFileSize = bytes => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
+export const formatFileSize = bytes => formatFileSizeBase(bytes, 2);
 
 /**
  * 处理图片文件：读取、分辨率校验、按需压缩、大小校验

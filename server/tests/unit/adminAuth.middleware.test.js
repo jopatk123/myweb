@@ -17,7 +17,7 @@ function makeReqRes(headers = {}, body = {}, query = {}) {
 }
 
 describe('adminAuth middleware - no token configured', () => {
-  test('passes through when no token is configured', async () => {
+  test('fails closed when no token is configured', async () => {
     jest.unstable_mockModule('../../src/config/env.js', () => ({
       appEnv: { isProduction: false },
       getAdminTokenConfig: () => ({ token: '', tokenHash: '' }),
@@ -28,8 +28,14 @@ describe('adminAuth middleware - no token configured', () => {
     const guard = createFilesAdminGuard();
     const { req, res, next } = makeReqRes();
     guard(req, res, next);
-    expect(next).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 503,
+        success: false,
+      })
+    );
+    expect(next).not.toHaveBeenCalled();
   });
 });
 

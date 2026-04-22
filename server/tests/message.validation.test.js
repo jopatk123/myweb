@@ -4,8 +4,10 @@ import { createApp } from '../src/appFactory.js';
 describe('Message route validation', () => {
   let app;
   let db;
+  const ADMIN_TOKEN = 'validation-admin-token';
 
   beforeAll(async () => {
+    process.env.FILES_ADMIN_TOKEN = ADMIN_TOKEN;
     ({ app, db } = await createApp({
       dbPath: ':memory:',
       seedBuiltinApps: false,
@@ -14,6 +16,7 @@ describe('Message route validation', () => {
   });
 
   afterAll(() => {
+    delete process.env.FILES_ADMIN_TOKEN;
     if (db && typeof db.close === 'function') {
       db.close();
     }
@@ -86,13 +89,12 @@ describe('Message route validation', () => {
   });
 
   describe('DELETE /api/messages/clear-all', () => {
-    test('rejects without admin token', async () => {
+    test('validates confirm payload with admin token', async () => {
       const res = await request(app)
         .delete('/api/messages/clear-all')
+        .set('X-Admin-Token', ADMIN_TOKEN)
         .send({ confirm: true });
-      // Without token, adminGuard passes (no token configured in test)
-      // but confirm validation should work
-      expect([200, 401, 403]).toContain(res.status);
+      expect([200, 400]).toContain(res.status);
     });
   });
 });

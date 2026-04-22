@@ -83,6 +83,7 @@
 <script setup>
   import { ref, computed, watch } from 'vue';
   import { buildServerUrl } from '@/api/httpClient.js';
+  import { formatFileSize as formatFileSizeBase } from '@/utils/fileSize.js';
 
   const props = defineProps({
     wallpapers: {
@@ -195,19 +196,12 @@
     return buildServerUrl(query ? `${basePath}?${query}` : basePath);
   };
 
-  const formatFileSize = bytes => {
-    const numeric = Number(bytes);
-    if (!Number.isFinite(numeric) || numeric < 0) return '-';
-    if (numeric === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.min(
-      sizes.length - 1,
-      Math.floor(Math.log(numeric) / Math.log(k))
-    );
-    const value = numeric / Math.pow(k, i);
-    return `${value.toFixed(value >= 10 || i === 0 ? 0 : 2)} ${sizes[i]}`;
-  };
+  const formatFileSize = bytes =>
+    formatFileSizeBase(bytes, 1, {
+      invalidValue: '-',
+      formatter: ({ value, unit, unitIndex }) =>
+        `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 2)} ${unit}`,
+    });
 
   const formatDate = value => {
     if (!value) return '-';

@@ -65,16 +65,18 @@
 
 ## 关键环境变量
 
-| 变量                   | 默认          | 说明                  |
-| ---------------------- | ------------- | --------------------- |
-| `NODE_ENV`             | `development` | 运行模式              |
-| `BACKEND_PORT`         | `3000`        | 后端 HTTP/WS 端口     |
-| `FRONTEND_PORT`        | `3000`        | Vite dev 端口         |
-| `VITE_API_BASE`        | `/api`        | 前端打包时的 API 前缀 |
-| `CORS_ORIGIN`          | `*`           | 允许跨域来源          |
-| `FILE_MAX_UPLOAD_SIZE` | `1gb`         | 通用上传限制          |
-| `DOCKER_BUILDKIT`      | `1`           | 构建时启用 BuildKit   |
-| `DOMAIN`               | `localhost`   | Docker Compose 项目域 |
+| 变量                     | 默认          | 说明                           |
+| ------------------------ | ------------- | ------------------------------ |
+| `NODE_ENV`               | `development` | 运行模式                       |
+| `BACKEND_PORT`           | `3000`        | 后端 HTTP/WS 端口              |
+| `FRONTEND_PORT`          | `3000`        | Vite dev 端口                  |
+| `VITE_API_BASE`          | `/api`        | 前端打包时的 API 前缀          |
+| `CORS_ORIGIN`            | `*`           | 允许跨域来源                   |
+| `FILES_ADMIN_TOKEN`      | `change-me`   | 文件/留言/内部日志的管理员凭证 |
+| `FILES_ADMIN_TOKEN_HASH` | 空            | 可选的管理员凭证 sha256 哈希   |
+| `FILE_MAX_UPLOAD_SIZE`   | `1gb`         | 通用上传限制                   |
+| `DOCKER_BUILDKIT`        | `1`           | 构建时启用 BuildKit            |
+| `DOMAIN`                 | `localhost`   | Docker Compose 项目域          |
 
 ## 数据与存储
 

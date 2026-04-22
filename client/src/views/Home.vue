@@ -22,6 +22,7 @@
       :files="desktopFiles"
       :icons="fileTypeIcons"
       @open="openFile"
+      @delete-error="onFileDeleteError"
     />
 
     <!-- 文件上传进度面板 -->
@@ -178,6 +179,10 @@
   const { manualOpenMessageBoard } = useMessageBoardAutoOpen();
   const openMessageBoard = () => {
     manualOpenMessageBoard();
+  };
+
+  const onFileDeleteError = payload => {
+    console.warn('[Home] File delete failed', payload?.error || payload);
   };
 
   const { desktopMenu, openMenu, handleSelect, closeMenu } =

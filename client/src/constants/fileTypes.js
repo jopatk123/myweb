@@ -394,19 +394,8 @@ export const UPLOAD_SIZE_LIMITS = {
   DOCUMENT: 100 * 1024 * 1024, // 100MB
 };
 
-/**
- * 格式化文件大小
- * @param {number} bytes - 字节数
- * @param {number} decimals - 小数位数
- * @returns {string} 格式化后的文件大小
- */
-export function formatFileSize(bytes, decimals = 1) {
-  if (!bytes || bytes <= 0 || !isFinite(bytes)) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  if (i < 0 || i >= sizes.length) return '0 B';
-  return (
-    parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i]
-  );
-}
+export { formatFileSize } from '../utils/fileSize.js';
+export {
+  formatUploadSpeed,
+  formatRemainingTime,
+} from '../utils/fileProgress.js';

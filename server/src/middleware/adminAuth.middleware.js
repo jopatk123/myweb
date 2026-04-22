@@ -19,7 +19,13 @@ export function createFilesAdminGuard(envVar = 'FILES_ADMIN_TOKEN') {
       : rawExpected;
 
   if (!expected) {
-    return (_req, _res, next) => next();
+    return (_req, res, _next) => {
+      return res.status(503).json({
+        code: 503,
+        success: false,
+        message: '管理员凭证未配置',
+      });
+    };
   }
 
   return (req, res, next) => {

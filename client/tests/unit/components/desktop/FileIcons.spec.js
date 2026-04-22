@@ -3,11 +3,16 @@ import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import FileIcons from '@/components/desktop/FileIcons.vue';
 
+const fileMocks = vi.hoisted(() => ({
+  getDownloadUrlMock: vi.fn(id => `/api/files/${id}/download`),
+  removeMock: vi.fn(),
+}));
+
 // Mock composables
 vi.mock('@/composables/useFiles.js', () => ({
   useFiles: vi.fn(() => ({
-    getDownloadUrl: vi.fn(id => `/api/files/${id}/download`),
-    remove: vi.fn(),
+    getDownloadUrl: fileMocks.getDownloadUrlMock,
+    remove: fileMocks.removeMock,
   })),
 }));
 
@@ -214,6 +219,56 @@ describe('FileIcons', () => {
       expect(mouseMoveListenerAdded).toBe(false);
 
       addEventListenerSpy.mockRestore();
+    });
+
+    it('删除失败时应该发出错误事件', async () => {
+      fileMocks.removeMock.mockRejectedValueOnce(new Error('delete failed'));
+
+      const mockFiles = [
+        {
+          id: 1,
+          originalName: 'test.txt',
+          original_name: 'test.txt',
+          typeCategory: 'text',
+          type_category: 'text',
+        },
+      ];
+
+      wrapper = mount(FileIcons, {
+        props: {
+          files: mockFiles,
+          icons: { text: '/apps/icons/text-128.svg' },
+        },
+        global: {
+          stubs: {
+            ContextMenu: {
+              template: '<div class="context-menu-stub" />',
+              props: ['modelValue', 'x', 'y', 'items'],
+            },
+            ConfirmDialog: {
+              template: '<div class="confirm-dialog-stub" />',
+              props: ['modelValue', 'title', 'message'],
+            },
+          },
+        },
+      });
+
+      await nextTick();
+
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      wrapper.vm.confirm.file = mockFiles[0];
+      await wrapper.vm.onConfirmDelete();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'FileIcons.delete error',
+        expect.any(Error)
+      );
+      expect(wrapper.emitted('delete-error')).toBeTruthy();
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });

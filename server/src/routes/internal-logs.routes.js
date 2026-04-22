@@ -1,9 +1,11 @@
 import express from 'express';
 import logger from '../utils/logger.js';
+import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
 
 export function createInternalLogsRoutes() {
   const router = express.Router();
   const aiLogger = logger.child('AIInternalLogs');
+  const adminGuard = createFilesAdminGuard();
 
   function truncateText(text, maxLength = 2000) {
     if (!text || typeof text !== 'string') {
@@ -16,7 +18,7 @@ export function createInternalLogsRoutes() {
   }
 
   // 内部调试：接收 AI 请求/回复，统一通过日志系统输出（无数据库持久化）
-  router.post('/ai', (req, res) => {
+  router.post('/ai', adminGuard, (req, res) => {
     try {
       const { requestText, responseText, timestamp, model } = req.body || {};
 

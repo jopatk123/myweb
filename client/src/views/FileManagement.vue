@@ -183,6 +183,7 @@
   import { useConfirm } from '@/composables/useConfirm.js';
   import FileUploadProgress from '@/components/file/FileUploadProgress.vue';
   import PaginationControls from '@/components/common/PaginationControls.vue';
+  import { formatFileSize as formatFileSizeBase } from '@/utils/fileSize.js';
 
   const {
     items,
@@ -213,6 +214,8 @@
   const siderVisible = ref(false);
 
   const statusClass = computed(() => `status-${statusType.value}`);
+  const formatFileSize = bytes =>
+    formatFileSizeBase(bytes ?? Number.NaN, 1, { invalidValue: '--' });
 
   onMounted(fetchListWithStatus);
 
@@ -242,16 +245,6 @@
       other: '📄',
     };
     return icons[type] || '📄';
-  }
-
-  function formatFileSize(bytes) {
-    if (!Number.isFinite(bytes) || bytes < 0) return '--';
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    const size = sizes[i] || 'TB';
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + size;
   }
 
   async function onPrevPage() {
