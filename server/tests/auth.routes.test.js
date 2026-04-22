@@ -3,9 +3,10 @@ import express from 'express';
 import { createHash } from 'crypto';
 
 // Build a minimal Express app that mounts the auth routes
-async function buildApp(password = '') {
+async function buildApp(password = '', nodeEnv = 'test') {
   // Set env before importing to ensure the route picks it up
   process.env.APP_PASSWORD = password;
+  process.env.NODE_ENV = nodeEnv;
 
   // Dynamic import to re-read env each time
   const { createAuthRoutes } = await import('../src/routes/auth.routes.js');
@@ -17,10 +18,14 @@ async function buildApp(password = '') {
 }
 
 describe('Auth routes', () => {
-  const originalEnv = process.env.APP_PASSWORD;
+  const originalEnv = {
+    APP_PASSWORD: process.env.APP_PASSWORD,
+    NODE_ENV: process.env.NODE_ENV,
+  };
 
   afterAll(() => {
-    process.env.APP_PASSWORD = originalEnv || '';
+    process.env.APP_PASSWORD = originalEnv.APP_PASSWORD || '';
+    process.env.NODE_ENV = originalEnv.NODE_ENV || '';
   });
 
   describe('GET /api/auth/status', () => {
@@ -29,6 +34,7 @@ describe('Auth routes', () => {
       const res = await request(app).get('/api/auth/status');
       expect(res.status).toBe(200);
       expect(res.body.data.required).toBe(false);
+      expect(res.body.data.configured).toBe(false);
     });
 
     test('returns required: true when password is set', async () => {
@@ -36,6 +42,16 @@ describe('Auth routes', () => {
       const res = await request(app).get('/api/auth/status');
       expect(res.status).toBe(200);
       expect(res.body.data.required).toBe(true);
+      expect(res.body.data.configured).toBe(true);
+    });
+
+    test('returns required: true in production when password is missing', async () => {
+      const app = await buildApp('', 'production');
+      const res = await request(app).get('/api/auth/status');
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.required).toBe(true);
+      expect(res.body.data.configured).toBe(false);
     });
   });
 
@@ -47,6 +63,17 @@ describe('Auth routes', () => {
         .send({ password: 'anything' });
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
+    });
+
+    test('fails closed when password is missing in production', async () => {
+      const app = await buildApp('', 'production');
+      const res = await request(app)
+        .post('/api/auth/verify')
+        .send({ password: 'anything' });
+
+      expect(res.status).toBe(503);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('未配置');
     });
 
     test('rejects missing password', async () => {

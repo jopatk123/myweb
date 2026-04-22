@@ -58,25 +58,57 @@ export function isAuthValid(now = Date.now(), storage = getStorage()) {
   return false;
 }
 
+export async function getPasswordStatus() {
+  const res = await fetch(buildApiUrl('auth/status'));
+  const data = await res.json();
+
+  if (!res.ok) {
+    const error = new Error(data?.message || '验证服务异常，请稍后重试。');
+    error.code = res.status;
+    error.payload = data;
+    throw error;
+  }
+
+  const status = data?.data || {};
+  return {
+    required: status.required !== false,
+    configured: status.configured === true,
+  };
+}
+
 export async function validatePasswordRemote(input) {
-  try {
-    const res = await fetch(buildApiUrl('auth/verify'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: String(input ?? '') }),
-    });
-    const data = await res.json();
-    return data.success === true;
-  } catch {
+  const res = await fetch(buildApiUrl('auth/verify'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: String(input ?? '') }),
+  });
+  const data = await res.json();
+
+  if (res.status === 503) {
+    const error = new Error(data?.message || '应用访问密码未配置');
+    error.code = res.status;
+    error.payload = data;
+    throw error;
+  }
+
+  if (res.status === 401) {
     return false;
   }
+
+  if (!res.ok) {
+    const error = new Error(data?.message || '验证服务异常，请稍后重试。');
+    error.code = res.status;
+    error.payload = data;
+    throw error;
+  }
+
+  return data.success === true;
 }
 
 export async function checkPasswordRequired() {
   try {
-    const res = await fetch(buildApiUrl('auth/status'));
-    const data = await res.json();
-    return data.data?.required !== false;
+    const status = await getPasswordStatus();
+    return status.required;
   } catch {
     return true;
   }

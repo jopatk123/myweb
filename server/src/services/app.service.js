@@ -73,8 +73,7 @@ export class AppService {
         const count = this.appModel.countByIconFilename(iconFilename);
         // 当前这条记录仍算未删除，所以 count > 1 表示还有其他引用；== 1 表示仅此一处
         if (count <= 1) {
-          const filePath = path.join(this.uploadsDir, iconFilename);
-          await fs.unlink(filePath).catch(() => {});
+          await this.deleteIconFileIfExists(iconFilename);
         }
       } catch (e) {
         void e;

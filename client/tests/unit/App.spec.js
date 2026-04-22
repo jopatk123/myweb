@@ -13,6 +13,7 @@ vi.mock('@/utils/passwordGate.js', () => ({
   saveAuth: vi.fn(),
   validatePasswordRemote: vi.fn(),
   checkPasswordRequired: vi.fn(),
+  getPasswordStatus: vi.fn(),
 }));
 
 vi.mock('@/api/httpClient.js', () => ({
@@ -24,7 +25,7 @@ import {
   isAuthValid,
   saveAuth,
   validatePasswordRemote,
-  checkPasswordRequired,
+  getPasswordStatus,
 } from '@/utils/passwordGate.js';
 
 // ── 辅助函数 ──────────────────────────────────────────────────
@@ -59,7 +60,7 @@ describe('App.vue — 密码验证门控', () => {
 
   it('未认证且后端需要密码时，显示密码表单', async () => {
     isAuthValid.mockReturnValue(false);
-    checkPasswordRequired.mockResolvedValue(true);
+    getPasswordStatus.mockResolvedValue({ required: true, configured: true });
 
     const { findByPlaceholderText, findByText } = render(App, {
       global: { plugins: [makeRouter()] },
@@ -71,7 +72,7 @@ describe('App.vue — 密码验证门控', () => {
 
   it('后端不需要密码时，自动保存认证并显示路由视图', async () => {
     isAuthValid.mockReturnValue(false);
-    checkPasswordRequired.mockResolvedValue(false);
+    getPasswordStatus.mockResolvedValue({ required: false, configured: false });
 
     const { findByTestId } = render(App, {
       global: { plugins: [makeRouter()] },
@@ -83,7 +84,7 @@ describe('App.vue — 密码验证门控', () => {
 
   it('密码正确时认证成功，关闭验证界面并进入页面', async () => {
     isAuthValid.mockReturnValue(false);
-    checkPasswordRequired.mockResolvedValue(true);
+    getPasswordStatus.mockResolvedValue({ required: true, configured: true });
     validatePasswordRemote.mockResolvedValue(true);
 
     const { findByPlaceholderText, getByRole, findByTestId } = render(App, {
@@ -105,7 +106,7 @@ describe('App.vue — 密码验证门控', () => {
 
   it('密码错误时显示错误消息', async () => {
     isAuthValid.mockReturnValue(false);
-    checkPasswordRequired.mockResolvedValue(true);
+    getPasswordStatus.mockResolvedValue({ required: true, configured: true });
     validatePasswordRemote.mockResolvedValue(false);
 
     const { findByPlaceholderText, getByRole, findByText } = render(App, {
@@ -122,7 +123,7 @@ describe('App.vue — 密码验证门控', () => {
 
   it('验证服务异常时显示服务错误提示', async () => {
     isAuthValid.mockReturnValue(false);
-    checkPasswordRequired.mockResolvedValue(true);
+    getPasswordStatus.mockResolvedValue({ required: true, configured: true });
     validatePasswordRemote.mockRejectedValue(new Error('Network error'));
 
     const { findByPlaceholderText, getByRole, findByText } = render(App, {
@@ -138,7 +139,7 @@ describe('App.vue — 密码验证门控', () => {
 
   it('提交时按钮禁用，防止重复提交', async () => {
     isAuthValid.mockReturnValue(false);
-    checkPasswordRequired.mockResolvedValue(true);
+    getPasswordStatus.mockResolvedValue({ required: true, configured: true });
     // 返回一个永远 pending 的 promise，模拟提交中状态
     validatePasswordRemote.mockImplementation(() => new Promise(() => {}));
 
@@ -158,7 +159,7 @@ describe('App.vue — 密码验证门控', () => {
 
   it('无输入时提交按钮禁用', async () => {
     isAuthValid.mockReturnValue(false);
-    checkPasswordRequired.mockResolvedValue(true);
+    getPasswordStatus.mockResolvedValue({ required: true, configured: true });
 
     const { findByRole } = render(App, {
       global: { plugins: [makeRouter()] },
@@ -166,5 +167,20 @@ describe('App.vue — 密码验证门控', () => {
 
     const btn = await findByRole('button', { name: '进入' });
     expect(btn).toBeDisabled();
+  });
+
+  it('后端未配置密码时显示配置错误并禁用提交', async () => {
+    isAuthValid.mockReturnValue(false);
+    getPasswordStatus.mockResolvedValue({ required: true, configured: false });
+
+    const { findByPlaceholderText, findByText, getByRole } = render(App, {
+      global: { plugins: [makeRouter()] },
+    });
+
+    const input = await findByPlaceholderText('访问密码');
+    await fireEvent.update(input, 'any-password');
+
+    await findByText('系统尚未配置访问密码，请联系管理员。');
+    expect(getByRole('button', { name: '进入' })).toBeDisabled();
   });
 });

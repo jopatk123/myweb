@@ -211,7 +211,9 @@ export function useWallpaper() {
     const cached = consumePreloadedWallpaper(groupId);
     if (cached) {
       // 异步补充一张到队列，不阻塞返回
-      ensurePreloaded(2, groupId).catch(() => {});
+      void ensurePreloaded(2, groupId).catch(error => {
+        console.warn('预加载壁纸失败:', error);
+      });
       return cached;
     }
 
@@ -232,7 +234,9 @@ export function useWallpaper() {
         });
       }
       // 异步补充队列
-      ensurePreloaded(2, groupId).catch(() => {});
+      void ensurePreloaded(2, groupId).catch(error => {
+        console.warn('预加载壁纸失败:', error);
+      });
       return image;
     } catch (err) {
       error.value = err.message || '随机切换失败';

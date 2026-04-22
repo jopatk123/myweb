@@ -16,41 +16,45 @@ export default function useAutostartApps() {
 
       // 延迟执行，避免阻塞首次渲染
       setTimeout(() => {
-        for (const app of autostartApps) {
-          const url = app.targetUrl;
-          if (url) {
-            try {
-              window.open(url, '_blank');
-            } catch (e) {
-              console.warn('open autostart url failed', e);
+        try {
+          for (const app of autostartApps) {
+            const url = app.targetUrl;
+            if (url) {
+              try {
+                window.open(url, '_blank');
+              } catch (e) {
+                console.warn('open autostart url failed', e);
+              }
+              continue;
             }
-            continue;
-          }
 
-          const existing = findWindowByApp(app.slug);
-          if (existing) {
-            existing.props = existing.props || {};
-            if (app.slug === 'work-timer') existing.props.autoStart = true;
-            setActiveWindow(existing.id);
-            continue;
-          }
+            const existing = findWindowByApp(app.slug);
+            if (existing) {
+              existing.props = existing.props || {};
+              if (app.slug === 'work-timer') existing.props.autoStart = true;
+              setActiveWindow(existing.id);
+              continue;
+            }
 
-          const comp = getAppComponentBySlug(app.slug);
-          const meta = getAppMetaBySlug(app.slug);
-          if (comp) {
-            const preferred = meta?.preferredSize || {
-              width: 520,
-              height: 400,
-            };
-            createWindow({
-              component: comp,
-              title: meta?.name || app.name || '',
-              appSlug: app.slug,
-              width: preferred.width,
-              height: preferred.height,
-              props: app.slug === 'work-timer' ? { autoStart: true } : {},
-            });
+            const comp = getAppComponentBySlug(app.slug);
+            const meta = getAppMetaBySlug(app.slug);
+            if (comp) {
+              const preferred = meta?.preferredSize || {
+                width: 520,
+                height: 400,
+              };
+              createWindow({
+                component: comp,
+                title: meta?.name || app.name || '',
+                appSlug: app.slug,
+                width: preferred.width,
+                height: preferred.height,
+                props: app.slug === 'work-timer' ? { autoStart: true } : {},
+              });
+            }
           }
+        } catch (error) {
+          console.warn('startAutostartApps scheduled task failed', error);
         }
       }, 120);
     } catch (e) {
@@ -60,7 +64,7 @@ export default function useAutostartApps() {
 
   onMounted(() => {
     // 主动触发一次启动流程
-    startAutostartApps().catch(() => {});
+    void startAutostartApps();
   });
 
   return {

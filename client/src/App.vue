@@ -16,7 +16,9 @@
           <button
             class="btn btn-primary"
             type="submit"
-            :disabled="!passwordInput || isSubmitting"
+            :disabled="
+              !passwordInput || isSubmitting || isPasswordMisconfigured
+            "
           >
             {{ isSubmitting ? '验证中...' : '进入' }}
           </button>
@@ -32,21 +34,29 @@
 </template>
 
 <script setup>
-  import { onMounted, ref } from 'vue';
+  import { computed, onMounted, ref } from 'vue';
   import {
     isAuthValid,
     saveAuth,
     validatePasswordRemote,
-    checkPasswordRequired,
+    getPasswordStatus,
   } from '@/utils/passwordGate.js';
 
   const isAuthorized = ref(false);
   const passwordInput = ref('');
   const errorMessage = ref('');
   const isSubmitting = ref(false);
+  const passwordStatus = ref(null);
+  const isPasswordMisconfigured = computed(
+    () => passwordStatus.value?.required && !passwordStatus.value?.configured
+  );
 
   async function handleSubmit() {
     if (isSubmitting.value) return;
+    if (isPasswordMisconfigured.value) {
+      errorMessage.value = '系统尚未配置访问密码，请联系管理员。';
+      return;
+    }
     isSubmitting.value = true;
     errorMessage.value = '';
 
@@ -59,8 +69,13 @@
       saveAuth();
       passwordInput.value = '';
       isAuthorized.value = true;
-    } catch {
-      errorMessage.value = '验证服务异常，请稍后重试。';
+    } catch (error) {
+      if (error?.code === 503) {
+        errorMessage.value =
+          error.message || '系统尚未配置访问密码，请联系管理员。';
+      } else {
+        errorMessage.value = '验证服务异常，请稍后重试。';
+      }
     } finally {
       isSubmitting.value = false;
     }
@@ -73,10 +88,20 @@
       return;
     }
     // 检查后端是否需要密码
-    const required = await checkPasswordRequired();
-    if (!required) {
-      saveAuth();
-      isAuthorized.value = true;
+    try {
+      passwordStatus.value = await getPasswordStatus();
+
+      if (!passwordStatus.value.required) {
+        saveAuth();
+        isAuthorized.value = true;
+        return;
+      }
+
+      if (isPasswordMisconfigured.value) {
+        errorMessage.value = '系统尚未配置访问密码，请联系管理员。';
+      }
+    } catch {
+      errorMessage.value = '验证服务异常，请稍后重试。';
     }
   });
 </script>

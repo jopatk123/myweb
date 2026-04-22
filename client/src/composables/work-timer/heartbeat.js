@@ -54,7 +54,9 @@ export class HeartbeatManager {
         workSessions,
         saveWorkSessions,
         endTime
-      ).catch(() => {});
+      ).catch(error => {
+        console.warn('定时发送工作心跳失败:', error);
+      });
 
       // 同步本地显示（乐观更新）
       totalMs.value += increment;
@@ -98,7 +100,8 @@ export class HeartbeatManager {
         }
       }
       clearPendingStarts();
-    } catch {
+    } catch (error) {
+      console.warn('刷新待发送工作会话失败:', error);
       // 如果 start 队列处理失败，则不继续 heartbeats
       return;
     }
@@ -113,7 +116,8 @@ export class HeartbeatManager {
         await worktimerApi.heartbeat(h.sessionId, h.incrementMs, h.lastUpdate);
       }
       clearPendingHeartbeats();
-    } catch {
+    } catch (error) {
+      console.warn('刷新待发送工作心跳失败:', error);
       // 恢复队列以便重试
       this.pendingHeartbeats = pending.concat(this.pendingHeartbeats || []);
       savePendingHeartbeats(this.pendingHeartbeats);
@@ -191,10 +195,13 @@ export class HeartbeatManager {
       if (endSession) {
         await worktimerApi
           .stopSession(this.currentSessionId, lastUpdateIso, incrementMs)
-          .catch(() => {});
+          .catch(error => {
+            console.warn('结束工作会话失败:', error);
+          });
         this.currentSessionId = null;
       }
-    } catch {
+    } catch (error) {
+      console.warn('发送工作心跳失败:', error);
       this.enqueuePendingHeartbeat(
         this.currentSessionId,
         incrementMs,

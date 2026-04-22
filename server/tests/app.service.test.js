@@ -79,6 +79,32 @@ test('deleteApp removes icon file when no other references exist', async () => {
   await expect(fs.access(iconPath)).rejects.toThrow();
 });
 
+test('deleteApp continues when icon unlink fails', async () => {
+  const iconFilename = 'locked-icon.png';
+  const iconPath = path.join(service.uploadsDir, iconFilename);
+  await fs.writeFile(iconPath, 'mock-content');
+
+  const app = await service.createApp({
+    name: '受保护图标应用',
+    slug: 'locked-icon-app',
+    icon_filename: iconFilename,
+    description: 'desc',
+  });
+
+  const unlinkSpy = jest
+    .spyOn(fs, 'unlink')
+    .mockRejectedValueOnce(
+      Object.assign(new Error('permission denied'), { code: 'EACCES' })
+    );
+
+  try {
+    const result = await service.deleteApp(app.id);
+    expect(result).toBe(true);
+  } finally {
+    unlinkSpy.mockRestore();
+  }
+});
+
 test('deleteApp continues when icon reference counting throws', async () => {
   const created = await service.createApp({
     name: '计数异常应用',

@@ -25,12 +25,23 @@ export function createAuthRoutes() {
   const router = express.Router();
 
   const appPassword = (process.env.APP_PASSWORD || '').trim();
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isPasswordConfigured = Boolean(appPassword);
+  const passwordRequired = isPasswordConfigured || isProduction;
 
   router.post('/verify', loginLimiter, (req, res) => {
     const { password } = req.body || {};
 
-    if (!appPassword) {
-      // 未配置密码时直接放行
+    if (!isPasswordConfigured) {
+      if (isProduction) {
+        return res.status(503).json({
+          code: 503,
+          success: false,
+          message: '应用访问密码未配置',
+        });
+      }
+
+      // 开发/测试环境允许免密访问，避免影响本地启动体验
       return res.json({ code: 200, success: true, message: '验证成功' });
     }
 
@@ -65,7 +76,10 @@ export function createAuthRoutes() {
     res.json({
       code: 200,
       success: true,
-      data: { required: Boolean(appPassword) },
+      data: {
+        required: passwordRequired,
+        configured: isPasswordConfigured,
+      },
     });
   });
 

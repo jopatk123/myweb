@@ -30,6 +30,7 @@ export function useWorkTimer() {
   // 初始化管理器
   const heartbeatManager = new HeartbeatManager();
   const timerControls = new TimerControls(heartbeatManager);
+  let removeOnlineListener = null;
 
   // 创建计算属性
   const computedProps = createComputedProperties(
@@ -118,24 +119,28 @@ export function useWorkTimer() {
           if (typeof data.totalMs === 'number') totalMs.value = data.totalMs;
         }
       })
-      .catch(() => {})
+      .catch(error => {
+        console.warn('加载工作计时统计失败:', error);
+      })
       .finally(() => {
         // 迁移时若有未发送的 start/heartbeats，尝试立即刷新
-        heartbeatManager.flushPendingHeartbeats().catch(() => {});
+        void heartbeatManager.flushPendingHeartbeats().catch(error => {
+          console.warn('刷新待发送工作心跳失败:', error);
+        });
       });
 
     // 当网络恢复时自动 flush pending
     const handleOnline = () => {
-      heartbeatManager.flushPendingHeartbeats().catch(() => {});
+      void heartbeatManager.flushPendingHeartbeats().catch(error => {
+        console.warn('网络恢复后刷新待发送工作心跳失败:', error);
+      });
     };
     window.addEventListener('online', handleOnline);
-
-    clockInterval = setInterval(updateCurrentTimeWrapper, 1000);
-
-    // 保存清理函数引用
-    window._workTimerCleanup = () => {
+    removeOnlineListener = () => {
       window.removeEventListener('online', handleOnline);
     };
+
+    clockInterval = setInterval(updateCurrentTimeWrapper, 1000);
   });
 
   onBeforeUnmount(() => {
@@ -144,10 +149,9 @@ export function useWorkTimer() {
       clockInterval = null;
     }
 
-    // 执行清理函数
-    if (window._workTimerCleanup) {
-      window._workTimerCleanup();
-      delete window._workTimerCleanup;
+    if (removeOnlineListener) {
+      removeOnlineListener();
+      removeOnlineListener = null;
     }
   });
 

@@ -36,7 +36,7 @@
 ## 访问密码
 
 - 前端启动后会先进入访问验证界面，输入正确密码后才能进入页面。
-- 默认密码为 **asd123123123**，配置在 [client/src/constants/auth.js](client/src/constants/auth.js)。
+- 访问密码由 `APP_PASSWORD` 控制；开发环境可留空以免密访问，生产环境必须显式配置。
 - 验证通过后会写入本地存储，有效期 30 天，到期后需再次输入密码。
 
 ## 目录概览
@@ -52,7 +52,7 @@
 | `npm run dev`                                         | 并行前后端开发服务         |
 | `npm run dev:client`, `npm run dev:server`            | 分别启动前端/后端          |
 | `npm run build`, `npm start`                          | 构建并运行生产后端         |
-| `npm run lint`, `npm run format`                      | ESLint/Prettier 自动修复   |
+| `npm run lint`, `npm run lint:fix`, `npm run format`  | ESLint 检查/修复/格式化    |
 | `npm test -w client`, `npm test -w server`            | Vitest/Jest 单元测试       |
 | `npm run contract-test`                               | 检查 `server/openapi.yaml` |
 | `npm run migrate -w server`, `npm run seed -w server` | 数据库迁移与初始化         |

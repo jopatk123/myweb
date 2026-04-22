@@ -91,7 +91,9 @@ export class TimerControls {
         saveWorkSessionsFn,
         endTime
       )
-      .catch(() => {});
+      .catch(error => {
+        console.warn('结束工作计时失败:', error);
+      });
 
     this.heartbeatManager.stopHeartbeatInterval();
     startWorkTime.value = null;
