@@ -2,7 +2,10 @@ import { jest } from '@jest/globals';
 import fs from 'fs/promises';
 import { createTestDatabase, closeTestDatabase } from '../helpers/test-db.js';
 import { MessageService } from '../../src/services/message.service.js';
-import { MessageModel } from '../../src/models/message.model.js';
+import {
+  MessageModel,
+  messageModelLogger,
+} from '../../src/models/message.model.js';
 import { UserSessionModel } from '../../src/models/userSession.model.js';
 import { ValidationError, NotFoundError } from '../../src/utils/errors.js';
 
@@ -246,6 +249,9 @@ describe('MessageService', () => {
 
   describe('MessageModel image parsing resilience', () => {
     test('returns null images for malformed JSON rows instead of throwing', () => {
+      const warnSpy = jest
+        .spyOn(messageModelLogger, 'warn')
+        .mockImplementation(() => {});
       const insert = db.prepare(`
         INSERT INTO messages (
           content,
@@ -274,6 +280,12 @@ describe('MessageService', () => {
       expect(message).toBeTruthy();
       expect(message.id).toBe(result.lastInsertRowid);
       expect(message.images).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Failed to parse message images JSON',
+        expect.objectContaining({ images: 'not-json' })
+      );
+
+      warnSpy.mockRestore();
     });
   });
 

@@ -1,6 +1,10 @@
 /**
  * 留言模型（构造函数注入 db）
  */
+import logger from '../utils/logger.js';
+
+export const messageModelLogger = logger.child('MessageModel');
+
 export class MessageModel {
   constructor(db) {
     this.db = db;
@@ -15,8 +19,18 @@ export class MessageModel {
 
     try {
       const parsed = JSON.parse(images);
-      return Array.isArray(parsed) ? parsed : null;
-    } catch {
+      if (!Array.isArray(parsed)) {
+        messageModelLogger.warn('Message images JSON is not an array', {
+          images,
+        });
+        return null;
+      }
+      return parsed;
+    } catch (error) {
+      messageModelLogger.warn('Failed to parse message images JSON', {
+        error: error instanceof Error ? error.message : String(error),
+        images,
+      });
       return null;
     }
   }

@@ -1,10 +1,11 @@
-import { ref, reactive, markRaw, onScopeDispose, getCurrentScope } from 'vue';
+import { reactive, markRaw, onScopeDispose, getCurrentScope } from 'vue';
+import {
+  windowManagerState,
+  resetWindowManagerState as resetWindowManagerStateFromStore,
+} from '@/store/windowManagerState.js';
 
-// 全局窗口管理器
-const windows = ref([]);
-const activeWindowId = ref(null);
-let nextWindowId = 1;
-let baseZIndex = 1000;
+const { windows, activeWindowId, nextWindowId, baseZIndex } =
+  windowManagerState;
 
 /**
  * 窗口管理器 - 管理多个应用窗口
@@ -22,7 +23,7 @@ export function useWindowManager(options = {}) {
    * @param {number} options.height - 窗口高度
    */
   function createWindow(options = {}) {
-    const windowId = nextWindowId++;
+    const windowId = nextWindowId.value++;
 
     // 允许传入 props 和自定义 storageKey
     const storageKey = String(
@@ -40,7 +41,7 @@ export function useWindowManager(options = {}) {
       height: options.height || 400,
       x: null, // 将由 useDraggableModal / 拖拽逻辑管理
       y: null,
-      zIndex: baseZIndex + windowId,
+      zIndex: baseZIndex.value + windowId,
       minimized: false,
       maximized: false,
       visible: true,
@@ -216,8 +217,5 @@ export function useWindowManager(options = {}) {
 }
 
 export function resetWindowManagerState() {
-  windows.value = [];
-  activeWindowId.value = null;
-  nextWindowId = 1;
-  baseZIndex = 1000;
+  resetWindowManagerStateFromStore();
 }

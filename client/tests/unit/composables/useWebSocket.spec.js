@@ -7,6 +7,8 @@ vi.mock('@/api/httpClient.js', () => ({
 }));
 
 import { useWebSocket } from '@/composables/useWebSocket.js';
+import { resetSessionState } from '@/store/sessionState.js';
+import { resetWebSocketState } from '@/store/webSocketState.js';
 
 const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -56,6 +58,8 @@ describe('useWebSocket', () => {
   beforeEach(() => {
     MockWebSocket.instances = [];
     vi.stubGlobal('WebSocket', MockWebSocket);
+    resetSessionState();
+    resetWebSocketState();
     localStorage.clear();
     localStorage.setItem('sessionId', 'session-1');
   });

@@ -1,16 +1,8 @@
-import { ref } from 'vue';
 import { apiFetch } from '@/api/httpClient.js';
+import { appsState } from '@/store/appsState.js';
 
-// Module-level state -> singleton across imports
-const apps = ref([]);
-const groups = ref([]);
-const loading = ref(false);
-const error = ref('');
-const lastError = ref(null);
-
-const page = ref(1);
-const limit = ref(20);
-const total = ref(0);
+const { apps, groups, loading, error, lastError, page, limit, total } =
+  appsState;
 
 function buildAppsUrl(
   { groupId = null, visible = null } = {},
@@ -323,3 +315,5 @@ export function useApps() {
     getAppIconUrl,
   };
 }
+
+export { resetAppsState } from '@/store/appsState.js';

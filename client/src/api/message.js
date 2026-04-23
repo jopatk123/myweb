@@ -2,6 +2,8 @@
  * 留言板API
  */
 import { createApiClient, getApiBase } from './httpClient.js';
+import { ensureSessionId } from '@/store/sessionState.js';
+import { readStorageItem } from '@/utils/storage.js';
 
 // 处理API基础URL；createApiClient 已绑定响应拦截器，自动解包 response.data
 const messageApi = createApiClient({
@@ -11,23 +13,14 @@ const messageApi = createApiClient({
 
 // 请求拦截器 - 添加会话 ID（与 WebSocket 共享同一 localStorage key，保持会话一致）
 messageApi.interceptors.request.use(config => {
-  let sessionId = localStorage.getItem('sessionId');
-  if (!sessionId) {
-    // 使用 Web Crypto API 生成密码学安全的唯一标识，避免 Math.random() 可预测问题
-    sessionId = crypto.randomUUID();
-    localStorage.setItem('sessionId', sessionId);
-  }
+  const sessionId = ensureSessionId();
+  config.headers = config.headers ?? {};
   config.headers['X-Session-Id'] = sessionId;
   return config;
 });
 
 function getAdminToken() {
-  if (typeof window === 'undefined') return '';
-  try {
-    return window.localStorage?.getItem('myweb_admin_token') || '';
-  } catch {
-    return '';
-  }
+  return readStorageItem('myweb_admin_token') || '';
 }
 
 function buildAdminHeaders() {

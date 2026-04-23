@@ -5,6 +5,7 @@ import { onMounted, onScopeDispose, defineAsyncComponent } from 'vue';
 import { useWebSocket } from './useWebSocket.js';
 import { useWindowManager } from './useWindowManager.js';
 import { getAppComponentBySlug } from '@/apps/registry.js';
+import { readSessionId } from '@/store/sessionState.js';
 
 const messageBoardComponent =
   getAppComponentBySlug('message-board') ||
@@ -59,10 +60,7 @@ export function useMessageBoardAutoOpen() {
    * 只有当前会话在该列表中时才弹出窗口，以遵守用户在设置面板中的"自动打开新消息"开关。
    */
   const handleNewMessage = /* istanbul ignore next */ data => {
-    const sessionId =
-      typeof localStorage !== 'undefined'
-        ? localStorage.getItem('sessionId')
-        : null;
+    const sessionId = readSessionId();
     if (!sessionId) return;
 
     const { autoOpenSessions } = data || {};

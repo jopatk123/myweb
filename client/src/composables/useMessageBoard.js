@@ -23,6 +23,7 @@ export function useMessageBoard() {
   // WebSocket连接
   const { isConnected, onMessage, offMessage } = useWebSocket();
   // 目前 messageBoard 通过 API 推送并由 WebSocket 接收广播
+  const windowManager = useWindowManager();
 
   // 分页信息
   const pagination = reactive({
@@ -42,7 +43,7 @@ export function useMessageBoard() {
   const syncMessageBoardWindow = () => {
     try {
       const { findWindowByAppAll, createWindow, showWindowWithoutFocus } =
-        useWindowManager();
+        windowManager;
       const existingWindow = findWindowByAppAll('message-board');
       if (existingWindow) {
         try {

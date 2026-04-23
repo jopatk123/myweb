@@ -1,44 +1,16 @@
 /**
  * WebSocket组合式函数
  */
-import { ref, onMounted, onScopeDispose } from 'vue';
+import { onMounted, onScopeDispose } from 'vue';
 import { getServerOrigin } from '@/api/httpClient.js';
+import { ensureSessionId } from '@/store/sessionState.js';
+import { webSocketState } from '@/store/webSocketState.js';
 
-// --- 单例状态（模块级） ---
-let _wsRef; // WebSocket 实例 ref
-let _isConnected; // 连接状态 ref
-let _reconnectAttempts;
-let _reconnectTimerRef;
-let _messageHandlers; // Map
-let _initialized = false;
-let _maxReconnectAttempts = 5;
-let _messageQueue = []; // 在未连接时暂存要发送的消息
-let _connectPromise = null;
-let _consumerCount = 0;
-let _manualDisconnect = false;
-
-function initSingleton() {
-  if (_initialized) return;
-  _wsRef = ref(null);
-  _isConnected = ref(false);
-  _reconnectAttempts = ref(0);
-  _reconnectTimerRef = ref(null);
-  // map of type -> Set of handlers
-  _messageHandlers = new Map();
-  _connectPromise = null;
-  _consumerCount = 0;
-  _manualDisconnect = false;
-  _initialized = true;
-}
+const { ws, isConnected, reconnectAttempts, reconnectTimer, messageHandlers } =
+  webSocketState;
 
 export function useWebSocket() {
-  initSingleton();
-  _consumerCount += 1;
-  const ws = _wsRef;
-  const isConnected = _isConnected;
-  const reconnectAttempts = _reconnectAttempts;
-  const reconnectInterval = _reconnectTimerRef;
-  const messageHandlers = _messageHandlers;
+  webSocketState.consumerCount += 1;
 
   // 获取WebSocket URL
   const getWebSocketUrl = () => {
@@ -62,8 +34,8 @@ export function useWebSocket() {
   // 连接WebSocket
   const flushQueue = () => {
     if (!ws.value || ws.value.readyState !== WebSocket.OPEN) return;
-    while (_messageQueue.length) {
-      const msg = _messageQueue.shift();
+    while (webSocketState.messageQueue.length) {
+      const msg = webSocketState.messageQueue.shift();
       try {
         ws.value.send(JSON.stringify(msg));
       } catch (e) {
@@ -73,14 +45,7 @@ export function useWebSocket() {
   };
 
   const connect = async () => {
-    let sessionId = localStorage.getItem('sessionId');
-
-    // 如果没有sessionId，生成一个
-    if (!sessionId) {
-      const { v4: uuidv4 } = await import('uuid');
-      sessionId = uuidv4();
-      localStorage.setItem('sessionId', sessionId);
-    }
+    const sessionId = ensureSessionId();
 
     const baseUrl = getWebSocketUrl();
     // 将 sessionId 作为查询参数传入，服务端可在升级阶段验证身份
@@ -93,13 +58,13 @@ export function useWebSocket() {
     if (
       ws.value &&
       ws.value.readyState === WebSocket.CONNECTING &&
-      _connectPromise
+      webSocketState.connectPromise
     ) {
-      return _connectPromise;
+      return webSocketState.connectPromise;
     }
 
-    _manualDisconnect = false;
-    _connectPromise = new Promise((resolve, reject) => {
+    webSocketState.manualDisconnect = false;
+    webSocketState.connectPromise = new Promise((resolve, reject) => {
       try {
         const socket = new WebSocket(wsUrl);
         ws.value = socket;
@@ -110,7 +75,7 @@ export function useWebSocket() {
           reconnectAttempts.value = 0;
           send({ type: 'join', sessionId });
           flushQueue();
-          _connectPromise = null;
+          webSocketState.connectPromise = null;
           resolve(socket);
         };
 
@@ -127,14 +92,14 @@ export function useWebSocket() {
         socket.onclose = () => {
           if (ws.value !== socket) return;
           isConnected.value = false;
-          if (_manualDisconnect) {
-            _manualDisconnect = false;
-            _connectPromise = null;
+          if (webSocketState.manualDisconnect) {
+            webSocketState.manualDisconnect = false;
+            webSocketState.connectPromise = null;
             return;
           }
-          if (reconnectAttempts.value < _maxReconnectAttempts) {
+          if (reconnectAttempts.value < webSocketState.maxReconnectAttempts) {
             reconnectAttempts.value++;
-            reconnectInterval.value = setTimeout(() => {
+            reconnectTimer.value = setTimeout(() => {
               connect();
             }, 3000 * reconnectAttempts.value);
           }
@@ -143,17 +108,17 @@ export function useWebSocket() {
         socket.onerror = error => {
           if (ws.value !== socket) return;
           void error;
-          _connectPromise = null;
+          webSocketState.connectPromise = null;
           reject(error);
         };
       } catch (error) {
         void error;
-        _connectPromise = null;
+        webSocketState.connectPromise = null;
         reject(error);
       }
     });
 
-    return _connectPromise;
+    return webSocketState.connectPromise;
   };
 
   // 处理接收到的消息
@@ -181,7 +146,7 @@ export function useWebSocket() {
       return true;
     }
     // 未连接时加入队列
-    _messageQueue.push(message);
+    webSocketState.messageQueue.push(message);
     return false;
   };
 
@@ -206,14 +171,14 @@ export function useWebSocket() {
 
   // 断开连接
   const disconnect = () => {
-    _manualDisconnect = true;
+    webSocketState.manualDisconnect = true;
 
-    if (reconnectInterval.value) {
-      clearTimeout(reconnectInterval.value);
-      reconnectInterval.value = null;
+    if (reconnectTimer.value) {
+      clearTimeout(reconnectTimer.value);
+      reconnectTimer.value = null;
     }
 
-    _connectPromise = null;
+    webSocketState.connectPromise = null;
 
     if (ws.value) {
       ws.value.close();
@@ -232,8 +197,11 @@ export function useWebSocket() {
   // 组件卸载时不主动断开（保持单例），如需断开请显式调用 disconnect()
 
   onScopeDispose(() => {
-    _consumerCount = Math.max(0, _consumerCount - 1);
-    if (_consumerCount === 0) {
+    webSocketState.consumerCount = Math.max(
+      0,
+      webSocketState.consumerCount - 1
+    );
+    if (webSocketState.consumerCount === 0) {
       disconnect();
     }
   });
@@ -248,3 +216,5 @@ export function useWebSocket() {
     offMessage,
   };
 }
+
+export { resetWebSocketState } from '@/store/webSocketState.js';

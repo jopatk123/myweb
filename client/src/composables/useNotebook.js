@@ -2,6 +2,7 @@ import { ref, computed, watch } from 'vue';
 import { notebookApi } from '../api/notebook.js';
 import { unwrapData } from '../api/httpClient.js';
 import { generateId } from '../utils/idGenerator.js';
+import { readJsonStorageItem, writeJsonStorageItem } from '@/utils/storage.js';
 
 export function useNotebook() {
   const notes = ref([]);
@@ -48,49 +49,36 @@ export function useNotebook() {
   }
 
   function saveToStorage() {
-    try {
-      localStorage.setItem('notebook-notes', JSON.stringify(notes.value));
-    } catch (storageError) {
+    writeJsonStorageItem('notebook-notes', notes.value, storageError => {
       console.error('保存笔记失败:', storageError);
-    }
+    });
   }
 
   function loadFromStorage() {
-    try {
-      const saved = localStorage.getItem('notebook-notes');
-      if (!saved) {
-        notes.value = [];
-        return;
-      }
-
-      const parsed = JSON.parse(saved);
-      notes.value = Array.isArray(parsed) ? parsed.map(normalizeNote) : [];
-    } catch (storageError) {
+    const saved = readJsonStorageItem('notebook-notes', [], storageError => {
       console.error('加载本地笔记失败:', storageError);
-      notes.value = [];
-    }
+    });
+    notes.value = Array.isArray(saved) ? saved.map(normalizeNote) : [];
   }
 
   function saveViewSettingsToStorage() {
-    try {
-      localStorage.setItem(
-        'notebook-compact-view',
-        JSON.stringify(compactView.value)
-      );
-    } catch (storageError) {
-      console.error('保存视图设置失败:', storageError);
-    }
+    writeJsonStorageItem(
+      'notebook-compact-view',
+      compactView.value,
+      storageError => {
+        console.error('保存视图设置失败:', storageError);
+      }
+    );
   }
 
   function loadViewSettingsFromStorage() {
-    try {
-      const saved = localStorage.getItem('notebook-compact-view');
-      if (saved) {
-        compactView.value = JSON.parse(saved);
+    compactView.value = readJsonStorageItem(
+      'notebook-compact-view',
+      compactView.value,
+      storageError => {
+        console.error('加载视图设置失败:', storageError);
       }
-    } catch (storageError) {
-      console.error('加载视图设置失败:', storageError);
-    }
+    );
   }
 
   function persistLocalMirror() {

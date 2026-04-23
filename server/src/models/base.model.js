@@ -14,6 +14,28 @@
  *
  * 返回：{ items: any[], total: number, page: number, limit: number }
  */
+const PAGINATABLE_TABLES = new Set(['apps', 'files', 'wallpapers']);
+
+function normalizeTableName(table) {
+  const normalizedTable = String(table || '').trim();
+  if (!PAGINATABLE_TABLES.has(normalizedTable)) {
+    throw new Error(`Unsupported pagination table: ${table}`);
+  }
+  return normalizedTable;
+}
+
+function normalizeOrderByClause(orderBy) {
+  const match = String(orderBy || '')
+    .trim()
+    .match(/^([a-z_][a-z0-9_]*)(?:\s+(ASC|DESC))$/i);
+
+  if (!match) {
+    throw new Error(`Unsafe ORDER BY clause: ${orderBy}`);
+  }
+
+  return `${match[1]} ${match[2].toUpperCase()}`;
+}
+
 export class BaseModel {
   constructor(db) {
     this.db = db;
@@ -33,17 +55,20 @@ export class BaseModel {
     const safePage = Math.max(1, Number(page) || 1);
     const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
     const offset = (safePage - 1) * safeLimit;
+    const safeTable = normalizeTableName(table);
+    const safeOrderBy = normalizeOrderByClause(orderBy);
+    const safeParams = Array.isArray(params) ? params : [];
 
     const totalRow = this.db
-      .prepare(`SELECT COUNT(*) AS total FROM ${table} ${where}`)
-      .get(...params);
+      .prepare(`SELECT COUNT(*) AS total FROM ${safeTable} ${where}`)
+      .get(...safeParams);
     const total = totalRow?.total ?? 0;
 
     const items = this.db
       .prepare(
-        `SELECT * FROM ${table} ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
+        `SELECT * FROM ${safeTable} ${where} ORDER BY ${safeOrderBy} LIMIT ? OFFSET ?`
       )
-      .all(...params, safeLimit, offset);
+      .all(...safeParams, safeLimit, offset);
 
     return { items, total, page: safePage, limit: safeLimit };
   }

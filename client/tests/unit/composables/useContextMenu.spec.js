@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
+import { effectScope } from 'vue';
 import { useContextMenu } from '@/composables/useContextMenu.js';
 
 describe('useContextMenu', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   it('initializes with hidden menu', () => {
     const { contextMenuVisible, contextMenuPosition, contextMenuTarget } =
       useContextMenu();
@@ -47,6 +53,27 @@ describe('useContextMenu', () => {
       vi.runAllTimers();
 
       expect(addSpy).toHaveBeenCalledWith('click', expect.any(Function));
+    });
+
+    it('cleans up pending listeners when the scope is disposed', () => {
+      vi.useFakeTimers();
+      const addSpy = vi.spyOn(document, 'addEventListener');
+      const removeSpy = vi.spyOn(document, 'removeEventListener');
+
+      const scope = effectScope();
+      scope.run(() => {
+        const { showContextMenu } = useContextMenu();
+        showContextMenu(
+          { preventDefault: vi.fn(), clientX: 8, clientY: 16 },
+          { id: 1 }
+        );
+      });
+
+      scope.stop();
+      vi.runAllTimers();
+
+      expect(addSpy).not.toHaveBeenCalled();
+      expect(removeSpy).not.toHaveBeenCalled();
     });
   });
 
