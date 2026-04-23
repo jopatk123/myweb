@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { processImageFile } from '@/composables/useImageProcessing.js';
 import { wallpaperApi } from '@/api/wallpaper.js';
+import { createStableId } from '@/utils/stableId.js';
 
 const DEFAULT_LIMITS = Object.freeze({
   minWidth: 800,
@@ -67,6 +68,7 @@ export function useWallpaperUploader(options = {}) {
       try {
         const processed = await processFileFn(file, resolvedLimits);
         const item = {
+          id: createStableId(),
           ...processed,
           progress: 0,
           displayName: processed.name,

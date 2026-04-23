@@ -36,7 +36,7 @@
       <div v-if="images.length > 1" class="lightbox-indicators">
         <span
           v-for="(image, index) in images"
-          :key="index"
+          :key="getImageKey(image, index)"
           class="indicator"
           :class="{ active: index === currentIndex }"
           @click="$emit('select', index)"
@@ -67,6 +67,14 @@
   defineEmits(['close', 'prev', 'next', 'save', 'select']);
 
   const { getImageUrl } = useImagePreview();
+
+  const getImageKey = (image, index) =>
+    image?.id ??
+    image?.path ??
+    image?.filePath ??
+    image?.url ??
+    image?.originalName ??
+    index;
 </script>
 
 <style scoped>

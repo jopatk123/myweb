@@ -8,6 +8,19 @@ export class MessageModel {
     this._ftsReady = null;
   }
 
+  _parseImages(images) {
+    if (!images) return images;
+    if (Array.isArray(images)) return images;
+    if (typeof images !== 'string') return null;
+
+    try {
+      const parsed = JSON.parse(images);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
   /** 检测 FTS5 虚拟表是否存在（结果缓存，进程生命周期内只查一次） */
   _hasFts5() {
     if (this._ftsReady === null) {
@@ -58,7 +71,7 @@ export class MessageModel {
       FROM messages WHERE id = ?
     `);
     const message = stmt.get(id);
-    if (message?.images) message.images = JSON.parse(message.images);
+    if (message?.images) message.images = this._parseImages(message.images);
     return message;
   }
 
@@ -91,7 +104,7 @@ export class MessageModel {
     `);
     params.push(limit, offset);
     return stmt.all(...params).map(m => {
-      if (m.images) m.images = JSON.parse(m.images);
+      if (m.images) m.images = this._parseImages(m.images);
       return m;
     });
   }
@@ -132,7 +145,7 @@ export class MessageModel {
       ORDER BY created_at DESC
     `);
     return stmt.all().map(m => {
-      if (m.images) m.images = JSON.parse(m.images);
+      if (m.images) m.images = this._parseImages(m.images);
       return m;
     });
   }
@@ -149,7 +162,7 @@ export class MessageModel {
       FROM messages ORDER BY created_at DESC LIMIT ?
     `);
     return stmt.all(limit).map(m => {
-      if (m.images) m.images = JSON.parse(m.images);
+      if (m.images) m.images = this._parseImages(m.images);
       return m;
     });
   }

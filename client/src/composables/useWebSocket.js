@@ -1,7 +1,7 @@
 /**
  * WebSocket组合式函数
  */
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onScopeDispose } from 'vue';
 import { getServerOrigin } from '@/api/httpClient.js';
 
 // --- 单例状态（模块级） ---
@@ -13,6 +13,9 @@ let _messageHandlers; // Map
 let _initialized = false;
 let _maxReconnectAttempts = 5;
 let _messageQueue = []; // 在未连接时暂存要发送的消息
+let _connectPromise = null;
+let _consumerCount = 0;
+let _manualDisconnect = false;
 
 function initSingleton() {
   if (_initialized) return;
@@ -22,11 +25,15 @@ function initSingleton() {
   _reconnectTimerRef = ref(null);
   // map of type -> Set of handlers
   _messageHandlers = new Map();
+  _connectPromise = null;
+  _consumerCount = 0;
+  _manualDisconnect = false;
   _initialized = true;
 }
 
 export function useWebSocket() {
   initSingleton();
+  _consumerCount += 1;
   const ws = _wsRef;
   const isConnected = _isConnected;
   const reconnectAttempts = _reconnectAttempts;
@@ -80,22 +87,35 @@ export function useWebSocket() {
     const wsUrl = `${baseUrl}?sessionId=${encodeURIComponent(sessionId)}`;
 
     if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-      return; // 已连接
+      return ws.value;
     }
 
-    return new Promise((resolve, reject) => {
-      try {
-        ws.value = new WebSocket(wsUrl);
+    if (
+      ws.value &&
+      ws.value.readyState === WebSocket.CONNECTING &&
+      _connectPromise
+    ) {
+      return _connectPromise;
+    }
 
-        ws.value.onopen = () => {
+    _manualDisconnect = false;
+    _connectPromise = new Promise((resolve, reject) => {
+      try {
+        const socket = new WebSocket(wsUrl);
+        ws.value = socket;
+
+        socket.onopen = () => {
+          if (ws.value !== socket) return;
           isConnected.value = true;
           reconnectAttempts.value = 0;
           send({ type: 'join', sessionId });
           flushQueue();
-          resolve();
+          _connectPromise = null;
+          resolve(socket);
         };
 
-        ws.value.onmessage = event => {
+        socket.onmessage = event => {
+          if (ws.value !== socket) return;
           try {
             const data = JSON.parse(event.data);
             handleMessage(data);
@@ -104,8 +124,14 @@ export function useWebSocket() {
           }
         };
 
-        ws.value.onclose = () => {
+        socket.onclose = () => {
+          if (ws.value !== socket) return;
           isConnected.value = false;
+          if (_manualDisconnect) {
+            _manualDisconnect = false;
+            _connectPromise = null;
+            return;
+          }
           if (reconnectAttempts.value < _maxReconnectAttempts) {
             reconnectAttempts.value++;
             reconnectInterval.value = setTimeout(() => {
@@ -114,15 +140,20 @@ export function useWebSocket() {
           }
         };
 
-        ws.value.onerror = error => {
+        socket.onerror = error => {
+          if (ws.value !== socket) return;
           void error;
+          _connectPromise = null;
           reject(error);
         };
       } catch (error) {
         void error;
+        _connectPromise = null;
         reject(error);
       }
     });
+
+    return _connectPromise;
   };
 
   // 处理接收到的消息
@@ -175,10 +206,14 @@ export function useWebSocket() {
 
   // 断开连接
   const disconnect = () => {
+    _manualDisconnect = true;
+
     if (reconnectInterval.value) {
       clearTimeout(reconnectInterval.value);
       reconnectInterval.value = null;
     }
+
+    _connectPromise = null;
 
     if (ws.value) {
       ws.value.close();
@@ -195,6 +230,13 @@ export function useWebSocket() {
   });
 
   // 组件卸载时不主动断开（保持单例），如需断开请显式调用 disconnect()
+
+  onScopeDispose(() => {
+    _consumerCount = Math.max(0, _consumerCount - 1);
+    if (_consumerCount === 0) {
+      disconnect();
+    }
+  });
 
   return {
     ws,

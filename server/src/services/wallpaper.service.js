@@ -78,7 +78,7 @@ export class WallpaperService {
 
     // 验证文件类型（一级：MIME 类型头检查）
     if (!mimeType || !mimeType.startsWith('image/')) {
-      throw new Error('只支持图片文件');
+      throw new ValidationError('只支持图片文件');
     }
 
     // 验证文件内容（二级：魔数验证，防止 MIME 欺骗攻击）

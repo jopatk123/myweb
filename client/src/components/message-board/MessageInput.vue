@@ -62,6 +62,7 @@
   import { ref, computed, watch } from 'vue';
   import { compressImage } from '@/utils/imageCompressor.js';
   import { formatFileSize } from '@/composables/useImageProcessing.js';
+  import { createStableId } from '@/utils/stableId.js';
 
   const props = defineProps({
     sending: { type: Boolean, required: true },
@@ -140,6 +141,7 @@
       }
       const url = URL.createObjectURL(processedFile);
       selectedImages.value.push({
+        id: createStableId(),
         file: processedFile,
         url,
         name: file.name,

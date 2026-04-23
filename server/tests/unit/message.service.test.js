@@ -244,6 +244,39 @@ describe('MessageService', () => {
     });
   });
 
+  describe('MessageModel image parsing resilience', () => {
+    test('returns null images for malformed JSON rows instead of throwing', () => {
+      const insert = db.prepare(`
+        INSERT INTO messages (
+          content,
+          author_name,
+          author_color,
+          session_id,
+          images,
+          image_type,
+          created_at,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `);
+
+      const result = insert.run(
+        '坏数据',
+        'Anonymous',
+        '#007bff',
+        'sess-bad-json',
+        'not-json',
+        null
+      );
+
+      const message = messageModel.findById(result.lastInsertRowid);
+
+      expect(message).toBeTruthy();
+      expect(message.id).toBe(result.lastInsertRowid);
+      expect(message.images).toBeNull();
+    });
+  });
+
   describe('clearAllMessages()', () => {
     test('clears all messages', async () => {
       await service.sendMessage({

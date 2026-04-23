@@ -1,14 +1,7 @@
 /**
  * 留言板组合式函数
  */
-import {
-  ref,
-  reactive,
-  computed,
-  onMounted,
-  onBeforeUnmount,
-  watch,
-} from 'vue';
+import { ref, reactive, computed, onMounted, onScopeDispose, watch } from 'vue';
 import { useWindowManager } from './useWindowManager.js';
 import { messageAPI } from '@/api/message.js';
 import { useWebSocket } from './useWebSocket.js';
@@ -46,6 +39,39 @@ export function useMessageBoard() {
       : 0;
   };
 
+  const syncMessageBoardWindow = () => {
+    try {
+      const { findWindowByAppAll, createWindow, showWindowWithoutFocus } =
+        useWindowManager();
+      const existingWindow = findWindowByAppAll('message-board');
+      if (existingWindow) {
+        try {
+          showWindowWithoutFocus(existingWindow.id);
+          return;
+        } catch (error) {
+          console.warn('显示留言板窗口失败，使用可见回退', error);
+          existingWindow.minimized = false;
+          existingWindow.visible = true;
+        }
+        return;
+      }
+
+      createWindow({
+        component: () =>
+          import('@/components/message-board/MessageBoardWindow.vue'),
+        title: '💬 留言板',
+        appSlug: 'message-board',
+        width: 400,
+        height: 600,
+        props: {},
+        storageKey: 'message-board:pos',
+        activate: false,
+      });
+    } catch (error) {
+      console.warn('同步留言板窗口失败', error);
+    }
+  };
+
   // 获取留言列表
   const fetchMessages = async ({
     page = 1,
@@ -77,7 +103,8 @@ export function useMessageBoard() {
   // 发送留言
   const sendMessage = async (content, images = null, imageType = null) => {
     // 允许在没有文字内容的情况下发送，但必须至少有文字或图片
-    const hasText = content && content.toString().trim().length > 0;
+    const normalizedContent = String(content ?? '').trim();
+    const hasText = normalizedContent.length > 0;
     const hasImages = images && Array.isArray(images) && images.length > 0;
     if (!hasText && !hasImages) {
       throw new Error('留言内容不能为空');
@@ -88,7 +115,7 @@ export function useMessageBoard() {
       error.value = null;
 
       const response = await messageAPI.sendMessage({
-        content: content.trim(),
+        content: normalizedContent,
         authorName: userSettings.nickname,
         authorColor: userSettings.avatarColor,
         images,
@@ -98,36 +125,7 @@ export function useMessageBoard() {
       if (response.code === 200) {
         // 消息会通过WebSocket实时推送，这里不需要手动添加
         // 同步打开/激活留言板窗口（发送者本地立即可见）
-        try {
-          const { findWindowByAppAll, createWindow, showWindowWithoutFocus } =
-            useWindowManager();
-          const existingWindow = findWindowByAppAll('message-board');
-          if (existingWindow) {
-            // 如果窗口已经存在，尝试以不改变焦点的方式显示它
-            try {
-              showWindowWithoutFocus(existingWindow.id);
-            } catch {
-              // 回退到设置可见但不激活
-              existingWindow.minimized = false;
-              existingWindow.visible = true;
-            }
-          } else {
-            // 创建窗口但不激活（不抢占焦点）
-            createWindow({
-              component: () =>
-                import('@/components/message-board/MessageBoardWindow.vue'),
-              title: '💬 留言板',
-              appSlug: 'message-board',
-              width: 400,
-              height: 600,
-              props: {},
-              storageKey: 'message-board:pos',
-              activate: false,
-            });
-          }
-        } catch {
-          // 忽略打开窗口时的任何错误
-        }
+        syncMessageBoardWindow();
 
         return response.data;
       }
@@ -326,10 +324,14 @@ export function useMessageBoard() {
     onMessage('messagesCleared', handleMessagesCleared);
   });
 
-  onBeforeUnmount(() => {
+  onScopeDispose(() => {
     offMessage('newMessage', handleNewMessage);
     offMessage('messageDeleted', handleMessageDeleted);
     offMessage('messagesCleared', handleMessagesCleared);
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = null;
+    }
   });
 
   let searchDebounceTimer = null;

@@ -1,6 +1,10 @@
 <template>
   <div v-if="items.length > 0" class="file-preview">
-    <div v-for="(item, index) in items" :key="index" class="preview-item">
+    <div
+      v-for="(item, index) in items"
+      :key="item.id || item.preview || item.name || index"
+      class="preview-item"
+    >
       <img :src="item.preview" :alt="item.name" />
       <div class="preview-info">
         <p class="file-name">{{ item.name }}</p>

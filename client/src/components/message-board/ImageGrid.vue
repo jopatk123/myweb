@@ -2,7 +2,7 @@
   <div class="image-grid" :class="{ 'single-image': images.length === 1 }">
     <div
       v-for="(image, index) in images"
-      :key="index"
+      :key="getImageKey(image, index)"
       class="image-item"
       @click="$emit('image-click', index)"
       @contextmenu.prevent="$emit('context-menu', $event, image, index)"
@@ -33,6 +33,14 @@
   defineEmits(['image-click', 'context-menu']);
 
   const { getImageUrl, onImageLoad, onImageError } = useImagePreview();
+
+  const getImageKey = (image, index) =>
+    image?.id ??
+    image?.path ??
+    image?.filePath ??
+    image?.url ??
+    image?.originalName ??
+    index;
 </script>
 
 <style scoped>

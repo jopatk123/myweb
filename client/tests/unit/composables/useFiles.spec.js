@@ -11,8 +11,18 @@ vi.mock('@/api/files.js', () => ({
   filesApi: apiMocks,
 }));
 
+import { effectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { useFiles } from '@/composables/useFiles.js';
+
+const mountUseFiles = () => {
+  const scope = effectScope();
+  const composable = scope.run(() => useFiles());
+  return {
+    ...composable,
+    stop: () => scope.stop(),
+  };
+};
 
 describe('useFiles composable', () => {
   beforeEach(() => {
@@ -39,7 +49,7 @@ describe('useFiles composable', () => {
     };
     apiMocks.list.mockResolvedValue(mockResponse);
 
-    const { fetchList, loading, items, total, search } = useFiles();
+    const { fetchList, loading, items, total, search, stop } = mountUseFiles();
     search.value = '  report ';
 
     expect(loading.value).toBe(false);
@@ -57,16 +67,20 @@ describe('useFiles composable', () => {
     expect(items.value).toEqual(mockResponse.data.files);
     expect(total.value).toBe(1);
     expect(loading.value).toBe(false);
+
+    stop();
   });
 
   it('propagates API errors during fetchList', async () => {
     const error = new Error('加载失败');
     apiMocks.list.mockRejectedValue(error);
 
-    const { fetchList, error: errorRef } = useFiles();
+    const { fetchList, error: errorRef, stop } = mountUseFiles();
 
     await expect(fetchList()).rejects.toThrow('加载失败');
     expect(errorRef.value).toBe('加载失败');
+
+    stop();
   });
 
   it('uploads files sequentially and refreshes list', async () => {
@@ -83,14 +97,23 @@ describe('useFiles composable', () => {
       data: { files: [], pagination: { total: 0 } },
     });
 
-    const { upload, uploadQueue, uploadProgress, uploadedBytes, totalBytes } =
-      useFiles();
+    const {
+      upload,
+      uploadQueue,
+      uploadProgress,
+      uploadedBytes,
+      totalBytes,
+      stop,
+    } = mountUseFiles();
 
     await upload([fileA, fileB]);
 
     expect(apiMocks.upload).toHaveBeenCalledTimes(2);
     expect(apiMocks.list).toHaveBeenCalled();
     expect(uploadQueue.value.length).toBe(2);
+    expect(uploadQueue.value.every(item => typeof item.id === 'string')).toBe(
+      true
+    );
     expect(uploadQueue.value.every(item => item.progress === 100)).toBe(true);
     expect(uploadProgress.value).toBe(100);
     expect(uploadedBytes.value).toBe(fileA.size + fileB.size);
@@ -102,5 +125,7 @@ describe('useFiles composable', () => {
     expect(uploadQueue.value.length).toBe(0);
     expect(uploadProgress.value).toBe(0);
     expect(uploadedBytes.value).toBe(0);
+
+    stop();
   });
 });

@@ -5,6 +5,7 @@ describe('FilePreviewList', () => {
   it('renders items and progress when enabled', () => {
     const items = [
       {
+        id: 'preview-1',
         name: 'sample.jpg',
         size: 1024,
         preview: 'data://sample',

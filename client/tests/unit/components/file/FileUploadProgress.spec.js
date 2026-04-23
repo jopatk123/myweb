@@ -18,7 +18,9 @@ describe('FileUploadProgress', () => {
     uploadedBytes: 512000,
     totalBytes: 1024000,
     currentFileName: 'test-file.pdf',
-    uploadQueue: [{ name: 'test-file.pdf', size: 1024000, progress: 50 }],
+    uploadQueue: [
+      { id: 'queue-1', name: 'test-file.pdf', size: 1024000, progress: 50 },
+    ],
     error: '',
   };
 
@@ -113,9 +115,9 @@ describe('FileUploadProgress', () => {
         props: {
           ...defaultProps,
           uploadQueue: [
-            { name: 'file1.pdf', size: 512000, progress: 100 },
-            { name: 'file2.pdf', size: 512000, progress: 50 },
-            { name: 'file3.pdf', size: 512000, progress: 0 },
+            { id: 'queue-1', name: 'file1.pdf', size: 512000, progress: 100 },
+            { id: 'queue-2', name: 'file2.pdf', size: 512000, progress: 50 },
+            { id: 'queue-3', name: 'file3.pdf', size: 512000, progress: 0 },
           ],
         },
       });
@@ -137,9 +139,9 @@ describe('FileUploadProgress', () => {
         props: {
           ...defaultProps,
           uploadQueue: [
-            { name: 'file1.pdf', size: 512000, progress: 100 },
-            { name: 'file2.pdf', size: 512000, progress: 100 },
-            { name: 'file3.pdf', size: 512000, progress: 50 },
+            { id: 'queue-1', name: 'file1.pdf', size: 512000, progress: 100 },
+            { id: 'queue-2', name: 'file2.pdf', size: 512000, progress: 100 },
+            { id: 'queue-3', name: 'file3.pdf', size: 512000, progress: 50 },
           ],
         },
       });

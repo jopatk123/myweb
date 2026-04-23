@@ -1,7 +1,7 @@
 /**
  * 留言板自动打开功能
  */
-import { onMounted, defineAsyncComponent } from 'vue';
+import { onMounted, onScopeDispose, defineAsyncComponent } from 'vue';
 import { useWebSocket } from './useWebSocket.js';
 import { useWindowManager } from './useWindowManager.js';
 import { getAppComponentBySlug } from '@/apps/registry.js';
@@ -13,7 +13,7 @@ const messageBoardComponent =
   );
 
 export function useMessageBoardAutoOpen() {
-  const { onMessage } = useWebSocket();
+  const { onMessage, offMessage } = useWebSocket();
   const {
     createWindow,
     findWindowByAppAll,
@@ -84,6 +84,10 @@ export function useMessageBoardAutoOpen() {
   // 初始化
   onMounted(() => {
     onMessage('newMessage', handleNewMessage);
+  });
+
+  onScopeDispose(() => {
+    offMessage('newMessage', handleNewMessage);
   });
 
   return {

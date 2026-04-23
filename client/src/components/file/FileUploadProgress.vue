@@ -77,7 +77,7 @@
               <div
                 class="queue-item"
                 v-for="(item, index) in uploadQueue"
-                :key="index"
+                :key="item.id || item.name || index"
                 :class="{
                   current: index === currentIndex,
                   completed: item.progress === 100,

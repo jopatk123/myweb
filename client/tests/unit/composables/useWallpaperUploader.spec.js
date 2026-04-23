@@ -21,6 +21,7 @@ describe('useWallpaperUploader', () => {
 
   it('processes single file and populates state', async () => {
     const processed = {
+      id: 'processed-1',
       file: new File(['processed'], 'nice.jpg', { type: 'image/jpeg' }),
       name: 'nice.jpg',
       preview: 'data://preview',
@@ -37,6 +38,7 @@ describe('useWallpaperUploader', () => {
     expect(processImageFileMock).toHaveBeenCalledTimes(1);
     expect(uploader.files.value).toHaveLength(1);
     expect(uploader.files.value[0].file).toBe(processed.file);
+    expect(uploader.files.value[0].id).toBeDefined();
     expect(uploader.wallpaperName.value).toBe('nice');
     expect(uploader.error.value).toBe('');
   });
@@ -59,6 +61,7 @@ describe('useWallpaperUploader', () => {
     uploader.wallpaperName.value = 'custom name';
     uploader.files.value = [
       {
+        id: 'upload-1',
         file: new File(['content'], 'wall.jpg', { type: 'image/jpeg' }),
         name: 'wall.jpg',
         progress: 0,
@@ -80,6 +83,7 @@ describe('useWallpaperUploader', () => {
     const uploader = useWallpaperUploader();
     uploader.files.value = [
       {
+        id: 'upload-1',
         file: new File(['content'], 'wall.jpg', { type: 'image/jpeg' }),
         name: 'wall.jpg',
         progress: 0,
@@ -122,7 +126,11 @@ describe('useWallpaperUploader', () => {
   it('reset clears selection and errors', async () => {
     const uploader = useWallpaperUploader();
     uploader.files.value = [
-      { name: 'foo', file: new File(['x'], 'foo.jpg', { type: 'image/jpeg' }) },
+      {
+        id: 'upload-foo',
+        name: 'foo',
+        file: new File(['x'], 'foo.jpg', { type: 'image/jpeg' }),
+      },
     ];
     uploader.wallpaperName.value = 'foo';
     uploader.error.value = 'bad';

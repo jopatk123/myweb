@@ -1,6 +1,7 @@
 import { ref, computed, onScopeDispose } from 'vue';
 import { filesApi } from '@/api/files.js';
 import { unwrapData } from '@/api/httpClient.js';
+import { createStableId } from '@/utils/stableId.js';
 
 export function useFiles() {
   const items = ref([]);
@@ -66,6 +67,7 @@ export function useFiles() {
     const fileArray = Array.isArray(files) ? files : [files];
     totalBytes.value = fileArray.reduce((sum, file) => sum + file.size, 0);
     uploadQueue.value = fileArray.map(file => ({
+      id: createStableId(),
       name: file.name,
       size: file.size,
       progress: 0,
