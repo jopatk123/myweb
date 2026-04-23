@@ -248,8 +248,10 @@
         open &&
         (isWord.value || isExcel.value || isMarkdown.value || isText.value)
       ) {
-        // 异步生成
-        generatePreview().catch(() => {});
+        // 异步生成，失败时 previewHtml 保持空以触发 fallback UI
+        generatePreview().catch(e =>
+          console.warn('[FilePreviewModal] 预览生成失败，已降级', e)
+        );
       } else {
         previewHtml.value = '';
         previewText.value = '';

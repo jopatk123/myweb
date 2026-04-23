@@ -1,28 +1,25 @@
 /**
  * 留言板API
  */
-import { createAxiosClient, getApiBase } from './httpClient.js';
+import { createApiClient, getApiBase } from './httpClient.js';
 
-// 处理API基础URL
-const messageApi = createAxiosClient({
+// 处理API基础URL；createApiClient 已绑定响应拦截器，自动解包 response.data
+const messageApi = createApiClient({
   baseURL: `${getApiBase()}/messages`,
   timeout: 10000,
 });
 
-// 请求拦截器 - 添加会话ID
+// 请求拦截器 - 添加会话 ID（与 WebSocket 共享同一 localStorage key，保持会话一致）
 messageApi.interceptors.request.use(config => {
-  const sessionId = localStorage.getItem('sessionId') || generateSessionId();
+  let sessionId = localStorage.getItem('sessionId');
+  if (!sessionId) {
+    // 使用 Web Crypto API 生成密码学安全的唯一标识，避免 Math.random() 可预测问题
+    sessionId = crypto.randomUUID();
+    localStorage.setItem('sessionId', sessionId);
+  }
   config.headers['X-Session-Id'] = sessionId;
   return config;
 });
-
-// 生成会话ID
-function generateSessionId() {
-  const sessionId =
-    'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  localStorage.setItem('sessionId', sessionId);
-  return sessionId;
-}
 
 function getAdminToken() {
   if (typeof window === 'undefined') return '';

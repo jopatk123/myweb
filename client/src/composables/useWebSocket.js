@@ -60,7 +60,7 @@ export function useWebSocket() {
       try {
         ws.value.send(JSON.stringify(msg));
       } catch (e) {
-        void e;
+        console.warn('[WebSocket] 发送队列消息失败', e);
       }
     }
   };
@@ -100,7 +100,7 @@ export function useWebSocket() {
             const data = JSON.parse(event.data);
             handleMessage(data);
           } catch (_error) {
-            void _error;
+            console.warn('[WebSocket] 收到无效消息帧，已忽略', _error);
           }
         };
 
@@ -138,7 +138,7 @@ export function useWebSocket() {
       try {
         h(payload);
       } catch (e) {
-        void e;
+        console.warn('[WebSocket] 消息处理器异常', e);
       }
     });
   };

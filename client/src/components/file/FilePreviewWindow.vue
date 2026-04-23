@@ -178,7 +178,9 @@
     () => props.file,
     () => {
       if (isWord.value || isExcel.value || isText.value)
-        generatePreview().catch(() => {});
+        generatePreview().catch(e =>
+          console.warn('[FilePreviewWindow] 预览生成失败，已降级', e)
+        );
       else {
         previewHtml.value = '';
         previewText.value = '';

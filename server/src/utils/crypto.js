@@ -37,7 +37,8 @@ export function verifyToken(expected, provided) {
   const safeExpected = (expected || '').trim();
   const safeProvided = (provided || '').trim();
 
-  if (!safeExpected) return true;
+  // 期望值为空时拒绝所有请求（fail-closed）；调用方应在调用前处理"未配置"场景
+  if (!safeExpected) return false;
   if (!safeProvided) return false;
 
   if (safeExpected.startsWith('sha256:')) {

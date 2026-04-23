@@ -118,4 +118,32 @@ describe('FileService.remove()', () => {
     expect(result).toBe(true);
     expect(unlinkSpy).toHaveBeenCalled();
   });
+
+  test('deletes disk file before DB record to prevent orphaned files', async () => {
+    const row = service.create({
+      originalName: 'order.txt',
+      storedName: 'order-1.txt',
+      filePath: 'uploads/files/order-1.txt',
+      mimeType: 'text/plain',
+      fileSize: 1,
+      uploaderId: 'u7',
+    });
+
+    const callOrder = [];
+    const unlinkSpy = jest.spyOn(fs, 'unlink').mockImplementation(async () => {
+      callOrder.push('unlink');
+    });
+    const modelDeleteSpy = jest
+      .spyOn(service.model, 'delete')
+      .mockImplementation(() => {
+        callOrder.push('dbDelete');
+      });
+
+    await service.remove(row.id);
+
+    expect(callOrder).toEqual(['unlink', 'dbDelete']);
+
+    unlinkSpy.mockRestore();
+    modelDeleteSpy.mockRestore();
+  });
 });

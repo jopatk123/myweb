@@ -4,9 +4,14 @@
 import { formatFileSize as formatFileSizeBase } from '@/utils/fileSize.js';
 
 export const compressImage = (img, maxWidth, maxHeight, quality = 0.8) => {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      reject(new Error('无法获取 Canvas 2D 上下文'));
+      return;
+    }
 
     let { width, height } = img;
     if (width > maxWidth || height > maxHeight) {
@@ -21,6 +26,10 @@ export const compressImage = (img, maxWidth, maxHeight, quality = 0.8) => {
 
     canvas.toBlob(
       blob => {
+        if (!blob) {
+          reject(new Error('图片压缩失败：Canvas 生成 Blob 为空'));
+          return;
+        }
         resolve({ blob, width, height });
       },
       'image/jpeg',
@@ -69,11 +78,12 @@ export const processImageFile = async (file, options = {}) => {
   });
 
   const reader = new FileReader();
-  const fileReadPromise = new Promise(resolve => {
+  const fileReadPromise = new Promise((resolve, reject) => {
     reader.onload = e => {
       img.src = e.target.result;
       resolve(e.target.result);
     };
+    reader.onerror = () => reject(new Error('文件读取失败'));
   });
 
   reader.readAsDataURL(file);

@@ -150,6 +150,32 @@ describe('useImageProcessing', () => {
       expect(result.width).toBe(640);
       expect(result.height).toBe(480);
     });
+
+    it('rejects when canvas.toBlob returns null blob', async () => {
+      mockCanvas({ blob: null });
+      const img = { width: 640, height: 480 };
+
+      await expect(compressImage(img, 1920, 1080)).rejects.toThrow(
+        'Canvas 生成 Blob 为空'
+      );
+    });
+
+    it('rejects when 2D canvas context is unavailable', async () => {
+      document.createElement = vi.fn(tag => {
+        if (tag !== 'canvas') return originalCreateElement(tag);
+        return {
+          width: 0,
+          height: 0,
+          getContext: vi.fn(() => null),
+          toBlob: vi.fn(),
+        };
+      });
+      const img = { width: 640, height: 480 };
+
+      await expect(compressImage(img, 1920, 1080)).rejects.toThrow(
+        '无法获取 Canvas 2D 上下文'
+      );
+    });
   });
 
   describe('processImageFile', () => {
@@ -273,6 +299,26 @@ describe('useImageProcessing', () => {
       const file = new File(['abc'], 'broken.jpg', { type: 'image/jpeg' });
 
       await expect(processImageFile(file)).rejects.toBeDefined();
+    });
+
+    it('rejects when FileReader fails to read the file', async () => {
+      // 覆盖 FileReader：只触发 onerror，不触发 onload
+      class ErrorFileReader {
+        constructor() {
+          this.onerror = null;
+          this.onload = null;
+        }
+
+        readAsDataURL() {
+          Promise.resolve().then(() => {
+            this.onerror?.(new Error('disk error'));
+          });
+        }
+      }
+      globalThis.FileReader = ErrorFileReader;
+
+      const file = new File(['abc'], 'photo.jpg', { type: 'image/jpeg' });
+      await expect(processImageFile(file)).rejects.toThrow('文件读取失败');
     });
   });
 });

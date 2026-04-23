@@ -134,7 +134,7 @@
   const onRandom = async () => {
     const wallpaper = await randomWallpaper();
     if (wallpaper) current.value = wallpaper;
-    ensurePreloaded(2).catch(() => {});
+    ensurePreloaded(2).catch(e => console.warn('[Home] 壁纸预加载失败', e));
   };
 
   watch(
@@ -222,7 +222,7 @@
   });
 
   fetchCurrentGroup().then(() => {
-    ensurePreloaded(2).catch(() => {});
+    ensurePreloaded(2).catch(e => console.warn('[Home] 壁纸预加载失败', e));
   });
   fetchActiveWallpaper()
     .then(() => {
@@ -230,8 +230,8 @@
         current.value = activeWallpaper.value;
       }
     })
-    .catch(() => {});
-  fetchFiles().catch(() => {});
+    .catch(e => console.warn('[Home] 获取活跃壁纸失败', e));
+  fetchFiles().catch(e => console.warn('[Home] 加载文件列表失败', e));
 
   function onDesktopContextmenu(event) {
     openMenu(event);

@@ -417,26 +417,23 @@ export class FileService {
     const file = this.get(id);
     const filePath = file.file_path;
 
-    this.model.delete(id);
-
-    // 尝试删除磁盘文件（失败仅记录，不影响已完成的 DB 状态）
-    try {
-      const absolutePath = toUploadsAbsolutePath(filePath);
-      if (!absolutePath) {
-        fileServiceLogger.warn('拒绝删除非上传目录文件', {
-          path: filePath,
-        });
-        return true;
-      }
-      await fs.unlink(absolutePath);
-    } catch (err) {
-      if (err.code !== 'ENOENT') {
-        fileServiceLogger.warn('删除磁盘文件失败（已忽略）', {
-          error: err?.message,
-        });
+    // 先删磁盘文件，再删数据库记录，避免 DB 已清而文件残留成孤儿文件
+    const absolutePath = toUploadsAbsolutePath(filePath);
+    if (!absolutePath) {
+      fileServiceLogger.warn('拒绝删除非上传目录文件', { path: filePath });
+    } else {
+      try {
+        await fs.unlink(absolutePath);
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          fileServiceLogger.warn('删除磁盘文件失败（已忽略）', {
+            error: err?.message,
+          });
+        }
       }
     }
 
+    this.model.delete(id);
     return true;
   }
 }
