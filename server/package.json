@@ -10,9 +10,9 @@
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
     "test:cov": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
-    "migrate": "knex migrate:latest --knexfile ./knexfile.cjs",
-    "migrate:rollback": "knex migrate:rollback --knexfile ./knexfile.cjs",
-    "seed": "knex seed:run --knexfile ./knexfile.cjs",
+    "migrate": "knex migrate:latest --knexfile ./knexfile.js",
+    "migrate:rollback": "knex migrate:rollback --knexfile ./knexfile.js",
+    "seed": "knex seed:run --knexfile ./knexfile.js",
     "db:check": "node src/utils/db-check.js",
     "db:setup": "npm run migrate && npm run db:check"
   },

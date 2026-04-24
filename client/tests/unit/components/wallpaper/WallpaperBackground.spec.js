@@ -1,18 +1,13 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import { ref } from 'vue';
 import { render, waitFor } from '@testing-library/vue';
 import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
 
 const OriginalImage = global.Image;
 
-const { getWallpaperUrlMock, fetchActiveWallpaperMock, activeWallpaperRef } =
-  vi.hoisted(() => {
-    const { ref } = require('vue');
-    return {
-      getWallpaperUrlMock: vi.fn(),
-      fetchActiveWallpaperMock: vi.fn(),
-      activeWallpaperRef: ref(null),
-    };
-  });
+const getWallpaperUrlMock = vi.fn();
+const fetchActiveWallpaperMock = vi.fn();
+const activeWallpaperRef = ref(null);
 
 vi.mock('@/composables/useWallpaper.js', () => ({
   __esModule: true,

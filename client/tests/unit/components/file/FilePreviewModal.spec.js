@@ -3,11 +3,11 @@
  * 覆盖：文件类型判断、预览 URL 生成、模态框开关、文件名解析
  */
 import { describe, it, expect, vi } from 'vitest';
+import { ref } from 'vue';
 import { render, fireEvent } from '@testing-library/vue';
 
 // ── Mocks ──────────────────────────────────────────────────────
 vi.mock('@/composables/useDraggableModal.js', () => {
-  const { ref } = require('vue');
   return {
     useDraggableModal: () => ({
       modalRef: ref(null),

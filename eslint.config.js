@@ -33,16 +33,6 @@ export default [
       },
     },
   },
-  {
-    files: ['**/*.cjs'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'commonjs',
-      globals: {
-        ...globals.node,
-      },
-    },
-  },
   ...vueConfigArray,
   {
     files: ['**/*.vue'],
@@ -86,10 +76,10 @@ export default [
   },
   {
     files: [
-      '**/vite.config.{js,mjs,cjs}',
-      '**/jest.config.{js,mjs,cjs}',
-      '**/eslint.config.{js,mjs,cjs}',
-      '**/*.config.{js,mjs,cjs}',
+      '**/vite.config.{js,mjs}',
+      '**/jest.config.{js,mjs}',
+      '**/eslint.config.{js,mjs}',
+      '**/*.config.{js,mjs}',
     ],
     languageOptions: {
       globals: {

@@ -1,6 +1,9 @@
-const path = require('path');
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-module.exports = {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export default {
   development: {
     client: 'better-sqlite3',
     connection: {
@@ -15,5 +18,3 @@ module.exports = {
     useNullAsDefault: true,
   },
 };
-
-

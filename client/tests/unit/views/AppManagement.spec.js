@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import AppManagement from '@/views/AppManagement.vue';
 
@@ -41,8 +41,6 @@ vi.mock('@/components/app/AppMoveModal.vue', () => ({
 }));
 
 vi.mock('@/composables/useApps.js', () => {
-  const { ref } = require('vue');
-
   const apps = ref([]);
   const groups = ref([]);
   const loading = ref(false);
