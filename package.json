@@ -25,7 +25,7 @@
     "lint": "eslint \"**/*.{js,vue}\"",
     "lint:fix": "eslint --fix \"**/*.{js,vue}\"",
     "lint:check": "eslint \"**/*.{js,vue}\"",
-    "contract-test": "spectral lint openapi.yaml --format json > contract-report.json",
+    "contract-test": "spectral lint server/openapi.yaml --format json --fail-severity error > contract-report.json",
     "prepare": "husky || true"
   },
   "devDependencies": {

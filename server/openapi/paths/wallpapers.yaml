@@ -1,6 +1,9 @@
 list:
   get:
     summary: List wallpapers (supports pagination)
+    description: Return wallpapers, optionally filtered by group and pagination.
+    tags:
+      - Wallpapers
     parameters:
       - in: query
         name: groupId
@@ -27,9 +30,12 @@ list:
                 data:
                   type: array
                   items:
-                    $ref: '../../components/schemas/wallpaper.yaml#/Wallpaper'
+                    $ref: '../components/schemas/wallpaper.yaml#/Wallpaper'
   post:
     summary: Upload wallpaper (multipart/form-data)
+    description: Upload a wallpaper image and optionally assign it to a group.
+    tags:
+      - Wallpapers
     requestBody:
       required: true
       content:
@@ -50,16 +56,22 @@ list:
 active:
   get:
     summary: Get active wallpaper
+    description: Return the current active wallpaper.
+    tags:
+      - Wallpapers
     responses:
       '200':
         description: OK
         content:
           application/json:
             schema:
-              $ref: '../../components/schemas/wallpaper.yaml#/ResponseWallpaper'
+              $ref: '../components/schemas/wallpaper.yaml#/ResponseWallpaper'
 random:
   get:
     summary: Get random wallpaper from a group
+    description: Return a random wallpaper for the selected group.
+    tags:
+      - Wallpapers
     parameters:
       - in: query
         name: groupId
@@ -71,10 +83,13 @@ random:
         content:
           application/json:
             schema:
-              $ref: '../../components/schemas/wallpaper.yaml#/ResponseWallpaper'
+              $ref: '../components/schemas/wallpaper.yaml#/ResponseWallpaper'
 byId:
   get:
     summary: Get wallpaper by id
+    description: Return one wallpaper by id.
+    tags:
+      - Wallpapers
     parameters:
       - in: path
         name: id
@@ -87,9 +102,12 @@ byId:
         content:
           application/json:
             schema:
-              $ref: '../../components/schemas/wallpaper.yaml#/ResponseWallpaper'
+              $ref: '../components/schemas/wallpaper.yaml#/ResponseWallpaper'
   put:
     summary: Update wallpaper
+    description: Update one wallpaper by id.
+    tags:
+      - Wallpapers
     parameters:
       - in: path
         name: id
@@ -100,12 +118,15 @@ byId:
       content:
         application/json:
           schema:
-            $ref: '../../components/schemas/wallpaper.yaml#/WallpaperUpdate'
+            $ref: '../components/schemas/wallpaper.yaml#/WallpaperUpdate'
     responses:
       '200':
         description: OK
   delete:
     summary: Delete wallpaper
+    description: Delete one wallpaper by id.
+    tags:
+      - Wallpapers
     parameters:
       - in: path
         name: id
@@ -118,6 +139,9 @@ byId:
 move:
   put:
     summary: Move multiple wallpapers to a group
+    description: Move wallpapers to another group or clear their group.
+    tags:
+      - Wallpapers
     requestBody:
       required: true
       content:
@@ -139,6 +163,9 @@ move:
 batchDelete:
   delete:
     summary: Delete multiple wallpapers
+    description: Delete multiple wallpapers by id.
+    tags:
+      - Wallpapers
     requestBody:
       required: true
       content:
@@ -156,23 +183,32 @@ batchDelete:
 groups:
   get:
     summary: List groups
+    description: List wallpaper groups.
+    tags:
+      - Wallpapers
     responses:
       '200':
         description: OK
   post:
     summary: Create group
+    description: Create a wallpaper group.
+    tags:
+      - Wallpapers
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: '../../components/schemas/wallpaper.yaml#/GroupCreate'
+            $ref: '../components/schemas/wallpaper.yaml#/GroupCreate'
     responses:
       '201':
         description: Created
 groupById:
   put:
     summary: Update group
+    description: Update a wallpaper group by id.
+    tags:
+      - Wallpapers
     parameters:
       - in: path
         name: id
@@ -183,12 +219,15 @@ groupById:
       content:
         application/json:
           schema:
-            $ref: '../../components/schemas/wallpaper.yaml#/GroupUpdate'
+            $ref: '../components/schemas/wallpaper.yaml#/GroupUpdate'
     responses:
       '200':
         description: OK
   delete:
     summary: Delete group
+    description: Delete a wallpaper group by id.
+    tags:
+      - Wallpapers
     parameters:
       - in: path
         name: id
@@ -201,11 +240,19 @@ groupById:
 groupsCurrent:
   get:
     summary: Get current group
+    description: Return the currently selected wallpaper group.
+    tags:
+      - Wallpapers
     responses:
       '200':
         description: OK
+
+groupsCurrentById:
   put:
     summary: Set current group
+    description: Set the current wallpaper group by id.
+    tags:
+      - Wallpapers
     parameters:
       - in: path
         name: id

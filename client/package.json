@@ -6,8 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest",
-    "test:cov": "vitest --coverage",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
     "lint": "eslint --ext .js,.vue --fix src",
     "lint:check": "eslint --ext .js,.vue src"
   },

@@ -2,6 +2,14 @@ openapi: 3.0.0
 info:
   title: MyWeb API
   version: 1.0.0
+  description: MyWeb backend API contract for apps, wallpapers, files, and auth flows.
+tags:
+  - name: Apps
+    description: Application registry endpoints.
+  - name: Files
+    description: File upload endpoints.
+  - name: Wallpapers
+    description: Wallpaper and group management endpoints.
 servers:
   # 请根据部署环境替换为实际后端地址和端口，例如: http://localhost:${BACKEND_PORT:-3000}
   - url: http://localhost:3000
@@ -33,6 +41,9 @@ paths:
   /api/wallpapers/groups/current:
     $ref: './openapi/paths/wallpapers.yaml#/groupsCurrent'
 
+  /api/wallpapers/groups/{id}/current:
+    $ref: './openapi/paths/wallpapers.yaml#/groupsCurrentById'
+
   /api/apps:
     $ref: './openapi/paths/apps.yaml#/list'
 
@@ -41,20 +52,3 @@ paths:
 
   /api/files/upload:
     $ref: './openapi/paths/files.yaml#/upload'
-
-components:
-  schemas:
-    Wallpaper:
-      $ref: './openapi/components/schemas/wallpaper.yaml#/Wallpaper'
-    ResponseWallpaper:
-      $ref: './openapi/components/schemas/wallpaper.yaml#/ResponseWallpaper'
-    WallpaperUpdate:
-      $ref: './openapi/components/schemas/wallpaper.yaml#/WallpaperUpdate'
-    GroupCreate:
-      $ref: './openapi/components/schemas/wallpaper.yaml#/GroupCreate'
-    GroupUpdate:
-      $ref: './openapi/components/schemas/wallpaper.yaml#/GroupUpdate'
-    AppCreate:
-      $ref: './openapi/components/schemas/app.yaml#/AppCreate'
-    AppUpdate:
-      $ref: './openapi/components/schemas/app.yaml#/AppUpdate'

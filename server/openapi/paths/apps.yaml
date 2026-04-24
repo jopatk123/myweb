@@ -1,23 +1,32 @@
 list:
   get:
     summary: List apps
+    description: Return all installed apps.
+    tags:
+      - Apps
     responses:
       '200':
         description: OK
   post:
     summary: Create app
+    description: Create a new app.
+    tags:
+      - Apps
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: '../../components/schemas/app.yaml#/AppCreate'
+            $ref: '../components/schemas/app.yaml#/AppCreate'
     responses:
       '201':
         description: Created
 byId:
   get:
     summary: Get app by id
+    description: Return one app by numeric id.
+    tags:
+      - Apps
     parameters:
       - in: path
         name: id
@@ -29,6 +38,9 @@ byId:
         description: OK
   put:
     summary: Update app
+    description: Update an app by numeric id.
+    tags:
+      - Apps
     parameters:
       - in: path
         name: id
@@ -39,12 +51,15 @@ byId:
       content:
         application/json:
           schema:
-            $ref: '../../components/schemas/app.yaml#/AppUpdate'
+            $ref: '../components/schemas/app.yaml#/AppUpdate'
     responses:
       '200':
         description: OK
   delete:
     summary: Delete app
+    description: Delete an app by numeric id.
+    tags:
+      - Apps
     parameters:
       - in: path
         name: id

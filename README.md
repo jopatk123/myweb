@@ -21,7 +21,7 @@
    ```bash
    npm run dev
    ```
-   前端默认在 3000，Vite 会代理 `/api` 和 `/ws` 到后端。
+   前端默认在 5173，Vite 会代理 `/api` 和 `/ws` 到后端。
 3. **单独调试**
    ```bash
    npm run dev:client    # 仅前端
@@ -61,7 +61,6 @@
 
 - `./deploy.sh`：读取 `.env`、构建镜像、启动容器、执行初始化，再做健康检查；`--help` 可查看选项。
 - `docker compose up -d --build`：手动部署，可用 `down`、`down -v` 清理。
-- `build_myweb_images_tar.sh`：打包镜像供离线目标机 `docker load`，再用 Compose 启动。
 
 ## 关键环境变量
 
@@ -69,7 +68,7 @@
 | ------------------------ | ------------- | ------------------------------ |
 | `NODE_ENV`               | `development` | 运行模式                       |
 | `BACKEND_PORT`           | `3000`        | 后端 HTTP/WS 端口              |
-| `FRONTEND_PORT`          | `3000`        | Vite dev 端口                  |
+| `FRONTEND_PORT`          | `5173`        | Vite dev 端口                  |
 | `VITE_API_BASE`          | `/api`        | 前端打包时的 API 前缀          |
 | `CORS_ORIGIN`            | `*`           | 允许跨域来源                   |
 | `FILES_ADMIN_TOKEN`      | `change-me`   | 文件/留言/内部日志的管理员凭证 |
