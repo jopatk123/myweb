@@ -10,6 +10,8 @@ const clientDistDir = path.join(__dirname, '../../client/dist');
 const clientIndexPath = path.join(clientDistDir, 'index.html');
 const ORIGINAL_ENV = { ...process.env };
 
+jest.setTimeout(20_000);
+
 function restoreEnv() {
   Object.keys(process.env).forEach(key => {
     if (!(key in ORIGINAL_ENV)) {

@@ -1,8 +1,8 @@
-import { ref, onMounted, nextTick, computed } from 'vue';
+import { ref, onMounted, nextTick, computed, unref, watch } from 'vue';
 
 /**
  * 为模态框提供拖拽移动和位置记忆的功能
- * @param {string} storageKey 用于 localStorage 记忆位置的唯一键名
+ * @param {string | import('vue').Ref<string>} storageKey 用于 localStorage 记忆位置的唯一键名
  */
 export function useDraggableModal(storageKey) {
   const modalRef = ref(null);
@@ -16,6 +16,11 @@ export function useDraggableModal(storageKey) {
     top: pos.value.y !== null ? `${pos.value.y}px` : undefined,
   }));
 
+  function getStorageKey() {
+    const key = unref(storageKey);
+    return typeof key === 'string' ? key.trim() : String(key || '').trim();
+  }
+
   function centerModal() {
     if (!modalRef.value) return;
     const el = modalRef.value;
@@ -28,22 +33,31 @@ export function useDraggableModal(storageKey) {
   }
 
   function loadPosition() {
+    const key = getStorageKey();
+    if (!key) return false;
+
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = localStorage.getItem(key);
       if (raw) {
         const v = JSON.parse(raw);
         if (typeof v?.x === 'number' && typeof v?.y === 'number') {
           pos.value = v;
+          return true;
         }
       }
     } catch (e) {
       console.error('Failed to load modal position:', e);
     }
+
+    return false;
   }
 
   function savePosition() {
+    const key = getStorageKey();
+    if (!key) return;
+
     try {
-      localStorage.setItem(storageKey, JSON.stringify(pos.value));
+      localStorage.setItem(key, JSON.stringify(pos.value));
     } catch (e) {
       console.error('Failed to save modal position:', e);
     }
@@ -78,11 +92,24 @@ export function useDraggableModal(storageKey) {
 
   onMounted(async () => {
     await nextTick();
-    loadPosition();
-    if (pos.value.x === null || pos.value.y === null) {
+    if (!loadPosition()) {
       centerModal();
     }
   });
+
+  watch(
+    () => getStorageKey(),
+    async (nextKey, previousKey) => {
+      if (!nextKey || nextKey === previousKey) return;
+
+      await nextTick();
+      pos.value = { x: null, y: null };
+
+      if (!loadPosition()) {
+        centerModal();
+      }
+    }
+  );
 
   return {
     modalRef,

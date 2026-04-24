@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-  const props = defineProps({
+  defineProps({
     title: { type: String, default: '' },
     subtitle: { type: String, default: '' },
     minimized: { type: Boolean, default: false },

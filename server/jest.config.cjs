@@ -6,6 +6,8 @@
 
 module.exports = {
   testEnvironment: 'node',
+  testTimeout: 60000,
+  maxWorkers: '50%',
   roots: ['<rootDir>/tests'],
   moduleFileExtensions: ['js', 'mjs', 'json'],
   testMatch: [

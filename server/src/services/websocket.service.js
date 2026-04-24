@@ -2,6 +2,11 @@ import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { ConnectionStore } from './websocket/connection-store.js';
 import logger from '../utils/logger.js';
+import {
+  getAppPasswordStatus,
+  getAppAuthCookieValue,
+  isValidAppAuthSession,
+} from '../utils/app-auth.js';
 
 const wsLogger = logger.child('WebSocketService');
 
@@ -102,6 +107,20 @@ export class WebSocketService {
   }
 
   handleConnection(socket, req) {
+    const { passwordRequired, isPasswordConfigured } = getAppPasswordStatus();
+    if (passwordRequired) {
+      const cookieValue = getAppAuthCookieValue(req);
+      if (!isPasswordConfigured || !isValidAppAuthSession(cookieValue)) {
+        wsLogger.warn('Rejected unauthorized websocket connection');
+        try {
+          socket.close(1008, 'Unauthorized');
+        } catch {
+          // ignore
+        }
+        return;
+      }
+    }
+
     // 超出最大连接数，立即拒绝
     if (this.connections.size >= MAX_CONNECTIONS) {
       wsLogger.warn('WebSocket max connections reached, rejecting new client', {

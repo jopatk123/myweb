@@ -59,12 +59,21 @@ export function isAuthValid(now = Date.now(), storage = getStorage()) {
 }
 
 export async function getPasswordStatus() {
-  const res = await fetch(buildApiUrl('auth/status'));
-  const data = await res.json();
+  const res = await fetch(buildApiUrl('auth/status'), {
+    credentials: 'include',
+  });
+  const data = (await res.json().catch(() => null)) || {};
+  const statusCode = Number.isInteger(res?.status) ? res.status : data?.code;
+  const ok =
+    typeof res?.ok === 'boolean'
+      ? res.ok
+      : statusCode
+        ? statusCode >= 200 && statusCode < 300
+        : data?.success !== false;
 
-  if (!res.ok) {
+  if (!ok) {
     const error = new Error(data?.message || '验证服务异常，请稍后重试。');
-    error.code = res.status;
+    error.code = statusCode;
     error.payload = data;
     throw error;
   }
@@ -73,31 +82,40 @@ export async function getPasswordStatus() {
   return {
     required: status.required !== false,
     configured: status.configured === true,
+    authenticated: status.authenticated === true,
   };
 }
 
 export async function validatePasswordRemote(input) {
   const res = await fetch(buildApiUrl('auth/verify'), {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password: String(input ?? '') }),
   });
-  const data = await res.json();
+  const data = (await res.json().catch(() => null)) || {};
+  const statusCode = Number.isInteger(res?.status) ? res.status : data?.code;
+  const ok =
+    typeof res?.ok === 'boolean'
+      ? res.ok
+      : statusCode
+        ? statusCode >= 200 && statusCode < 300
+        : data?.success !== false;
 
-  if (res.status === 503) {
+  if (statusCode === 503) {
     const error = new Error(data?.message || '应用访问密码未配置');
-    error.code = res.status;
+    error.code = statusCode;
     error.payload = data;
     throw error;
   }
 
-  if (res.status === 401) {
+  if (statusCode === 401 || (!statusCode && data?.success === false)) {
     return false;
   }
 
-  if (!res.ok) {
+  if (!ok) {
     const error = new Error(data?.message || '验证服务异常，请稍后重试。');
-    error.code = res.status;
+    error.code = statusCode;
     error.payload = data;
     throw error;
   }

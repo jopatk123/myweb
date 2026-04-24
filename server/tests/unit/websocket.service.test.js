@@ -24,15 +24,24 @@ jest.unstable_mockModule('../../src/utils/logger.js', () => {
   return { default: childLogger, logger: childLogger };
 });
 
-const { WebSocketService } = await import(
-  '../../src/services/websocket.service.js'
-);
+const { WebSocketService } =
+  await import('../../src/services/websocket.service.js');
 
 describe('WebSocketService', () => {
   let service;
+  const originalPassword = process.env.APP_PASSWORD;
 
   beforeEach(() => {
+    delete process.env.APP_PASSWORD;
     service = new WebSocketService();
+  });
+
+  afterAll(() => {
+    if (originalPassword === undefined) {
+      delete process.env.APP_PASSWORD;
+    } else {
+      process.env.APP_PASSWORD = originalPassword;
+    }
   });
 
   describe('constructor', () => {
@@ -97,6 +106,23 @@ describe('WebSocketService', () => {
       expect(mockSocket.send).toHaveBeenCalledWith(
         JSON.stringify({ type: 'connected', sessionId: 'mock-uuid-1234' })
       );
+    });
+
+    it('rejects unauthorized clients when app password is enabled', () => {
+      process.env.APP_PASSWORD = 'secret123';
+
+      const mockSocket = {
+        close: jest.fn(),
+        on: jest.fn(),
+        send: jest.fn(),
+        readyState: 1,
+      };
+
+      service.handleConnection(mockSocket, { url: '/ws', headers: {} });
+
+      expect(mockSocket.close).toHaveBeenCalledWith(1008, 'Unauthorized');
+      expect(mockSocket.send).not.toHaveBeenCalled();
+      expect(service.getOnlineCount()).toBe(0);
     });
   });
 

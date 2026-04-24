@@ -2,6 +2,12 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import logger from '../utils/logger.js';
 import { verifyToken } from '../utils/crypto.js';
+import {
+  clearAppAuthCookie,
+  getAppPasswordStatus,
+  isAppAuthRequestAuthorized,
+  setAppAuthCookie,
+} from '../utils/app-auth.js';
 
 const authLogger = logger.child('AuthRoute');
 
@@ -24,12 +30,9 @@ const loginLimiter = rateLimit({
 export function createAuthRoutes() {
   const router = express.Router();
 
-  const appPassword = (process.env.APP_PASSWORD || '').trim();
-  const isProduction = process.env.NODE_ENV === 'production';
-  const isPasswordConfigured = Boolean(appPassword);
-  const passwordRequired = isPasswordConfigured || isProduction;
-
   router.post('/verify', loginLimiter, (req, res) => {
+    const { appPassword, isProduction, isPasswordConfigured } =
+      getAppPasswordStatus();
     const { password } = req.body || {};
 
     if (!isPasswordConfigured) {
@@ -60,6 +63,7 @@ export function createAuthRoutes() {
 
     if (match) {
       authLogger.info('密码验证成功', { ip: req.ip });
+      setAppAuthCookie(res);
       return res.json({ code: 200, success: true, message: '验证成功' });
     }
 
@@ -72,14 +76,25 @@ export function createAuthRoutes() {
   });
 
   // 检查是否需要密码（不暴露密码本身）
-  router.get('/status', (_req, res) => {
+  router.get('/status', (req, res) => {
+    const { passwordRequired, isPasswordConfigured } = getAppPasswordStatus();
     res.json({
       code: 200,
       success: true,
       data: {
         required: passwordRequired,
         configured: isPasswordConfigured,
+        authenticated: isAppAuthRequestAuthorized(req),
       },
+    });
+  });
+
+  router.post('/logout', (_req, res) => {
+    clearAppAuthCookie(res);
+    res.json({
+      code: 200,
+      success: true,
+      message: '已退出访问验证',
     });
   });
 

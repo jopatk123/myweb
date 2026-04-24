@@ -20,13 +20,17 @@ export function buildApiUrl(path = '') {
 
 export function apiFetch(path, options) {
   const url = /^https?:/i.test(path) ? path : buildApiUrl(path);
-  return fetch(url, options);
+  return fetch(url, {
+    credentials: 'include',
+    ...options,
+  });
 }
 
 export function createAxiosClient(config = {}) {
   return axios.create({
     baseURL: getApiBase(),
     timeout: 30000,
+    withCredentials: true,
     ...config,
   });
 }

@@ -76,13 +76,7 @@
     modalRef: viewerRef,
     modalStyle: viewerStyle,
     onHeaderPointerDown,
-  } = useDraggableModal(storageKey.value);
-
-  watch(storageKey, () => {
-    // A proper implementation would re-initialize the composable or have it react to key changes.
-    // For now, this refactor simplifies the code but doesn't fully handle dynamic keys.
-    // The primary benefit of code reduction is still achieved.
-  });
+  } = useDraggableModal(storageKey);
 
   const typeCat = computed(() =>
     String(props.file?.typeCategory || props.file?.type_category || '')

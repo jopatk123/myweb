@@ -52,6 +52,7 @@ describe('api/httpClient', () => {
     expect(axiosMocks.create).toHaveBeenCalledWith({
       baseURL: '/api',
       timeout: 123,
+      withCredentials: true,
     });
     expect(client).toBe(axiosMocks.client);
     expect(axiosMocks.responseUse).toHaveBeenCalledTimes(1);

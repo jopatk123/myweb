@@ -16,6 +16,12 @@ vi.mock('@/api/httpClient.js', () => ({
 
 const TEST_PASSWORD = 'test-password-123';
 
+const makeResponse = ({ ok = true, status = 200, data = {} } = {}) => ({
+  ok,
+  status,
+  json: async () => data,
+});
+
 describe('passwordGate utils', () => {
   const createMemoryStorage = () => {
     const store = new Map();
@@ -82,9 +88,9 @@ describe('validatePasswordRemote', () => {
   it('密码正确时返回 true', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        json: async () => ({ success: true }),
-      })
+      vi
+        .fn()
+        .mockResolvedValue(makeResponse({ data: { success: true, code: 200 } }))
     );
     expect(await validatePasswordRemote('correct')).toBe(true);
   });
@@ -92,24 +98,32 @@ describe('validatePasswordRemote', () => {
   it('密码错误时返回 false', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        json: async () => ({ success: false }),
-      })
+      vi.fn().mockResolvedValue(
+        makeResponse({
+          ok: false,
+          status: 401,
+          data: { success: false, code: 401 },
+        })
+      )
     );
     expect(await validatePasswordRemote('wrong')).toBe(false);
   });
 
-  it('网络异常时返回 false', async () => {
+  it('网络异常时向上抛出错误', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('fail')));
-    expect(await validatePasswordRemote('any')).toBe(false);
+    await expect(validatePasswordRemote('any')).rejects.toThrow('fail');
   });
 
   it('input 为 null 时不崩溃', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        json: async () => ({ success: false }),
-      })
+      vi.fn().mockResolvedValue(
+        makeResponse({
+          ok: false,
+          status: 401,
+          data: { success: false, code: 401 },
+        })
+      )
     );
     expect(await validatePasswordRemote(null)).toBe(false);
   });
@@ -121,9 +135,9 @@ describe('checkPasswordRequired', () => {
   it('后端 required=true 时返回 true', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        json: async () => ({ data: { required: true } }),
-      })
+      vi
+        .fn()
+        .mockResolvedValue(makeResponse({ data: { data: { required: true } } }))
     );
     expect(await checkPasswordRequired()).toBe(true);
   });
@@ -131,9 +145,11 @@ describe('checkPasswordRequired', () => {
   it('后端 required=false 时返回 false', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        json: async () => ({ data: { required: false } }),
-      })
+      vi
+        .fn()
+        .mockResolvedValue(
+          makeResponse({ data: { data: { required: false } } })
+        )
     );
     expect(await checkPasswordRequired()).toBe(false);
   });

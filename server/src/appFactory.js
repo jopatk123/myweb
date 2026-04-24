@@ -19,6 +19,7 @@ import {
   normalizeRequestKeys,
   normalizeResponseMiddleware,
 } from './utils/case-helper.js';
+import { createAppAuthGuard } from './middleware/appAuth.middleware.js';
 import { setDb } from './utils/dbPool.js';
 import { createUploadDirs } from './utils/file-helper.js';
 import logger from './utils/logger.js';
@@ -129,12 +130,14 @@ export async function createApp(options = {}) {
   app.use(normalizeResponseMiddleware);
 
   const uploadsDir = path.join(__dirname, '../uploads');
+  const requireAppAuth = createAppAuthGuard();
   const uploadsCacheSeconds = Math.max(
     0,
     Number(appEnv.staticAssets.uploadsCacheMaxAgeSeconds) || 0
   );
   app.use(
     '/uploads',
+    requireAppAuth,
     express.static(uploadsDir, {
       maxAge: uploadsCacheSeconds * 1000,
       etag: true,
@@ -160,15 +163,15 @@ export async function createApp(options = {}) {
     }));
   setDb(db);
 
-  app.use('/api/wallpapers', createWallpaperRoutes(db));
-  app.use('/api/apps', createAppRoutes(db));
-  app.use('/api/files', createFileRoutes(db));
-  app.use('/api/notebook', createNotebookNotesRoutes(db));
-  app.use('/api/work-timer', createWorkTimerRoutes(db));
-  app.use('/api/messages', createMessageRoutes(db));
+  app.use('/api/wallpapers', requireAppAuth, createWallpaperRoutes(db));
+  app.use('/api/apps', requireAppAuth, createAppRoutes(db));
+  app.use('/api/files', requireAppAuth, createFileRoutes(db));
+  app.use('/api/notebook', requireAppAuth, createNotebookNotesRoutes(db));
+  app.use('/api/work-timer', requireAppAuth, createWorkTimerRoutes(db));
+  app.use('/api/messages', requireAppAuth, createMessageRoutes(db));
   app.use('/api/auth', createAuthRoutes());
 
-  app.use('/internal/logs', createInternalLogsRoutes());
+  app.use('/internal/logs', requireAppAuth, createInternalLogsRoutes());
 
   app.get('/api', (req, res) => {
     res.json({

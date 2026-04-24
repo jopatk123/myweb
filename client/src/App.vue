@@ -36,8 +36,8 @@
 <script setup>
   import { computed, onMounted, ref } from 'vue';
   import {
-    isAuthValid,
     saveAuth,
+    clearAuth,
     validatePasswordRemote,
     getPasswordStatus,
   } from '@/utils/passwordGate.js';
@@ -82,12 +82,6 @@
   }
 
   onMounted(async () => {
-    // 先检查本地缓存
-    if (isAuthValid()) {
-      isAuthorized.value = true;
-      return;
-    }
-    // 检查后端是否需要密码
     try {
       passwordStatus.value = await getPasswordStatus();
 
@@ -96,6 +90,14 @@
         isAuthorized.value = true;
         return;
       }
+
+      if (passwordStatus.value.authenticated) {
+        saveAuth();
+        isAuthorized.value = true;
+        return;
+      }
+
+      clearAuth();
 
       if (isPasswordMisconfigured.value) {
         errorMessage.value = '系统尚未配置访问密码，请联系管理员。';
