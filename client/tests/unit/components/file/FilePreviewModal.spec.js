@@ -1,50 +1,12 @@
-/**
- * FilePreviewModal.vue 单元测试
- * 覆盖：文件类型判断、预览 URL 生成、模态框开关、文件名解析
- */
-import { describe, it, expect, vi } from 'vitest';
-import { ref } from 'vue';
-import { render, fireEvent } from '@testing-library/vue';
-
-// ── Mocks ──────────────────────────────────────────────────────
-vi.mock('@/composables/useDraggableModal.js', () => {
-  return {
-    useDraggableModal: () => ({
-      modalRef: ref(null),
-      modalStyle: ref({}),
-      onHeaderPointerDown: vi.fn(),
-    }),
-  };
-});
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, waitFor } from '@testing-library/vue';
 
 vi.mock('@/api/httpClient.js', () => ({
   buildServerUrl: vi.fn(path => `http://localhost:3000${path}`),
 }));
 
-// mammoth / XLSX / dompurify 在非浏览器环境中 mock
-vi.mock('mammoth', () => ({
-  default: {
-    convertToHtml: vi.fn().mockResolvedValue({ value: '<p>Word content</p>' }),
-  },
-}));
+import FilePreviewWindow from '@/components/file/FilePreviewWindow.vue';
 
-vi.mock('dompurify', () => ({
-  default: { sanitize: vi.fn(html => html) },
-}));
-
-vi.mock('xlsx', () => ({
-  default: {
-    read: vi.fn().mockReturnValue({
-      SheetNames: ['Sheet1'],
-      Sheets: { Sheet1: {} },
-    }),
-    utils: { sheet_to_html: vi.fn().mockReturnValue('<table></table>') },
-  },
-}));
-
-import FilePreviewModal from '@/components/file/FilePreviewModal.vue';
-
-// ── 辅助函数 ──────────────────────────────────────────────────
 function mkFile(overrides = {}) {
   return {
     id: 1,
@@ -56,51 +18,33 @@ function mkFile(overrides = {}) {
   };
 }
 
-// ── 测试套件 ──────────────────────────────────────────────────
-describe('FilePreviewModal — 可见性控制', () => {
-  it('modelValue=false 时不渲染内容', () => {
-    const { queryByText } = render(FilePreviewModal, {
-      props: { modelValue: false, file: mkFile() },
-    });
-    expect(queryByText('预览：')).toBeNull();
+function createFetchResponse(body) {
+  return {
+    ok: true,
+    headers: {
+      get: () => null,
+    },
+    text: vi.fn().mockResolvedValue(body),
+    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+  };
+}
+
+describe('FilePreviewWindow', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(createFetchResponse('')));
   });
 
-  it('modelValue=true 时显示标题和文件名', () => {
-    const { getByText } = render(FilePreviewModal, {
-      props: { modelValue: true, file: mkFile({ originalName: 'report.txt' }) },
-    });
-    expect(getByText(/report\.txt/)).toBeTruthy();
-  });
-
-  it('点击关闭按钮，触发 update:modelValue false', async () => {
-    const { getByText, emitted } = render(FilePreviewModal, {
-      props: { modelValue: true, file: mkFile() },
+  it('renders the current file title', () => {
+    const { getByText } = render(FilePreviewWindow, {
+      props: { file: mkFile({ originalName: 'report.txt' }) },
     });
 
-    await fireEvent.click(getByText('✕'));
-
-    expect(emitted()['update:modelValue']).toBeTruthy();
-    expect(emitted()['update:modelValue'][0][0]).toBe(false);
+    expect(getByText('预览：report.txt')).toBeTruthy();
   });
 
-  it('点击背景遮罩，触发 update:modelValue false', async () => {
-    const { container, emitted } = render(FilePreviewModal, {
-      props: { modelValue: true, file: mkFile() },
-    });
-
-    const backdrop = container.querySelector('.backdrop');
-    await fireEvent.click(backdrop);
-
-    expect(emitted()['update:modelValue']).toBeTruthy();
-    expect(emitted()['update:modelValue'][0][0]).toBe(false);
-  });
-});
-
-describe('FilePreviewModal — 图片预览', () => {
-  it('图片文件显示 img 标签', () => {
-    const { container } = render(FilePreviewModal, {
+  it('renders image previews and resolves relative file urls', () => {
+    const { container } = render(FilePreviewWindow, {
       props: {
-        modelValue: true,
         file: mkFile({
           originalName: 'photo.jpg',
           typeCategory: 'image',
@@ -109,45 +53,17 @@ describe('FilePreviewModal — 图片预览', () => {
         }),
       },
     });
-    expect(container.querySelector('img')).toBeTruthy();
+
+    const image = container.querySelector('img');
+    expect(image).toBeTruthy();
+    expect(image.getAttribute('src')).toBe(
+      'http://localhost:3000/uploads/photo.jpg'
+    );
   });
 
-  it('通过 mimeType 识别图片（无 typeCategory）', () => {
-    const { container } = render(FilePreviewModal, {
+  it('renders video previews with controls', () => {
+    const { container } = render(FilePreviewWindow, {
       props: {
-        modelValue: true,
-        file: mkFile({
-          originalName: 'photo.webp',
-          typeCategory: '',
-          mimeType: 'image/webp',
-          fileUrl: '/uploads/photo.webp',
-        }),
-      },
-    });
-    expect(container.querySelector('img')).toBeTruthy();
-  });
-
-  it('通过文件名扩展识别图片（无 mimeType 和 typeCategory）', () => {
-    const { container } = render(FilePreviewModal, {
-      props: {
-        modelValue: true,
-        file: mkFile({
-          originalName: 'photo.png',
-          typeCategory: '',
-          mimeType: '',
-          fileUrl: '/uploads/photo.png',
-        }),
-      },
-    });
-    expect(container.querySelector('img')).toBeTruthy();
-  });
-});
-
-describe('FilePreviewModal — 视频预览', () => {
-  it('视频文件显示 video 标签带 controls', () => {
-    const { container } = render(FilePreviewModal, {
-      props: {
-        modelValue: true,
         file: mkFile({
           originalName: 'clip.mp4',
           typeCategory: 'video',
@@ -156,89 +72,52 @@ describe('FilePreviewModal — 视频预览', () => {
         }),
       },
     });
+
     const video = container.querySelector('video');
     expect(video).toBeTruthy();
     expect(video.hasAttribute('controls')).toBe(true);
   });
-});
 
-describe('FilePreviewModal — 文本预览', () => {
-  it('text 类型文件显示 pre 标签', () => {
-    const { container } = render(FilePreviewModal, {
+  it('loads plain text previews asynchronously', async () => {
+    fetch.mockResolvedValue(createFetchResponse('hello preview'));
+
+    const { findByText, container } = render(FilePreviewWindow, {
       props: {
-        modelValue: true,
         file: mkFile({
           originalName: 'readme.txt',
           typeCategory: 'text',
           mimeType: 'text/plain',
+          fileUrl: '/uploads/readme.txt',
         }),
       },
     });
+
+    expect(await findByText('hello preview')).toBeTruthy();
     expect(container.querySelector('pre')).toBeTruthy();
   });
 
-  it('code 类型文件显示 pre 标签', () => {
-    const { container } = render(FilePreviewModal, {
+  it('pretty prints json text previews', async () => {
+    fetch.mockResolvedValue(createFetchResponse('{"foo":1}'));
+
+    const { container } = render(FilePreviewWindow, {
       props: {
-        modelValue: true,
         file: mkFile({
-          originalName: 'index.js',
-          typeCategory: 'code',
-          mimeType: 'text/javascript',
+          originalName: 'data.json',
+          typeCategory: 'text',
+          mimeType: 'application/json',
+          fileUrl: '/uploads/data.json',
         }),
       },
     });
-    expect(container.querySelector('pre')).toBeTruthy();
-  });
-});
 
-describe('FilePreviewModal — 不支持类型', () => {
-  it('未知文件类型显示不支持提示', () => {
-    const { getByText } = render(FilePreviewModal, {
-      props: {
-        modelValue: true,
-        file: mkFile({
-          originalName: 'unknown.xyz',
-          typeCategory: 'other',
-          mimeType: 'application/octet-stream',
-        }),
-      },
+    await waitFor(() => {
+      expect(container.querySelector('pre')?.textContent).toContain('"foo": 1');
     });
-    expect(getByText('暂不支持该类型预览')).toBeTruthy();
   });
-});
 
-describe('FilePreviewModal — 文件不存在', () => {
-  it('file 为 null 时不崩溃', () => {
-    expect(() =>
-      render(FilePreviewModal, {
-        props: { modelValue: true, file: null },
-      })
-    ).not.toThrow();
-  });
-});
-
-describe('FilePreviewModal — previewUrl 生成', () => {
-  it('fileUrl 以 / 开头时拼接服务器地址', () => {
-    const { container } = render(FilePreviewModal, {
+  it('supports snake_case file metadata', () => {
+    const { container, getByText } = render(FilePreviewWindow, {
       props: {
-        modelValue: true,
-        file: mkFile({
-          originalName: 'banner.jpg',
-          typeCategory: 'image',
-          mimeType: 'image/jpeg',
-          fileUrl: '/uploads/banner.jpg',
-        }),
-      },
-    });
-    const img = container.querySelector('img');
-    expect(img.src).toContain('/uploads/banner.jpg');
-  });
-
-  it('file 同时携带 file_url 字段时也能正确解析', () => {
-    const { container } = render(FilePreviewModal, {
-      props: {
-        modelValue: true,
         file: {
           id: 2,
           original_name: 'icon.svg',
@@ -248,6 +127,23 @@ describe('FilePreviewModal — previewUrl 生成', () => {
         },
       },
     });
+
+    expect(getByText('预览：icon.svg')).toBeTruthy();
     expect(container.querySelector('img')).toBeTruthy();
+  });
+
+  it('shows the fallback for unsupported file types', () => {
+    const { getByText } = render(FilePreviewWindow, {
+      props: {
+        file: mkFile({
+          originalName: 'unknown.xyz',
+          typeCategory: 'other',
+          mimeType: 'application/octet-stream',
+          fileUrl: '/uploads/unknown.xyz',
+        }),
+      },
+    });
+
+    expect(getByText('暂不支持该类型预览')).toBeTruthy();
   });
 });

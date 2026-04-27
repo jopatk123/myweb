@@ -12,6 +12,25 @@ import { resetWebSocketState } from '@/store/webSocketState.js';
 
 const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 
+function createMemoryStorage() {
+  const data = new Map();
+
+  return {
+    getItem(key) {
+      return data.has(String(key)) ? data.get(String(key)) : null;
+    },
+    setItem(key, value) {
+      data.set(String(key), String(value));
+    },
+    removeItem(key) {
+      data.delete(String(key));
+    },
+    clear() {
+      data.clear();
+    },
+  };
+}
+
 class MockWebSocket {
   static instances = [];
   static CONNECTING = 0;
@@ -58,6 +77,7 @@ describe('useWebSocket', () => {
   beforeEach(() => {
     MockWebSocket.instances = [];
     vi.stubGlobal('WebSocket', MockWebSocket);
+    vi.stubGlobal('localStorage', createMemoryStorage());
     resetSessionState();
     resetWebSocketState();
     localStorage.clear();
@@ -65,8 +85,8 @@ describe('useWebSocket', () => {
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
     localStorage.clear();
+    vi.unstubAllGlobals();
   });
 
   it('reuses a connecting socket and disconnects after the last consumer unmounts', async () => {

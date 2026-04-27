@@ -3,7 +3,7 @@
  * 负责管理动画的执行、状态和生命周期
  */
 
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, getCurrentScope, onScopeDispose } from 'vue';
 import { getAnimationConfig } from '@/constants/wallpaperAnimations.js';
 import { useWallpaperAnimationSelector } from './useWallpaperAnimationSelector.js';
 
@@ -183,10 +183,11 @@ export function useWallpaperAnimation(options = {}) {
     return animationState.value === AnimationState.IDLE;
   };
 
-  // 清理：组件卸载时清理定时器
-  onUnmounted(() => {
-    clearAnimationTimer();
-  });
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      clearAnimationTimer();
+    });
+  }
 
   return {
     // 状态

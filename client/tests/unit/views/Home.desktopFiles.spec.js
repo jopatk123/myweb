@@ -208,6 +208,7 @@ describe('Home desktop files filtering', () => {
       getItem: vi.fn(() => null),
       setItem: vi.fn(),
       removeItem: vi.fn(),
+      clear: vi.fn(),
     });
   });
 
