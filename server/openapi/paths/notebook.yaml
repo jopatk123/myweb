@@ -1,0 +1,130 @@
+list:
+  get:
+    summary: List notebook notes
+    description: List notebook notes with pagination and optional filters.
+    tags:
+      - Notebook
+    parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: category
+        schema:
+          type: string
+    responses:
+      '200':
+        description: OK
+  post:
+    summary: Create notebook note
+    description: Create a notebook note.
+    tags:
+      - Notebook
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - title
+            properties:
+              title:
+                type: string
+              description:
+                type: string
+                nullable: true
+              category:
+                type: string
+                nullable: true
+              priority:
+                type: string
+                enum:
+                  - low
+                  - medium
+                  - high
+              completed:
+                type: boolean
+    responses:
+      '201':
+        description: Created
+
+byId:
+  get:
+    summary: Get notebook note
+    description: Return one notebook note by id.
+    tags:
+      - Notebook
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: OK
+  put:
+    summary: Update notebook note
+    description: Update one notebook note by id.
+    tags:
+      - Notebook
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+              description:
+                type: string
+                nullable: true
+              category:
+                type: string
+                nullable: true
+              priority:
+                type: string
+                enum:
+                  - low
+                  - medium
+                  - high
+              completed:
+                type: boolean
+    responses:
+      '200':
+        description: Updated
+  delete:
+    summary: Delete notebook note
+    description: Delete one notebook note by id.
+    tags:
+      - Notebook
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Deleted

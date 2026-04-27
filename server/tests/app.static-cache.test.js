@@ -45,7 +45,7 @@ describe('uploads static caching', () => {
 
     if (expectedMaxAge > 0) {
       expect(response.headers['cache-control']).toBe(
-        `public, max-age=${expectedMaxAge}, immutable`
+        `private, max-age=${expectedMaxAge}, immutable`
       );
     } else {
       expect(response.headers['cache-control']).toBe('no-store');

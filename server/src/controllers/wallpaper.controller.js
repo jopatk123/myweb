@@ -84,7 +84,7 @@ export class WallpaperController {
       const result = await this.service.getWallpaperThumbnail(id, options);
       const { filePath, mimeType, etag, lastModified, size } = result;
 
-      const cacheControl = 'public, max-age=2592000, immutable';
+      const cacheControl = 'private, max-age=2592000, immutable';
       const ifNoneMatch = req.headers['if-none-match'];
 
       if (ifNoneMatch && ifNoneMatch.split(/,\s*/).includes(etag)) {

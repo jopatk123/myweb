@@ -1,0 +1,93 @@
+start:
+  post:
+    summary: Start work timer session
+    description: Start or resume a work timer session.
+    tags:
+      - Work Timer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - sessionId
+            properties:
+              sessionId:
+                type: string
+              startTime:
+                type: string
+                format: date-time
+                nullable: true
+              targetEndTime:
+                type: string
+                format: date-time
+                nullable: true
+    responses:
+      '200':
+        description: OK
+
+heartbeat:
+  post:
+    summary: Persist timer heartbeat
+    description: Persist elapsed time for an active work timer session.
+    tags:
+      - Work Timer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - sessionId
+            properties:
+              sessionId:
+                type: string
+              incrementMs:
+                type: integer
+              lastUpdate:
+                type: string
+                format: date-time
+                nullable: true
+    responses:
+      '200':
+        description: OK
+
+stop:
+  post:
+    summary: Stop work timer session
+    description: Stop an active work timer session and persist final totals.
+    tags:
+      - Work Timer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - sessionId
+            properties:
+              sessionId:
+                type: string
+              endTime:
+                type: string
+                format: date-time
+                nullable: true
+              finalIncrementMs:
+                type: integer
+                nullable: true
+    responses:
+      '200':
+        description: OK
+
+stats:
+  get:
+    summary: Get work timer statistics
+    description: Return aggregated work timer totals.
+    tags:
+      - Work Timer
+    responses:
+      '200':
+        description: OK

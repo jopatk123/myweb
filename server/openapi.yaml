@@ -10,8 +10,14 @@ tags:
     description: Application registry endpoints.
   - name: Files
     description: File upload endpoints.
+  - name: Messages
+    description: Message board and per-session preference endpoints.
+  - name: Notebook
+    description: Notebook note CRUD endpoints.
   - name: Wallpapers
     description: Wallpaper and group management endpoints.
+  - name: Work Timer
+    description: Work timer session and statistics endpoints.
 servers:
   # 请根据部署环境替换为实际后端地址和端口，例如: http://localhost:${BACKEND_PORT:-3000}
   - url: http://localhost:3000
@@ -123,3 +129,36 @@ paths:
 
   /api/files/{id}/download:
     $ref: './openapi/paths/files.yaml#/download'
+
+  /api/notebook:
+    $ref: './openapi/paths/notebook.yaml#/list'
+
+  /api/notebook/{id}:
+    $ref: './openapi/paths/notebook.yaml#/byId'
+
+  /api/work-timer/start:
+    $ref: './openapi/paths/worktimer.yaml#/start'
+
+  /api/work-timer/heartbeat:
+    $ref: './openapi/paths/worktimer.yaml#/heartbeat'
+
+  /api/work-timer/stop:
+    $ref: './openapi/paths/worktimer.yaml#/stop'
+
+  /api/work-timer/stats:
+    $ref: './openapi/paths/worktimer.yaml#/stats'
+
+  /api/messages:
+    $ref: './openapi/paths/messages.yaml#/list'
+
+  /api/messages/user-settings:
+    $ref: './openapi/paths/messages.yaml#/userSettings'
+
+  /api/messages/upload-image:
+    $ref: './openapi/paths/messages.yaml#/uploadImage'
+
+  /api/messages/clear-all:
+    $ref: './openapi/paths/messages.yaml#/clearAll'
+
+  /api/messages/{id}:
+    $ref: './openapi/paths/messages.yaml#/byId'

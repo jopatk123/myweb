@@ -1,0 +1,172 @@
+list:
+  get:
+    summary: List messages
+    description: List message board entries with pagination and optional search.
+    tags:
+      - Messages
+    parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+    responses:
+      '200':
+        description: OK
+  post:
+    summary: Send message
+    description: Create a new message board entry.
+    tags:
+      - Messages
+    parameters:
+      - in: header
+        name: X-Session-Id
+        required: false
+        schema:
+          type: string
+        description: Optional client session id used to associate user settings.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              content:
+                type: string
+                nullable: true
+              authorName:
+                type: string
+                nullable: true
+              authorColor:
+                type: string
+                nullable: true
+              imageType:
+                type: string
+                nullable: true
+              images:
+                type: array
+                items:
+                  type: object
+    responses:
+      '200':
+        description: OK
+
+userSettings:
+  get:
+    summary: Get message board user settings
+    description: Get per-session nickname, avatar color, and auto-open preference.
+    tags:
+      - Messages
+    parameters:
+      - in: header
+        name: X-Session-Id
+        required: false
+        schema:
+          type: string
+    responses:
+      '200':
+        description: OK
+  put:
+    summary: Update message board user settings
+    description: Update per-session nickname, avatar color, and auto-open preference.
+    tags:
+      - Messages
+    parameters:
+      - in: header
+        name: X-Session-Id
+        required: false
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              nickname:
+                type: string
+                nullable: true
+              avatarColor:
+                type: string
+                nullable: true
+              autoOpenEnabled:
+                type: boolean
+    responses:
+      '200':
+        description: Updated
+
+uploadImage:
+  post:
+    summary: Upload message images
+    description: Upload one or more images for a message board entry.
+    tags:
+      - Messages
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              images:
+                type: array
+                items:
+                  type: string
+                  format: binary
+    responses:
+      '200':
+        description: Uploaded
+
+clearAll:
+  delete:
+    summary: Clear all messages
+    description: Delete all message board entries.
+    tags:
+      - Messages
+    security:
+      - appSession: []
+        adminToken: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - confirm
+            properties:
+              confirm:
+                type: boolean
+                enum:
+                  - true
+    responses:
+      '200':
+        description: Deleted
+
+byId:
+  delete:
+    summary: Delete message
+    description: Delete a single message board entry.
+    tags:
+      - Messages
+    security:
+      - appSession: []
+        adminToken: []
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Deleted

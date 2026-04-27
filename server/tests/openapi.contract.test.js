@@ -15,19 +15,33 @@ describe('OpenAPI contract coverage', () => {
   let wallpapersSpec;
   let filesSpec;
   let authSpec;
+  let notebookSpec;
+  let worktimerSpec;
+  let messagesSpec;
 
   beforeAll(async () => {
-    [rootSpec, appsSpec, wallpapersSpec, filesSpec, authSpec] =
-      await Promise.all([
-        read('openapi.yaml'),
-        read('openapi/paths/apps.yaml'),
-        read('openapi/paths/wallpapers.yaml'),
-        read('openapi/paths/files.yaml'),
-        read('openapi/paths/auth.yaml'),
-      ]);
+    [
+      rootSpec,
+      appsSpec,
+      wallpapersSpec,
+      filesSpec,
+      authSpec,
+      notebookSpec,
+      worktimerSpec,
+      messagesSpec,
+    ] = await Promise.all([
+      read('openapi.yaml'),
+      read('openapi/paths/apps.yaml'),
+      read('openapi/paths/wallpapers.yaml'),
+      read('openapi/paths/files.yaml'),
+      read('openapi/paths/auth.yaml'),
+      read('openapi/paths/notebook.yaml'),
+      read('openapi/paths/worktimer.yaml'),
+      read('openapi/paths/messages.yaml'),
+    ]);
   });
 
-  test('documents the implemented auth, app, wallpaper, and file routes', () => {
+  test('documents the implemented auth, app, wallpaper, file, notebook, work-timer, and message routes', () => {
     const expectedPaths = [
       '/api/auth/verify',
       '/api/auth/status',
@@ -59,6 +73,17 @@ describe('OpenAPI contract coverage', () => {
       '/api/files/upload',
       '/api/files/{id}',
       '/api/files/{id}/download',
+      '/api/notebook',
+      '/api/notebook/{id}',
+      '/api/work-timer/start',
+      '/api/work-timer/heartbeat',
+      '/api/work-timer/stop',
+      '/api/work-timer/stats',
+      '/api/messages',
+      '/api/messages/user-settings',
+      '/api/messages/upload-image',
+      '/api/messages/clear-all',
+      '/api/messages/{id}',
     ];
 
     expectedPaths.forEach(specPath => {
@@ -95,5 +120,15 @@ describe('OpenAPI contract coverage', () => {
     expect(filesSpec).toContain('list:');
     expect(filesSpec).toContain('byId:');
     expect(filesSpec).toContain('download:');
+    expect(notebookSpec).toContain('list:');
+    expect(notebookSpec).toContain('byId:');
+    expect(worktimerSpec).toContain('start:');
+    expect(worktimerSpec).toContain('heartbeat:');
+    expect(worktimerSpec).toContain('stop:');
+    expect(worktimerSpec).toContain('stats:');
+    expect(messagesSpec).toContain('userSettings:');
+    expect(messagesSpec).toContain('uploadImage:');
+    expect(messagesSpec).toContain('clearAll:');
+    expect(messagesSpec).toContain('byId:');
   });
 });

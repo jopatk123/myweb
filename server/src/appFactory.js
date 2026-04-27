@@ -30,6 +30,27 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function buildContentSecurityPolicy(enableHttpsSecurity) {
+  const connectOrigins = new Set(["'self'", 'ws:', 'wss:']);
+  const configuredApiBases = [
+    process.env.DEPLOY_VITE_API_BASE,
+    process.env.VITE_API_BASE,
+  ];
+
+  configuredApiBases.forEach(rawBase => {
+    const value = String(rawBase || '').trim();
+    if (!/^https?:\/\//i.test(value)) return;
+
+    try {
+      const url = new URL(value);
+      connectOrigins.add(`${url.protocol}//${url.host}`);
+      connectOrigins.add(
+        `${url.protocol === 'https:' ? 'wss:' : 'ws:'}//${url.host}`
+      );
+    } catch {
+      // Ignore malformed optional API base overrides.
+    }
+  });
+
   const directives = {
     defaultSrc: ["'self'"],
     // 'unsafe-inline' 仅保留给样式（CSS-in-JS 常规需求）；脚本侧不允许内联
@@ -38,7 +59,7 @@ function buildContentSecurityPolicy(enableHttpsSecurity) {
     scriptSrc: ["'self'"],
     imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
     fontSrc: ["'self'", 'https:', 'data:'],
-    connectSrc: ["'self'", 'ws:', 'wss:'],
+    connectSrc: [...connectOrigins],
     objectSrc: ["'none'"],
     mediaSrc: ["'self'", 'blob:'],
     frameSrc: ["'none'"],
@@ -145,7 +166,7 @@ export async function createApp(options = {}) {
         if (uploadsCacheSeconds > 0) {
           res.setHeader(
             'Cache-Control',
-            `public, max-age=${uploadsCacheSeconds}, immutable`
+            `private, max-age=${uploadsCacheSeconds}, immutable`
           );
         } else {
           res.setHeader('Cache-Control', 'no-store');
