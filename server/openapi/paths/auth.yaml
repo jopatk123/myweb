@@ -1,0 +1,47 @@
+verify:
+  post:
+    summary: Verify access password
+    description: Validate the application access password and issue the app session cookie.
+    tags:
+      - Auth
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              password:
+                type: string
+            required:
+              - password
+    responses:
+      '200':
+        description: Verified
+      '401':
+        description: Invalid password
+      '429':
+        description: Too many attempts
+
+status:
+  get:
+    summary: Get access verification status
+    description: Return whether access verification is required and whether the current request is authenticated.
+    tags:
+      - Auth
+    security: []
+    responses:
+      '200':
+        description: Status returned
+
+logout:
+  post:
+    summary: Clear access verification session
+    description: Remove the current application access session cookie.
+    tags:
+      - Auth
+    security: []
+    responses:
+      '200':
+        description: Logged out

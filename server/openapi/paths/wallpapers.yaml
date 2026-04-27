@@ -23,14 +23,32 @@ list:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                code:
-                  type: integer
-                data:
-                  type: array
-                  items:
-                    $ref: '../components/schemas/wallpaper.yaml#/Wallpaper'
+              oneOf:
+                - type: object
+                  properties:
+                    code:
+                      type: integer
+                    data:
+                      type: array
+                      items:
+                        $ref: '../components/schemas/wallpaper.yaml#/Wallpaper'
+                - type: object
+                  properties:
+                    code:
+                      type: integer
+                    data:
+                      type: object
+                      properties:
+                        items:
+                          type: array
+                          items:
+                            $ref: '../components/schemas/wallpaper.yaml#/Wallpaper'
+                        total:
+                          type: integer
+                        page:
+                          type: integer
+                        limit:
+                          type: integer
   post:
     summary: Upload wallpaper (multipart/form-data)
     description: Upload a wallpaper image and optionally assign it to a group.
@@ -53,6 +71,27 @@ list:
     responses:
       '201':
         description: Created
+  delete:
+    summary: Delete multiple wallpapers
+    description: Delete multiple wallpapers by id.
+    tags:
+      - Wallpapers
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ids:
+                type: array
+                items:
+                  type: integer
+            required:
+              - ids
+    responses:
+      '200':
+        description: Deleted
 active:
   get:
     summary: Get active wallpaper
@@ -84,6 +123,35 @@ random:
           application/json:
             schema:
               $ref: '../components/schemas/wallpaper.yaml#/ResponseWallpaper'
+thumbnail:
+  get:
+    summary: Get wallpaper thumbnail
+    description: Generate or return a cached thumbnail for one wallpaper.
+    tags:
+      - Wallpapers
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+      - in: query
+        name: w
+        schema:
+          type: integer
+      - in: query
+        name: h
+        schema:
+          type: integer
+      - in: query
+        name: format
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Thumbnail stream
+      '304':
+        description: Not modified
 byId:
   get:
     summary: Get wallpaper by id
@@ -160,10 +228,10 @@ move:
     responses:
       '200':
         description: OK
-batchDelete:
-  delete:
-    summary: Delete multiple wallpapers
-    description: Delete multiple wallpapers by id.
+download:
+  post:
+    summary: Download one or more wallpapers
+    description: Download one wallpaper directly or multiple wallpapers as a ZIP archive.
     tags:
       - Wallpapers
     requestBody:
@@ -177,18 +245,37 @@ batchDelete:
                 type: array
                 items:
                   type: integer
+            required:
+              - ids
     responses:
       '200':
-        description: OK
-groups:
+        description: File or ZIP stream
+
+activeById:
+  put:
+    summary: Set active wallpaper
+    description: Mark one wallpaper as the active wallpaper.
+    tags:
+      - Wallpapers
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Updated
+groupsAll:
   get:
-    summary: List groups
-    description: List wallpaper groups.
+    summary: List wallpaper groups
+    description: Return all wallpaper groups.
     tags:
       - Wallpapers
     responses:
       '200':
         description: OK
+groups:
   post:
     summary: Create group
     description: Create a wallpaper group.

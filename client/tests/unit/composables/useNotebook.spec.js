@@ -152,6 +152,39 @@ describe('useNotebook', () => {
     });
   });
 
+  it('keeps server mode on API validation errors and avoids local divergence', async () => {
+    const apiError = new Error('标题不能为空');
+    apiError.name = 'ApiError';
+    apiError.payload = { code: 400, message: '标题不能为空' };
+    notebookApiMock.create.mockRejectedValue(apiError);
+
+    const state = await createState();
+    const saved = await state.saveNote({
+      title: '',
+      description: '无效请求',
+      priority: 'medium',
+    });
+
+    expect(saved).toBe(false);
+    expect(state.serverReady.value).toBe(true);
+    expect(state.error.value).toBe('标题不能为空');
+    expect(state.notes.value).toEqual([]);
+  });
+
+  it('returns false from quickAddNote when the server rejects the payload', async () => {
+    const apiError = new Error('标题不能为空');
+    apiError.name = 'ApiError';
+    apiError.payload = { code: 400, message: '标题不能为空' };
+    notebookApiMock.create.mockRejectedValue(apiError);
+
+    const state = await createState();
+    const ok = await state.quickAddNote('   !   ');
+
+    expect(ok).toBe(false);
+    expect(state.serverReady.value).toBe(true);
+    expect(state.error.value).toBe('标题不能为空');
+  });
+
   it('parses quick add syntax into title, description and priority', async () => {
     notebookApiMock.create.mockResolvedValue({
       code: 201,

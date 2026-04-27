@@ -1,9 +1,26 @@
 list:
   get:
     summary: List apps
-    description: Return all installed apps.
+    description: Return installed apps. When pagination parameters are supplied, the response is a paginated object.
     tags:
       - Apps
+    parameters:
+      - in: query
+        name: groupId
+        schema:
+          type: integer
+      - in: query
+        name: visible
+        schema:
+          type: boolean
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: limit
+        schema:
+          type: integer
     responses:
       '200':
         description: OK
@@ -58,6 +75,209 @@ byId:
   delete:
     summary: Delete app
     description: Delete an app by numeric id.
+    tags:
+      - Apps
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Deleted
+
+visibleById:
+  put:
+    summary: Set app visibility
+    description: Update the visible state for one app.
+    tags:
+      - Apps
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              visible:
+                type: boolean
+            required:
+              - visible
+    responses:
+      '200':
+        description: Updated
+
+autostartById:
+  put:
+    summary: Set app autostart
+    description: Update the autostart state for one app by numeric id or slug.
+    tags:
+      - Apps
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              isAutostart:
+                type: boolean
+            required:
+              - isAutostart
+    responses:
+      '200':
+        description: Updated
+
+bulkVisible:
+  put:
+    summary: Update visibility for multiple apps
+    description: Set the visible state for multiple apps in one request.
+    tags:
+      - Apps
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ids:
+                type: array
+                items:
+                  type: integer
+              visible:
+                type: boolean
+            required:
+              - ids
+              - visible
+    responses:
+      '200':
+        description: Updated
+
+move:
+  put:
+    summary: Move apps to a group
+    description: Move multiple apps to a target group.
+    tags:
+      - Apps
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              ids:
+                type: array
+                items:
+                  type: integer
+              targetGroupId:
+                oneOf:
+                  - type: integer
+                  - type: 'null'
+            required:
+              - ids
+              - targetGroupId
+    responses:
+      '200':
+        description: Updated
+
+iconUpload:
+  post:
+    summary: Upload custom app icon
+    description: Upload one custom icon file for app creation or editing.
+    tags:
+      - Apps
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              file:
+                type: string
+                format: binary
+            required:
+              - file
+    responses:
+      '201':
+        description: Created
+
+groupsAll:
+  get:
+    summary: List app groups
+    description: Return all app groups.
+    tags:
+      - Apps
+    responses:
+      '200':
+        description: OK
+
+groups:
+  post:
+    summary: Create app group
+    description: Create a new app group.
+    tags:
+      - Apps
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              isDefault:
+                type: boolean
+            required:
+              - name
+    responses:
+      '201':
+        description: Created
+
+groupById:
+  put:
+    summary: Update app group
+    description: Update an app group by id.
+    tags:
+      - Apps
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              isDefault:
+                type: boolean
+    responses:
+      '200':
+        description: Updated
+  delete:
+    summary: Delete app group
+    description: Delete an app group by id.
     tags:
       - Apps
     parameters:

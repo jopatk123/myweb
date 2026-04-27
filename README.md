@@ -11,23 +11,31 @@
 ## 快速上手
 
 1. **准备**
+
    ```bash
    git clone https://github.com/jopatk123/myweb.git
    cd myweb
    npm install
    cp .env.example .env
    ```
+
 2. **启动开发环境（前后端并行）**
+
    ```bash
    npm run dev
    ```
+
    前端默认在 5173，Vite 会代理 `/api` 和 `/ws` 到后端。
+
 3. **单独调试**
+
    ```bash
    npm run dev:client    # 仅前端
    npm run dev:server    # 仅后端
    ```
+
 4. **生产构建与运行**
+
    ```bash
    npm run build
    npm start
@@ -37,7 +45,7 @@
 
 - 前端启动后会先进入访问验证界面，输入正确密码后才能进入页面。
 - 访问密码由 `APP_PASSWORD` 控制；开发环境可留空以免密访问，生产环境必须显式配置。
-- 验证通过后会写入本地存储，有效期 30 天，到期后需再次输入密码。
+- 验证通过后后端会写入 `HttpOnly` 访问 cookie，默认有效期 30 天，到期后需再次输入密码。
 
 ## 目录概览
 
@@ -47,15 +55,13 @@
 
 ## 重点脚本
 
-| 命令                                                  | 作用                       |
-| ----------------------------------------------------- | -------------------------- |
-| `npm run dev`                                         | 并行前后端开发服务         |
-| `npm run dev:client`, `npm run dev:server`            | 分别启动前端/后端          |
-| `npm run build`, `npm start`                          | 构建并运行生产后端         |
-| `npm run lint`, `npm run lint:fix`, `npm run format`  | ESLint 检查/修复/格式化    |
-| `npm test -w client`, `npm test -w server`            | Vitest/Jest 单元测试       |
-| `npm run contract-test`                               | 检查 `server/openapi.yaml` |
-| `npm run migrate -w server`, `npm run seed -w server` | 数据库迁移与初始化         |
+- `npm run dev`：并行前后端开发服务。
+- `npm run dev:client`, `npm run dev:server`：分别启动前端/后端。
+- `npm run build`, `npm start`：构建并运行生产后端。
+- `npm run lint`, `npm run lint:fix`, `npm run format`：ESLint 检查、修复和格式化。
+- `npm test -w client`, `npm test -w server`：Vitest/Jest 单元测试。
+- `npm run contract-test`：校验 `server/openapi.yaml` 并检查关键路由契约覆盖。
+- `npm run migrate -w server`, `npm run seed -w server`：数据库迁移与初始化。
 
 ## 部署与容器
 
@@ -86,7 +92,7 @@
 ## 测试与验证
 
 - `npm test -w client` / `npm test -w server`，可加 `test:cov` 查看覆盖率。
-- `npm run contract-test` 验证 OpenAPI，报告写入 `contract-report.json`。
+- `npm run contract-test` 先执行 Spectral 校验，再跑一组关键路由契约测试；Spectral 报告写入 `contract-report.json`。
 
 ---
 

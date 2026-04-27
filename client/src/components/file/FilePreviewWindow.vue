@@ -9,11 +9,13 @@
       <div class="content">
         <img v-if="isImage" :src="previewUrl" class="media" />
         <video v-else-if="isVideo" :src="previewUrl" class="media" controls />
-        <div v-else-if="isWord || isExcel" class="doc-wrap">
-          <div v-if="loading" class="loading">正在生成预览...</div>
+        <div v-else-if="isWord || isExcel || isMarkdown" class="doc-wrap">
+          <div v-if="loading" class="loading">
+            {{ isMarkdown ? '正在解析 Markdown...' : '正在生成预览...' }}
+          </div>
           <div
             v-else-if="previewHtml"
-            class="doc-html"
+            :class="isMarkdown ? 'markdown-preview' : 'doc-html'"
             v-html="previewHtml"
           ></div>
           <div v-else class="fallback">
@@ -38,7 +40,7 @@
 
 <script setup>
   import { computed, ref, watch } from 'vue';
-  import { buildServerUrl } from '@/api/httpClient';
+  import { buildServerUrl } from '@/api/httpClient.js';
 
   const props = defineProps({
     file: { type: Object, default: null },
@@ -88,7 +90,13 @@
       ) ||
       /\.(xlsx?|xlsm|xlsb)$/i.test(nameOrPath.value)
   );
+  const isMarkdown = computed(
+    () =>
+      mime.value.toLowerCase() === 'text/markdown' ||
+      /\.(md|markdown)$/i.test(nameOrPath.value)
+  );
   const isText = computed(() => {
+    if (isMarkdown.value) return false;
     if (typeCat.value === 'text' || typeCat.value === 'code') return true;
     if (mime.value.toLowerCase().startsWith('text/')) return true;
     if (/application\/json/i.test(mime.value)) return true;
@@ -150,6 +158,11 @@
         const rawHtml = XLSX.utils.sheet_to_html(sheet);
         const DOMPurify = (await import('dompurify')).default;
         previewHtml.value = DOMPurify.sanitize(rawHtml);
+      } else if (isMarkdown.value) {
+        const rawText = await fetchText(url);
+        const { marked } = await import('marked');
+        const DOMPurify = (await import('dompurify')).default;
+        previewHtml.value = DOMPurify.sanitize(marked.parse(rawText));
       } else if (isText.value) {
         const rawText = await fetchText(url);
         if (
@@ -177,7 +190,7 @@
   watch(
     () => props.file,
     () => {
-      if (isWord.value || isExcel.value || isText.value)
+      if (isWord.value || isExcel.value || isMarkdown.value || isText.value)
         generatePreview().catch(e =>
           console.warn('[FilePreviewWindow] 预览生成失败，已降级', e)
         );
@@ -254,5 +267,55 @@
     border-radius: 6px;
     padding: 6px 10px;
     text-decoration: none;
+  }
+  .markdown-preview {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: #fff;
+    color: #111827;
+    padding: 20px;
+    border-radius: 8px;
+    line-height: 1.7;
+  }
+  .markdown-preview :deep(h1),
+  .markdown-preview :deep(h2),
+  .markdown-preview :deep(h3),
+  .markdown-preview :deep(h4),
+  .markdown-preview :deep(h5),
+  .markdown-preview :deep(h6) {
+    color: #0f172a;
+    margin: 1.2em 0 0.6em;
+    line-height: 1.25;
+  }
+  .markdown-preview :deep(p) {
+    margin: 0 0 1em;
+  }
+  .markdown-preview :deep(code) {
+    background: #e5e7eb;
+    border-radius: 4px;
+    padding: 0.15em 0.35em;
+    font-size: 0.95em;
+  }
+  .markdown-preview :deep(pre) {
+    background: #0f172a;
+    color: #e5e7eb;
+    padding: 14px 16px;
+    border-radius: 8px;
+    overflow: auto;
+  }
+  .markdown-preview :deep(pre code) {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+  }
+  .markdown-preview :deep(a) {
+    color: #2563eb;
+  }
+  .markdown-preview :deep(blockquote) {
+    margin: 0 0 1em;
+    padding-left: 12px;
+    border-left: 4px solid #cbd5e1;
+    color: #475569;
   }
 </style>

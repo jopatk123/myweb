@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { openFilePreviewWindow } from '@/utils/openFilePreview.js';
 
 /**
@@ -10,8 +10,6 @@ export function useDesktopFileActions({ getDownloadUrl } = {}) {
   const selectedFileName = ref('');
   const selectedDownloadUrl = ref('');
   const selectedFile = ref(null);
-  const showPreview = ref(false);
-  const previewFile = ref(null);
 
   function resetConfirmState() {
     selectedFileName.value = '';
@@ -44,24 +42,22 @@ export function useDesktopFileActions({ getDownloadUrl } = {}) {
     openFilePreviewWindow(file);
   }
 
-  function closePreview() {
-    showPreview.value = false;
-    previewFile.value = null;
-  }
-
-  watch(showPreview, value => {
-    if (!value) previewFile.value = null;
-  });
-
   const canPreviewSelected = computed(() => {
     const file = selectedFile.value || {};
     const typeCategory = String(file.typeCategory || file.type_category || '')
+      .toLowerCase()
+      .trim();
+    const mimeType = String(file.mimeType || file.mime_type || '')
       .toLowerCase()
       .trim();
 
     if (
       ['image', 'video', 'word', 'excel', 'text', 'code'].includes(typeCategory)
     ) {
+      return true;
+    }
+
+    if (mimeType === 'text/markdown') {
       return true;
     }
 
@@ -75,7 +71,7 @@ export function useDesktopFileActions({ getDownloadUrl } = {}) {
         ''
     );
 
-    return /\.(png|jpe?g|gif|bmp|webp|svg|avif|mp4|webm|ogg|ogv|mov|mkv|docx?|xlsx?|xlsm|xlsb|txt|json)$/i.test(
+    return /\.(png|jpe?g|gif|bmp|webp|svg|avif|mp4|webm|ogg|ogv|mov|mkv|docx?|xlsx?|xlsm|xlsb|txt|json|md|markdown)$/i.test(
       name
     );
   });
@@ -85,12 +81,9 @@ export function useDesktopFileActions({ getDownloadUrl } = {}) {
     selectedFileName,
     selectedDownloadUrl,
     selectedFile,
-    showPreview,
-    previewFile,
     canPreviewSelected,
     openFile,
     handlePreviewFromConfirm,
-    closePreview,
     resetConfirmState,
   };
 }

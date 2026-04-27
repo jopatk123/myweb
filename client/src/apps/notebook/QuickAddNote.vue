@@ -13,7 +13,7 @@
       v-if="quickAddText.trim() || quickAddFocused"
       class="quick-add-btn"
       @click="handleQuickAdd"
-      :disabled="!quickAddText.trim()"
+      :disabled="!quickAddText.trim() || submitting"
     >
       ➕
     </button>
@@ -32,12 +32,22 @@
 
   const quickAddText = ref('');
   const quickAddFocused = ref(false);
+  const submitting = ref(false);
 
-  function handleQuickAdd() {
+  async function handleQuickAdd() {
     const text = quickAddText.value.trim();
-    if (text) {
-      props.onQuickAdd(text);
-      quickAddText.value = '';
+    if (!text || submitting.value) {
+      return;
+    }
+
+    try {
+      submitting.value = true;
+      const saved = await props.onQuickAdd(text);
+      if (saved !== false) {
+        quickAddText.value = '';
+      }
+    } finally {
+      submitting.value = false;
     }
   }
 </script>

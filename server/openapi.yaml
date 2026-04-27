@@ -4,6 +4,8 @@ info:
   version: 1.0.0
   description: MyWeb backend API contract for apps, wallpapers, files, and auth flows.
 tags:
+  - name: Auth
+    description: Application access verification endpoints.
   - name: Apps
     description: Application registry endpoints.
   - name: Files
@@ -13,7 +15,34 @@ tags:
 servers:
   # 请根据部署环境替换为实际后端地址和端口，例如: http://localhost:${BACKEND_PORT:-3000}
   - url: http://localhost:3000
+components:
+  securitySchemes:
+    appSession:
+      type: apiKey
+      in: cookie
+      name: myweb_auth
+      description: |
+        访问受保护接口所需的应用访问会话 cookie。
+        通过 POST /api/auth/verify 验证密码后由服务端写入。
+    adminToken:
+      type: apiKey
+      in: header
+      name: X-Admin-Token
+      description: |
+        管理员接口所需的额外令牌。
+        适用于文件上传/删除等高权限操作。
+security:
+  - appSession: []
 paths:
+  /api/auth/verify:
+    $ref: './openapi/paths/auth.yaml#/verify'
+
+  /api/auth/status:
+    $ref: './openapi/paths/auth.yaml#/status'
+
+  /api/auth/logout:
+    $ref: './openapi/paths/auth.yaml#/logout'
+
   /api/wallpapers:
     $ref: './openapi/paths/wallpapers.yaml#/list'
 
@@ -23,14 +52,23 @@ paths:
   /api/wallpapers/random:
     $ref: './openapi/paths/wallpapers.yaml#/random'
 
+  /api/wallpapers/{id}/thumbnail:
+    $ref: './openapi/paths/wallpapers.yaml#/thumbnail'
+
   /api/wallpapers/{id}:
     $ref: './openapi/paths/wallpapers.yaml#/byId'
 
   /api/wallpapers/move:
     $ref: './openapi/paths/wallpapers.yaml#/move'
 
-  /api/wallpapers/batch-delete:
-    $ref: './openapi/paths/wallpapers.yaml#/batchDelete'
+  /api/wallpapers/download:
+    $ref: './openapi/paths/wallpapers.yaml#/download'
+
+  /api/wallpapers/{id}/active:
+    $ref: './openapi/paths/wallpapers.yaml#/activeById'
+
+  /api/wallpapers/groups/all:
+    $ref: './openapi/paths/wallpapers.yaml#/groupsAll'
 
   /api/wallpapers/groups:
     $ref: './openapi/paths/wallpapers.yaml#/groups'
@@ -50,5 +88,38 @@ paths:
   /api/apps/{id}:
     $ref: './openapi/paths/apps.yaml#/byId'
 
+  /api/apps/{id}/visible:
+    $ref: './openapi/paths/apps.yaml#/visibleById'
+
+  /api/apps/{id}/autostart:
+    $ref: './openapi/paths/apps.yaml#/autostartById'
+
+  /api/apps/bulk/visible:
+    $ref: './openapi/paths/apps.yaml#/bulkVisible'
+
+  /api/apps/move:
+    $ref: './openapi/paths/apps.yaml#/move'
+
+  /api/apps/icons/upload:
+    $ref: './openapi/paths/apps.yaml#/iconUpload'
+
+  /api/apps/groups/all:
+    $ref: './openapi/paths/apps.yaml#/groupsAll'
+
+  /api/apps/groups:
+    $ref: './openapi/paths/apps.yaml#/groups'
+
+  /api/apps/groups/{id}:
+    $ref: './openapi/paths/apps.yaml#/groupById'
+
+  /api/files:
+    $ref: './openapi/paths/files.yaml#/list'
+
   /api/files/upload:
     $ref: './openapi/paths/files.yaml#/upload'
+
+  /api/files/{id}:
+    $ref: './openapi/paths/files.yaml#/byId'
+
+  /api/files/{id}/download:
+    $ref: './openapi/paths/files.yaml#/download'

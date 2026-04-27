@@ -93,8 +93,6 @@ vi.mock('@/composables/useDesktopFileActions.js', () => ({
     selectedFileName: ref(''),
     selectedDownloadUrl: ref(''),
     selectedFile: ref(null),
-    showPreview: ref(false),
-    previewFile: ref(null),
     canPreviewSelected: ref(false),
     openFile: vi.fn(),
     handlePreviewFromConfirm: vi.fn(),
@@ -177,16 +175,6 @@ vi.mock('@/components/file/ConfirmDownloadModal.vue', () => ({
   }),
 }));
 
-vi.mock('@/components/file/FilePreviewModal.vue', () => ({
-  default: defineComponent({
-    name: 'FilePreviewModalStub',
-    props: {
-      modelValue: { type: Boolean, default: false },
-    },
-    setup: () => () => h('div', { class: 'file-preview-modal-stub' }),
-  }),
-}));
-
 vi.mock('@/components/common/ContextMenu.vue', () => ({
   default: defineComponent({
     name: 'ContextMenuStub',
@@ -216,6 +204,11 @@ import Home from '@/views/Home.vue';
 describe('Home desktop files filtering', () => {
   beforeEach(() => {
     filesRef.value = [];
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
   });
 
   it('shows all files on desktop listing', async () => {

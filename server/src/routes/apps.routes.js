@@ -49,9 +49,6 @@ export function createAppRoutes(db) {
   router.put('/:id/autostart', (req, res, next) =>
     controller.setAutostart(req, res, next)
   );
-  router.put('/:id(\\d+)/autostart', (req, res, next) =>
-    controller.setAutostart(req, res, next)
-  );
   router.put('/bulk/visible', (req, res, next) =>
     controller.bulkVisible(req, res, next)
   );

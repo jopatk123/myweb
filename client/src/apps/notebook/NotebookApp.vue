@@ -116,7 +116,11 @@
   }
 
   async function handleSaveNote(noteData) {
-    await saveNote(noteData, editingNote.value);
+    const saved = await saveNote(noteData, editingNote.value);
+    if (!saved) {
+      return;
+    }
+
     showAddForm.value = false;
     editingNote.value = null;
   }
@@ -140,7 +144,7 @@
   }
 
   async function handleQuickAdd(text) {
-    await quickAddNote(text);
+    return await quickAddNote(text);
   }
 
   onMounted(() => {

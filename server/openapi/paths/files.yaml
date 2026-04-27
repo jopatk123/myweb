@@ -1,9 +1,39 @@
+list:
+  get:
+    summary: List files
+    description: List uploaded files with pagination and optional filtering.
+    tags:
+      - Files
+    parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: type
+        schema:
+          type: string
+      - in: query
+        name: search
+        schema:
+          type: string
+    responses:
+      '200':
+        description: OK
+
 upload:
   post:
     summary: Upload files
     description: Upload one or more files in multipart form.
     tags:
       - Files
+    security:
+      - appSession: []
+        adminToken: []
     requestBody:
       required: true
       content:
@@ -19,3 +49,52 @@ upload:
     responses:
       '201':
         description: Created
+
+byId:
+  get:
+    summary: Get file details
+    description: Return metadata for one uploaded file.
+    tags:
+      - Files
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: OK
+  delete:
+    summary: Delete file
+    description: Delete one uploaded file.
+    tags:
+      - Files
+    security:
+      - appSession: []
+        adminToken: []
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: Deleted
+
+download:
+  get:
+    summary: Download file
+    description: Download the original uploaded file.
+    tags:
+      - Files
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: File stream

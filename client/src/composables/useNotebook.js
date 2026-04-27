@@ -85,6 +85,20 @@ export function useNotebook() {
     saveToStorage();
   }
 
+  function isApiResponseError(requestError) {
+    return requestError?.name === 'ApiError' || !!requestError?.payload;
+  }
+
+  function shouldFallbackToLocal(requestError) {
+    return !isApiResponseError(requestError);
+  }
+
+  function resolveRequestErrorMessage(requestError, fallbackMessage) {
+    return (
+      requestError?.payload?.message || requestError?.message || fallbackMessage
+    );
+  }
+
   function upsertLocalNote(noteData, editingNote = null) {
     if (editingNote) {
       const index = notes.value.findIndex(note => note.id === editingNote.id);
@@ -121,14 +135,20 @@ export function useNotebook() {
       notes.value = items.map(normalizeNote);
       persistLocalMirror();
       serverReady.value = true;
+      return true;
     } catch (requestError) {
-      console.warn(
-        '加载服务器笔记失败，回退本地：',
-        requestError?.message || requestError
-      );
+      const message = resolveRequestErrorMessage(requestError, '加载失败');
+      if (!shouldFallbackToLocal(requestError)) {
+        console.warn('加载服务器笔记被拒绝：', message);
+        error.value = message;
+        return false;
+      }
+
+      console.warn('加载服务器笔记失败，回退本地：', message);
       serverReady.value = false;
       error.value = '服务器暂不可用，已切换到本地笔记';
       loadFromStorage();
+      return true;
     } finally {
       loading.value = false;
     }
@@ -162,15 +182,21 @@ export function useNotebook() {
       } else {
         saveToStorage();
       }
+      return true;
     } catch (requestError) {
-      console.warn(
-        '保存到服务器失败，回退本地：',
-        requestError?.message || requestError
-      );
+      const message = resolveRequestErrorMessage(requestError, '保存失败');
+      if (!shouldFallbackToLocal(requestError)) {
+        console.warn('保存笔记被服务器拒绝：', message);
+        error.value = message;
+        return false;
+      }
+
+      console.warn('保存到服务器失败，回退本地：', message);
       serverReady.value = false;
       error.value = '保存失败，已切换到本地模式';
       upsertLocalNote(payload, editingNote);
       saveToStorage();
+      return true;
     }
   }
 
@@ -180,22 +206,29 @@ export function useNotebook() {
     try {
       if (serverReady.value && typeof noteId === 'number') {
         await notebookApi.remove(noteId);
+        notes.value = notes.value.filter(note => note.id !== noteId);
+        persistLocalMirror();
+        return true;
       }
     } catch (requestError) {
-      console.warn(
-        '删除服务器笔记失败，继续删除本地：',
-        requestError?.message || requestError
-      );
+      const message = resolveRequestErrorMessage(requestError, '删除失败');
+      if (!shouldFallbackToLocal(requestError)) {
+        console.warn('删除笔记被服务器拒绝：', message);
+        error.value = message;
+        return false;
+      }
+
+      console.warn('删除服务器笔记失败，继续删除本地：', message);
       serverReady.value = false;
       error.value = '删除时网络异常，已同步本地结果';
-    } finally {
       notes.value = notes.value.filter(note => note.id !== noteId);
-      if (serverReady.value) {
-        persistLocalMirror();
-      } else {
-        saveToStorage();
-      }
+      saveToStorage();
+      return true;
     }
+
+    notes.value = notes.value.filter(note => note.id !== noteId);
+    saveToStorage();
+    return true;
   }
 
   async function toggleNoteStatus(noteId) {
@@ -214,6 +247,7 @@ export function useNotebook() {
         const raw = await notebookApi.update(noteId, { completed });
         notes.value[index] = normalizeNote(unwrapData(raw) || {});
         persistLocalMirror();
+        return true;
       } else {
         notes.value[index] = normalizeNote({
           ...note,
@@ -221,12 +255,17 @@ export function useNotebook() {
           updatedAt: new Date().toISOString(),
         });
         saveToStorage();
+        return true;
       }
     } catch (requestError) {
-      console.warn(
-        '更新完成状态失败，回退本地：',
-        requestError?.message || requestError
-      );
+      const message = resolveRequestErrorMessage(requestError, '状态更新失败');
+      if (!shouldFallbackToLocal(requestError)) {
+        console.warn('更新完成状态被服务器拒绝：', message);
+        error.value = message;
+        return false;
+      }
+
+      console.warn('更新完成状态失败，回退本地：', message);
       serverReady.value = false;
       error.value = '状态更新失败，已切换到本地模式';
       notes.value[index] = normalizeNote({
@@ -235,6 +274,7 @@ export function useNotebook() {
         updatedAt: new Date().toISOString(),
       });
       saveToStorage();
+      return true;
     }
   }
 
@@ -254,13 +294,11 @@ export function useNotebook() {
         title = title.replace(descMatch[0], '').trim();
       }
 
-      await saveNote({
+      return await saveNote({
         title,
         description,
         priority: isHighPriority ? 'high' : 'medium',
       });
-
-      return true;
     } catch (requestError) {
       console.error('快速添加失败:', requestError);
       throw requestError;

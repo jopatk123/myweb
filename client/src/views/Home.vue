@@ -46,8 +46,6 @@
       @preview="handlePreviewFromConfirm"
     />
 
-    <FilePreviewModal v-model="showPreview" :file="previewFile" />
-
     <ContextMenu
       v-model="desktopMenu.visible"
       :x="desktopMenu.x"
@@ -83,7 +81,6 @@
   import WindowManager from '@/components/desktop/WindowManager.vue';
   import FileUploadProgress from '@/components/file/FileUploadProgress.vue';
   import ConfirmDownloadModal from '@/components/file/ConfirmDownloadModal.vue';
-  import FilePreviewModal from '@/components/file/FilePreviewModal.vue';
   import useDesktopSelection from '@/composables/useDesktopSelection.js';
   import useAutostartApps from '@/composables/useAutostartApps.js';
   import { useMessageBoardAutoOpen } from '@/composables/useMessageBoardAutoOpen.js';
@@ -169,8 +166,6 @@
     selectedFileName,
     selectedDownloadUrl,
     selectedFile,
-    showPreview,
-    previewFile,
     canPreviewSelected,
     openFile,
     handlePreviewFromConfirm,
