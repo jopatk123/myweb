@@ -1,0 +1,35 @@
+ai:
+  post:
+    summary: Log AI conversation summary
+    description: >
+      Record AI request and response summaries for internal debugging.
+    tags:
+      - Internal Logs
+    security:
+      - appSession: []
+        adminToken: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              requestText:
+                type: string
+                nullable: true
+              responseText:
+                type: string
+                nullable: true
+              timestamp:
+                type: string
+                format: date-time
+                nullable: true
+              model:
+                type: string
+                nullable: true
+    responses:
+      '200':
+        description: Logged
+      '500':
+        description: Failed to log

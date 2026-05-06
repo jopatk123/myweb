@@ -18,6 +18,8 @@ tags:
     description: Wallpaper and group management endpoints.
   - name: Work Timer
     description: Work timer session and statistics endpoints.
+  - name: Internal Logs
+    description: Internal debugging and audit log endpoints.
 servers:
   # 请根据部署环境替换为实际后端地址和端口，例如: http://localhost:${BACKEND_PORT:-3000}
   - url: http://localhost:3000
@@ -162,3 +164,6 @@ paths:
 
   /api/messages/{id}:
     $ref: './openapi/paths/messages.yaml#/byId'
+
+  /internal/logs/ai:
+    $ref: './openapi/paths/internal-logs.yaml#/ai'

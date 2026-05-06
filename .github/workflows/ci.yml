@@ -35,12 +35,7 @@ jobs:
         run: npm run test:client
 
       - name: Contract check
-        run: |
-          if npm run contract-test --if-present; then
-            echo "Contract check completed"
-          else
-            echo "Contract check failed or not present, continuing..."; exit 0
-          fi
+        run: npm run contract-test --if-present
 
       - name: Upload contract report
         if: always()

@@ -18,6 +18,7 @@ describe('OpenAPI contract coverage', () => {
   let notebookSpec;
   let worktimerSpec;
   let messagesSpec;
+  let internalLogsSpec;
 
   beforeAll(async () => {
     [
@@ -29,6 +30,7 @@ describe('OpenAPI contract coverage', () => {
       notebookSpec,
       worktimerSpec,
       messagesSpec,
+      internalLogsSpec,
     ] = await Promise.all([
       read('openapi.yaml'),
       read('openapi/paths/apps.yaml'),
@@ -38,6 +40,7 @@ describe('OpenAPI contract coverage', () => {
       read('openapi/paths/notebook.yaml'),
       read('openapi/paths/worktimer.yaml'),
       read('openapi/paths/messages.yaml'),
+      read('openapi/paths/internal-logs.yaml'),
     ]);
   });
 
@@ -84,6 +87,7 @@ describe('OpenAPI contract coverage', () => {
       '/api/messages/upload-image',
       '/api/messages/clear-all',
       '/api/messages/{id}',
+      '/internal/logs/ai',
     ];
 
     expectedPaths.forEach(specPath => {
@@ -107,6 +111,9 @@ describe('OpenAPI contract coverage', () => {
       /security:\s*- appSession:\s*\[\]\s*adminToken:\s*\[\]/
     );
     expect(authSpec).toMatch(/security:\s*\[\]/);
+    expect(internalLogsSpec).toMatch(
+      /security:\s*- appSession:\s*\[\]\s*adminToken:\s*\[\]/
+    );
   });
 
   test('keeps dedicated path files aligned with the route families they describe', () => {
@@ -130,5 +137,6 @@ describe('OpenAPI contract coverage', () => {
     expect(messagesSpec).toContain('uploadImage:');
     expect(messagesSpec).toContain('clearAll:');
     expect(messagesSpec).toContain('byId:');
+    expect(internalLogsSpec).toContain('ai:');
   });
 });
