@@ -1,23 +1,23 @@
 import express from 'express';
 import fs from 'fs';
-import fsPromises from 'fs/promises';
-import {
-  FileService,
-  detectTypeCategory,
-  FILE_CATEGORIES,
-} from '../services/file.service.js';
+import { FileService } from '../services/file.service.js';
 import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
+import { detectTypeCategory, FILE_CATEGORIES } from '../utils/file-metadata.js';
 import { normaliseUploadedFileName } from '../utils/upload.js';
 import logger from '../utils/logger.js';
 import { createUploader } from '../utils/uploader.js';
 import { DEFAULT_FILE_MAX_SIZE } from '../constants/limits.js';
 import { validateQuery, validateId, listFilesSchema } from '../dto/file.dto.js';
+import { FILES_DIR } from '../utils/upload-path.js';
 import {
-  FILES_DIR,
-  toUploadsAbsolutePath,
-  toUploadsRelativePath,
-} from '../utils/upload-path.js';
+  buildFileListData,
+  buildUploadPayloads,
+  cleanupUploadedPayloadFiles,
+  resolveDownloadAbsolutePath,
+  resolveRequestBaseUrl,
+  toCreatedFileResponse,
+} from '../utils/file-route.js';
 
 const fileLogger = logger.child('FileController');
 
@@ -44,38 +44,6 @@ if (!fs.existsSync(FILES_DIR)) {
   } catch (e) {
     fileLogger.warn('无法创建 files 上传目录', { error: e.message });
   }
-}
-
-function isTrustedBaseUrl(req, value) {
-  try {
-    const candidate = new URL(value);
-    if (!['http:', 'https:'].includes(candidate.protocol)) {
-      return false;
-    }
-
-    const requestHost = (req.get('host') || '').trim().toLowerCase();
-    if (!requestHost) {
-      return true;
-    }
-
-    return candidate.host.toLowerCase() === requestHost;
-  } catch {
-    return false;
-  }
-}
-
-function resolveBaseUrl(req) {
-  const headerBase = (req.get('x-api-base') || '').trim();
-  if (headerBase && isTrustedBaseUrl(req, headerBase)) {
-    return headerBase.replace(/\/+$/, '');
-  }
-  const forwardedProto = (req.get('x-forwarded-proto') || '')
-    .split(',')[0]
-    ?.trim();
-  const protocol = forwardedProto || req.protocol || 'http';
-  const host = (req.get('host') || '').trim();
-  if (!host) return '';
-  return `${protocol}://${host}`.replace(/\/+$/, '');
 }
 
 const fileFilter = (_req, file, cb) => {
@@ -108,47 +76,28 @@ export function createFileRoutes(db) {
     upload.array('file', MAX_UPLOAD_FILES),
     async (req, res, next) => {
       try {
-        const baseUrl = resolveBaseUrl(req);
+        const baseUrl = resolveRequestBaseUrl(req);
         const files = req.files || [];
         if (!files.length)
           return res
             .status(400)
             .json({ code: 400, success: false, message: '请选择文件' });
 
-        const payloads = files.map(f => ({
-          originalName: f.originalname,
-          storedName: f.filename,
-          filePath: toUploadsRelativePath('files', f.filename),
-          mimeType: f.mimetype,
-          fileSize: f.size,
-          uploaderId: null,
-          baseUrl,
-        }));
+        const payloads = buildUploadPayloads(files, baseUrl);
 
         let results;
         try {
           results = service.createMany(payloads);
         } catch (createErr) {
-          await Promise.allSettled(
-            payloads.map(async p => {
-              const diskPath = toUploadsAbsolutePath(p.filePath);
-              if (!diskPath) return;
-              try {
-                await fsPromises.unlink(diskPath);
-              } catch (unlinkErr) {
-                if (unlinkErr?.code !== 'ENOENT') {
-                  fileLogger.warn('上传失败，清理文件出错', {
-                    error: unlinkErr.message,
-                  });
-                }
-              }
+          await cleanupUploadedPayloadFiles(payloads, cleanupError =>
+            fileLogger.warn('上传失败，清理文件出错', {
+              error: cleanupError.message,
             })
           );
           throw createErr;
         }
 
-        const data =
-          Array.isArray(results) && results.length === 1 ? results[0] : results;
+        const data = toCreatedFileResponse(results);
         res
           .status(201)
           .json({ code: 201, success: true, data, message: '上传成功' });
@@ -171,18 +120,7 @@ export function createFileRoutes(db) {
       res.json({
         code: 200,
         success: true,
-        data: {
-          files: result.items,
-          pagination: {
-            page: result.page,
-            limit: result.limit,
-            total: result.total,
-            totalPages: Math.max(
-              1,
-              Math.ceil(result.total / (result.limit || 1))
-            ),
-          },
-        },
+        data: buildFileListData(result),
         message: '获取成功',
       });
     } catch (error) {
@@ -204,31 +142,7 @@ export function createFileRoutes(db) {
   router.get('/:id/download', validateId('id'), async (req, res, next) => {
     try {
       const row = service.get(req.params.id);
-      // 将相对路径解析为磁盘路径
-      const storedPath = row.file_path || row.filePath;
-      if (!storedPath) {
-        const err = new Error('文件路径缺失');
-        err.status = 500;
-        throw err;
-      }
-
-      const absolutePath = toUploadsAbsolutePath(storedPath);
-      if (!absolutePath) {
-        const err = new Error('非法的文件路径');
-        err.status = 400;
-        throw err;
-      }
-
-      try {
-        await fsPromises.access(absolutePath, fs.constants.R_OK);
-      } catch (fsErr) {
-        if (fsErr?.code === 'ENOENT') {
-          const notFound = new Error('文件不存在或已被删除');
-          notFound.status = 404;
-          throw notFound;
-        }
-        throw fsErr;
-      }
+      const absolutePath = await resolveDownloadAbsolutePath(row);
 
       res.setHeader(
         'Content-Type',

@@ -223,3 +223,46 @@ test('updateApp does not change is_builtin flag even if provided', async () => {
   // 但我们期望在 controller 层就已经删除了 is_builtin 字段
   expect(updated.name).toBe('更新后的应用');
 });
+
+test('createApp generates slug without mutating caller payload', async () => {
+  const payload = {
+    name: '新的第三方应用',
+    description: 'desc',
+  };
+
+  const created = await service.createApp(payload);
+
+  expect(created.slug).toBeTruthy();
+  expect(payload).toEqual({
+    name: '新的第三方应用',
+    description: 'desc',
+  });
+});
+
+test('updateApp regenerates slug without mutating caller payload', async () => {
+  const created = await service.createApp({
+    name: '原始应用',
+    slug: 'original-app',
+    is_builtin: 0,
+  });
+  const payload = { name: '新的应用名' };
+
+  const updated = service.updateApp(created.id, payload);
+
+  expect(updated.slug).toBeTruthy();
+  expect(updated.slug).not.toBe('original-app');
+  expect(payload).toEqual({ name: '新的应用名' });
+});
+
+test('createGroup and updateGroup keep caller payload immutable', () => {
+  const createPayload = { name: '我的分组' };
+  const created = service.createGroup(createPayload);
+  expect(created.slug).toBeTruthy();
+  expect(createPayload).toEqual({ name: '我的分组' });
+
+  const updatePayload = { name: '新的分组名' };
+  const updated = service.updateGroup(created.id, updatePayload);
+  expect(updated.slug).toBeTruthy();
+  expect(updated.slug).not.toBe(created.slug);
+  expect(updatePayload).toEqual({ name: '新的分组名' });
+});

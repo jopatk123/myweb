@@ -1,28 +1,15 @@
 import Joi from 'joi';
 import { AppService } from '../services/app.service.js';
 import { mapToSnake } from '../utils/field-mapper.js';
+import {
+  applyPresetIconPayload,
+  buildCreateAppPayload,
+  buildUpdateAppPayload,
+  validateAppPayload,
+} from '../utils/app-request.js';
 import logger from '../utils/logger.js';
 
 const appCtrlLogger = logger.child('AppController');
-
-const appSchema = Joi.object({
-  name: Joi.string().min(1).max(100).required(),
-  slug: Joi.string()
-    .pattern(/^[a-z0-9-]+$/)
-    .optional(),
-  description: Joi.string().allow(null, '').optional(),
-  icon_filename: Joi.string().allow(null, '').optional(),
-  preset_icon: Joi.string().allow(null, '').optional(),
-  group_id: Joi.alternatives()
-    .try(Joi.number().integer().allow(null), Joi.string().allow('', null))
-    .optional(),
-  is_visible: Joi.boolean().optional(),
-  is_autostart: Joi.alternatives()
-    .try(Joi.boolean(), Joi.number().integer().valid(0, 1))
-    .optional(),
-  is_builtin: Joi.boolean().optional(),
-  target_url: Joi.string().uri().allow(null, '').optional(),
-});
 
 export class AppController {
   constructor(db) {
@@ -60,33 +47,17 @@ export class AppController {
 
   async create(req, res, next) {
     try {
-      // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
-      const bodySnake = mapToSnake(req.body || {});
-      // 启用 Joi 的类型转换（例如字符串数字 -> number）以确保 group_id 被转换为 number
-      const payload = await appSchema.validateAsync(bodySnake, {
-        convert: true,
+      const validatedPayload = await validateAppPayload(req.body, {
+        requireName: true,
+        normalizeEmptyGroupId: true,
       });
-
-      // slug 由服务端自动生成，忽略前端传入的值
-      delete payload.slug;
-
-      // 处理前端可能发送的空字符串：把空字符串归一为 null
-      if (payload.group_id === '') payload.group_id = null;
-
-      // 处理预选图标：如果使用预选图标，将其复制到uploads目录并设置icon_filename
-      if (payload.preset_icon && !payload.icon_filename) {
-        const iconFilename = await this.service.copyPresetIcon(
-          payload.preset_icon
-        );
-        payload.icon_filename = iconFilename;
-        delete payload.preset_icon; // 移除临时字段
-      }
-
-      // 对于自定义 APP，强制 is_builtin = 0；内置 APP 由我们手工种子/维护
-      const app = await this.service.createApp({
-        ...payload,
-        is_builtin: payload.is_builtin ? 1 : 0,
-      });
+      const payloadWithPresetIcon = await applyPresetIconPayload(
+        validatedPayload,
+        presetIcon => this.service.copyPresetIcon(presetIcon)
+      );
+      const app = await this.service.createApp(
+        buildCreateAppPayload(payloadWithPresetIcon)
+      );
       res.status(201).json({ code: 201, data: app, message: '创建成功' });
     } catch (error) {
       appCtrlLogger.error('create 错误', error);
@@ -111,29 +82,17 @@ export class AppController {
         throw err;
       }
 
-      // 支持前端发送 camelCase：先把 req.body 转为 snake_case 以匹配 Joi schema
-      const bodySnake = mapToSnake(req.body || {});
-
-      // 开启 Joi 类型转换，兼容前端字符串数字等情况
-      const payload = await appSchema
-        .fork(['name'], s => s.optional())
-        .validateAsync(bodySnake, { convert: true });
-
-      // slug 由服务端自动管理，忽略前端传入的值
-      delete payload.slug;
-
-      // 处理预选图标：如果使用预选图标，将其复制到uploads目录并设置icon_filename
-      if (payload.preset_icon && !payload.icon_filename) {
-        const iconFilename = await this.service.copyPresetIcon(
-          payload.preset_icon
-        );
-        payload.icon_filename = iconFilename;
-        delete payload.preset_icon; // 移除临时字段
-      }
-
-      // 禁止将应用改为内置
-      if (payload.is_builtin) delete payload.is_builtin;
-      const app = await this.service.updateApp(id, payload);
+      const validatedPayload = await validateAppPayload(req.body, {
+        requireName: false,
+      });
+      const payloadWithPresetIcon = await applyPresetIconPayload(
+        validatedPayload,
+        presetIcon => this.service.copyPresetIcon(presetIcon)
+      );
+      const app = await this.service.updateApp(
+        id,
+        buildUpdateAppPayload(payloadWithPresetIcon)
+      );
       res.json({ code: 200, data: app, message: '更新成功' });
     } catch (error) {
       appCtrlLogger.error('update 错误', error);

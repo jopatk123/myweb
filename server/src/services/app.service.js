@@ -1,12 +1,14 @@
 import { AppModel } from '../models/app.model.js';
 import { AppGroupModel } from '../models/app-group.model.js';
 import { generateUniqueSlug } from '../utils/slug.js';
-import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { v4 as uuidv4 } from 'uuid';
 import logger from '../utils/logger.js';
 import { APP_ICONS_DIR, PUBLIC_APP_ICONS_DIR } from '../utils/upload-path.js';
+import {
+  copyPresetAppIcon,
+  deleteAppIconIfExists,
+} from '../utils/app-icon-storage.js';
 import {
   NotFoundError,
   ValidationError,
@@ -14,6 +16,80 @@ import {
 } from '../utils/errors.js';
 
 const appServiceLogger = logger.child('AppService');
+
+function buildCreateAppPayload(payload, findBySlug) {
+  const nextPayload = { ...payload };
+  if (!nextPayload.slug && nextPayload.name) {
+    nextPayload.slug = generateUniqueSlug(nextPayload.name, slug =>
+      Boolean(findBySlug(slug))
+    );
+  }
+
+  return nextPayload;
+}
+
+function buildUpdateAppPayload(id, existingApp, payload, findBySlug) {
+  const nextPayload = { ...payload };
+  if (
+    nextPayload.name &&
+    existingApp &&
+    !existingApp.is_builtin &&
+    existingApp.name !== nextPayload.name
+  ) {
+    nextPayload.slug = generateUniqueSlug(nextPayload.name, slug => {
+      const found = findBySlug(slug);
+      return found && found.id !== id;
+    });
+  }
+
+  return nextPayload;
+}
+
+function buildCreateGroupPayload(payload, findBySlug) {
+  const nextPayload = { ...payload };
+  if (!nextPayload.slug && nextPayload.name) {
+    nextPayload.slug = generateUniqueSlug(nextPayload.name, slug =>
+      Boolean(findBySlug(slug))
+    );
+  }
+
+  return nextPayload;
+}
+
+function buildUpdateGroupPayload(id, existingGroup, payload, findBySlug) {
+  const nextPayload = { ...payload };
+  if (
+    nextPayload.name &&
+    existingGroup &&
+    existingGroup.name !== nextPayload.name
+  ) {
+    nextPayload.slug = generateUniqueSlug(nextPayload.name, slug =>
+      Boolean(findBySlug(slug, id))
+    );
+  }
+
+  return nextPayload;
+}
+
+function resolveAutostartTarget(idOrSlug) {
+  if (idOrSlug === undefined || idOrSlug === null || idOrSlug === '') {
+    throw new ValidationError('缺少应用标识');
+  }
+
+  const raw = typeof idOrSlug === 'string' ? idOrSlug.trim() : idOrSlug;
+  const numericCandidate =
+    typeof raw === 'number'
+      ? raw
+      : /^\d+$/.test(String(raw))
+        ? Number(raw)
+        : NaN;
+
+  if (!Number.isNaN(numericCandidate)) {
+    return { kind: 'id', value: numericCandidate };
+  }
+
+  return { kind: 'slug', value: String(raw) };
+}
 
 export class AppService {
   constructor(db) {
@@ -38,27 +114,18 @@ export class AppService {
   }
 
   async createApp(payload) {
-    if (!payload.slug) {
-      payload.slug = generateUniqueSlug(
-        payload.name,
-        slug => !!this.appModel.findBySlug(slug)
-      );
-    }
-    return this.appModel.create(payload);
+    const nextPayload = buildCreateAppPayload(payload, slug =>
+      this.appModel.findBySlug(slug)
+    );
+    return this.appModel.create(nextPayload);
   }
 
   updateApp(id, payload) {
-    // 如果名称有变化,自动更新 slug
-    if (payload.name) {
-      const existing = this.appModel.findById(id);
-      if (existing && !existing.is_builtin && existing.name !== payload.name) {
-        payload.slug = generateUniqueSlug(payload.name, slug => {
-          const found = this.appModel.findBySlug(slug);
-          return found && found.id !== id;
-        });
-      }
-    }
-    return this.appModel.update(id, payload);
+    const existing = this.appModel.findById(id);
+    const nextPayload = buildUpdateAppPayload(id, existing, payload, slug =>
+      this.appModel.findBySlug(slug)
+    );
+    return this.appModel.update(id, nextPayload);
   }
 
   async deleteApp(id) {
@@ -71,13 +138,11 @@ export class AppService {
     if (iconFilename) {
       try {
         const count = this.appModel.countByIconFilename(iconFilename);
-        // 当前这条记录仍算未删除，所以 count > 1 表示还有其他引用；== 1 表示仅此一处
         if (count <= 1) {
           await this.deleteIconFileIfExists(iconFilename);
         }
       } catch (e) {
         void e;
-        // 清理失败不影响删除流程，仅日志提示
         appServiceLogger.warn('[AppService.deleteApp] 清理图标失败', {
           error: e?.message || e,
         });
@@ -92,23 +157,13 @@ export class AppService {
   }
 
   setAppAutostart(idOrSlug, autostart) {
-    if (idOrSlug === undefined || idOrSlug === null || idOrSlug === '') {
-      throw new ValidationError('缺少应用标识');
-    }
-
-    const raw = typeof idOrSlug === 'string' ? idOrSlug.trim() : idOrSlug;
-    const numericCandidate =
-      typeof raw === 'number'
-        ? raw
-        : /^\d+$/.test(String(raw))
-          ? Number(raw)
-          : NaN;
+    const target = resolveAutostartTarget(idOrSlug);
 
     let app;
-    if (!Number.isNaN(numericCandidate)) {
-      app = this.appModel.setAutostart(numericCandidate, autostart);
+    if (target.kind === 'id') {
+      app = this.appModel.setAutostart(target.value, autostart);
     } else {
-      app = this.appModel.setAutostartBySlug(String(raw), autostart);
+      app = this.appModel.setAutostartBySlug(target.value, autostart);
     }
 
     if (!app) throw new NotFoundError('应用不存在');
@@ -126,28 +181,21 @@ export class AppService {
   }
 
   createGroup(payload) {
-    // 自动生成 slug（若未提供）
-    if (!payload.slug && payload.name) {
-      payload.slug = generateUniqueSlug(payload.name, slug => {
-        const existing = this.groupModel.findBySlug(slug);
-        return !!existing;
-      });
-    }
-    return this.groupModel.create(payload);
+    const nextPayload = buildCreateGroupPayload(payload, slug =>
+      this.groupModel.findBySlug(slug)
+    );
+    return this.groupModel.create(nextPayload);
   }
 
   updateGroup(id, payload) {
-    // 如果名称有变化,自动更新 slug
-    if (payload.name) {
-      const existing = this.groupModel.findById(id);
-      if (existing && existing.name !== payload.name) {
-        payload.slug = generateUniqueSlug(payload.name, slug => {
-          const found = this.groupModel.findBySlug(slug, id);
-          return !!found;
-        });
-      }
-    }
-    return this.groupModel.update(id, payload);
+    const existing = this.groupModel.findById(id);
+    const nextPayload = buildUpdateGroupPayload(
+      id,
+      existing,
+      payload,
+      (slug, excludeId) => this.groupModel.findBySlug(slug, excludeId)
+    );
+    return this.groupModel.update(id, nextPayload);
   }
 
   deleteGroup(id) {
@@ -157,42 +205,12 @@ export class AppService {
   // 复制预选图标到uploads目录
   async copyPresetIcon(presetIconFilename) {
     try {
-      // 确保uploads目录存在
-      await fs.mkdir(this.uploadsDir, { recursive: true });
-
-      // 源文件路径（public/apps/icons目录）
-      // 兼容传入为完整路径（/apps/icons/xxx.svg）或仅文件名（xxx.svg）
-      const safeFilename = path.basename(presetIconFilename || '');
-      const candidates = [
-        path.join(this.publicIconsDir, safeFilename),
-        path.join(this.presetIconsDir, safeFilename),
-        // 最后才检查uploads目录，避免复制自己
-        path.join(this.uploadsDir, safeFilename),
-      ];
-      let sourcePath = null;
-      for (const p of candidates) {
-        try {
-          await fs.access(p);
-          sourcePath = p;
-          break;
-        } catch (error) {
-          void error;
-          // ignore: candidate path not found, continue to next
-        }
-      }
-      if (!sourcePath) {
-        throw new Error(`预选图标文件不存在: ${presetIconFilename}`);
-      }
-
-      // 生成新的文件名
-      const ext = path.extname(safeFilename);
-      const newFilename = `${uuidv4()}${ext}`;
-      const targetPath = path.join(this.uploadsDir, newFilename);
-
-      // 复制文件
-      await fs.copyFile(sourcePath, targetPath);
-
-      return newFilename;
+      return await copyPresetAppIcon({
+        uploadsDir: this.uploadsDir,
+        publicIconsDir: this.publicIconsDir,
+        presetIconsDir: this.presetIconsDir,
+        presetIconFilename,
+      });
     } catch (error) {
       void error;
       appServiceLogger.error('复制预选图标失败');
@@ -203,14 +221,12 @@ export class AppService {
   // 删除上传的图标文件（若存在）。安全：仅按文件名删除
   async deleteIconFileIfExists(filename) {
     try {
-      if (!filename) return false;
-      const safe = path.basename(String(filename));
-      const p = path.join(this.uploadsDir, safe);
-      await fs.unlink(p);
-      return true;
+      return await deleteAppIconIfExists({
+        uploadsDir: this.uploadsDir,
+        filename,
+      });
     } catch (e) {
       if (e && e.code === 'ENOENT') return false;
-      // 其他错误打印但不抛出，避免影响主流程
       appServiceLogger.warn('[AppService.deleteIconFileIfExists] 删除失败', {
         error: e?.message || e,
       });

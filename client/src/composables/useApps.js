@@ -4,6 +4,74 @@ import { appsState } from '@/store/appsState.js';
 const { apps, groups, loading, error, lastError, page, limit, total } =
   appsState;
 
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+function recordRequestError(requestError) {
+  lastError.value = requestError;
+  error.value = requestError?.message || String(requestError);
+}
+
+async function runWithRequestState(
+  request,
+  { resetError = false, trackLoading = false } = {}
+) {
+  try {
+    if (trackLoading) {
+      loading.value = true;
+    }
+    if (resetError) {
+      error.value = '';
+    }
+    lastError.value = null;
+    return await request();
+  } catch (requestError) {
+    recordRequestError(requestError);
+    throw requestError;
+  } finally {
+    if (trackLoading) {
+      loading.value = false;
+    }
+  }
+}
+
+async function requestJson(url, options) {
+  const response =
+    options === undefined ? await apiFetch(url) : await apiFetch(url, options);
+  const json = await response.json();
+  return { response, json };
+}
+
+async function requestJsonSafe(url, options) {
+  const response =
+    options === undefined ? await apiFetch(url) : await apiFetch(url, options);
+  const json = await response.json().catch(() => ({}));
+  return { response, json };
+}
+
+function ensureOk(response, json, fallbackMessage) {
+  if (!response.ok) {
+    throw new Error(json?.message || fallbackMessage);
+  }
+
+  return json?.data;
+}
+
+function ensureOkWithData(response, json, fallbackMessage) {
+  if (!response.ok || !json?.data) {
+    throw new Error(json?.message || fallbackMessage);
+  }
+
+  return json.data;
+}
+
+function buildJsonRequestOptions(method, payload) {
+  return {
+    method,
+    headers: JSON_HEADERS,
+    body: JSON.stringify(payload),
+  };
+}
+
 function buildAppsUrl(
   { groupId = null, visible = null } = {},
   withPagination = true
@@ -26,251 +94,165 @@ async function fetchApps(
   { groupId = null, visible = null } = {},
   withPagination = true
 ) {
-  try {
-    loading.value = true;
-    error.value = '';
-    lastError.value = null;
-    const resp = await apiFetch(
-      buildAppsUrl({ groupId, visible }, withPagination)
-    );
-    const json = await resp.json();
-    if (resp.ok && json?.data) {
-      if (withPagination && json.data.items) {
-        apps.value = json.data.items;
-        total.value = json.data.total || 0;
+  return runWithRequestState(
+    async () => {
+      const { response, json } = await requestJson(
+        buildAppsUrl({ groupId, visible }, withPagination)
+      );
+      const data = ensureOkWithData(response, json, '加载失败');
+
+      if (withPagination && data.items) {
+        apps.value = data.items;
+        total.value = data.total || 0;
       } else {
-        apps.value = json.data;
-        total.value = json.data.length || 0;
+        apps.value = data;
+        total.value = data.length || 0;
       }
-    } else {
-      throw new Error(json?.message || '加载失败');
-    }
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  } finally {
-    loading.value = false;
-  }
+    },
+    { resetError: true, trackLoading: true }
+  );
 }
 
 async function fetchAppsList({ groupId = null, visible = null } = {}) {
-  const resp = await apiFetch(buildAppsUrl({ groupId, visible }, false));
-  const json = await resp.json();
-  if (!resp.ok || !json?.data) {
-    throw new Error(json?.message || '加载失败');
+  const { response, json } = await requestJson(
+    buildAppsUrl({ groupId, visible }, false)
+  );
+  const data = ensureOkWithData(response, json, '加载失败');
+
+  if (Array.isArray(data)) {
+    return data;
   }
 
-  if (Array.isArray(json.data)) {
-    return json.data;
-  }
-
-  return Array.isArray(json.data.items) ? json.data.items : [];
+  return Array.isArray(data.items) ? data.items : [];
 }
 
 async function fetchGroups() {
-  try {
-    lastError.value = null;
-    const resp = await apiFetch('/apps/groups/all');
-    const json = await resp.json();
-    if (resp.ok && json?.data) groups.value = json.data;
-    else throw new Error(json?.message || '加载分组失败');
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson('/apps/groups/all');
+    groups.value = ensureOkWithData(response, json, '加载分组失败');
+  });
 }
 
 // 分组操作
 async function createGroup(payload) {
-  try {
-    lastError.value = null;
-    const resp = await apiFetch('/apps/groups', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '创建分组失败');
-    // 刷新本地 groups
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson(
+      '/apps/groups',
+      buildJsonRequestOptions('POST', payload)
+    );
+    const data = ensureOk(response, json, '创建分组失败');
     await fetchGroups();
-    return json.data;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+    return data;
+  });
 }
 
 async function updateGroup(id, payload) {
-  try {
-    lastError.value = null;
-    const resp = await apiFetch(`/apps/groups/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '更新分组失败');
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson(
+      `/apps/groups/${id}`,
+      buildJsonRequestOptions('PUT', payload)
+    );
+    const data = ensureOk(response, json, '更新分组失败');
     await fetchGroups();
-    return json.data;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+    return data;
+  });
 }
 
 async function deleteGroup(id) {
-  try {
-    lastError.value = null;
-    const resp = await apiFetch(`/apps/groups/${id}`, { method: 'DELETE' });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '删除分组失败');
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson(`/apps/groups/${id}`, {
+      method: 'DELETE',
+    });
+    ensureOk(response, json, '删除分组失败');
     await fetchGroups();
     return true;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+  });
 }
 
 async function createApp(payload) {
-  try {
-    lastError.value = null;
-
-    const resp = await apiFetch('/apps', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '创建失败');
-    return json.data;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson(
+      '/apps',
+      buildJsonRequestOptions('POST', payload)
+    );
+    return ensureOk(response, json, '创建失败');
+  });
 }
 
 async function updateApp(id, payload) {
-  try {
-    lastError.value = null;
-    const resp = await apiFetch(`/apps/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '更新失败');
-    return json.data;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson(
+      `/apps/${id}`,
+      buildJsonRequestOptions('PUT', payload)
+    );
+    return ensureOk(response, json, '更新失败');
+  });
 }
 
 async function deleteApp(id) {
-  try {
-    lastError.value = null;
-    const resp = await apiFetch(`/apps/${id}`, { method: 'DELETE' });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '删除失败');
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson(`/apps/${id}`, {
+      method: 'DELETE',
+    });
+    ensureOk(response, json, '删除失败');
     return true;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+  });
 }
 
 async function setVisible(id, visible) {
-  try {
-    lastError.value = null;
-    const resp = await apiFetch(`/apps/${id}/visible`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visible }),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '设置失败');
-    return json.data;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson(
+      `/apps/${id}/visible`,
+      buildJsonRequestOptions('PUT', { visible })
+    );
+    return ensureOk(response, json, '设置失败');
+  });
 }
 
 async function setVisibleBulk(ids, visible) {
-  try {
-    lastError.value = null;
-    const resp = await apiFetch('/apps/bulk/visible', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, visible }),
-    });
-    const json = await resp.json();
-    if (!resp.ok) throw new Error(json?.message || '批量设置失败');
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson(
+      '/apps/bulk/visible',
+      buildJsonRequestOptions('PUT', { ids, visible })
+    );
+    ensureOk(response, json, '批量设置失败');
     return true;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+  });
 }
 
 async function setAutostart(id, autostart) {
-  try {
-    lastError.value = null;
-    error.value = '';
-    if (id === undefined || id === null || id === '') {
-      throw new Error('invalid id');
-    }
-    // 使用明确的 autostart 路由，兼容数字 id 与非数字 slug
-    const url = `/apps/${encodeURIComponent(id)}/autostart`;
-    const resp = await apiFetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isAutostart: !!autostart }),
-    });
-    const json = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      const msg = json?.message || `Request failed: ${resp.status}`;
-      const err = new Error(msg);
-      err.status = resp.status;
-      throw err;
-    }
-    return json.data;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+  return runWithRequestState(
+    async () => {
+      if (id === undefined || id === null || id === '') {
+        throw new Error('invalid id');
+      }
+      const url = `/apps/${encodeURIComponent(id)}/autostart`;
+      const { response, json } = await requestJsonSafe(
+        url,
+        buildJsonRequestOptions('PUT', { isAutostart: !!autostart })
+      );
+      if (!response.ok) {
+        const message = json?.message || `Request failed: ${response.status}`;
+        const requestError = new Error(message);
+        requestError.status = response.status;
+        throw requestError;
+      }
+      return json.data;
+    },
+    { resetError: true }
+  );
 }
 
 async function moveApps(ids, targetGroupId) {
-  try {
-    lastError.value = null;
+  return runWithRequestState(async () => {
+    const { response, json } = await requestJson(
+      '/apps/move',
+      buildJsonRequestOptions('PUT', { ids, targetGroupId })
+    );
 
-    const resp = await apiFetch('/apps/move', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, targetGroupId }),
-    });
-    const json = await resp.json();
-
-    if (!resp.ok) throw new Error(json?.message || '移动失败');
+    ensureOk(response, json, '移动失败');
     return json?.data ?? true;
-  } catch (e) {
-    lastError.value = e;
-    error.value = e.message || String(e);
-    throw e;
-  }
+  });
 }
 
 function setPage(p) {
