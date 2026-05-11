@@ -27,14 +27,24 @@
               formatTime(message.createdAt)
             }}</span>
           </div>
-          <button
-            type="button"
-            class="delete-btn"
-            :disabled="deletingMessageId === message.id"
-            @click="$emit('request-delete', message)"
-          >
-            {{ deletingMessageId === message.id ? '删除中...' : '删除' }}
-          </button>
+          <div class="message-actions">
+            <button
+              type="button"
+              class="copy-btn"
+              :disabled="!canCopyMessage(message)"
+              @click="copyMessageContent(message)"
+            >
+              {{ copiedMessageId === message.id ? '已复制' : '复制' }}
+            </button>
+            <button
+              type="button"
+              class="delete-btn"
+              :disabled="deletingMessageId === message.id"
+              @click="$emit('request-delete', message)"
+            >
+              {{ deletingMessageId === message.id ? '删除中...' : '删除' }}
+            </button>
+          </div>
         </div>
         <div class="message-text">{{ message.content }}</div>
         <ImagePreview
@@ -65,8 +75,10 @@
   defineEmits(['retry', 'request-delete']);
 
   const internalListRef = ref(null);
+  const copiedMessageId = ref(null);
   let isUserScrolling = false;
   let scrollTimeout = null;
+  let copyFeedbackTimeout = null;
 
   const getListElement = () => {
     return (
@@ -83,6 +95,54 @@
       el.scrollTo({ top: el.scrollHeight, behavior });
     } catch {
       el.scrollTop = el.scrollHeight;
+    }
+  };
+
+  const canCopyMessage = message => {
+    return Boolean((message.content || '').trim());
+  };
+
+  const fallbackCopyText = text => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', 'readonly');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const succeeded = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return succeeded;
+  };
+
+  const copyToClipboard = async text => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    if (!fallbackCopyText(text)) {
+      throw new Error('复制失败');
+    }
+  };
+
+  const copyMessageContent = async message => {
+    const text = message.content || '';
+    if (!text.trim()) return;
+
+    try {
+      await copyToClipboard(text);
+      copiedMessageId.value = message.id;
+      if (copyFeedbackTimeout) clearTimeout(copyFeedbackTimeout);
+      copyFeedbackTimeout = setTimeout(() => {
+        if (copiedMessageId.value === message.id) {
+          copiedMessageId.value = null;
+        }
+      }, 1200);
+    } catch (error) {
+      console.error('复制留言失败:', error);
+      alert('复制失败，请手动选择文本后复制');
     }
   };
 
@@ -110,6 +170,7 @@
       el.removeEventListener('touchstart', onUserScroll);
     }
     if (scrollTimeout) clearTimeout(scrollTimeout);
+    if (copyFeedbackTimeout) clearTimeout(copyFeedbackTimeout);
   });
 
   // 当 messages 变化时，如果用户没有在手动滚动，则滚动到底部
@@ -206,6 +267,13 @@
     min-width: 0;
   }
 
+  .message-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   .author-name {
     font-weight: 600;
     color: #343a40;
@@ -240,6 +308,31 @@
   .delete-btn:disabled {
     cursor: wait;
     opacity: 0.7;
+  }
+
+  .copy-btn {
+    flex-shrink: 0;
+    border: 1px solid #d0ebff;
+    background: #edf8ff;
+    color: #1864ab;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      background-color 0.2s,
+      border-color 0.2s,
+      color 0.2s;
+  }
+
+  .copy-btn:hover:not(:disabled) {
+    background: #d0ebff;
+    border-color: #74c0fc;
+  }
+
+  .copy-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
   }
 
   .message-text {
