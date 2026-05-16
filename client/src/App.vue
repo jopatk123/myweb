@@ -40,9 +40,10 @@
     clearAuth,
     validatePasswordRemote,
     getPasswordStatus,
+    isAuthValid,
   } from '@/utils/passwordGate.js';
 
-  const isAuthorized = ref(false);
+  const isAuthorized = ref(isAuthValid());
   const passwordInput = ref('');
   const errorMessage = ref('');
   const isSubmitting = ref(false);
@@ -86,18 +87,23 @@
       passwordStatus.value = await getPasswordStatus();
 
       if (!passwordStatus.value.required) {
+        // 密码不要求，直接授权
         saveAuth();
         isAuthorized.value = true;
         return;
       }
 
+      // 密码要求，检查认证状态
       if (passwordStatus.value.authenticated) {
+        // 服务器认证通过，保持授权状态
         saveAuth();
         isAuthorized.value = true;
         return;
       }
 
+      // 服务器认证失败，需要重新授权
       clearAuth();
+      isAuthorized.value = false;
 
       if (isPasswordMisconfigured.value) {
         errorMessage.value = '系统尚未配置访问密码，请联系管理员。';

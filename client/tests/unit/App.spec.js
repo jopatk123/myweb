@@ -13,6 +13,7 @@ vi.mock('@/utils/passwordGate.js', () => ({
   saveAuth: vi.fn(),
   validatePasswordRemote: vi.fn(),
   getPasswordStatus: vi.fn(),
+  isAuthValid: vi.fn(() => false),
 }));
 
 vi.mock('@/api/httpClient.js', () => ({
@@ -25,6 +26,7 @@ import {
   saveAuth,
   validatePasswordRemote,
   getPasswordStatus,
+  isAuthValid,
 } from '@/utils/passwordGate.js';
 
 // ── 辅助函数 ──────────────────────────────────────────────────
