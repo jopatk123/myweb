@@ -60,7 +60,7 @@
     files: { type: Array, default: () => [] },
     icons: { type: Object, default: () => ({}) },
   });
-  const emit = defineEmits(['open', 'delete-error']);
+  const emit = defineEmits(['open', 'delete-error', 'delete-success']);
 
   const selectedId = ref(null);
   const selectedIds = ref(new Set()); // 支持多选
@@ -134,6 +134,7 @@
     if (!f) return;
     try {
       await remove(f.id);
+      emit('delete-success', { file: f });
     } catch (error) {
       console.error('FileIcons.delete error', error);
       emit('delete-error', { file: f, error });

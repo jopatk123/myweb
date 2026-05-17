@@ -145,11 +145,7 @@ export function createFileRoutes(db) {
         'Content-Type',
         row.mime_type || 'application/octet-stream'
       );
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename*=UTF-8''${encodeURIComponent(row.original_name)}`
-      );
-      res.download(absolutePath);
+      res.download(absolutePath, row.original_name);
     } catch (error) {
       next(error);
     }

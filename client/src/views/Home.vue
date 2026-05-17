@@ -22,6 +22,7 @@
       :files="desktopFiles"
       :icons="fileTypeIcons"
       @open="openFile"
+      @delete-success="onFileDeleteSuccess"
       @delete-error="onFileDeleteError"
     />
 
@@ -72,7 +73,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, unref, watch } from 'vue';
+  import { ref, computed, unref, watch, nextTick } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { useFiles } from '@/composables/useFiles.js';
   import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
@@ -128,6 +129,21 @@
     getDownloadUrl,
   } = useFiles();
 
+  async function arrangeDesktopIcons() {
+    const nextColumn = appIconsRef.value?.autoArrange
+      ? await appIconsRef.value.autoArrange(0)
+      : 0;
+
+    await nextTick();
+    await fileIconsRef.value?.autoArrange?.(nextColumn);
+  }
+
+  async function handleDesktopUpload(filesToUpload) {
+    await upload(filesToUpload);
+    await nextTick();
+    await arrangeDesktopIcons();
+  }
+
   const onRandom = async () => {
     const wallpaper = await randomWallpaper();
     if (wallpaper) current.value = wallpaper;
@@ -155,7 +171,7 @@
   );
 
   const { dragOver, onDragOver, onDragLeave, onDrop } = useDesktopDropZone({
-    upload: filesToUpload => upload(filesToUpload),
+    upload: handleDesktopUpload,
     onError: error => {
       console.warn('[Home] Desktop upload failed', error);
     },
@@ -178,6 +194,14 @@
 
   const onFileDeleteError = payload => {
     console.warn('[Home] File delete failed', payload?.error || payload);
+  };
+
+  const onFileDeleteSuccess = async () => {
+    try {
+      await fetchFiles();
+    } catch (error) {
+      console.warn('[Home] Refresh after file delete failed', error);
+    }
   };
 
   const { desktopMenu, openMenu, handleSelect, closeMenu } =

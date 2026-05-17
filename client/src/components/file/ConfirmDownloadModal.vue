@@ -12,6 +12,7 @@
         </button>
         <a
           :href="downloadUrl"
+          :download="filename || null"
           @click="$emit('update:modelValue', false)"
           class="primary"
           >下载</a

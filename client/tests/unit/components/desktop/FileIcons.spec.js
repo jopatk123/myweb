@@ -270,5 +270,48 @@ describe('FileIcons', () => {
 
       consoleErrorSpy.mockRestore();
     });
+
+    it('删除成功时应该发出成功事件', async () => {
+      fileMocks.removeMock.mockResolvedValueOnce();
+
+      const mockFiles = [
+        {
+          id: 1,
+          originalName: 'test.txt',
+          original_name: 'test.txt',
+          typeCategory: 'text',
+          type_category: 'text',
+        },
+      ];
+
+      wrapper = mount(FileIcons, {
+        props: {
+          files: mockFiles,
+          icons: { text: '/apps/icons/text-128.svg' },
+        },
+        global: {
+          stubs: {
+            ContextMenu: {
+              template: '<div class="context-menu-stub" />',
+              props: ['modelValue', 'x', 'y', 'items'],
+            },
+            ConfirmDialog: {
+              template: '<div class="confirm-dialog-stub" />',
+              props: ['modelValue', 'title', 'message'],
+            },
+          },
+        },
+      });
+
+      await nextTick();
+
+      wrapper.vm.confirm.file = mockFiles[0];
+      await wrapper.vm.onConfirmDelete();
+
+      expect(wrapper.emitted('delete-success')).toBeTruthy();
+      expect(wrapper.emitted('delete-success')[0][0]).toEqual({
+        file: mockFiles[0],
+      });
+    });
   });
 });

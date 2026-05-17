@@ -3,45 +3,52 @@ import { defineComponent, h, nextTick, ref } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 
 const filesRef = ref([]);
+const homeMocks = vi.hoisted(() => ({
+  uploadMock: vi.fn().mockResolvedValue(),
+  fetchListMock: vi.fn().mockResolvedValue(),
+  getDownloadUrlMock: vi.fn(),
+  dropZoneOptions: null,
+  appAutoArrangeMock: vi.fn().mockResolvedValue(1),
+  fileAutoArrangeMock: vi.fn().mockResolvedValue(),
+}));
+const wallpaperMocks = vi.hoisted(() => ({
+  ensurePreloadedMock: vi.fn().mockResolvedValue(),
+  fetchCurrentGroupMock: vi.fn().mockResolvedValue(),
+  fetchActiveWallpaperMock: vi.fn().mockResolvedValue(),
+  randomWallpaperMock: vi.fn().mockResolvedValue(null),
+}));
 
 vi.mock('@/composables/useWallpaper.js', () => {
-  const ensurePreloaded = vi.fn().mockResolvedValue();
-  const fetchCurrentGroup = vi.fn().mockResolvedValue();
-  const fetchActiveWallpaper = vi.fn().mockResolvedValue();
-  const randomWallpaper = vi.fn().mockResolvedValue(null);
   return {
     useWallpaper: () => ({
-      randomWallpaper,
-      ensurePreloaded,
-      fetchCurrentGroup,
-      fetchActiveWallpaper,
+      randomWallpaper: wallpaperMocks.randomWallpaperMock,
+      ensurePreloaded: wallpaperMocks.ensurePreloadedMock,
+      fetchCurrentGroup: wallpaperMocks.fetchCurrentGroupMock,
+      fetchActiveWallpaper: wallpaperMocks.fetchActiveWallpaperMock,
       activeWallpaper: ref(null),
     }),
   };
 });
 
 vi.mock('@/composables/useFiles.js', () => {
-  const upload = vi.fn();
-  const fetchList = vi.fn().mockResolvedValue();
   const uploading = ref(false);
   const uploadProgress = ref(0);
   const uploadedBytes = ref(0);
   const totalBytes = ref(0);
   const currentFileName = ref('');
   const uploadQueue = ref([]);
-  const getDownloadUrl = vi.fn();
   return {
     useFiles: () => ({
       items: filesRef,
-      fetchList,
-      upload,
+      fetchList: homeMocks.fetchListMock,
+      upload: homeMocks.uploadMock,
       uploading,
       uploadProgress,
       uploadedBytes,
       totalBytes,
       currentFileName,
       uploadQueue,
-      getDownloadUrl,
+      getDownloadUrl: homeMocks.getDownloadUrlMock,
     }),
   };
 });
@@ -79,12 +86,15 @@ vi.mock('@/composables/useMessageBoardAutoOpen.js', () => ({
 }));
 
 vi.mock('@/composables/useDesktopDropZone.js', () => ({
-  useDesktopDropZone: () => ({
-    dragOver: ref(false),
-    onDragOver: vi.fn(),
-    onDragLeave: vi.fn(),
-    onDrop: vi.fn(),
-  }),
+  useDesktopDropZone: options => {
+    homeMocks.dropZoneOptions = options;
+    return {
+      dragOver: ref(false),
+      onDragOver: vi.fn(),
+      onDragLeave: vi.fn(),
+      onDrop: vi.fn(),
+    };
+  },
 }));
 
 vi.mock('@/composables/useDesktopFileActions.js', () => ({
@@ -127,7 +137,13 @@ vi.mock('@/components/wallpaper/WallpaperBackground.vue', () => ({
 vi.mock('@/components/desktop/AppIcons.vue', () => ({
   default: defineComponent({
     name: 'AppIconsStub',
-    setup: () => () => h('div', { class: 'app-icons-stub' }),
+    setup(_props, { expose }) {
+      expose({
+        autoArrange: (...args) => homeMocks.appAutoArrangeMock(...args),
+        setSelectedIds: vi.fn(),
+      });
+      return () => h('div', { class: 'app-icons-stub' });
+    },
   }),
 }));
 
@@ -138,7 +154,11 @@ vi.mock('@/components/desktop/FileIcons.vue', () => ({
       files: { type: Array, default: () => [] },
       icons: { type: Object, default: () => ({}) },
     },
-    setup(props) {
+    setup(props, { expose }) {
+      expose({
+        autoArrange: (...args) => homeMocks.fileAutoArrangeMock(...args),
+        setSelectedIds: vi.fn(),
+      });
       return () =>
         h('div', {
           class: 'file-icons-stub',
@@ -204,6 +224,22 @@ import Home from '@/views/Home.vue';
 describe('Home desktop files filtering', () => {
   beforeEach(() => {
     filesRef.value = [];
+    wallpaperMocks.randomWallpaperMock.mockResolvedValue(null);
+    wallpaperMocks.ensurePreloadedMock.mockResolvedValue();
+    wallpaperMocks.fetchCurrentGroupMock.mockResolvedValue();
+    wallpaperMocks.fetchActiveWallpaperMock.mockResolvedValue();
+    wallpaperMocks.randomWallpaperMock.mockClear();
+    wallpaperMocks.ensurePreloadedMock.mockClear();
+    wallpaperMocks.fetchCurrentGroupMock.mockClear();
+    wallpaperMocks.fetchActiveWallpaperMock.mockClear();
+    homeMocks.uploadMock.mockResolvedValue();
+    homeMocks.fetchListMock.mockResolvedValue();
+    homeMocks.getDownloadUrlMock.mockReset();
+    homeMocks.dropZoneOptions = null;
+    homeMocks.appAutoArrangeMock.mockClear();
+    homeMocks.fileAutoArrangeMock.mockClear();
+    homeMocks.uploadMock.mockClear();
+    homeMocks.fetchListMock.mockClear();
     vi.stubGlobal('localStorage', {
       getItem: vi.fn(() => null),
       setItem: vi.fn(),
@@ -226,6 +262,37 @@ describe('Home desktop files filtering', () => {
     const fileIcons = wrapper.findComponent({ name: 'FileIconsStub' });
     expect(fileIcons.exists()).toBe(true);
     expect(fileIcons.props('files').map(file => file.id)).toEqual([1, 2, 3]);
+
+    wrapper.unmount();
+  });
+
+  it('refreshes desktop files after a delete success event', async () => {
+    const wrapper = mount(Home);
+    await flushPromises();
+
+    const initialCalls = homeMocks.fetchListMock.mock.calls.length;
+    wrapper.findComponent({ name: 'FileIconsStub' }).vm.$emit('delete-success');
+    await flushPromises();
+
+    expect(homeMocks.fetchListMock).toHaveBeenCalledTimes(initialCalls + 1);
+
+    wrapper.unmount();
+  });
+
+  it('auto arranges desktop icons after upload succeeds', async () => {
+    const wrapper = mount(Home);
+    await flushPromises();
+
+    expect(homeMocks.dropZoneOptions?.upload).toBeTypeOf('function');
+
+    await homeMocks.dropZoneOptions.upload([{ name: 'new-file.txt', size: 1 }]);
+    await flushPromises();
+
+    expect(homeMocks.uploadMock).toHaveBeenCalledWith([
+      { name: 'new-file.txt', size: 1 },
+    ]);
+    expect(homeMocks.appAutoArrangeMock).toHaveBeenCalledWith(0);
+    expect(homeMocks.fileAutoArrangeMock).toHaveBeenCalledTimes(1);
 
     wrapper.unmount();
   });

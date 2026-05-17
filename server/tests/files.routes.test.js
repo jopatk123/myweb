@@ -158,6 +158,36 @@ describe('Files API routes', () => {
     expect(res.body.message).toBe('非法的文件路径');
   });
 
+  test('download keeps original filename in Content-Disposition', async () => {
+    const storedName = 'stored-name-123.txt';
+    const diskPath = path.join(uploadsDir, storedName);
+    await fs.mkdir(uploadsDir, { recursive: true });
+    await fs.writeFile(diskPath, 'download content');
+    createdFiles.push(diskPath);
+
+    const stmt = db.prepare(`
+      INSERT INTO files (original_name, stored_name, file_path, mime_type, file_size, type_category)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      '下载原名.txt',
+      storedName,
+      `uploads/files/${storedName}`,
+      'text/plain',
+      16,
+      'other'
+    );
+
+    const res = await request(app)
+      .get(`/api/files/${result.lastInsertRowid}/download`)
+      .expect(200);
+
+    const disposition = res.headers['content-disposition'] || '';
+    expect(disposition).toContain('attachment;');
+    expect(disposition).toContain('filename*=UTF-8');
+    expect(disposition).toContain(encodeURIComponent('下载原名.txt'));
+  });
+
   test('returns 400 when uploading with no files', async () => {
     const res = await request(app).post('/api/files/upload').expect(400);
 
