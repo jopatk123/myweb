@@ -132,9 +132,6 @@ clearAll:
     description: Delete all message board entries.
     tags:
       - Messages
-    security:
-      - appSession: []
-        adminToken: []
     requestBody:
       required: true
       content:
@@ -158,9 +155,6 @@ byId:
     description: Delete a single message board entry.
     tags:
       - Messages
-    security:
-      - appSession: []
-        adminToken: []
     parameters:
       - in: path
         name: id

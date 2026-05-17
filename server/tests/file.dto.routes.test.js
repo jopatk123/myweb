@@ -7,10 +7,8 @@ import { createApp } from '../src/appFactory.js';
 describe('File routes - Joi validation', () => {
   let app;
   let db;
-  const ADMIN_TOKEN = 'joi-test-token';
 
   beforeAll(async () => {
-    process.env.FILES_ADMIN_TOKEN = ADMIN_TOKEN;
     ({ app, db } = await createApp({
       dbPath: ':memory:',
       seedBuiltinApps: false,
@@ -18,7 +16,6 @@ describe('File routes - Joi validation', () => {
   });
 
   afterAll(async () => {
-    delete process.env.FILES_ADMIN_TOKEN;
     await db?.close?.();
   });
 
@@ -80,17 +77,13 @@ describe('File routes - Joi validation', () => {
   // ─── DELETE /api/files/:id 路径参数验证 ───────────────────────────────────
 
   test('DELETE /api/files/:id rejects string id with 400', async () => {
-    const res = await request(app)
-      .delete('/api/files/notanid')
-      .set('X-Admin-Token', ADMIN_TOKEN);
+    const res = await request(app).delete('/api/files/notanid');
     expect(res.status).toBe(400);
     expect(res.body.code).toBe(400);
   });
 
   test('DELETE /api/files/:id returns 404 for valid but non-existent id', async () => {
-    const res = await request(app)
-      .delete('/api/files/99999')
-      .set('X-Admin-Token', ADMIN_TOKEN);
+    const res = await request(app).delete('/api/files/99999');
     expect(res.status).toBe(404);
   });
 });

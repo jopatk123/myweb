@@ -31,9 +31,6 @@ upload:
     description: Upload one or more files in multipart form.
     tags:
       - Files
-    security:
-      - appSession: []
-        adminToken: []
     requestBody:
       required: true
       content:
@@ -70,9 +67,6 @@ byId:
     description: Delete one uploaded file.
     tags:
       - Files
-    security:
-      - appSession: []
-        adminToken: []
     parameters:
       - in: path
         name: id

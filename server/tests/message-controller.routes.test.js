@@ -5,10 +5,8 @@ import { setDb } from '../src/utils/dbPool.js';
 
 let app;
 let db;
-const ADMIN_TOKEN = 'message-admin-token';
 
 beforeAll(async () => {
-  process.env.FILES_ADMIN_TOKEN = ADMIN_TOKEN;
   ({ app, db } = await createApp({
     dbPath: ':memory:',
     seedBuiltinApps: false,
@@ -18,7 +16,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  delete process.env.FILES_ADMIN_TOKEN;
   await db?.close?.();
 });
 
@@ -102,17 +99,12 @@ describe('MessageController - deleteMessage()', () => {
       .post('/api/messages')
       .send({ content: '待删留言' });
     const id = sendRes.body.data.id;
-    const res = await request(app)
-      .delete(`/api/messages/${id}`)
-      .set('X-Admin-Token', ADMIN_TOKEN)
-      .expect(200);
+    const res = await request(app).delete(`/api/messages/${id}`).expect(200);
     expect(res.body.code).toBe(200);
   });
 
   test('DELETE /api/messages/:id returns error for non-existent message', async () => {
-    const res = await request(app)
-      .delete('/api/messages/999999')
-      .set('X-Admin-Token', ADMIN_TOKEN);
+    const res = await request(app).delete('/api/messages/999999');
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 });
@@ -146,7 +138,6 @@ describe('MessageController - clearAllMessages()', () => {
     await request(app).post('/api/messages').send({ content: '要清除2' });
     const res = await request(app)
       .delete('/api/messages/clear-all')
-      .set('X-Admin-Token', ADMIN_TOKEN)
       .send({ confirm: true })
       .expect(200);
     expect(res.body.code).toBe(200);
@@ -156,7 +147,6 @@ describe('MessageController - clearAllMessages()', () => {
   test('DELETE /api/messages/clear-all without confirm returns 400', async () => {
     const res = await request(app)
       .delete('/api/messages/clear-all')
-      .set('X-Admin-Token', ADMIN_TOKEN)
       .send({ confirm: false })
       .expect(400);
     expect(res.body.code).toBe(400);
@@ -195,10 +185,7 @@ describe('MessageController - wsServer broadcast branches', () => {
     app.set('wsServer', mockWsServer);
     mockWsServer.broadcast.mockClear();
     const id = sendRes.body.data.id;
-    await request(app)
-      .delete(`/api/messages/${id}`)
-      .set('X-Admin-Token', ADMIN_TOKEN)
-      .expect(200);
+    await request(app).delete(`/api/messages/${id}`).expect(200);
     expect(mockWsServer.broadcast).toHaveBeenCalledWith(
       'messageDeleted',
       expect.any(Object)
@@ -212,7 +199,6 @@ describe('MessageController - wsServer broadcast branches', () => {
     mockWsServer.broadcast.mockClear();
     const res = await request(app)
       .delete('/api/messages/clear-all')
-      .set('X-Admin-Token', ADMIN_TOKEN)
       .send({ confirm: true })
       .expect(200);
     expect(res.body.code).toBe(200);

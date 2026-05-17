@@ -3,7 +3,6 @@
  */
 import { createApiClient, getApiBase } from './httpClient.js';
 import { ensureSessionId } from '@/store/sessionState.js';
-import { readStorageItem } from '@/utils/storage.js';
 
 // 处理API基础URL；createApiClient 已绑定响应拦截器，自动解包 response.data
 const messageApi = createApiClient({
@@ -18,15 +17,6 @@ messageApi.interceptors.request.use(config => {
   config.headers['X-Session-Id'] = sessionId;
   return config;
 });
-
-function getAdminToken() {
-  return readStorageItem('myweb_admin_token') || '';
-}
-
-function buildAdminHeaders() {
-  const token = getAdminToken();
-  return token ? { 'X-Admin-Token': token } : {};
-}
 
 export const messageAPI = {
   /**
@@ -47,9 +37,7 @@ export const messageAPI = {
    * 删除留言
    */
   async deleteMessage(id) {
-    return messageApi.delete(`/${id}`, {
-      headers: buildAdminHeaders(),
-    });
+    return messageApi.delete(`/${id}`);
   },
 
   /**
@@ -86,10 +74,7 @@ export const messageAPI = {
    * 清除所有留言
    */
   async clearAllMessages() {
-    return messageApi.delete('/clear-all', {
-      headers: buildAdminHeaders(),
-      data: { confirm: true },
-    });
+    return messageApi.delete('/clear-all', { data: { confirm: true } });
   },
 };
 

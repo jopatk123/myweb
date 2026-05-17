@@ -22,10 +22,6 @@ vi.mock('@/store/sessionState.js', () => ({
   ensureSessionId: vi.fn(() => 'session-from-store'),
 }));
 
-vi.mock('@/utils/storage.js', () => ({
-  readStorageItem: vi.fn(() => 'admin-token-1'),
-}));
-
 describe('message API', () => {
   it('injects the shared session id into request headers', async () => {
     vi.resetModules();

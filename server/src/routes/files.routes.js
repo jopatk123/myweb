@@ -1,7 +1,6 @@
 import express from 'express';
 import fs from 'fs';
 import { FileService } from '../services/file.service.js';
-import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import { detectTypeCategory, FILE_CATEGORIES } from '../utils/file-metadata.js';
 import { normaliseUploadedFileName } from '../utils/upload.js';
@@ -67,12 +66,10 @@ const upload = createUploader({
 export function createFileRoutes(db) {
   const router = express.Router();
   const service = new FileService(db);
-  const adminGuard = createFilesAdminGuard();
 
   // 上传（支持多文件）
   router.post(
     '/upload',
-    adminGuard,
     upload.array('file', MAX_UPLOAD_FILES),
     async (req, res, next) => {
       try {
@@ -159,19 +156,14 @@ export function createFileRoutes(db) {
   });
 
   // 删除（带 id 校验）
-  router.delete(
-    '/:id',
-    adminGuard,
-    validateId('id'),
-    async (req, res, next) => {
-      try {
-        await service.remove(req.params.id);
-        res.json({ code: 200, success: true, message: '文件删除成功' });
-      } catch (error) {
-        next(error);
-      }
+  router.delete('/:id', validateId('id'), async (req, res, next) => {
+    try {
+      await service.remove(req.params.id);
+      res.json({ code: 200, success: true, message: '文件删除成功' });
+    } catch (error) {
+      next(error);
     }
-  );
+  });
 
   return router;
 }

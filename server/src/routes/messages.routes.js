@@ -7,7 +7,6 @@ import {
   uploadImage,
   MESSAGE_IMAGE_MAX_FILES,
 } from '../controllers/message.controller.js';
-import { createFilesAdminGuard } from '../middleware/adminAuth.middleware.js';
 import {
   validateBody,
   sendMessageSchema,
@@ -20,7 +19,6 @@ import { validateQuery } from '../dto/wallpaper.dto.js';
 export function createMessageRoutes(db) {
   const router = express.Router();
   const controller = new MessageController(db);
-  const adminGuard = createFilesAdminGuard();
 
   // 获取留言列表
   router.get('/', validateQuery(getMessagesSchema), (req, res, next) =>
@@ -51,16 +49,15 @@ export function createMessageRoutes(db) {
     (req, res, next) => controller.uploadImageHandler(req, res, next)
   );
 
-  // 清除所有留言（需要管理员权限）
+  // 清除所有留言
   router.delete(
     '/clear-all',
-    adminGuard,
     validateBody(clearAllMessagesSchema),
     (req, res, next) => controller.clearAllMessages(req, res, next)
   );
 
-  // 删除留言（需要管理员权限）
-  router.delete('/:id', adminGuard, (req, res, next) =>
+  // 删除留言
+  router.delete('/:id', (req, res, next) =>
     controller.deleteMessage(req, res, next)
   );
 

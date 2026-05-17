@@ -91,7 +91,16 @@ export const appEnv = Object.freeze({
 
 export function resolveDatabasePath(overridePath) {
   if (overridePath) return overridePath;
-  if (process.env.DB_PATH) return process.env.DB_PATH;
+  if (process.env.DB_PATH) {
+    if (
+      process.env.DB_PATH.startsWith('/app/') &&
+      appEnv.nodeEnv !== 'production'
+    ) {
+      return appEnv.database.defaultFile;
+    }
+
+    return process.env.DB_PATH;
+  }
   return appEnv.database.defaultFile;
 }
 
@@ -108,15 +117,6 @@ export function isCorsOriginAllowed(origin) {
 
 export function getCorsEffectiveOrigins() {
   return appEnv.cors.allowAll ? ['*'] : [...appEnv.cors.effective];
-}
-
-export function getAdminTokenConfig(envVar) {
-  const token = rawEnv[envVar] || '';
-  const tokenHash = rawEnv[`${envVar}_HASH`] || '';
-  return {
-    token,
-    tokenHash,
-  };
 }
 
 export function shouldLogVerbose() {

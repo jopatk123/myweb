@@ -4,10 +4,8 @@ import { createApp } from '../src/appFactory.js';
 describe('Message route validation', () => {
   let app;
   let db;
-  const ADMIN_TOKEN = 'validation-admin-token';
 
   beforeAll(async () => {
-    process.env.FILES_ADMIN_TOKEN = ADMIN_TOKEN;
     ({ app, db } = await createApp({
       dbPath: ':memory:',
       seedBuiltinApps: false,
@@ -16,7 +14,6 @@ describe('Message route validation', () => {
   });
 
   afterAll(() => {
-    delete process.env.FILES_ADMIN_TOKEN;
     if (db && typeof db.close === 'function') {
       db.close();
     }
@@ -89,10 +86,9 @@ describe('Message route validation', () => {
   });
 
   describe('DELETE /api/messages/clear-all', () => {
-    test('validates confirm payload with admin token', async () => {
+    test('validates confirm payload', async () => {
       const res = await request(app)
         .delete('/api/messages/clear-all')
-        .set('X-Admin-Token', ADMIN_TOKEN)
         .send({ confirm: true });
       expect([200, 400]).toContain(res.status);
     });

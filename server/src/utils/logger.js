@@ -38,8 +38,6 @@ const pinoOptions = {
       '*.password',
       '*.token',
       'req.headers.authorization',
-      'req.headers["x-admin-token"]',
-      'req.headers["x-admin-key"]',
       'body.password',
       'body.token',
     ],

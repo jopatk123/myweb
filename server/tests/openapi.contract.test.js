@@ -99,21 +99,14 @@ describe('OpenAPI contract coverage', () => {
     expect(rootSpec).not.toContain('/api/wallpapers/batch-delete:');
   });
 
-  test('documents application session and admin token security requirements', () => {
+  test('documents application session security requirements', () => {
     expect(rootSpec).toMatch(
       /securitySchemes:[\s\S]*appSession:[\s\S]*name:\s*myweb_auth/
     );
-    expect(rootSpec).toMatch(
-      /securitySchemes:[\s\S]*adminToken:[\s\S]*name:\s*X-Admin-Token/
-    );
     expect(rootSpec).toMatch(/security:\s*- appSession:\s*\[\]/);
-    expect(filesSpec).toMatch(
-      /security:\s*- appSession:\s*\[\]\s*adminToken:\s*\[\]/
-    );
     expect(authSpec).toMatch(/security:\s*\[\]/);
-    expect(internalLogsSpec).toMatch(
-      /security:\s*- appSession:\s*\[\]\s*adminToken:\s*\[\]/
-    );
+    expect(filesSpec).not.toContain('adminToken');
+    expect(internalLogsSpec).not.toContain('adminToken');
   });
 
   test('keeps dedicated path files aligned with the route families they describe', () => {

@@ -14,10 +14,8 @@ describe('Files API routes', () => {
   let app;
   let db;
   const createdFiles = [];
-  const ADMIN_TOKEN = 'test-admin-token';
 
   beforeAll(async () => {
-    process.env.FILES_ADMIN_TOKEN = ADMIN_TOKEN;
     ({ app, db } = await createApp({
       dbPath: ':memory:',
       seedBuiltinApps: false,
@@ -25,7 +23,6 @@ describe('Files API routes', () => {
   });
 
   afterAll(async () => {
-    delete process.env.FILES_ADMIN_TOKEN;
     await db?.close?.();
   });
 
@@ -37,24 +34,20 @@ describe('Files API routes', () => {
     jest.restoreAllMocks();
   });
 
-  test('rejects upload without admin token', async () => {
+  test('accepts upload without admin token', async () => {
     const res = await request(app)
       .post('/api/files/upload')
       .attach('file', Buffer.from('secret'), 'secret.txt')
-      .expect(401);
+      .expect(201);
 
-    expect(res.body).toMatchObject({
-      code: 401,
-      success: false,
-    });
+    expect(res.body.success).toBe(true);
     const count = db.prepare('SELECT COUNT(*) as total FROM files').get().total;
-    expect(count).toBe(0);
+    expect(count).toBe(1);
   });
 
   test('accepts upload with valid token and stores metadata', async () => {
     const res = await request(app)
       .post('/api/files/upload')
-      .set('X-Admin-Token', ADMIN_TOKEN)
       .attach('file', Buffer.from('hello world'), 'hello.txt')
       .expect(201);
 
@@ -81,7 +74,6 @@ describe('Files API routes', () => {
   test('ignores untrusted x-api-base header when building file url', async () => {
     const res = await request(app)
       .post('/api/files/upload')
-      .set('X-Admin-Token', ADMIN_TOKEN)
       .set('X-Api-Base', 'https://evil.example.com/api')
       .attach('file', Buffer.from('hello world'), 'safe.txt')
       .expect(201);
@@ -106,7 +98,6 @@ describe('Files API routes', () => {
     try {
       const res = await request(app)
         .post('/api/files/upload')
-        .set('X-Admin-Token', ADMIN_TOKEN)
         .attach('file', Buffer.from('MZ'), 'malware.exe')
         .expect(400);
 
@@ -168,10 +159,7 @@ describe('Files API routes', () => {
   });
 
   test('returns 400 when uploading with no files', async () => {
-    const res = await request(app)
-      .post('/api/files/upload')
-      .set('X-Admin-Token', ADMIN_TOKEN)
-      .expect(400);
+    const res = await request(app).post('/api/files/upload').expect(400);
 
     expect(res.body.success).toBe(false);
   });
@@ -200,7 +188,6 @@ describe('Files API routes', () => {
   test('DELETE /api/files/:id deletes file', async () => {
     const uploadRes = await request(app)
       .post('/api/files/upload')
-      .set('X-Admin-Token', ADMIN_TOKEN)
       .attach('file', Buffer.from('delete me'), 'todelete.txt')
       .expect(201);
 
@@ -212,10 +199,7 @@ describe('Files API routes', () => {
 
     const id = payload.id;
 
-    const res = await request(app)
-      .delete(`/api/files/${id}`)
-      .set('X-Admin-Token', ADMIN_TOKEN)
-      .expect(200);
+    const res = await request(app).delete(`/api/files/${id}`).expect(200);
 
     expect(res.body.success).toBe(true);
   });
@@ -244,7 +228,6 @@ describe('Files API routes', () => {
   test('accepts upload with trusted x-api-base header and uses it for url', async () => {
     const res = await request(app)
       .post('/api/files/upload')
-      .set('X-Admin-Token', ADMIN_TOKEN)
       .set('Host', 'localhost:3000')
       .set('X-Api-Base', 'http://localhost:3000')
       .attach('file', Buffer.from('trusted api base test'), 'trusted.txt')
@@ -264,7 +247,6 @@ describe('Files API routes', () => {
   test('upload multiple files returns array', async () => {
     const res = await request(app)
       .post('/api/files/upload')
-      .set('X-Admin-Token', ADMIN_TOKEN)
       .attach('file', Buffer.from('file one'), 'multi1.txt')
       .attach('file', Buffer.from('file two'), 'multi2.txt')
       .expect(201);
@@ -339,7 +321,6 @@ describe('Files API routes', () => {
 
     const res = await request(app)
       .post('/api/files/upload')
-      .set('X-Admin-Token', ADMIN_TOKEN)
       .attach('file', Buffer.from('rollback me'), 'rollback.txt')
       .expect(500);
 
@@ -370,10 +351,7 @@ describe('Files API routes', () => {
       .spyOn(FileService.prototype, 'remove')
       .mockRejectedValueOnce(new Error('remove failed'));
 
-    const res = await request(app)
-      .delete('/api/files/1')
-      .set('X-Admin-Token', ADMIN_TOKEN)
-      .expect(500);
+    const res = await request(app).delete('/api/files/1').expect(500);
 
     expect(res.body.code).toBe(500);
   });

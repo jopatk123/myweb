@@ -32,13 +32,6 @@ components:
       description: |
         访问受保护接口所需的应用访问会话 cookie。
         通过 POST /api/auth/verify 验证密码后由服务端写入。
-    adminToken:
-      type: apiKey
-      in: header
-      name: X-Admin-Token
-      description: |
-        管理员接口所需的额外令牌。
-        适用于文件上传/删除等高权限操作。
 security:
   - appSession: []
 paths:

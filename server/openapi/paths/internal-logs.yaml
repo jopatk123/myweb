@@ -5,9 +5,6 @@ ai:
       Record AI request and response summaries for internal debugging.
     tags:
       - Internal Logs
-    security:
-      - appSession: []
-        adminToken: []
     requestBody:
       required: true
       content:

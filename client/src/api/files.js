@@ -2,24 +2,11 @@ import { createApiClient, buildApiUrl, getServerOrigin } from './httpClient.js';
 
 const api = createApiClient({ timeout: 300000 });
 
-function getAdminToken() {
-  if (typeof window === 'undefined') return '';
-  try {
-    return window.localStorage?.getItem('myweb_admin_token') || '';
-  } catch {
-    return '';
-  }
-}
-
 function buildAuthHeaders() {
-  const token = getAdminToken();
   const headers = {};
   const base = getServerOrigin();
   if (base) {
     headers['X-Api-Base'] = base;
-  }
-  if (token) {
-    headers['X-Admin-Token'] = token;
   }
   return headers;
 }

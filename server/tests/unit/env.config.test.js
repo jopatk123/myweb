@@ -1,4 +1,6 @@
 import { jest } from '@jest/globals';
+import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 
 const ORIGINAL_ENV = { ...process.env };
@@ -72,14 +74,22 @@ describe('config/env', () => {
     expect(process.env.DB_PATH).toBe(overridePath);
   });
 
-  test('reads admin token mapping via helper', async () => {
-    process.env.FILES_ADMIN_TOKEN = 'plain-token';
-    process.env.FILES_ADMIN_TOKEN_HASH = 'hashed-token';
+  test('loadEnvFile reads dotenv values without overriding existing vars', async () => {
+    const { loadEnvFile } = await import('../../src/config/dotenv.js');
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'myweb-dotenv-'));
+    const envPath = path.join(tempDir, '.env');
 
-    const { getAdminTokenConfig } = await loadEnvModule();
-    const config = getAdminTokenConfig('FILES_ADMIN_TOKEN');
+    process.env.EXISTING_TOKEN = 'from-process';
+    await fs.writeFile(
+      envPath,
+      'CORS_ORIGIN=http://example.com\nEXISTING_TOKEN=file-value\n'
+    );
 
-    expect(config).toEqual({ token: 'plain-token', tokenHash: 'hashed-token' });
+    const loadedCount = loadEnvFile(envPath);
+
+    expect(loadedCount).toBe(1);
+    expect(process.env.CORS_ORIGIN).toBe('http://example.com');
+    expect(process.env.EXISTING_TOKEN).toBe('from-process');
   });
 
   test('supports explicit CORS origin list and effective origins helper', async () => {
@@ -102,6 +112,14 @@ describe('config/env', () => {
 
     const { resolveDatabasePath } = await loadEnvModule();
     expect(resolveDatabasePath()).toBe('/tmp/env-db-path-test.sqlite');
+  });
+
+  test('resolveDatabasePath ignores Docker DB path in non-production runs', async () => {
+    process.env.DB_PATH = '/app/server/data/myweb.db';
+
+    const { appEnv, resolveDatabasePath } = await loadEnvModule();
+    expect(appEnv.nodeEnv).not.toBe('production');
+    expect(resolveDatabasePath()).toBe(appEnv.database.defaultFile);
   });
 
   test('applyDatabasePathOverride ignores empty override', async () => {
