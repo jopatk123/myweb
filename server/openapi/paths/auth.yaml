@@ -21,13 +21,15 @@ verify:
         description: Verified
       '401':
         description: Invalid password
+      '503':
+        description: Authentication is misconfigured for the current environment
       '429':
         description: Too many attempts
 
 status:
   get:
     summary: Get access verification status
-    description: Return whether access verification is required and whether the current request is authenticated.
+    description: Return whether access verification is required, whether the current request is authenticated, and whether server-side signing configuration is ready.
     tags:
       - Auth
     security: []

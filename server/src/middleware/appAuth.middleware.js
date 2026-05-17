@@ -1,4 +1,5 @@
 import {
+  getAppAuthConfigStatus,
   getAppPasswordStatus,
   getAppAuthCookieValue,
   isValidAppAuthSession,
@@ -6,7 +7,17 @@ import {
 
 export function createAppAuthGuard() {
   return (req, res, next) => {
+    const { issue } = getAppAuthConfigStatus();
     const { passwordRequired, isPasswordConfigured } = getAppPasswordStatus();
+
+    if (issue) {
+      return res.status(503).json({
+        code: 503,
+        success: false,
+        authenticated: false,
+        message: issue,
+      });
+    }
 
     if (!passwordRequired) {
       return next();

@@ -45,6 +45,7 @@
 
 - 前端启动后会先进入访问验证界面，输入正确密码后才能进入页面。
 - 访问密码由 `APP_PASSWORD` 控制；开发环境可留空以免密访问，生产环境必须显式配置。
+- 访问 cookie 的签名密钥由 `APP_AUTH_SECRET` 控制；**生产环境必须单独配置**，不要复用 `APP_PASSWORD`。
 - 验证通过后后端会写入 `HttpOnly` 访问 cookie，默认有效期 30 天，到期后需再次输入密码。
 
 ## 目录概览
@@ -73,13 +74,24 @@
 | 变量                     | 默认          | 说明                                            |
 | ------------------------ | ------------- | ----------------------------------------------- |
 | `NODE_ENV`               | `development` | 运行模式                                        |
-| `BACKEND_PORT`           | `3000`        | 后端 HTTP/WS 端口                               |
+| `BACKEND_PORT`           | `3000`        | 后端对宿主机暴露的 HTTP/WS 端口                 |
 | `FRONTEND_PORT`          | `5173`        | Vite dev 端口                                   |
+| `APP_PASSWORD`           | 空            | 访问密码；生产环境必须显式配置                  |
+| `APP_AUTH_SECRET`        | 空            | 访问 cookie 签名密钥；生产环境必须单独配置      |
+| `APP_AUTH_TTL_DAYS`      | `30`          | 访问 cookie 有效期（天）                        |
+| `APP_AUTH_COOKIE_SAME_SITE` | `lax`      | 访问 cookie 的 SameSite 设置                    |
 | `VITE_API_BASE`          | `/api`        | 前端打包时的 API 前缀；跨域部署时可设为完整 URL |
 | `CORS_ORIGIN`            | 空            | 留空时仅放行本地开发来源，生产环境应显式配置    |
-| `FILES_ADMIN_TOKEN`      | 空            | 管理员凭证，未配置时敏感接口失败关闭            |
-| `FILES_ADMIN_TOKEN_HASH` | 空            | 可选的管理员凭证 sha256 哈希                    |
+| `ENABLE_HTTPS_SECURITY`  | `0`           | 生产启用 HSTS 等更严格安全头                    |
+| `FILES_ADMIN_TOKEN`      | 空            | 明文管理员凭证；仅建议开发环境使用              |
+| `FILES_ADMIN_TOKEN_HASH` | 空            | 推荐使用的管理员凭证 sha256 哈希                |
 | `FILE_MAX_UPLOAD_SIZE`   | `1gb`         | 通用上传限制                                    |
+| `WS_MAX_CONNECTIONS`     | `200`         | WebSocket 最大并发连接数                        |
+| `WS_MSG_RATE_LIMIT`      | `30`          | 单连接每秒最大消息数                            |
+| `WS_HEARTBEAT_INTERVAL`  | `30000`       | WebSocket 心跳间隔（毫秒）                      |
+| `LOG_TO_FILE`            | `1`           | 是否写入后端文件日志                            |
+| `LOG_LEVEL`              | 空            | 可选日志级别覆盖                                |
+| `VERBOSE_LOGGING`        | `0`           | 是否启用 debug 级别详细日志                     |
 | `DOCKER_BUILDKIT`        | `1`           | 构建时启用 BuildKit                             |
 | `DOMAIN`                 | `localhost`   | Docker Compose 项目域                           |
 

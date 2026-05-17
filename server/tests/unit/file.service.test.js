@@ -98,7 +98,7 @@ describe('FileService.remove()', () => {
     expect(unlinkSpy).not.toHaveBeenCalled();
   });
 
-  test('ignores non-ENOENT unlink errors and still returns true', async () => {
+  test('throws on unexpected unlink errors and keeps the DB record', async () => {
     const row = service.create({
       originalName: 'io.txt',
       storedName: 'io-1.txt',
@@ -113,10 +113,15 @@ describe('FileService.remove()', () => {
       .mockRejectedValueOnce(
         Object.assign(new Error('permission denied'), { code: 'EACCES' })
       );
+    const modelDeleteSpy = jest.spyOn(service.model, 'delete');
 
-    const result = await service.remove(row.id);
-    expect(result).toBe(true);
+    await expect(service.remove(row.id)).rejects.toMatchObject({
+      message: '删除文件失败，请稍后重试',
+      status: 500,
+    });
     expect(unlinkSpy).toHaveBeenCalled();
+    expect(modelDeleteSpy).not.toHaveBeenCalled();
+    expect(service.get(row.id)).toBeTruthy();
   });
 
   test('deletes disk file before DB record to prevent orphaned files', async () => {

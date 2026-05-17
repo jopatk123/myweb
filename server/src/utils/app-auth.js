@@ -27,25 +27,57 @@ function getNodeEnv() {
   return normalizeValue(process.env.NODE_ENV) || 'development';
 }
 
-export function getAppPasswordStatus() {
+function getExplicitAppAuthSecret() {
+  return normalizeValue(process.env.APP_AUTH_SECRET);
+}
+
+export function getAppAuthConfigStatus() {
   const appPassword = normalizeValue(process.env.APP_PASSWORD);
+  const explicitSecret = getExplicitAppAuthSecret();
   const isProduction = getNodeEnv() === 'production';
   const isPasswordConfigured = Boolean(appPassword);
+  const isExplicitSecretConfigured = Boolean(explicitSecret);
+  const passwordRequired = isPasswordConfigured || isProduction;
+  const sessionSigningReady = Boolean(
+    explicitSecret || (!isProduction && appPassword)
+  );
+
+  let issue = null;
+  if (isProduction && !isPasswordConfigured) {
+    issue = '生产环境必须配置 APP_PASSWORD';
+  } else if (isProduction && !isExplicitSecretConfigured) {
+    issue = '生产环境必须配置 APP_AUTH_SECRET';
+  }
+
+  return {
+    appPassword,
+    explicitSecret,
+    isProduction,
+    isPasswordConfigured,
+    isExplicitSecretConfigured,
+    passwordRequired,
+    sessionSigningReady,
+    issue,
+  };
+}
+
+export function getAppPasswordStatus() {
+  const { appPassword, isProduction, isPasswordConfigured, passwordRequired } =
+    getAppAuthConfigStatus();
 
   return {
     appPassword,
     isPasswordConfigured,
-    passwordRequired: isPasswordConfigured || isProduction,
+    passwordRequired,
     isProduction,
   };
 }
 
 function getAppAuthSecret() {
-  const explicitSecret = normalizeValue(process.env.APP_AUTH_SECRET);
+  const { explicitSecret, appPassword, isProduction } = getAppAuthConfigStatus();
   if (explicitSecret) return explicitSecret;
-
-  const passwordBasedSecret = normalizeValue(process.env.APP_PASSWORD);
-  return passwordBasedSecret;
+  if (isProduction) return '';
+  return appPassword;
 }
 
 function getAppAuthTtlMs() {

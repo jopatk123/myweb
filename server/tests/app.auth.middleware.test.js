@@ -89,4 +89,29 @@ describe('application auth guard', () => {
 
     await agent.get('/api/apps').expect(401);
   });
+
+  test('blocks protected routes with 503 when production signing secret is missing', async () => {
+    const originalSecret = process.env.APP_AUTH_SECRET;
+    process.env.APP_PASSWORD = 'secret123';
+    process.env.NODE_ENV = 'production';
+    delete process.env.APP_AUTH_SECRET;
+
+    const { app: isolatedApp, db: isolatedDb } = await createApp({
+      dbPath: ':memory:',
+      seedBuiltinApps: false,
+      silentDbLogs: true,
+    });
+
+    const res = await request(isolatedApp).get('/api/apps').expect(503);
+
+    expect(res.body.message).toContain('APP_AUTH_SECRET');
+
+    await isolatedDb?.close?.();
+    if (originalSecret === undefined) {
+      delete process.env.APP_AUTH_SECRET;
+    } else {
+      process.env.APP_AUTH_SECRET = originalSecret;
+    }
+    process.env.NODE_ENV = 'test';
+  });
 });

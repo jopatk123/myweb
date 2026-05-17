@@ -89,9 +89,13 @@ export class FileService {
         await fs.unlink(absolutePath);
       } catch (err) {
         if (err.code !== 'ENOENT') {
-          fileServiceLogger.warn('删除磁盘文件失败（已忽略）', {
+          fileServiceLogger.error('删除磁盘文件失败，已取消数据库删除', {
+            path: filePath,
             error: err?.message,
           });
+          const error = new Error('删除文件失败，请稍后重试');
+          error.status = 500;
+          throw error;
         }
       }
     }

@@ -4,7 +4,7 @@ import logger from '../utils/logger.js';
 import { verifyToken } from '../utils/crypto.js';
 import {
   clearAppAuthCookie,
-  getAppPasswordStatus,
+  getAppAuthConfigStatus,
   isAppAuthRequestAuthorized,
   setAppAuthCookie,
 } from '../utils/app-auth.js';
@@ -31,9 +31,22 @@ export function createAuthRoutes() {
   const router = express.Router();
 
   router.post('/verify', loginLimiter, (req, res) => {
-    const { appPassword, isProduction, isPasswordConfigured } =
-      getAppPasswordStatus();
+    const {
+      appPassword,
+      isProduction,
+      isPasswordConfigured,
+      issue,
+      sessionSigningReady,
+    } = getAppAuthConfigStatus();
     const { password } = req.body || {};
+
+    if (issue) {
+      return res.status(503).json({
+        code: 503,
+        success: false,
+        message: issue,
+      });
+    }
 
     if (!isPasswordConfigured) {
       if (isProduction) {
@@ -63,7 +76,17 @@ export function createAuthRoutes() {
 
     if (match) {
       authLogger.info('密码验证成功', { ip: req.ip });
-      setAppAuthCookie(res);
+      if (!sessionSigningReady || !setAppAuthCookie(res)) {
+        authLogger.error('密码验证成功但会话签名不可用', {
+          ip: req.ip,
+          nodeEnv: process.env.NODE_ENV,
+        });
+        return res.status(503).json({
+          code: 503,
+          success: false,
+          message: '访问验证配置不完整，无法创建登录会话',
+        });
+      }
       return res.json({ code: 200, success: true, message: '验证成功' });
     }
 
@@ -77,14 +100,21 @@ export function createAuthRoutes() {
 
   // 检查是否需要密码（不暴露密码本身）
   router.get('/status', (req, res) => {
-    const { passwordRequired, isPasswordConfigured } = getAppPasswordStatus();
+    const {
+      passwordRequired,
+      isPasswordConfigured,
+      issue,
+      sessionSigningReady,
+    } = getAppAuthConfigStatus();
     res.json({
       code: 200,
       success: true,
       data: {
         required: passwordRequired,
         configured: isPasswordConfigured,
-        authenticated: isAppAuthRequestAuthorized(req),
+        signingReady: sessionSigningReady,
+        configIssue: issue,
+        authenticated: issue ? false : isAppAuthRequestAuthorized(req),
       },
     });
   });

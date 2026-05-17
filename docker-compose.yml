@@ -12,7 +12,7 @@ services:
     env_file:
       - .env
     ports:
-      - '10010:3000'
+      - '${BACKEND_PORT:-3000}:3000'
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000

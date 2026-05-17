@@ -20,6 +20,7 @@ import {
   normalizeResponseMiddleware,
 } from './utils/case-helper.js';
 import { createAppAuthGuard } from './middleware/appAuth.middleware.js';
+import { createRequestLogMiddleware } from './middleware/requestLog.middleware.js';
 import { setDb } from './utils/dbPool.js';
 import { createUploadDirs } from './utils/file-helper.js';
 import logger from './utils/logger.js';
@@ -149,6 +150,7 @@ export async function createApp(options = {}) {
 
   app.use(normalizeRequestKeys);
   app.use(normalizeResponseMiddleware);
+  app.use(createRequestLogMiddleware());
 
   const uploadsDir = path.join(__dirname, '../uploads');
   const requireAppAuth = createAppAuthGuard();

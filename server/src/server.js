@@ -3,6 +3,7 @@ import app from './app.js';
 import { WebSocketService } from './services/websocket.service.js';
 import logger from './utils/logger.js';
 import { appEnv } from './config/env.js';
+import { getAppAuthConfigStatus } from './utils/app-auth.js';
 
 const bootstrapLogger = logger.child('ServerBootstrap');
 
@@ -20,6 +21,15 @@ process.on('unhandledRejection', reason => {
 
 // 端口优先级：PORT（通用） > BACKEND_PORT（专用） > 默认 3000
 const PORT = appEnv.port ?? 3000;
+const { issue: authConfigIssue } = getAppAuthConfigStatus();
+
+if (authConfigIssue) {
+  bootstrapLogger.error('Server startup blocked by invalid auth configuration', {
+    issue: authConfigIssue,
+    environment: appEnv.nodeEnv,
+  });
+  process.exit(1);
+}
 
 // 创建HTTP服务器
 const server = http.createServer(app);
