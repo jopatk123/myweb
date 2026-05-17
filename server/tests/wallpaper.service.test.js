@@ -366,12 +366,12 @@ test('deleteWallpaper handles thumbnail cache read/unlink errors', async () => {
     .run();
   const id = Number(row.lastInsertRowid);
 
-  const readdirSpy = jest
-    .spyOn(fs, 'readdir')
-    .mockRejectedValueOnce(
-      Object.assign(new Error('dir access denied'), { code: 'EACCES' })
-    )
-    .mockResolvedValueOnce(['purge-errors-100xauto.webp']);
+  db.prepare(
+    `
+      INSERT INTO wallpaper_thumbnail_cache (wallpaper_id, cache_path)
+      VALUES (?, ?)
+    `
+  ).run(id, `uploads/wallpapers/thumbnails/${id}-purge-errors-100xauto.webp`);
 
   const unlinkSpy = jest
     .spyOn(fs, 'unlink')
@@ -382,18 +382,14 @@ test('deleteWallpaper handles thumbnail cache read/unlink errors', async () => {
 
   await service.deleteWallpaper(id);
 
-  const row2 = db
-    .prepare(
-      `
-    INSERT INTO wallpapers (name, filename, original_name, file_path, file_size, mime_type)
-    VALUES ('purge-errors-2', 'purge-errors-2.jpg', 'purge-errors-2.jpg', 'uploads/wallpapers/purge-errors.jpg', 1, 'image/jpeg')
-  `
-    )
-    .run();
-  await service.deleteWallpaper(Number(row2.lastInsertRowid));
-
-  expect(readdirSpy).toHaveBeenCalled();
   expect(unlinkSpy).toHaveBeenCalled();
+  expect(
+    db
+      .prepare(
+        'SELECT COUNT(*) AS total FROM wallpaper_thumbnail_cache WHERE wallpaper_id = ?'
+      )
+      .get(id).total
+  ).toBe(0);
 });
 
 test('getWallpaperThumbnail concurrent requests generate thumbnail only once', async () => {

@@ -65,7 +65,7 @@ describe('Wallpaper thumbnail endpoint', () => {
       : path.join(__dirname, '..', filePath);
     cleanupTargets.add(absoluteOriginalPath);
 
-    const thumbName = `${path.parse(storedFilename).name}-160xauto.jpeg`;
+    const thumbName = `${wallpaperId}-${path.parse(storedFilename).name}-160xauto.jpeg`;
     const cachedThumbPath = path.join(thumbnailsDir, thumbName);
     cleanupTargets.add(cachedThumbPath);
 
@@ -124,7 +124,7 @@ describe('Wallpaper thumbnail endpoint', () => {
       : path.join(__dirname, '..', originalPath);
     cleanupTargets.add(absoluteOriginalPath);
 
-    const thumbName = `${path.parse(storedFilename).name}-200xauto.webp`;
+    const thumbName = `${wallpaperId}-${path.parse(storedFilename).name}-200xauto.webp`;
     const cachedThumbPath = path.join(thumbnailsDir, thumbName);
     cleanupTargets.add(cachedThumbPath);
 
@@ -202,7 +202,7 @@ describe('Wallpaper thumbnail endpoint', () => {
         : path.join(__dirname, '..', filePath)
     );
 
-    const thumbName = `${path.parse(storedFilename).name}-160xauto.jpg`;
+    const thumbName = `${wallpaperId}-${path.parse(storedFilename).name}-160xauto.jpg`;
     cleanupTargets.add(path.join(thumbnailsDir, thumbName));
 
     const res = await request(app)

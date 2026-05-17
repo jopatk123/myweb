@@ -40,8 +40,30 @@ export function initWallpaperTables(db) {
     CREATE INDEX IF NOT EXISTS idx_wallpapers_deleted_at ON wallpapers(deleted_at);
   `;
 
+  const wallpaperRuntimeStateSql = `
+    CREATE TABLE IF NOT EXISTS wallpaper_runtime_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      active_wallpaper_id INTEGER REFERENCES wallpapers(id) ON DELETE SET NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+
+  const wallpaperThumbnailCacheSql = `
+    CREATE TABLE IF NOT EXISTS wallpaper_thumbnail_cache (
+      wallpaper_id INTEGER NOT NULL REFERENCES wallpapers(id) ON DELETE CASCADE,
+      cache_path TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (wallpaper_id, cache_path)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_wallpaper_thumbnail_cache_wallpaper_id
+      ON wallpaper_thumbnail_cache(wallpaper_id);
+  `;
+
   db.exec(groupTableSql);
   db.exec(wallpaperTableSql);
+  db.exec(wallpaperRuntimeStateSql);
+  db.exec(wallpaperThumbnailCacheSql);
 
   const insertDefaultGroup = db.prepare(`
     INSERT OR IGNORE INTO wallpaper_groups (name, is_default)

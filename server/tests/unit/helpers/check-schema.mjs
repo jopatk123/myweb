@@ -41,7 +41,25 @@ for (const init of initializers) {
 const filesTable = db
   .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='files'")
   .get();
+const wallpaperRuntimeStateTable = db
+  .prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='wallpaper_runtime_state'"
+  )
+  .get();
+const wallpaperThumbnailCacheTable = db
+  .prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='wallpaper_thumbnail_cache'"
+  )
+  .get();
 
 assert(Boolean(filesTable), 'files table should exist after initialization');
+assert(
+  Boolean(wallpaperRuntimeStateTable),
+  'wallpaper_runtime_state table should exist after initialization'
+);
+assert(
+  Boolean(wallpaperThumbnailCacheTable),
+  'wallpaper_thumbnail_cache table should exist after initialization'
+);
 
 db.close();

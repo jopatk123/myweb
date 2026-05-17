@@ -58,6 +58,37 @@ export class WallpaperModel extends BaseModel {
       .get(id);
   }
 
+  getActiveId() {
+    const runtimeRow = this.db
+      .prepare(
+        `
+          SELECT s.active_wallpaper_id
+          FROM wallpaper_runtime_state s
+          JOIN wallpapers w ON w.id = s.active_wallpaper_id
+          WHERE s.id = 1 AND w.deleted_at IS NULL
+        `
+      )
+      .get();
+
+    if (runtimeRow?.active_wallpaper_id) {
+      return runtimeRow.active_wallpaper_id;
+    }
+
+    const legacyRow = this.db
+      .prepare(
+        `
+          SELECT id
+          FROM wallpapers
+          WHERE is_active = 1 AND deleted_at IS NULL
+          ORDER BY updated_at DESC, id DESC
+          LIMIT 1
+        `
+      )
+      .get();
+
+    return legacyRow?.id ?? null;
+  }
+
   findManyByIds(ids) {
     if (!ids || ids.length === 0) return [];
     const placeholders = ids.map(() => '?').join(', ');
@@ -146,41 +177,178 @@ export class WallpaperModel extends BaseModel {
   }
 
   setActive(id) {
-    // 先取消所有活跃状态
-    this.db
-      .prepare('UPDATE wallpapers SET is_active = 0 WHERE deleted_at IS NULL')
-      .run();
-    // 设置指定壁纸为活跃
-    return this.db
-      .prepare('UPDATE wallpapers SET is_active = 1 WHERE id = ?')
-      .run(id);
+    const previousActiveId = this.getActiveId();
+
+    this.db.transaction(() => {
+      if (previousActiveId && Number(previousActiveId) !== Number(id)) {
+        this.db
+          .prepare(
+            `
+              UPDATE wallpapers
+              SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+              WHERE id = ? AND deleted_at IS NULL
+            `
+          )
+          .run(previousActiveId);
+      }
+
+      this.db
+        .prepare(
+          `
+            UPDATE wallpapers
+            SET is_active = 1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND deleted_at IS NULL
+          `
+        )
+        .run(id);
+
+      this.db
+        .prepare(
+          `
+            INSERT INTO wallpaper_runtime_state (id, active_wallpaper_id, updated_at)
+            VALUES (1, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET
+              active_wallpaper_id = excluded.active_wallpaper_id,
+              updated_at = CURRENT_TIMESTAMP
+          `
+        )
+        .run(id);
+    })();
+
+    return this.findById(id);
+  }
+
+  clearActiveIfMatches(id) {
+    const currentActiveId = this.getActiveId();
+    if (!currentActiveId || Number(currentActiveId) !== Number(id)) {
+      return false;
+    }
+
+    this.db.transaction(() => {
+      this.db
+        .prepare(
+          `
+            UPDATE wallpapers
+            SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `
+        )
+        .run(id);
+
+      this.db
+        .prepare(
+          `
+            INSERT INTO wallpaper_runtime_state (id, active_wallpaper_id, updated_at)
+            VALUES (1, NULL, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET
+              active_wallpaper_id = NULL,
+              updated_at = CURRENT_TIMESTAMP
+          `
+        )
+        .run();
+    })();
+
+    return true;
   }
 
   getActive() {
-    return this.db
+    const active = this.db
       .prepare(
-        'SELECT * FROM wallpapers WHERE is_active = 1 AND deleted_at IS NULL'
+        `
+          SELECT w.*, 1 AS is_active
+          FROM wallpapers w
+          JOIN wallpaper_runtime_state s ON s.id = 1 AND s.active_wallpaper_id = w.id
+          WHERE w.deleted_at IS NULL
+        `
       )
       .get();
+
+    if (active) {
+      return active;
+    }
+
+    const legacyActive = this.db
+      .prepare(
+        `
+          SELECT *
+          FROM wallpapers
+          WHERE is_active = 1 AND deleted_at IS NULL
+          ORDER BY updated_at DESC, id DESC
+          LIMIT 1
+        `
+      )
+      .get();
+
+    if (!legacyActive) {
+      return undefined;
+    }
+
+    this.setActive(legacyActive.id);
+    return this.findById(legacyActive.id);
   }
 
   getRandomByGroup(groupId) {
-    if (groupId === null || groupId === undefined) {
-      const sql = `
-        SELECT * FROM wallpapers
-        WHERE deleted_at IS NULL
-        ORDER BY RANDOM()
-        LIMIT 1
-      `;
-      return this.db.prepare(sql).get();
+    const whereClauses = ['deleted_at IS NULL'];
+    const params = [];
+
+    if (groupId !== null && groupId !== undefined) {
+      whereClauses.push('group_id = ?');
+      params.push(groupId);
     }
 
-    const sql = `
-      SELECT * FROM wallpapers
-      WHERE group_id = ? AND deleted_at IS NULL
-      ORDER BY RANDOM()
-      LIMIT 1
-    `;
-    return this.db.prepare(sql).get(groupId);
+    const where = `WHERE ${whereClauses.join(' AND ')}`;
+    const totalRow = this.db
+      .prepare(`SELECT COUNT(*) AS total FROM wallpapers ${where}`)
+      .get(...params);
+    const total = Number(totalRow?.total || 0);
+
+    if (total <= 0) {
+      return undefined;
+    }
+
+    const offset = Math.floor(Math.random() * total);
+
+    return this.db
+      .prepare(
+        `
+          SELECT *
+          FROM wallpapers
+          ${where}
+          ORDER BY id
+          LIMIT 1 OFFSET ?
+        `
+      )
+      .get(...params, offset);
+  }
+
+  trackThumbnailCache(wallpaperId, cachePath) {
+    this.db
+      .prepare(
+        `
+          INSERT INTO wallpaper_thumbnail_cache (wallpaper_id, cache_path, created_at)
+          VALUES (?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(wallpaper_id, cache_path) DO NOTHING
+        `
+      )
+      .run(wallpaperId, cachePath);
+  }
+
+  listThumbnailCachePaths(wallpaperId) {
+    return this.db
+      .prepare(
+        `
+          SELECT cache_path
+          FROM wallpaper_thumbnail_cache
+          WHERE wallpaper_id = ?
+        `
+      )
+      .all(wallpaperId)
+      .map(row => row.cache_path);
+  }
+
+  clearThumbnailCacheRecords(wallpaperId) {
+    this.db
+      .prepare('DELETE FROM wallpaper_thumbnail_cache WHERE wallpaper_id = ?')
+      .run(wallpaperId);
   }
 }

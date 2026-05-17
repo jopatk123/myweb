@@ -8,6 +8,7 @@ import logger from '../utils/logger.js';
 import {
   WALLPAPER_THUMBNAILS_DIR,
   toUploadsAbsolutePath,
+  toUploadsRelativePath,
 } from '../utils/upload-path.js';
 import { assertValidImageFile } from '../utils/magic-bytes.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
@@ -135,7 +136,7 @@ export class WallpaperService {
     const existingPath = existing?.file_path;
     const updatedPath = updated?.file_path;
     if (existingPath && updatedPath && existingPath !== updatedPath) {
-      await this.#purgeThumbnailCache(existingPath);
+      await this.#purgeThumbnailCache(existing.id);
     }
 
     return updated;
@@ -144,6 +145,8 @@ export class WallpaperService {
   async deleteWallpaper(id) {
     const wallpaper = this.getWallpaperById(id);
     if (!wallpaper) return;
+
+    this.wallpaperModel.clearActiveIfMatches(id);
 
     // 先从数据库软删除，确保前端与 DB 状态一致
     const dbResult = this.wallpaperModel.delete(id);
@@ -166,7 +169,7 @@ export class WallpaperService {
       }
     }
 
-    await this.#purgeThumbnailCache(wallpaper.file_path);
+    await this.#purgeThumbnailCache(wallpaper.id);
 
     return dbResult;
   }
@@ -174,6 +177,14 @@ export class WallpaperService {
   async deleteMultipleWallpapers(ids) {
     const wallpapers = this.wallpaperModel.findManyByIds(ids);
     if (!wallpapers || wallpapers.length === 0) return;
+
+    const activeWallpaperId = this.wallpaperModel.getActiveId();
+    if (
+      activeWallpaperId &&
+      wallpapers.some(wallpaper => Number(wallpaper.id) === Number(activeWallpaperId))
+    ) {
+      this.wallpaperModel.clearActiveIfMatches(activeWallpaperId);
+    }
 
     // 1. 先批量从数据库软删除
     const dbResult = this.wallpaperModel.deleteMany(ids);
@@ -200,7 +211,7 @@ export class WallpaperService {
         }
       }
 
-      await this.#purgeThumbnailCache(wallpaper.file_path);
+      await this.#purgeThumbnailCache(wallpaper.id);
     }
 
     return dbResult;
@@ -248,8 +259,13 @@ export class WallpaperService {
 
     const parsed = path.parse(originalPath);
     const suffix = `${sanitizedWidth || 'auto'}x${sanitizedHeight || 'auto'}.${outputExtension}`;
-    const cachedFilename = `${parsed.name}-${suffix}`;
+    const cachedFilename = `${wallpaper.id}-${parsed.name}-${suffix}`;
     const cachedPath = path.join(THUMBNAIL_DIR, cachedFilename);
+    const cachedRelativePath = toUploadsRelativePath(
+      'wallpapers',
+      'thumbnails',
+      cachedFilename
+    );
 
     let regenerate = true;
     try {
@@ -282,6 +298,7 @@ export class WallpaperService {
     }
 
     const thumbStats = await fs.stat(cachedPath);
+    this.wallpaperModel.trackThumbnailCache(wallpaper.id, cachedRelativePath);
     const etag = `W/"${thumbStats.size}-${Math.round(thumbStats.mtimeMs)}"`;
 
     return {
@@ -409,34 +426,17 @@ export class WallpaperService {
     }
   }
 
-  async #purgeThumbnailCache(filePath) {
-    if (!filePath) return;
+  async #purgeThumbnailCache(wallpaperId) {
+    if (!wallpaperId) return;
 
-    const parsed = path.parse(filePath);
-    const baseName = parsed.name;
-    if (!baseName) return;
-
-    let entries;
-    try {
-      entries = await fs.readdir(THUMBNAIL_DIR);
-    } catch (error) {
-      if (error?.code !== 'ENOENT') {
-        wallpaperLogger.warn('读取缩略图缓存目录失败（已忽略）', {
-          error: error?.message || error,
-        });
-      }
-      return;
-    }
-
-    if (!entries || entries.length === 0) return;
-
-    const prefix = `${baseName}-`;
-    const targets = entries.filter(name => name.startsWith(prefix));
+    const targets = this.wallpaperModel.listThumbnailCachePaths(wallpaperId);
     if (targets.length === 0) return;
 
     await Promise.allSettled(
-      targets.map(async name => {
-        const targetPath = path.join(THUMBNAIL_DIR, name);
+      targets.map(async cachePath => {
+        const targetPath = toUploadsAbsolutePath(cachePath);
+        if (!targetPath) return;
+
         try {
           await fs.unlink(targetPath);
         } catch (error) {
@@ -449,6 +449,8 @@ export class WallpaperService {
         }
       })
     );
+
+    this.wallpaperModel.clearThumbnailCacheRecords(wallpaperId);
   }
 
   // 分组相关方法

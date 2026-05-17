@@ -68,6 +68,22 @@ describe('WallpaperService#getRandomWallpaper', () => {
     expect(activeRow.is_active).toBe(1);
   });
 
+  test('records active wallpaper in runtime state when selecting randomly', () => {
+    const wallpaper = insertWallpaper({ filename: 'runtime-state.jpg' });
+
+    const result = service.getRandomWallpaper(null);
+
+    expect(result).toBeDefined();
+    expect(result.id).toBe(wallpaper.id);
+
+    const stateRow = db
+      .prepare(
+        'SELECT active_wallpaper_id FROM wallpaper_runtime_state WHERE id = 1'
+      )
+      .get();
+    expect(stateRow.active_wallpaper_id).toBe(wallpaper.id);
+  });
+
   test('falls back to any wallpaper when requested group has none', () => {
     const globalWallpaper = insertWallpaper({
       groupId: null,

@@ -6,6 +6,78 @@ import logger from '../../utils/logger.js';
 
 const migrationLogger = logger.child('WallpaperMigration');
 
+function ensureWallpaperAuxiliaryTables(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS wallpaper_runtime_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      active_wallpaper_id INTEGER REFERENCES wallpapers(id) ON DELETE SET NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS wallpaper_thumbnail_cache (
+      wallpaper_id INTEGER NOT NULL REFERENCES wallpapers(id) ON DELETE CASCADE,
+      cache_path TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (wallpaper_id, cache_path)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_wallpaper_thumbnail_cache_wallpaper_id
+      ON wallpaper_thumbnail_cache(wallpaper_id);
+  `);
+
+  const stateRow = db
+    .prepare(
+      `
+        SELECT s.active_wallpaper_id
+        FROM wallpaper_runtime_state s
+        JOIN wallpapers w ON w.id = s.active_wallpaper_id
+        WHERE s.id = 1
+          AND w.deleted_at IS NULL
+      `
+    )
+    .get();
+
+  const legacyActiveRow = db
+    .prepare(
+      `
+        SELECT id
+        FROM wallpapers
+        WHERE is_active = 1 AND deleted_at IS NULL
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+      `
+    )
+    .get();
+
+  const resolvedActiveId =
+    stateRow?.active_wallpaper_id ?? legacyActiveRow?.id ?? null;
+
+  db.prepare(
+    `
+      INSERT INTO wallpaper_runtime_state (id, active_wallpaper_id, updated_at)
+      VALUES (1, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(id) DO UPDATE SET
+        active_wallpaper_id = excluded.active_wallpaper_id,
+        updated_at = CURRENT_TIMESTAMP
+    `
+  ).run(resolvedActiveId);
+
+  if (resolvedActiveId) {
+    db.prepare(
+      `
+        UPDATE wallpapers
+        SET is_active = CASE WHEN id = ? THEN 1 ELSE 0 END,
+            updated_at = CASE
+              WHEN is_active != CASE WHEN id = ? THEN 1 ELSE 0 END
+              THEN CURRENT_TIMESTAMP
+              ELSE updated_at
+            END
+        WHERE deleted_at IS NULL AND (is_active = 1 OR id = ?)
+      `
+    ).run(resolvedActiveId, resolvedActiveId, resolvedActiveId);
+  }
+}
+
 export function ensureWallpaperColumns(db) {
   const existingColumns = db.prepare('PRAGMA table_info(wallpapers)').all();
   const existingColumnNames = new Set(existingColumns.map(col => col.name));
@@ -157,4 +229,6 @@ export function ensureWallpaperColumns(db) {
       throw err;
     }
   }
+
+  ensureWallpaperAuxiliaryTables(db);
 }

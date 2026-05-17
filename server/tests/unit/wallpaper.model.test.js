@@ -220,9 +220,22 @@ describe('WallpaperModel', () => {
       const activeRow = db
         .prepare(
           'SELECT COUNT(*) as cnt FROM wallpapers WHERE is_active = 1 AND deleted_at IS NULL'
-        )
+      )
         .get();
       expect(activeRow.cnt).toBe(1);
+    });
+
+    test('persists active wallpaper id in runtime state', () => {
+      const w = insertWallpaper({ filename: 'sa-state.jpg' });
+
+      model.setActive(w.id);
+
+      const stateRow = db
+        .prepare(
+          'SELECT active_wallpaper_id FROM wallpaper_runtime_state WHERE id = 1'
+        )
+        .get();
+      expect(stateRow.active_wallpaper_id).toBe(w.id);
     });
   });
 
@@ -265,6 +278,19 @@ describe('WallpaperModel', () => {
       insertWallpaper({ filename: 'rg-undef.jpg' });
       const result = model.getRandomByGroup(undefined);
       expect(result).toBeDefined();
+    });
+  });
+
+  describe('thumbnail cache tracking', () => {
+    test('tracks and clears thumbnail cache records by wallpaper id', () => {
+      const w = insertWallpaper({ filename: 'thumb-track.jpg' });
+      const cachePath = `uploads/wallpapers/thumbnails/${w.id}-thumb-track-320xauto.webp`;
+
+      model.trackThumbnailCache(w.id, cachePath);
+      expect(model.listThumbnailCachePaths(w.id)).toEqual([cachePath]);
+
+      model.clearThumbnailCacheRecords(w.id);
+      expect(model.listThumbnailCachePaths(w.id)).toEqual([]);
     });
   });
 });
