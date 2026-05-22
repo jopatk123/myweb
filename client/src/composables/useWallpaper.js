@@ -142,9 +142,7 @@ export function useWallpaper() {
   const updateWallpaper = async (id, data) => {
     try {
       const raw = await wallpaperApi.updateWallpaper(id, data);
-      const res = unwrapData(raw);
-      await fetchWallpapers();
-      return res;
+      return unwrapData(raw);
     } catch (err) {
       error.value = err.message || '更新失败';
       throw err;
@@ -261,7 +259,6 @@ export function useWallpaper() {
   const createGroup = async data => {
     try {
       const response = await wallpaperApi.createGroup(data);
-      await fetchGroups(); // 刷新分组列表
       return response.data;
     } catch (err) {
       error.value = err.message || '创建分组失败';
@@ -305,7 +302,6 @@ export function useWallpaper() {
   const deleteGroup = async id => {
     try {
       await wallpaperApi.deleteGroup(id);
-      await fetchGroups(); // 刷新分组列表
     } catch (err) {
       error.value = err.message || '删除分组失败';
       throw err;
