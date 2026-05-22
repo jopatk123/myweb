@@ -163,14 +163,6 @@ export class HeartbeatManager {
       if (data && typeof data.totalMs === 'number') {
         totalMs.value = data.totalMs;
       }
-      // 注意：serverTodayMs 和 serverWeekMs 需要在外部传入
-      // 这里暂时注释掉，由外部处理
-      // if (data && typeof data.todayMs === 'number') {
-      //   serverTodayMs.value = data.todayMs;
-      // }
-      // if (data && typeof data.weekMs === 'number') {
-      //   serverWeekMs.value = data.weekMs;
-      // }
 
       saveTotalMs(totalMs.value);
 
