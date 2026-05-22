@@ -42,19 +42,11 @@
 </template>
 
 <script setup>
-  import { ref, watch, onMounted } from 'vue';
+  import { ref, toRef } from 'vue';
   import ContextMenu from '@/components/common/ContextMenu.vue';
   import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
   import { useFiles } from '@/composables/useFiles.js';
-  import useDesktopGrid from '@/composables/useDesktopGrid.js';
-  const {
-    GRID,
-    cellToPosition,
-    positionToCell,
-    finalizeDragForPositions,
-    savePositionsToStorage: gridSavePositionsToStorage,
-    loadPositionsFromStorage: gridLoadPositionsFromStorage,
-  } = useDesktopGrid();
+  import useDesktopIconInteractions from '@/composables/useDesktopIconInteractions.js';
 
   const props = defineProps({
     files: { type: Array, default: () => [] },
@@ -62,35 +54,36 @@
   });
   const emit = defineEmits(['open', 'delete-error', 'delete-success']);
 
-  const selectedId = ref(null);
-  const selectedIds = ref(new Set()); // 支持多选
-  const positions = ref({}); // { [id]: { x, y } }
-  const STORAGE_KEY = 'desktopFileIconPositions';
-  let dragState = null;
-
-  // 网格配置由 useDesktopGrid 提供
-
   const { getDownloadUrl, remove } = useFiles();
   const confirm = ref({ visible: false, file: null });
+
+  const {
+    selectedId,
+    selectedIds,
+    onClick,
+    onMouseDown,
+    getIconStyle,
+    autoArrange,
+    setSelectedIds,
+  } = useDesktopIconInteractions({
+    items: toRef(props, 'files'),
+    storageKey: 'desktopFileIconPositions',
+    defaultStartCol: 1, // 文件图标默认从第 1 列开始，给应用图标留位
+    logTag: 'FileIcons',
+  });
 
   function getIcon(file) {
     const t = file?.typeCategory || file?.type_category || 'other';
     return props.icons?.[t] || props.icons?.other || '/apps/icons/file-128.svg';
   }
 
-  function onClick(file) {
-    // 单击只选中（清除其他选中）
-    selectedId.value = file.id;
-    selectedIds.value = new Set([file.id]);
-  }
   function onDblClick(file) {
     emit('open', file);
   }
 
   const menu = ref({ visible: false, x: 0, y: 0, file: null, items: [] });
   function onContextMenu(file, e) {
-    selectedId.value = file.id;
-    selectedIds.value = new Set([file.id]);
+    onClick(file);
     menu.value.file = file;
     menu.value.x = e.clientX;
     menu.value.y = e.clientY;
@@ -141,240 +134,7 @@
     }
   }
 
-  function onMouseDown(file, e) {
-    // 忽略右键点击，避免干扰右键菜单
-    if (e.button === 2) return;
-
-    // 长按触发拖动（>150ms）
-    const id = file.id;
-    const rect = e.currentTarget.getBoundingClientRect();
-    // 支持批量拖动：当被按下的图标在 selectedIds 中，则拖动所有选中的图标
-    const isMulti = selectedIds.value.has(id);
-    if (isMulti) {
-      const ids = Array.from(selectedIds.value);
-      const origins = {};
-      for (const i of ids) {
-        const r = e.currentTarget.ownerDocument.querySelector(
-          `[data-id="${i}"]`
-        );
-        // 以已保存的位置为准，fallback 到 DOM rect
-        const rectItem = r ? r.getBoundingClientRect() : null;
-        origins[i] = positions.value[i]
-          ? { x: positions.value[i].x, y: positions.value[i].y }
-          : rectItem
-            ? { x: rectItem.left, y: rectItem.top }
-            : { x: 0, y: 0 };
-      }
-      dragState = {
-        ids,
-        startX: e.clientX,
-        startY: e.clientY,
-        origins,
-        longPressTimer: null,
-        dragging: false,
-      };
-    } else {
-      dragState = {
-        id,
-        startX: e.clientX,
-        startY: e.clientY,
-        originX: positions.value[id]?.x ?? rect.left,
-        originY: positions.value[id]?.y ?? rect.top,
-        longPressTimer: null,
-        dragging: false,
-      };
-    }
-
-    dragState.longPressTimer = setTimeout(() => {
-      dragState.dragging = true;
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp, { once: true });
-    }, 150);
-
-    document.addEventListener('mouseup', cancelIfNotDrag, { once: true });
-  }
-
-  function onMouseMove(e) {
-    if (!dragState || !dragState.dragging) return;
-    const dx = e.clientX - dragState.startX;
-    const dy = e.clientY - dragState.startY;
-    if (dragState.ids) {
-      const updated = { ...positions.value };
-      for (const i of dragState.ids) {
-        const o = dragState.origins[i] || { x: 0, y: 0 };
-        updated[i] = { x: o.x + dx, y: o.y + dy };
-      }
-      positions.value = updated;
-    } else {
-      positions.value = {
-        ...positions.value,
-        [dragState.id]: {
-          x: dragState.originX + dx,
-          y: dragState.originY + dy,
-        },
-      };
-    }
-  }
-
-  function onMouseUp() {
-    // 释放时吸附到网格并避免与同组图标重叠
-    if (dragState?.dragging)
-      finalizeDragForPositions(
-        positions,
-        dragState.ids ? dragState.ids : dragState.id
-      );
-    cleanupDrag();
-  }
-  function cancelIfNotDrag() {
-    if (!dragState) return;
-    if (!dragState.dragging && dragState.longPressTimer) {
-      clearTimeout(dragState.longPressTimer);
-    }
-    dragState = null;
-  }
-
-  function cleanupDrag() {
-    if (dragState?.longPressTimer) clearTimeout(dragState.longPressTimer);
-    document.removeEventListener('mousemove', onMouseMove);
-    dragState = null;
-    savePositionsToStorage();
-  }
-
-  // grid helpers provided by useDesktopGrid
-
-  function getIconStyle(file) {
-    const p = positions.value[file.id];
-    if (!p) return undefined;
-    return { position: 'fixed', left: `${p.x}px`, top: `${p.y}px` };
-  }
-
-  // 自动排列：支持从指定列开始，按列优先，每列最多 8 行
-  async function autoArrange(startCol = 0) {
-    const arranged = {};
-    let col = startCol;
-    let row = 0;
-    for (const f of props.files || []) {
-      arranged[f.id] = cellToPosition({ col, row });
-      row += 1;
-      if (row >= GRID.maxRows) {
-        row = 0;
-        col += 1;
-      }
-    }
-    positions.value = arranged;
-    gridSavePositionsToStorage(STORAGE_KEY, positions.value, props.files);
-    // 更新缓存的文件ID列表，避免下次 watch 触发时覆盖排列结果
-    lastFileIds = (props.files || [])
-      .map(f => f.id)
-      .sort()
-      .join(',');
-    return col + (row > 0 ? 1 : 0);
-  }
-
-  // 外部接口：设置多选
-  function setSelectedIds(ids = []) {
-    selectedIds.value = new Set(ids.map(i => Number(i)));
-    if (ids.length === 1) selectedId.value = ids[0];
-  }
-
   defineExpose({ autoArrange, setSelectedIds });
-
-  function savePositionsToStorage() {
-    try {
-      gridSavePositionsToStorage(STORAGE_KEY, positions.value, props.files);
-    } catch (e) {
-      console.error('FileIcons.savePositionsToStorage error', e);
-    }
-  }
-
-  // 用于记录上一次的文件 ID 列表，避免重复加载
-  let lastFileIds = '';
-
-  // 加载位置并为没有位置的图标分配默认位置
-  function loadPositionsFromStorage() {
-    try {
-      const files = props.files || [];
-      const currentFileIds = files
-        .map(f => f.id)
-        .sort()
-        .join(',');
-
-      // 如果文件列表没有变化，跳过加载
-      if (
-        currentFileIds === lastFileIds &&
-        Object.keys(positions.value).length > 0
-      ) {
-        return;
-      }
-      lastFileIds = currentFileIds;
-
-      const saved = gridLoadPositionsFromStorage
-        ? gridLoadPositionsFromStorage(STORAGE_KEY, files)
-        : {};
-
-      if (files.length === 0) {
-        positions.value = saved;
-        return;
-      }
-
-      // 获取已占用的格子
-      const occupied = new Set();
-      for (const [, pos] of Object.entries(saved)) {
-        if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
-          const cell = positionToCell(pos);
-          occupied.add(`${cell.col}:${cell.row}`);
-        }
-      }
-
-      // 为缺失位置的文件分配位置
-      const result = { ...saved };
-      for (const file of files) {
-        if (!result[file.id]) {
-          // 找到下一个空闲格子（文件图标从第二列开始，为应用图标留出空间）
-          let col = 1; // 文件图标默认从第1列开始
-          let row = 0;
-          while (occupied.has(`${col}:${row}`)) {
-            row += 1;
-            if (row >= GRID.maxRows) {
-              row = 0;
-              col += 1;
-            }
-          }
-          result[file.id] = cellToPosition({ col, row });
-          occupied.add(`${col}:${row}`);
-        }
-      }
-
-      positions.value = result;
-    } catch (e) {
-      console.error('FileIcons.loadPositionsFromStorage error', e);
-    }
-  }
-
-  // 初次载入时尝试恢复位置（在组件挂载后，确保 props.files 已可用）
-  onMounted(() => {
-    loadPositionsFromStorage();
-  });
-
-  // 当父组件传入的 files 变化时，重新加载位置（例如异步 fetch 完成后）
-  watch(
-    () => props.files,
-    (newFiles, oldFiles) => {
-      // 只有当文件列表实际变化时才重新加载
-      const newIds = (newFiles || [])
-        .map(f => f.id)
-        .sort()
-        .join(',');
-      const oldIds = (oldFiles || [])
-        .map(f => f.id)
-        .sort()
-        .join(',');
-      if (newIds !== oldIds) {
-        loadPositionsFromStorage();
-      }
-    },
-    { deep: false }
-  );
 </script>
 
 <style scoped>

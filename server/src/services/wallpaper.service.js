@@ -2,31 +2,13 @@ import { WallpaperModel } from '../models/wallpaper.model.js';
 import { WallpaperGroupModel } from '../models/wallpaper-group.model.js';
 import { mapToSnake } from '../utils/field-mapper.js';
 import fs from 'fs/promises';
-import path from 'path';
-import sharp from 'sharp';
 import logger from '../utils/logger.js';
-import {
-  WALLPAPER_THUMBNAILS_DIR,
-  toUploadsAbsolutePath,
-  toUploadsRelativePath,
-} from '../utils/upload-path.js';
+import { toUploadsAbsolutePath } from '../utils/upload-path.js';
 import { assertValidImageFile } from '../utils/magic-bytes.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
+import { WallpaperThumbnailManager } from './wallpaper-thumbnail.service.js';
 
 const wallpaperLogger = logger.child('WallpaperService');
-
-const THUMBNAIL_DEFAULT_WIDTH = 320;
-const THUMBNAIL_MIN_SIZE = 50;
-const THUMBNAIL_MAX_SIZE = 3840;
-const SUPPORTED_THUMBNAIL_FORMATS = new Set([
-  'webp',
-  'jpeg',
-  'jpg',
-  'png',
-  'avif',
-]);
-
-const THUMBNAIL_DIR = WALLPAPER_THUMBNAILS_DIR;
 
 function normalizeWallpaperUploadPayload(fileData = {}) {
   return {
@@ -46,12 +28,10 @@ function normalizeWallpaperUploadPayload(fileData = {}) {
 }
 
 export class WallpaperService {
-  /** 并发缩略图生成锁：cachedPath -> Promise<void>，防止重复写入同一文件 */
-  #thumbnailGenLocks = new Map();
-
   constructor(db) {
     this.wallpaperModel = new WallpaperModel(db);
     this.groupModel = new WallpaperGroupModel(db);
+    this.thumbnails = new WallpaperThumbnailManager(this.wallpaperModel);
   }
 
   /**
@@ -90,13 +70,11 @@ export class WallpaperService {
       }
     }
 
-    // 如果未指定分组，使用默认分组
     if (!groupId) {
       const def = this.groupModel.getDefault();
       groupId = def?.id || null;
     }
 
-    // 在 service 层统一把 camelCase 字段映射为 model/DB 层需要的 snake_case 字段
     const payload = {
       filename,
       originalName,
@@ -129,14 +107,13 @@ export class WallpaperService {
   }
 
   async updateWallpaper(id, data) {
-    const existing = this.getWallpaperById(id); // 验证壁纸存在
-    // 确保 data 是 snake_case（controller 传来的是 camelCase，model 只接受 snake_case）
+    const existing = this.getWallpaperById(id);
     const updated = this.wallpaperModel.update(id, mapToSnake(data));
 
     const existingPath = existing?.file_path;
     const updatedPath = updated?.file_path;
     if (existingPath && updatedPath && existingPath !== updatedPath) {
-      await this.#purgeThumbnailCache(existing.id);
+      await this.thumbnails.purgeCache(existing.id);
     }
 
     return updated;
@@ -147,11 +124,8 @@ export class WallpaperService {
     if (!wallpaper) return;
 
     this.wallpaperModel.clearActiveIfMatches(id);
-
-    // 先从数据库软删除，确保前端与 DB 状态一致
     const dbResult = this.wallpaperModel.delete(id);
 
-    // 再尽力删除物理文件（失败不影响已完成的 DB 变更）
     try {
       const diskPath = toUploadsAbsolutePath(wallpaper.file_path);
       if (!diskPath) {
@@ -169,8 +143,7 @@ export class WallpaperService {
       }
     }
 
-    await this.#purgeThumbnailCache(wallpaper.id);
-
+    await this.thumbnails.purgeCache(wallpaper.id);
     return dbResult;
   }
 
@@ -181,15 +154,15 @@ export class WallpaperService {
     const activeWallpaperId = this.wallpaperModel.getActiveId();
     if (
       activeWallpaperId &&
-      wallpapers.some(wallpaper => Number(wallpaper.id) === Number(activeWallpaperId))
+      wallpapers.some(
+        wallpaper => Number(wallpaper.id) === Number(activeWallpaperId)
+      )
     ) {
       this.wallpaperModel.clearActiveIfMatches(activeWallpaperId);
     }
 
-    // 1. 先批量从数据库软删除
     const dbResult = this.wallpaperModel.deleteMany(ids);
 
-    // 2. 再尽力批量删除物理文件（失败仅记录，不影响 DB 已生效的变更）
     for (const wallpaper of wallpapers) {
       try {
         const diskPath = toUploadsAbsolutePath(wallpaper.file_path);
@@ -204,21 +177,18 @@ export class WallpaperService {
         if (error.code !== 'ENOENT') {
           wallpaperLogger.warn(
             `批量删除壁纸时文件删除失败（已忽略）: ${wallpaper.file_path}`,
-            {
-              error: error && error.message,
-            }
+            { error: error && error.message }
           );
         }
       }
 
-      await this.#purgeThumbnailCache(wallpaper.id);
+      await this.thumbnails.purgeCache(wallpaper.id);
     }
 
     return dbResult;
   }
 
   async moveMultipleWallpapers(ids, groupId) {
-    // 验证分组是否存在
     if (groupId) {
       this.getGroupById(groupId);
     }
@@ -226,7 +196,7 @@ export class WallpaperService {
   }
 
   setActiveWallpaper(id) {
-    this.getWallpaperById(id); // 验证壁纸存在
+    this.getWallpaperById(id);
     return this.wallpaperModel.setActive(id);
   }
 
@@ -234,80 +204,9 @@ export class WallpaperService {
     return this.wallpaperModel.getActive();
   }
 
-  async getWallpaperThumbnail(id, options = {}) {
-    const { width: rawWidth, height: rawHeight, format: rawFormat } = options;
-
+  getWallpaperThumbnail(id, options = {}) {
     const wallpaper = this.getWallpaperById(id);
-    let originalPath = wallpaper.file_path;
-    if (!originalPath) throw new NotFoundError('壁纸文件路径不存在');
-
-    originalPath = toUploadsAbsolutePath(originalPath);
-    if (!originalPath) throw new ValidationError('壁纸文件路径无效');
-
-    let stats;
-    try {
-      stats = await fs.stat(originalPath);
-    } catch {
-      throw new NotFoundError('壁纸原始文件不存在');
-    }
-
-    const sanitizedWidth = this.#sanitizeDimension(rawWidth);
-    const sanitizedHeight = this.#sanitizeDimension(rawHeight, true);
-    const normalizedFormat = this.#sanitizeFormat(rawFormat);
-    const outputExtension =
-      normalizedFormat === 'jpg' ? 'jpeg' : normalizedFormat;
-
-    const parsed = path.parse(originalPath);
-    const suffix = `${sanitizedWidth || 'auto'}x${sanitizedHeight || 'auto'}.${outputExtension}`;
-    const cachedFilename = `${wallpaper.id}-${parsed.name}-${suffix}`;
-    const cachedPath = path.join(THUMBNAIL_DIR, cachedFilename);
-    const cachedRelativePath = toUploadsRelativePath(
-      'wallpapers',
-      'thumbnails',
-      cachedFilename
-    );
-
-    let regenerate = true;
-    try {
-      const cacheStats = await fs.stat(cachedPath);
-      regenerate = cacheStats.mtimeMs < stats.mtimeMs;
-    } catch {
-      regenerate = true;
-    }
-
-    if (regenerate) {
-      if (this.#thumbnailGenLocks.has(cachedPath)) {
-        // 已有并发请求正在生成同一缩略图，等待它完成，避免重复写入
-        await this.#thumbnailGenLocks.get(cachedPath);
-      } else {
-        const genTask = this.#generateThumbnailToFile(
-          originalPath,
-          cachedPath,
-          sanitizedWidth,
-          sanitizedHeight,
-          outputExtension,
-          stats.mtime
-        );
-        this.#thumbnailGenLocks.set(cachedPath, genTask);
-        try {
-          await genTask;
-        } finally {
-          this.#thumbnailGenLocks.delete(cachedPath);
-        }
-      }
-    }
-
-    const thumbStats = await fs.stat(cachedPath);
-    this.wallpaperModel.trackThumbnailCache(wallpaper.id, cachedRelativePath);
-    const etag = `W/"${thumbStats.size}-${Math.round(thumbStats.mtimeMs)}"`;
-
-    return {
-      filePath: cachedPath,
-      mimeType: `image/${outputExtension}`,
-      etag,
-      lastModified: thumbStats.mtime.toUTCString(),
-      size: thumbStats.size,
-    };
+    return this.thumbnails.getThumbnail(wallpaper, options);
   }
 
   getRandomWallpaper(groupId) {
@@ -319,15 +218,12 @@ export class WallpaperService {
       resolvedGroupId !== ''
     ) {
       const numeric = Number(resolvedGroupId);
-      if (!Number.isNaN(numeric)) {
-        resolvedGroupId = numeric;
-      }
+      if (!Number.isNaN(numeric)) resolvedGroupId = numeric;
     } else {
       resolvedGroupId = null;
     }
 
     if (resolvedGroupId === null) {
-      // 优先使用当前分组；若未设置，则退回默认分组
       const current = this.groupModel.getCurrent();
       const fallback = this.groupModel.getDefault();
       resolvedGroupId = current?.id || fallback?.id || null;
@@ -336,7 +232,6 @@ export class WallpaperService {
     let wallpaper = this.wallpaperModel.getRandomByGroup(resolvedGroupId);
 
     if (!wallpaper && resolvedGroupId !== null) {
-      // 指定分组无壁纸时退回到全局集合
       wallpaper = this.wallpaperModel.getRandomByGroup(null);
     }
 
@@ -345,112 +240,6 @@ export class WallpaperService {
     }
 
     return wallpaper;
-  }
-
-  #sanitizeDimension(value, allowNull = false) {
-    if (value === undefined || value === null || value === '') {
-      return allowNull ? null : THUMBNAIL_DEFAULT_WIDTH;
-    }
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric) || numeric <= 0) {
-      return allowNull ? null : THUMBNAIL_DEFAULT_WIDTH;
-    }
-    const clamped = Math.max(
-      THUMBNAIL_MIN_SIZE,
-      Math.min(THUMBNAIL_MAX_SIZE, Math.round(numeric))
-    );
-    return clamped;
-  }
-
-  #sanitizeFormat(value) {
-    if (!value) return 'webp';
-    const normalized = String(value).toLowerCase();
-    if (!SUPPORTED_THUMBNAIL_FORMATS.has(normalized)) {
-      return 'webp';
-    }
-    if (normalized === 'jpg') return 'jpg';
-    return normalized;
-  }
-
-  /**
-   * 生成单张缩略图并写入缓存目录。
-   * - 生成过程出错时自动清理可能残留的不完整缓存文件
-   * - 生成完成后将缩略图 mtime 与原图对齐，便于后续缓存有效性比较
-   */
-  async #generateThumbnailToFile(
-    originalPath,
-    cachedPath,
-    width,
-    height,
-    format,
-    originalMtime
-  ) {
-    await fs.mkdir(THUMBNAIL_DIR, { recursive: true });
-
-    const pipeline = sharp(originalPath).rotate();
-
-    if (width || height) {
-      pipeline.resize({
-        width: width || null,
-        height: height || null,
-        fit: height ? 'cover' : 'inside',
-        withoutEnlargement: true,
-      });
-    }
-
-    switch (format) {
-      case 'jpeg':
-        pipeline.jpeg({ quality: 75, mozjpeg: true });
-        break;
-      case 'png':
-        pipeline.png({ compressionLevel: 8, adaptiveFiltering: true });
-        break;
-      case 'avif':
-        pipeline.avif({ quality: 45 });
-        break;
-      default:
-        pipeline.webp({ quality: 70, smartSubsample: true });
-    }
-
-    try {
-      await pipeline.toFile(cachedPath);
-      await fs.utimes(cachedPath, originalMtime, originalMtime);
-    } catch (err) {
-      // 清理可能残留的不完整文件，防止下次请求误用脏缓存
-      try {
-        await fs.unlink(cachedPath);
-      } catch {
-        // 文件可能根本没写入，忽略
-      }
-      throw err;
-    }
-  }
-
-  async #purgeThumbnailCache(wallpaperId) {
-    if (!wallpaperId) return;
-
-    const targets = this.wallpaperModel.listThumbnailCachePaths(wallpaperId);
-    if (targets.length === 0) return;
-
-    await Promise.allSettled(
-      targets.map(async cachePath => {
-        const targetPath = toUploadsAbsolutePath(cachePath);
-        if (!targetPath) return;
-
-        try {
-          await fs.unlink(targetPath);
-        } catch (error) {
-          if (error?.code !== 'ENOENT') {
-            wallpaperLogger.warn('删除缩略图缓存失败（已忽略）', {
-              path: targetPath,
-              error: error?.message || error,
-            });
-          }
-        }
-      })
-    );
-
-    this.wallpaperModel.clearThumbnailCacheRecords(wallpaperId);
   }
 
   // 分组相关方法
@@ -473,29 +262,24 @@ export class WallpaperService {
   }
 
   updateGroup(id, data) {
-    this.getGroupById(id); // 验证分组存在
+    this.getGroupById(id);
     return this.groupModel.update(id, data);
   }
 
   deleteGroup(id) {
-    this.getGroupById(id); // 验证分组存在
-
-    // 检查分组下是否有壁纸
+    this.getGroupById(id);
     const wallpapers = this.wallpaperModel.findAll({ groupId: id });
     if (wallpapers.length > 0) {
       throw new Error('分组下还有壁纸，无法删除');
     }
-
     return this.groupModel.delete(id);
   }
 
-  // 当前分组相关
   getCurrentGroup() {
     return this.groupModel.getCurrent() || this.groupModel.getDefault();
   }
 
   setCurrentGroup(id) {
-    // 不允许将已删除或不存在的分组设为当前
     this.getGroupById(id);
     return this.groupModel.setCurrent(id);
   }

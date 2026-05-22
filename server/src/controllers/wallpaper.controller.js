@@ -1,33 +1,15 @@
 import { WallpaperService } from '../services/wallpaper.service.js';
-import { createReadStream, existsSync } from 'fs';
+import { createReadStream } from 'fs';
 import { normalizeKeys } from '../utils/case-helper.js';
 import { parseEnvByteSize } from '../utils/env.js';
-import archiver from 'archiver';
-import logger from '../utils/logger.js';
 import { createUploader, imageOnlyFilter } from '../utils/uploader.js';
 import { DEFAULT_WALLPAPER_MAX_SIZE } from '../constants/limits.js';
-import {
-  WALLPAPERS_DIR,
-  toUploadsAbsolutePath,
-  toUploadsRelativePath,
-} from '../utils/upload-path.js';
-
-const wallpaperLogger = logger.child('WallpaperController');
+import { WALLPAPERS_DIR, toUploadsRelativePath } from '../utils/upload-path.js';
+import { streamWallpaperDownload } from './wallpaper/wallpaper-download.js';
 
 function sanitizePositiveIds(ids) {
   if (!Array.isArray(ids) || ids.length === 0) return [];
   return ids.map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0);
-}
-
-/**
- * 生成符合 RFC 6266 的 Content-Disposition 头值。
- * - 使用 filename*=UTF-8'' 确保非 ASCII 文件名正确传递
- * - 同时提供 ASCII 安全回退，避免旧客户端乱码
- */
-function buildContentDisposition(name) {
-  const safe = String(name).replace(/[^\w\-. ]/g, '_');
-  const encoded = encodeURIComponent(name);
-  return `attachment; filename="${safe}"; filename*=UTF-8''${encoded}`;
 }
 
 const upload = createUploader({
@@ -45,12 +27,9 @@ export class WallpaperController {
     this.upload = upload;
   }
 
-  // 获取所有壁纸
   async getWallpapers(req, res, next) {
     try {
-      // 中间件已将 req.query 归一为 camelCase
       const { groupId, page, limit } = req.query;
-      // 如果提供 page 和 limit，返回分页结构
       if (page && limit) {
         const pageNum = Number(page) || 1;
         const lim = Number(limit) || 20;
@@ -69,7 +48,6 @@ export class WallpaperController {
     }
   }
 
-  // 按需生成并返回缩略图
   async getWallpaperThumbnail(req, res, next) {
     try {
       const { id } = req.params;
@@ -112,123 +90,85 @@ export class WallpaperController {
     }
   }
 
-  // 获取单个壁纸
   async getWallpaper(req, res, next) {
     try {
       const { id } = req.params;
       const wallpaper = await this.service.getWallpaperById(id);
-      res.json({
-        code: 200,
-        data: wallpaper,
-        message: '获取成功',
-      });
+      res.json({ code: 200, data: wallpaper, message: '获取成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  // 上传壁纸
   async uploadWallpaper(req, res, next) {
     try {
       if (!req.file) {
-        return res.status(400).json({
-          code: 400,
-          message: '请选择文件',
-        });
+        return res.status(400).json({ code: 400, message: '请选择文件' });
       }
 
-      // multer 会在此处填充 req.body（multipart），需要手动归一化键名
-      // multer: 需要把 multipart form 的键从 snake_case 转为 camelCase
+      // multer 不会经过全局中间件归一化，需手动转换键名
       const normalizedBody = normalizeKeys(req.body || {});
       const { groupId, name } = normalizedBody;
-      // 存储到数据库的 file_path 应为 web 可访问的相对路径（例如: uploads/wallpapers/<filename>）
-      // 这样前端可以直接用 `${API_BASE}/${file_path}` 访问；同时删除时再解析到磁盘路径
       const webPath = toUploadsRelativePath('wallpapers', req.file.filename);
 
-      // 使用 camelCase 字段传给 service 层
       const fileData = {
         filename: req.file.filename,
         originalName: req.file.originalname,
         filePath: webPath,
         fileSize: req.file.size,
         mimeType: req.file.mimetype,
-        name: name || req.file.originalname, // 如果没有提供名称，则使用原始文件名
+        name: name || req.file.originalname,
       };
 
       const wallpaper = await this.service.uploadWallpaper(fileData, groupId);
-      res.status(201).json({
-        code: 201,
-        data: wallpaper,
-        message: '上传成功',
-      });
+      res.status(201).json({ code: 201, data: wallpaper, message: '上传成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  // 更新壁纸信息
   async updateWallpaper(req, res, next) {
     try {
       const { id } = req.params;
-      // 移除不再支持的字段
-      // 请求已被全局中间件归一化为 snake_case，但确保 multipart 路径也归一
-      // 请求 body 已为 camelCase
       const data = { ...req.body };
       if (data.description !== undefined) delete data.description;
       const wallpaper = await this.service.updateWallpaper(id, data);
-      res.json({
-        code: 200,
-        data: wallpaper,
-        message: '更新成功',
-      });
+      res.json({ code: 200, data: wallpaper, message: '更新成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  // 删除壁纸
   async deleteWallpaper(req, res, next) {
     try {
       const { id } = req.params;
       await this.service.deleteWallpaper(id);
-      res.json({
-        code: 200,
-        message: '删除成功',
-      });
+      res.json({ code: 200, message: '删除成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  // 批量删除壁纸
   async deleteWallpapers(req, res, next) {
     try {
-      let { ids } = req.body;
+      const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
       }
-      // 规范化 ids：转换为整数并过滤非法值
       const sanitizedIds = sanitizePositiveIds(ids);
       if (sanitizedIds.length === 0) {
         return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
       }
       await this.service.deleteMultipleWallpapers(sanitizedIds);
-      res.json({
-        code: 200,
-        message: '批量删除成功',
-      });
+      res.json({ code: 200, message: '批量删除成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  // 批量移动壁纸
   async moveWallpapers(req, res, next) {
     try {
-      // 兼容前端可能传递的不同命名（camelCase 或 snake_case）
-      let { ids } = req.body;
-      // 优先读取 camelCase，再回退到 snake_case
-      // req.body 已统一为 camelCase
+      const { ids } = req.body;
       let groupId = req.body.groupId;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
@@ -236,54 +176,39 @@ export class WallpaperController {
       if (groupId === undefined) {
         return res.status(400).json({ code: 400, message: '请提供目标分组ID' });
       }
-      // 规范化 ids
       const sanitizedIds = sanitizePositiveIds(ids);
       if (sanitizedIds.length === 0) {
         return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
       }
-      // 将 groupId 转为数字（若为 null/空，则保留原值）
       if (groupId !== null && groupId !== undefined && groupId !== '') {
         groupId = Number(groupId);
       }
       await this.service.moveMultipleWallpapers(sanitizedIds, groupId);
-      res.json({
-        code: 200,
-        message: '批量移动成功',
-      });
+      res.json({ code: 200, message: '批量移动成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  // 设置活跃壁纸
   async setActiveWallpaper(req, res, next) {
     try {
       const { id } = req.params;
       await this.service.setActiveWallpaper(id);
-      res.json({
-        code: 200,
-        message: '设置成功',
-      });
+      res.json({ code: 200, message: '设置成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  // 获取当前活跃壁纸
   async getActiveWallpaper(req, res, next) {
     try {
       const wallpaper = await this.service.getActiveWallpaper();
-      res.json({
-        code: 200,
-        data: wallpaper,
-        message: '获取成功',
-      });
+      res.json({ code: 200, data: wallpaper, message: '获取成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  // 随机获取壁纸
   async getRandomWallpaper(req, res, next) {
     try {
       const { groupId } = req.query;
@@ -298,15 +223,10 @@ export class WallpaperController {
     }
   }
 
-  // 分组相关方法
   async getGroups(req, res, next) {
     try {
       const groups = await this.service.getAllGroups();
-      res.json({
-        code: 200,
-        data: groups,
-        message: '获取成功',
-      });
+      res.json({ code: 200, data: groups, message: '获取成功' });
     } catch (error) {
       next(error);
     }
@@ -315,11 +235,7 @@ export class WallpaperController {
   async createGroup(req, res, next) {
     try {
       const group = await this.service.createGroup(req.body);
-      res.status(201).json({
-        code: 201,
-        data: group,
-        message: '创建成功',
-      });
+      res.status(201).json({ code: 201, data: group, message: '创建成功' });
     } catch (error) {
       next(error);
     }
@@ -329,11 +245,7 @@ export class WallpaperController {
     try {
       const { id } = req.params;
       const group = await this.service.updateGroup(id, req.body);
-      res.json({
-        code: 200,
-        data: group,
-        message: '更新成功',
-      });
+      res.json({ code: 200, data: group, message: '更新成功' });
     } catch (error) {
       next(error);
     }
@@ -343,16 +255,12 @@ export class WallpaperController {
     try {
       const { id } = req.params;
       await this.service.deleteGroup(id);
-      res.json({
-        code: 200,
-        message: '删除成功',
-      });
+      res.json({ code: 200, message: '删除成功' });
     } catch (error) {
       next(error);
     }
   }
 
-  // 获取当前分组
   async getCurrentGroup(req, res, next) {
     try {
       const group = await this.service.getCurrentGroup();
@@ -362,21 +270,17 @@ export class WallpaperController {
     }
   }
 
-  // 下载壁纸
   async downloadWallpapers(req, res, next) {
     try {
-      let { ids } = req.body;
+      const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ code: 400, message: '请提供壁纸ID' });
       }
-
-      // 规范化 ids：转换为整数并过滤非法值
       const sanitizedIds = sanitizePositiveIds(ids);
       if (sanitizedIds.length === 0) {
         return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
       }
 
-      // 获取壁纸信息
       const wallpapers = await this.service.getWallpapersByIds(sanitizedIds);
       if (wallpapers.length === 0) {
         return res
@@ -384,89 +288,12 @@ export class WallpaperController {
           .json({ code: 404, message: '没有找到指定的壁纸' });
       }
 
-      // 如果只有一张壁纸，直接下载该文件
-      if (wallpapers.length === 1) {
-        const wallpaper = wallpapers[0];
-        const filePath = toUploadsAbsolutePath(wallpaper.file_path);
-
-        if (!filePath) {
-          return res
-            .status(400)
-            .json({ code: 400, message: '壁纸文件路径无效' });
-        }
-
-        if (!existsSync(filePath)) {
-          return res.status(404).json({ code: 404, message: '壁纸文件不存在' });
-        }
-
-        const singleName =
-          wallpaper.original_name || `wallpaper_${wallpaper.id}`;
-        res.setHeader(
-          'Content-Disposition',
-          buildContentDisposition(singleName)
-        );
-        res.setHeader('Content-Type', wallpaper.mime_type || 'image/jpeg');
-        return createReadStream(filePath).pipe(res);
-      }
-
-      // 多张壁纸，打包为 ZIP
-      // 预校验所有路径：路径逃逸直接 400；文件不存在仅跳过并记录警告
-      const archiveEntries = [];
-      for (const wallpaper of wallpapers) {
-        const filePath = toUploadsAbsolutePath(wallpaper.file_path);
-        if (!filePath) {
-          return res
-            .status(400)
-            .json({ code: 400, message: '壁纸文件路径无效' });
-        }
-        if (existsSync(filePath)) {
-          archiveEntries.push({
-            filePath,
-            name: wallpaper.original_name || `wallpaper_${wallpaper.id}`,
-          });
-        } else {
-          wallpaperLogger.warn('下载时壁纸文件不存在（已跳过）', {
-            id: wallpaper.id,
-            filePath: wallpaper.file_path,
-          });
-        }
-      }
-
-      if (archiveEntries.length === 0) {
-        return res.status(404).json({ code: 404, message: '壁纸文件不存在' });
-      }
-
-      res.setHeader('Content-Type', 'application/zip');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename*=UTF-8''wallpapers_${Date.now()}.zip`
-      );
-
-      const archive = archiver('zip', {
-        zlib: { level: 6 }, // 压缩级别 0-9
-      });
-
-      archive.on('error', err => {
-        wallpaperLogger.error('Archive error', err);
-        // 响应头尚未发送时才能写入 JSON 错误；已开始流式传输则只能记录
-        if (!res.headersSent) {
-          res.status(500).json({ code: 500, message: 'ZIP 打包失败' });
-        }
-      });
-
-      archive.pipe(res);
-
-      for (const { filePath, name } of archiveEntries) {
-        archive.file(filePath, { name });
-      }
-
-      await archive.finalize();
+      await streamWallpaperDownload(res, wallpapers);
     } catch (error) {
       next(error);
     }
   }
 
-  // 设置当前分组
   async setCurrentGroup(req, res, next) {
     try {
       const { id } = req.params;

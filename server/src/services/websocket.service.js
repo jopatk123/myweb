@@ -1,12 +1,10 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { ConnectionStore } from './websocket/connection-store.js';
+import { authenticateUpgrade } from './websocket/auth.js';
+import { MessageRateLimiter } from './websocket/rate-limiter.js';
+import { HeartbeatMonitor } from './websocket/heartbeat.js';
 import logger from '../utils/logger.js';
-import {
-  getAppPasswordStatus,
-  getAppAuthCookieValue,
-  isValidAppAuthSession,
-} from '../utils/app-auth.js';
 
 const wsLogger = logger.child('WebSocketService');
 
@@ -20,17 +18,16 @@ const MSG_RATE_LIMIT = Number(process.env.WS_MSG_RATE_LIMIT) || 30;
 const HEARTBEAT_INTERVAL_MS =
   Number(process.env.WS_HEARTBEAT_INTERVAL) || 30_000;
 
-/** 心跳超时（ms）：超过此时间未收到 pong，强制断开 */
-
 export class WebSocketService {
   constructor() {
     this.wss = null;
     this.connections = new ConnectionStore();
     this.handlers = [];
-    /** 消息计数器 Map：serverSessionId -> { count, resetAt } */
-    this._rateLimitMap = new Map();
-    /** 心跳定时器 */
-    this._heartbeatTimer = null;
+    this.rateLimiter = new MessageRateLimiter(MSG_RATE_LIMIT);
+    this.heartbeat = new HeartbeatMonitor({
+      connections: this.connections,
+      intervalMs: HEARTBEAT_INTERVAL_MS,
+    });
   }
 
   init(server) {
@@ -43,85 +40,18 @@ export class WebSocketService {
       this.handleConnection(socket, req)
     );
 
-    // 启动服务端心跳检测
-    this._startHeartbeat();
-
+    this.heartbeat.start();
     return this.wss;
   }
 
-  /**
-   * 服务端心跳：周期性向所有连接发 ping，若客户端未在超时时间内回 pong 则强制断开
-   */
-  _startHeartbeat() {
-    this._heartbeatTimer = setInterval(() => {
-      this.connections.clients.forEach((socket, serverSessionId) => {
-        if (socket._waitingForPong) {
-          // 上次 ping 未收到 pong，视为僵尸连接，强制断开
-          wsLogger.warn('WebSocket heartbeat timeout, terminating', {
-            serverSessionId,
-          });
-          socket.terminate();
-          this.connections.unregister(serverSessionId);
-          return;
-        }
-        // 标记等待 pong
-        socket._waitingForPong = true;
-        try {
-          socket.ping();
-        } catch {
-          // socket 已断开，忽略
-        }
-      });
-    }, HEARTBEAT_INTERVAL_MS);
-
-    // 避免心跳定时器阻止进程退出
-    if (this._heartbeatTimer.unref) {
-      this._heartbeatTimer.unref();
-    }
-  }
-
-  /**
-   * 停止心跳定时器（测试或关闭时调用）
-   */
+  /** 测试或关闭时停止心跳定时器。 */
   stopHeartbeat() {
-    if (this._heartbeatTimer) {
-      clearInterval(this._heartbeatTimer);
-      this._heartbeatTimer = null;
-    }
-  }
-
-  /**
-   * 检查消息频率是否超限
-   * @param {string} serverSessionId
-   * @returns {boolean} true 表示超限
-   */
-  _isRateLimited(serverSessionId) {
-    const now = Date.now();
-    let state = this._rateLimitMap.get(serverSessionId);
-    if (!state || now >= state.resetAt) {
-      state = { count: 0, resetAt: now + 1000 };
-      this._rateLimitMap.set(serverSessionId, state);
-    }
-    state.count += 1;
-    return state.count > MSG_RATE_LIMIT;
+    this.heartbeat.stop();
   }
 
   handleConnection(socket, req) {
-    const { passwordRequired, isPasswordConfigured } = getAppPasswordStatus();
-    if (passwordRequired) {
-      const cookieValue = getAppAuthCookieValue(req);
-      if (!isPasswordConfigured || !isValidAppAuthSession(cookieValue)) {
-        wsLogger.warn('Rejected unauthorized websocket connection');
-        try {
-          socket.close(1008, 'Unauthorized');
-        } catch {
-          // ignore
-        }
-        return;
-      }
-    }
+    if (!authenticateUpgrade(socket, req)) return;
 
-    // 超出最大连接数，立即拒绝
     if (this.connections.size >= MAX_CONNECTIONS) {
       wsLogger.warn('WebSocket max connections reached, rejecting new client', {
         current: this.connections.size,
@@ -136,23 +66,10 @@ export class WebSocketService {
     }
 
     const serverSessionId = uuidv4();
-
-    // 从 URL 查询参数中提取客户端 sessionId（客户端连接时附加: /ws?sessionId=xxx）
-    let clientSessionIdFromUrl = '';
-    try {
-      const url = new URL(req.url, 'http://localhost');
-      const candidate = (url.searchParams.get('sessionId') || '').trim();
-      // 仅接受合理长度的 sessionId（防止超长输入）
-      if (candidate && candidate.length <= 200) {
-        clientSessionIdFromUrl = candidate;
-      }
-    } catch {
-      // URL 解析失败时忽略，仍允许连接
-    }
+    const clientSessionIdFromUrl = this._extractClientSessionId(req);
 
     this.connections.register(serverSessionId, socket);
 
-    // 若 URL 中已带有 sessionId，立即完成关联，无需等待 join 消息
     if (clientSessionIdFromUrl) {
       this.connections.associate(serverSessionId, clientSessionIdFromUrl);
       const s = this.connections.getSocket(serverSessionId);
@@ -170,14 +87,10 @@ export class WebSocketService {
       })
     );
 
-    // 处理心跳 pong 回包
-    socket.on('pong', () => {
-      socket._waitingForPong = false;
-    });
+    socket.on('pong', () => this.heartbeat.acknowledge(socket));
 
     socket.on('message', raw => {
-      // 消息频率限制
-      if (this._isRateLimited(serverSessionId)) {
+      if (this.rateLimiter.isLimited(serverSessionId)) {
         wsLogger.warn('WebSocket message rate limit exceeded', {
           serverSessionId,
         });
@@ -205,7 +118,7 @@ export class WebSocketService {
     });
 
     socket.on('close', () => {
-      this._rateLimitMap.delete(serverSessionId);
+      this.rateLimiter.forget(serverSessionId);
       this.handleDisconnect(serverSessionId).catch(err => {
         wsLogger.error('WebSocket disconnect handling failed', {
           serverSessionId,
@@ -220,7 +133,7 @@ export class WebSocketService {
         serverSessionId,
         error,
       });
-      this._rateLimitMap.delete(serverSessionId);
+      this.rateLimiter.forget(serverSessionId);
       this.handleDisconnect(serverSessionId).catch(err => {
         wsLogger.error('WebSocket disconnect handling failed', {
           serverSessionId,
@@ -228,6 +141,19 @@ export class WebSocketService {
         });
       });
     });
+  }
+
+  _extractClientSessionId(req) {
+    try {
+      const url = new URL(req.url, 'http://localhost');
+      const candidate = (url.searchParams.get('sessionId') || '').trim();
+      if (candidate && candidate.length <= 200) {
+        return candidate;
+      }
+    } catch {
+      // URL 解析失败时忽略
+    }
+    return '';
   }
 
   async handleMessage(serverSessionId, message) {
@@ -258,9 +184,7 @@ export class WebSocketService {
     this.connections.associate(serverSessionId, providedSessionId);
 
     const socket = this.connections.getSocket(serverSessionId);
-    if (socket) {
-      socket._clientSessionId = providedSessionId;
-    }
+    if (socket) socket._clientSessionId = providedSessionId;
 
     wsLogger.info('Client joined websocket session', {
       serverSessionId,

@@ -24,8 +24,9 @@ jest.unstable_mockModule('../../src/utils/logger.js', () => {
   return { default: childLogger, logger: childLogger };
 });
 
-const { WebSocketService } =
-  await import('../../src/services/websocket.service.js');
+const { WebSocketService } = await import(
+  '../../src/services/websocket.service.js'
+);
 
 describe('WebSocketService', () => {
   let service;
@@ -355,21 +356,21 @@ describe('WebSocketService', () => {
   });
 
   describe('消息频率限制', () => {
-    it('_isRateLimited 在限额内返回 false', () => {
+    it('rateLimiter.isLimited 在限额内返回 false', () => {
       const id = 'rate-test-1';
       // 连续调用 MSG_RATE_LIMIT 次（30 次），应全部不限流
       for (let i = 0; i < 30; i++) {
-        expect(service._isRateLimited(id)).toBe(false);
+        expect(service.rateLimiter.isLimited(id)).toBe(false);
       }
     });
 
-    it('_isRateLimited 超过限额后返回 true', () => {
+    it('rateLimiter.isLimited 超过限额后返回 true', () => {
       const id = 'rate-test-2';
       for (let i = 0; i < 30; i++) {
-        service._isRateLimited(id); // 消耗配额
+        service.rateLimiter.isLimited(id); // 消耗配额
       }
       // 第 31 次应超限
-      expect(service._isRateLimited(id)).toBe(true);
+      expect(service.rateLimiter.isLimited(id)).toBe(true);
     });
 
     it('超出消息频率的消息不被处理', async () => {
@@ -393,7 +394,7 @@ describe('WebSocketService', () => {
 
       // 强制耗尽配额
       for (let i = 0; i < 30; i++) {
-        service._isRateLimited(serverSessionId);
+        service.rateLimiter.isLimited(serverSessionId);
       }
 
       // 直接调用 handleMessage，此时应因限流不处理
@@ -423,9 +424,9 @@ describe('WebSocketService', () => {
     it('stopHeartbeat 清除定时器', () => {
       const mockServer = {};
       service.init(mockServer);
-      expect(service._heartbeatTimer).not.toBeNull();
+      expect(service.heartbeat._timer).not.toBeNull();
       service.stopHeartbeat();
-      expect(service._heartbeatTimer).toBeNull();
+      expect(service.heartbeat._timer).toBeNull();
     });
 
     it('心跳发送 ping 并标记 _waitingForPong', () => {

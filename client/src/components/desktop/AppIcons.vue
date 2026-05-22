@@ -37,37 +37,36 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, watch } from 'vue';
+  import { ref, computed, onMounted } from 'vue';
   import { getBuiltinAppPublicIconPath } from '@shared/builtin-apps.js';
   import { useApps } from '@/composables/useApps.js';
   import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
   import { useWindowManager } from '@/composables/useWindowManager.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
-
-  import useDesktopGrid from '@/composables/useDesktopGrid.js';
-  const {
-    GRID,
-    cellToPosition,
-    positionToCell,
-    finalizeDragForPositions,
-    savePositionsToStorage: gridSavePositionsToStorage,
-    loadPositionsFromStorage: gridLoadPositionsToStorage,
-  } = useDesktopGrid();
+  import useDesktopIconInteractions from '@/composables/useDesktopIconInteractions.js';
 
   const { fetchAppsList, getAppIconUrl, setVisible } = useApps();
   const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
   const desktopApps = ref([]);
-  const selectedId = ref(null);
-  const selectedIds = ref(new Set()); // 支持多选
-  const positions = ref({}); // { [appId]: { x, y } }
-  const STORAGE_KEY = 'desktopIconPositions';
-  let dragState = null; // { id, startX, startY, originX, originY, longPressTimer }
-
-  // 网格配置由 useDesktopGrid 提供
 
   const visibleApps = computed(() =>
     (desktopApps.value || []).filter(a => a.isVisible ?? a.is_visible)
   );
+
+  const {
+    selectedId,
+    selectedIds,
+    onClick,
+    onMouseDown,
+    getIconStyle,
+    autoArrange,
+    setSelectedIds,
+  } = useDesktopIconInteractions({
+    items: visibleApps,
+    storageKey: 'desktopIconPositions',
+    defaultStartCol: 0,
+    logTag: 'AppIcons',
+  });
 
   async function refreshVisibleApps() {
     desktopApps.value = await fetchAppsList({ visible: true });
@@ -77,13 +76,13 @@
   function getIconUrl(app) {
     const filename = app.iconFilename || app.icon_filename;
     if (filename) {
-      return getAppIconUrl({ iconFilename: filename }); // 使用 useApps 中的方法
+      return getAppIconUrl({ iconFilename: filename });
     }
     const builtinIconPath = getBuiltinAppPublicIconPath(app.slug);
     if (builtinIconPath) {
       return builtinIconPath;
     }
-    return '/apps/icons/file-128.svg'; // 提供一个默认图标
+    return '/apps/icons/file-128.svg';
   }
 
   function open(app) {
@@ -110,7 +109,6 @@
     const meta = getAppMetaBySlug(app.slug);
 
     if (comp) {
-      // 使用 registry 中提供的元信息（如 preferredSize）来初始化窗口大小
       const preferred = meta?.preferredSize || { width: 520, height: 400 };
       createWindow({
         component: comp,
@@ -122,22 +120,14 @@
     }
   }
 
-  function onClick(app) {
-    // 单击只选中（清除其他选中）
-    selectedId.value = app.id;
-    selectedIds.value = new Set([app.id]);
-  }
-
   function onDblClick(app) {
-    // 双击打开
     open(app);
   }
 
   // 右键菜单
   const menu = ref({ visible: false, x: 0, y: 0, app: null, items: [] });
   function onContextMenu(app, e) {
-    selectedId.value = app.id;
-    selectedIds.value = new Set([app.id]);
+    onClick(app);
     menu.value.app = app;
     menu.value.x = e.clientX;
     menu.value.y = e.clientY;
@@ -167,252 +157,11 @@
     }
   }
 
-  function onMouseDown(app, e) {
-    // 忽略右键点击，避免干扰右键菜单
-    if (e.button === 2) return;
-
-    // 长按触发拖动（>150ms）
-    const id = app.id;
-    const rect = e.currentTarget.getBoundingClientRect();
-    // 支持批量拖动：当被按下的图标在 selectedIds 中，则拖动所有选中的图标
-    const isMulti = selectedIds.value.has(id);
-    if (isMulti) {
-      const ids = Array.from(selectedIds.value);
-      const origins = {};
-      for (const i of ids) {
-        const r = e.currentTarget.ownerDocument.querySelector(
-          `[data-id="${i}"]`
-        );
-        // 以已保存的位置为准，fallback 到 DOM rect
-        const rectItem = r ? r.getBoundingClientRect() : null;
-        origins[i] = positions.value[i]
-          ? { x: positions.value[i].x, y: positions.value[i].y }
-          : rectItem
-            ? { x: rectItem.left, y: rectItem.top }
-            : { x: 0, y: 0 };
-      }
-      dragState = {
-        ids,
-        startX: e.clientX,
-        startY: e.clientY,
-        origins,
-        longPressTimer: null,
-        dragging: false,
-      };
-    } else {
-      dragState = {
-        id,
-        startX: e.clientX,
-        startY: e.clientY,
-        originX: positions.value[id]?.x ?? rect.left,
-        originY: positions.value[id]?.y ?? rect.top,
-        longPressTimer: null,
-        dragging: false,
-      };
-    }
-
-    dragState.longPressTimer = setTimeout(() => {
-      dragState.dragging = true;
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp, { once: true });
-    }, 150);
-
-    document.addEventListener('mouseup', cancelIfNotDrag, { once: true });
-  }
-
-  function onMouseMove(e) {
-    if (!dragState || !dragState.dragging) return;
-    const dx = e.clientX - dragState.startX;
-    const dy = e.clientY - dragState.startY;
-    if (dragState.ids) {
-      const updated = { ...positions.value };
-      for (const i of dragState.ids) {
-        const o = dragState.origins[i] || { x: 0, y: 0 };
-        updated[i] = { x: o.x + dx, y: o.y + dy };
-      }
-      positions.value = updated;
-    } else {
-      positions.value = {
-        ...positions.value,
-        [dragState.id]: {
-          x: dragState.originX + dx,
-          y: dragState.originY + dy,
-        },
-      };
-    }
-  }
-
-  function onMouseUp() {
-    // 释放时吸附到网格并避免与同组图标重叠
-    if (dragState?.dragging)
-      finalizeDrag(dragState.ids ? dragState.ids : dragState.id);
-    cleanupDrag();
-  }
-
-  function cancelIfNotDrag() {
-    if (!dragState) return;
-    if (!dragState.dragging && dragState.longPressTimer) {
-      clearTimeout(dragState.longPressTimer);
-    }
-    dragState = null;
-  }
-
-  function cleanupDrag() {
-    if (dragState?.longPressTimer) clearTimeout(dragState.longPressTimer);
-    document.removeEventListener('mousemove', onMouseMove);
-    dragState = null;
-    savePositionsToStorage();
-  }
-
-  // grid helpers provided by useDesktopGrid
-
-  function finalizeDrag(idOrIds) {
-    finalizeDragForPositions(positions, idOrIds);
-  }
-
-  function getIconStyle(app) {
-    const p = positions.value[app.id];
-    if (!p) return undefined;
-    return {
-      position: 'fixed',
-      left: `${p.x}px`,
-      top: `${p.y}px`,
-    };
-  }
-
-  // 外部接口：设置多选
-  function setSelectedIds(ids = []) {
-    selectedIds.value = new Set(ids.map(i => Number(i)));
-    if (ids.length === 1) selectedId.value = ids[0];
-  }
-
   defineExpose({ autoArrange, setSelectedIds });
-
-  // 用于记录上一次的应用 ID 列表，避免重复加载
-  let lastAppIds = '';
-
-  // 自动排列：从左上角开始，按列优先，每列最多 8 行
-  async function autoArrange(startCol = 0) {
-    const arranged = {};
-    let col = startCol;
-    let row = 0;
-    for (const app of visibleApps.value || []) {
-      arranged[app.id] = cellToPosition({ col, row });
-      row += 1;
-      if (row >= GRID.maxRows) {
-        row = 0;
-        col += 1;
-      }
-    }
-    positions.value = arranged;
-    gridSavePositionsToStorage(STORAGE_KEY, positions.value, visibleApps.value);
-    // 更新缓存的应用ID列表，避免下次 watch 触发时覆盖排列结果
-    lastAppIds = (visibleApps.value || [])
-      .map(a => a.id)
-      .sort()
-      .join(',');
-    return col + (row > 0 ? 1 : 0);
-  }
-
-  // 将位置持久化到 localStorage
-  function savePositionsToStorage() {
-    try {
-      gridSavePositionsToStorage(
-        STORAGE_KEY,
-        positions.value,
-        visibleApps.value
-      );
-    } catch (e) {
-      console.error('AppIcons.savePositionsToStorage error', e);
-    }
-  }
-
-  // 加载位置并为没有位置的图标分配默认位置
-  function loadPositionsFromStorage() {
-    try {
-      const apps = visibleApps.value || [];
-      const currentAppIds = apps
-        .map(a => a.id)
-        .sort()
-        .join(',');
-
-      // 如果应用列表没有变化且已有位置数据，跳过加载
-      if (
-        currentAppIds === lastAppIds &&
-        Object.keys(positions.value).length > 0
-      ) {
-        return;
-      }
-      lastAppIds = currentAppIds;
-
-      const saved = gridLoadPositionsToStorage
-        ? gridLoadPositionsToStorage(STORAGE_KEY, apps)
-        : {};
-
-      // 为没有保存位置的图标分配位置，避免重叠
-      if (apps.length === 0) {
-        positions.value = saved;
-        return;
-      }
-
-      // 获取已占用的格子
-      const occupied = new Set();
-      for (const [, pos] of Object.entries(saved)) {
-        if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
-          const cell = positionToCell(pos);
-          occupied.add(`${cell.col}:${cell.row}`);
-        }
-      }
-
-      // 为缺失位置的图标分配位置
-      const result = { ...saved };
-      for (const app of apps) {
-        if (!result[app.id]) {
-          // 找到下一个空闲格子
-          let col = 0;
-          let row = 0;
-          while (occupied.has(`${col}:${row}`)) {
-            row += 1;
-            if (row >= GRID.maxRows) {
-              row = 0;
-              col += 1;
-            }
-          }
-          result[app.id] = cellToPosition({ col, row });
-          occupied.add(`${col}:${row}`);
-        }
-      }
-
-      positions.value = result;
-    } catch (e) {
-      console.error('AppIcons.loadPositionsFromStorage error', e);
-    }
-  }
 
   onMounted(async () => {
     await refreshVisibleApps();
-    loadPositionsFromStorage();
   });
-
-  // 当 apps 列表更新后，重新加载已保存的位置并为新图标分配位置
-  watch(
-    visibleApps,
-    (newApps, oldApps) => {
-      // 只有当实际列表内容变化时才重新加载
-      const newIds = (newApps || [])
-        .map(a => a.id)
-        .sort()
-        .join(',');
-      const oldIds = (oldApps || [])
-        .map(a => a.id)
-        .sort()
-        .join(',');
-      if (newIds !== oldIds) {
-        loadPositionsFromStorage();
-      }
-    },
-    { deep: false }
-  );
 </script>
 
 <style scoped>
