@@ -30,11 +30,13 @@
       </div>
     </div>
     <router-view v-else />
+    <GlobalToastHost />
   </div>
 </template>
 
 <script setup>
   import { computed, onMounted, ref } from 'vue';
+  import GlobalToastHost from '@/components/common/GlobalToastHost.vue';
   import {
     saveAuth,
     clearAuth,

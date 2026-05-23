@@ -21,7 +21,7 @@ export default function useAutostartApps() {
             const url = app.targetUrl;
             if (url) {
               try {
-                window.open(url, '_blank');
+                window.open(url, '_blank', 'noopener,noreferrer');
               } catch (e) {
                 console.warn('open autostart url failed', e);
               }

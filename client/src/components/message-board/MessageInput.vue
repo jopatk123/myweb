@@ -60,6 +60,7 @@
 
 <script setup>
   import { ref, computed, watch } from 'vue';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
   import { compressImage } from '@/utils/imageCompressor.js';
   import { formatFileSize } from '@/composables/useImageProcessing.js';
   import { createStableId } from '@/utils/stableId.js';
@@ -74,6 +75,7 @@
   const inputMessage = ref('');
   const selectedImages = ref([]);
   const fileInput = ref(null);
+  const { showError, showInfo } = useGlobalToast();
 
   const canSend = computed(() => {
     return (
@@ -115,7 +117,7 @@
 
   const addImage = async file => {
     if (selectedImages.value.length >= 5) {
-      alert('最多只能选择5张图片');
+      showInfo('最多只能选择5张图片');
       return;
     }
     try {
@@ -128,14 +130,14 @@
           compressed = true;
           const compressedSizeText = formatFileSize(processedFile.size);
           if (processedFile.size > 5 * 1024 * 1024) {
-            alert(
+            showInfo(
               `图片压缩后仍然超过5MB限制 (${compressedSizeText})，无法添加`
             );
             return;
           }
         } catch (error) {
           console.error('图片压缩失败:', error);
-          alert('图片压缩失败，无法添加');
+          showError('图片压缩失败，无法添加');
           return;
         }
       }
@@ -151,7 +153,7 @@
       });
     } catch (error) {
       console.error('添加图片失败:', error);
-      alert('添加图片失败');
+      showError('添加图片失败');
     }
   };
 

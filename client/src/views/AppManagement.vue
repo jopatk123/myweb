@@ -1,92 +1,65 @@
 <template>
-  <div class="admin-layout" :class="{ 'sider-visible': siderVisible }">
-    <!-- 全局侧边栏切换按钮 -->
-    <button
-      v-if="!siderVisible"
-      class="global-sider-toggle"
-      @click="siderVisible = true"
-      title="显示侧边栏"
-    >
-      ☰
-    </button>
+  <AdminLayout v-model:siderVisible="siderVisible">
+    <template #module-sider>
+      <AppSidebar
+        :groups="groups"
+        :selected-group-id="selectedGroupId"
+        @select-group="selectGroup"
+        @create-group="() => openGroupModal('create')"
+        @edit-group="onEditSelectedGroup"
+        @delete-group="onDeleteSelectedGroup"
+      />
+    </template>
 
-    <!-- 全局侧边栏 -->
-    <aside class="global-sider">
-      <div class="brand">管理后台</div>
-      <nav class="global-menu">
-        <router-link to="/wallpapers" class="menu-item">壁纸管理</router-link>
-        <a class="menu-item active">应用管理</a>
-        <router-link to="/files" class="menu-item">文件管理</router-link>
-      </nav>
-    </aside>
+    <div class="toolbar-row">
+      <div class="left">
+        <button
+          class="btn btn-primary"
+          @click="showCreateModal = true"
+          title="新增自定义应用（上传图标并设置URL）"
+        >
+          新增应用
+        </button>
+        <button
+          class="btn btn-primary btn-move btn-space"
+          @click="showMoveModal = true"
+          :disabled="selectedIds.length === 0"
+          title="移动已选择的应用"
+        >
+          移动
+        </button>
+      </div>
+      <div class="right">
+        <input v-model="keyword" class="search" placeholder="搜索应用名称..." />
+      </div>
+    </div>
 
-    <!-- 应用模块侧边栏 -->
-    <AppSidebar
+    <div v-if="error" class="error-message">{{ error }}</div>
+    <div v-if="loading" class="loading">加载中...</div>
+
+    <AppListTable
+      v-if="!loading"
+      :apps="filteredApps"
       :groups="groups"
-      :selected-group-id="selectedGroupId"
-      @select-group="selectGroup"
-      @create-group="() => openGroupModal('create')"
-      @edit-group="onEditSelectedGroup"
-      @delete-group="onDeleteSelectedGroup"
+      :all-selected="allSelected"
+      v-model:selectedIds="selectedIds"
+      @toggle-visible="onToggleVisible"
+      @toggle-autostart="onToggleAutostart"
+      @edit="onEdit"
+      @delete="remove"
+      @update:all-selected="toggleAll"
     />
 
-    <!-- 主内容区 -->
-    <main class="content-area">
-      <div class="toolbar-row">
-        <div class="left">
-          <button
-            class="btn btn-primary"
-            @click="showCreateModal = true"
-            title="新增自定义应用（上传图标并设置URL）"
-          >
-            新增应用
-          </button>
-          <button
-            class="btn btn-primary btn-move btn-space"
-            @click="showMoveModal = true"
-            :disabled="selectedIds.length === 0"
-            title="移动已选择的应用"
-          >
-            移动
-          </button>
-        </div>
-        <div class="right">
-          <input
-            v-model="keyword"
-            class="search"
-            placeholder="搜索应用名称..."
-          />
-        </div>
-      </div>
+    <!-- 分页 -->
+    <PaginationControls
+      :page="page"
+      :limit="limit"
+      :total="total"
+      @prev="prevPage"
+      @next="nextPage"
+      @limit-change="onLimitChange"
+    />
 
-      <div v-if="error" class="error-message">{{ error }}</div>
-      <div v-if="loading" class="loading">加载中...</div>
-
-      <AppListTable
-        v-if="!loading"
-        :apps="filteredApps"
-        :groups="groups"
-        :all-selected="allSelected"
-        v-model:selectedIds="selectedIds"
-        @toggle-visible="onToggleVisible"
-        @toggle-autostart="onToggleAutostart"
-        @edit="onEdit"
-        @delete="remove"
-        @update:all-selected="toggleAll"
-      />
-
-      <!-- 分页 -->
-      <PaginationControls
-        :page="page"
-        :limit="limit"
-        :total="total"
-        @prev="prevPage"
-        @next="nextPage"
-        @limit-change="onLimitChange"
-      />
-    </main>
-
-    <!-- 弹窗 -->
     <AppCreateModal
       v-model:show="showCreateModal"
       :group-id="selectedGroupId"
@@ -108,12 +81,14 @@
       :groups="groups"
       @submit="submitMove"
     />
-  </div>
+  </AdminLayout>
 </template>
 
 <script setup>
   import { ref, computed, onMounted, watch } from 'vue';
+  import AdminLayout from '@/components/common/AdminLayout.vue';
   import { useApps } from '@/composables/useApps.js';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
   import AppSidebar from '@/components/app/AppSidebar.vue';
   import PaginationControls from '@/components/common/PaginationControls.vue';
   import AppListTable from '@/components/app/AppListTable.vue';
@@ -147,6 +122,7 @@
   const selectedGroupId = ref('');
   const selectedIds = ref([]);
   const siderVisible = ref(false);
+  const { showSuccess, showError, showInfo } = useGlobalToast();
 
   // 模态框状态
   const showCreateModal = ref(false);
@@ -198,33 +174,43 @@
 
   function onEditSelectedGroup() {
     const g = groups.value.find(x => x.id === selectedGroupId.value);
-    if (!g) return alert('未选择有效分组');
+    if (!g) return showInfo('未选择有效分组');
     openGroupModal('edit', g);
   }
 
   async function onDeleteSelectedGroup() {
     const g = groups.value.find(x => x.id === selectedGroupId.value);
-    if (!g) return alert('未选择有效分组');
+    if (!g) return showInfo('未选择有效分组');
     if (!confirm(`确定删除分组 「${g.name}」？`)) return;
     try {
       await deleteGroup(g.id);
       if (selectedGroupId.value === g.id) await selectGroup('');
+      showSuccess('分组已删除');
     } catch (e) {
-      alert(e?.message || '删除失败');
+      showError(e?.message || '删除失败');
     }
   }
 
   async function remove(id) {
-    selectedIds.value = selectedIds.value.filter(
-      item => Number(item) !== Number(id)
-    );
-    await deleteApp(id);
-    await reloadApps();
+    try {
+      await deleteApp(id);
+      selectedIds.value = selectedIds.value.filter(
+        item => Number(item) !== Number(id)
+      );
+      await reloadApps();
+      showSuccess('应用已删除');
+    } catch (e) {
+      showError(e?.message || '删除失败');
+    }
   }
 
   async function onToggleVisible(app, checked) {
-    await setVisible(app.id, checked);
-    await reloadApps();
+    try {
+      await setVisible(app.id, checked);
+      await reloadApps();
+    } catch (e) {
+      showError(e?.message || '设置可见状态失败');
+    }
   }
 
   async function onToggleAutostart(app, checked) {
@@ -233,7 +219,7 @@
       await reloadApps();
     } catch (e) {
       console.error('[AppManagement] onToggleAutostart error', e);
-      alert(e?.message || '设置自启动失败');
+      showError(e?.message || '设置自启动失败');
     }
   }
 
@@ -284,8 +270,11 @@
         });
       }
       showGroupModal.value = false;
+      showSuccess(
+        groupModalMode.value === 'create' ? '分组已创建' : '分组已更新'
+      );
     } catch (e) {
-      alert(e?.message || '操作失败');
+      showError(e?.message || '操作失败');
     }
   }
 
@@ -295,20 +284,21 @@
         .map(i => Number(i))
         .filter(n => Number.isFinite(n));
       if (ids.length === 0) {
-        alert('请选择要移动的应用');
+        showInfo('请选择要移动的应用');
         return;
       }
       const gid = Number(targetGroupId);
       if (!Number.isFinite(gid)) {
-        alert('目标分组无效');
+        showInfo('目标分组无效');
         return;
       }
       await moveApps(ids, gid);
       selectedIds.value = [];
       showMoveModal.value = false;
       await reloadApps();
+      showSuccess('应用已移动');
     } catch (e) {
-      alert(e?.message || '移动失败');
+      showError(e?.message || '移动失败');
     }
   }
 
@@ -317,8 +307,9 @@
       await createApp(payload);
       showCreateModal.value = false;
       await reloadApps();
+      showSuccess('应用已创建');
     } catch (e) {
-      alert(e?.message || '创建失败');
+      showError(e?.message || '创建失败');
     }
   }
 
@@ -329,7 +320,7 @@
 
   async function submitEdit(payload) {
     if (!editingApp.value?.id) {
-      alert('无法确定要编辑的应用');
+      showInfo('无法确定要编辑的应用');
       return;
     }
     try {
@@ -337,8 +328,9 @@
       showEditModal.value = false;
       editingApp.value = null;
       await reloadApps();
+      showSuccess('应用已更新');
     } catch (e) {
-      alert(e?.message || '更新失败');
+      showError(e?.message || '更新失败');
     }
   }
 

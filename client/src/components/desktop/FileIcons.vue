@@ -107,6 +107,7 @@
       a.href = url;
       a.download = file.originalName || file.original_name || '';
       a.target = '_blank';
+      a.rel = 'noopener noreferrer';
       a.click();
       return;
     }
@@ -172,5 +173,9 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
     font-size: 12px;
     text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>

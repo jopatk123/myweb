@@ -1,13 +1,19 @@
 <template>
-  <div v-if="visible" class="confirm-dialog-overlay" @click="$emit('cancel')">
+  <div
+    v-if="visible"
+    class="confirm-dialog-overlay"
+    role="dialog"
+    aria-modal="true"
+    @click="$emit('cancel')"
+  >
     <div class="confirm-dialog" @click.stop>
       <h3>{{ title }}</h3>
       <p v-for="line in normalizedLines" :key="line">{{ line }}</p>
       <div class="confirm-actions">
-        <button @click="$emit('cancel')" class="cancel-btn">
+        <button type="button" @click="$emit('cancel')" class="cancel-btn">
           {{ cancelText }}
         </button>
-        <button @click="$emit('confirm')" class="confirm-btn">
+        <button type="button" @click="$emit('confirm')" class="confirm-btn">
           {{ confirmText }}
         </button>
       </div>

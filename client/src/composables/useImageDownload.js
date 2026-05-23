@@ -1,4 +1,8 @@
+import { useGlobalToast } from '@/composables/useGlobalToast.js';
+
 export function useImageDownload() {
+  const { showError, showSuccess } = useGlobalToast();
+
   // 保存图片
   const saveImage = async (image, getImageUrl) => {
     try {
@@ -39,24 +43,13 @@ export function useImageDownload() {
       showSaveSuccess();
     } catch (error) {
       console.error('保存图片失败:', error);
-      alert('保存图片失败: ' + error.message);
+      showError('保存图片失败: ' + error.message);
     }
   };
 
   // 显示保存成功提示
   const showSaveSuccess = () => {
-    // 创建一个临时的成功提示
-    const successTip = document.createElement('div');
-    successTip.className = 'save-success-tip';
-    successTip.textContent = '图片已保存';
-    document.body.appendChild(successTip);
-
-    // 2秒后移除提示
-    setTimeout(() => {
-      if (successTip.parentNode) {
-        successTip.parentNode.removeChild(successTip);
-      }
-    }, 2000);
+    showSuccess('图片已保存');
   };
 
   return {

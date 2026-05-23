@@ -38,6 +38,7 @@
 
 <script setup>
   import { ref, watch } from 'vue';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
   import IconSelector from './IconSelector.vue';
   import { apiFetch } from '@/api/httpClient.js';
 
@@ -60,6 +61,7 @@
   const selectedIconPath = ref('');
   const iconSelectorRef = ref(null);
   const pendingFile = ref(null); // 延迟上传的本地文件
+  const { showError, showInfo } = useGlobalToast();
 
   watch(
     () => props.show,
@@ -92,11 +94,11 @@
     };
 
     if (!payload.name) {
-      alert('请填写名称');
+      showInfo('请填写名称');
       return;
     }
     if (!payload.targetUrl) {
-      alert('请填写URL');
+      showInfo('请填写URL');
       return;
     }
 
@@ -104,11 +106,11 @@
     try {
       const parsed = new URL(payload.targetUrl);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        alert('URL 必须以 http:// 或 https:// 开头');
+        showInfo('URL 必须以 http:// 或 https:// 开头');
         return;
       }
     } catch {
-      alert('URL 格式不正确，请输入有效的 URL，例如：https://example.com');
+      showInfo('URL 格式不正确，请输入有效的 URL，例如：https://example.com');
       return;
     }
 
@@ -136,12 +138,12 @@
         if (resp.ok && json?.data?.filename) {
           payload.iconFilename = json.data.filename;
         } else {
-          alert(json?.message || '上传失败');
+          showError(json?.message || '上传失败');
           return;
         }
       } catch (error) {
         console.error('Icon upload failed:', error);
-        alert('图标上传失败');
+        showError('图标上传失败');
         return;
       }
     }

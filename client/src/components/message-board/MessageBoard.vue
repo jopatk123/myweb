@@ -65,6 +65,7 @@
 
 <script setup>
   import { ref, nextTick, watch, computed } from 'vue';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
   import { useMessageBoard } from '@/composables/useMessageBoard.js';
   import MessageBoardHeader from './MessageBoardHeader.vue';
   import MessageBoardSettings from './MessageBoardSettings.vue';
@@ -106,6 +107,7 @@
   const pendingDeleteMessage = ref(null);
   const deletingMessageId = ref(null);
   const sendSuccessToken = ref(0);
+  const { showSuccess, showError } = useGlobalToast();
 
   // 临时设置（用于编辑）
   // 临时设置用于编辑；用 userSettings 的当前值初始化，避免硬编码默认值
@@ -170,7 +172,7 @@
       resetDeleteState();
     } catch (err) {
       console.error('删除留言失败:', err);
-      alert('删除留言失败: ' + err.message);
+      showError('删除留言失败: ' + err.message);
     } finally {
       deletingMessageId.value = null;
     }
@@ -184,12 +186,12 @@
       showSettings.value = false;
 
       // 显示清除成功提示
-      alert(
+      showSuccess(
         `留言板已清空！\n删除了 ${result.deletedMessages} 条留言和 ${result.deletedImages} 张图片`
       );
     } catch (err) {
       console.error('清除留言板失败:', err);
-      alert('清除留言板失败: ' + err.message);
+      showError('清除留言板失败: ' + err.message);
     }
   };
 

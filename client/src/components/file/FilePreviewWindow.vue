@@ -21,7 +21,11 @@
           <div v-else class="fallback">
             无法预览该文件，您可以点击下方下载并在本地查看。
             <div style="margin-top: 10px">
-              <a :href="previewUrl" target="_blank" rel="noopener" class="btn"
+              <a
+                :href="previewUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn"
                 >下载文件</a
               >
             </div>

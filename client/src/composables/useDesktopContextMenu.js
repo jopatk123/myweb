@@ -39,7 +39,7 @@ export function useDesktopContextMenu({
         typeof onRandom === 'function' && onRandom();
         break;
       case 'manage':
-        window.open('/wallpapers', '_blank', 'noopener');
+        window.open('/wallpapers', '_blank', 'noopener,noreferrer');
         break;
       case 'refresh':
         window.location.reload();

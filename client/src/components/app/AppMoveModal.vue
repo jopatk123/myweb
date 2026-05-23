@@ -26,6 +26,7 @@
 
 <script setup>
   import { ref, watch } from 'vue';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
 
   const props = defineProps({
     show: Boolean,
@@ -38,6 +39,7 @@
   const emit = defineEmits(['update:show', 'submit']);
 
   const targetGroupId = ref(null);
+  const { showInfo } = useGlobalToast();
 
   watch(
     () => props.show,
@@ -54,7 +56,7 @@
 
   const submit = () => {
     if (!targetGroupId.value) {
-      alert('请选择目标分组');
+      showInfo('请选择目标分组');
       return;
     }
     emit('submit', targetGroupId.value);

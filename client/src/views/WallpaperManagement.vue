@@ -1,137 +1,114 @@
 <template>
-  <div class="admin-layout" :class="{ 'sider-visible': siderVisible }">
-    <!-- 全局侧边栏切换按钮 -->
-    <button
-      v-if="!siderVisible"
-      class="global-sider-toggle"
-      @click="siderVisible = true"
-      title="显示侧边栏"
-    >
-      ☰
-    </button>
+  <AdminLayout v-model:siderVisible="siderVisible">
+    <template #module-sider>
+      <WallpaperSidebar
+        :groups="groupsWithFlag"
+        :selected-group-id="selectedGroupId"
+        @select-group="selectGroup"
+        @create-group="showGroupModal = true"
+        @delete-group="handleDeleteGroup"
+        @apply-current="handleApplyCurrent"
+      />
+    </template>
 
-    <!-- 全局侧边栏 -->
-    <aside class="global-sider">
-      <div class="brand">管理后台</div>
-      <nav class="global-menu">
-        <a class="menu-item active">壁纸管理</a>
-        <router-link to="/apps" class="menu-item">应用管理</router-link>
-        <router-link to="/files" class="menu-item">文件管理</router-link>
-      </nav>
-    </aside>
-
-    <!-- 模块侧边栏 -->
-    <WallpaperSidebar
-      :groups="groupsWithFlag"
-      :selected-group-id="selectedGroupId"
-      @select-group="selectGroup"
-      @create-group="showGroupModal = true"
-      @delete-group="handleDeleteGroup"
-      @apply-current="handleApplyCurrent"
+    <!-- 顶部 -->
+    <WallpaperHeader
+      :selected-count="selectedIds.length"
+      @upload-wallpaper="showUploadModal = true"
+      @open-bulk-upload="showBulkUploadModal = true"
+      @bulk-delete="handleBulkDelete"
+      @bulk-move="showMoveModal = true"
+      @download-wallpapers="handleDownload"
+      @open-main-window="openMainWindow"
     />
 
-    <!-- 主内容区 -->
-    <main class="content-area">
-      <!-- 顶部 -->
-      <WallpaperHeader
-        :selected-count="selectedIds.length"
-        @upload-wallpaper="showUploadModal = true"
-        @open-bulk-upload="showBulkUploadModal = true"
-        @bulk-delete="handleBulkDelete"
-        @bulk-move="showMoveModal = true"
-        @download-wallpapers="handleDownload"
-        @open-main-window="openMainWindow"
-      />
+    <!-- 工具栏 -->
+    <WallpaperToolbar v-model:keyword="keyword" />
 
-      <!-- 工具栏 -->
-      <WallpaperToolbar v-model:keyword="keyword" />
-
-      <!-- 筛选条（占位）已移除固定标签 -->
-      <div class="filters-row">
-        <span class="filter-chip" v-if="selectedGroupId"
-          >分组: {{ displayCurrentGroup }}</span
-        >
-      </div>
-
-      <!-- 提示/加载 -->
-      <div v-if="error" class="error-message">{{ error }}</div>
-      <div v-if="loading" class="loading">加载中...</div>
-
-      <!-- 内容列表 -->
-      <WallpaperList
-        v-if="!loading"
-        v-model="selectedIds"
-        :wallpapers="filteredWallpapers"
-        :active-wallpaper="activeWallpaper"
-        @delete="deleteWallpaper($event, selectedGroupId || null)"
-        @edit="openEditModal"
-      />
-
-      <Toast
-        v-model:modelValue="showToast"
-        :message="toastMessage"
-        type="success"
-      />
-
-      <!-- 空状态 -->
-      <div
-        v-if="!loading && filteredWallpapers.length === 0"
-        class="empty-state"
+    <!-- 筛选条（占位）已移除固定标签 -->
+    <div class="filters-row">
+      <span class="filter-chip" v-if="selectedGroupId"
+        >分组: {{ displayCurrentGroup }}</span
       >
-        <p>暂无壁纸，点击右上方“上传壁纸”添加</p>
-      </div>
+    </div>
 
-      <!-- 分页控件 -->
-      <div class="pagination-placeholder">
-        <PaginationControls
-          :page="page"
-          :limit="limit"
-          :total="total"
-          @prev="prevPage"
-          @next="nextPage"
-          @limit-change="onLimitChange"
-        />
-      </div>
+    <!-- 提示/加载 -->
+    <div v-if="error" class="error-message">{{ error }}</div>
+    <div v-if="loading" class="loading">加载中...</div>
 
-      <!-- 模态框 -->
-      <WallpaperUploadModal
-        v-if="showUploadModal"
-        :groups="groups"
-        @close="showUploadModal = false"
-        @uploaded="onWallpaperUploaded"
-        @open-bulk="openBulkUpload"
+    <!-- 内容列表 -->
+    <WallpaperList
+      v-if="!loading"
+      v-model="selectedIds"
+      :wallpapers="filteredWallpapers"
+      :active-wallpaper="activeWallpaper"
+      @delete="deleteWallpaper($event, selectedGroupId || null)"
+      @edit="openEditModal"
+    />
+
+    <Toast
+      v-model:modelValue="showToast"
+      :message="toastMessage"
+      :type="toastType"
+      :duration="toastDuration"
+    />
+
+    <!-- 空状态 -->
+    <div v-if="!loading && filteredWallpapers.length === 0" class="empty-state">
+      <p>暂无壁纸，点击右上方“上传壁纸”添加</p>
+    </div>
+
+    <!-- 分页控件 -->
+    <div class="pagination-placeholder">
+      <PaginationControls
+        :page="page"
+        :limit="limit"
+        :total="total"
+        @prev="prevPage"
+        @next="nextPage"
+        @limit-change="onLimitChange"
       />
-      <WallpaperBulkUploadModal
-        v-if="showBulkUploadModal"
-        :groups="groups"
-        @close="showBulkUploadModal = false"
-        @uploaded="onBulkUploaded"
-      />
-      <GroupCreateModal
-        v-if="showGroupModal"
-        @close="showGroupModal = false"
-        @created="onGroupCreated"
-      />
-      <GroupMoveModal
-        v-if="showMoveModal"
-        :count="selectedIds.length"
-        :groups="groups"
-        :loading="bulkMoveLoading"
-        @close="closeMoveModal"
-        @confirm="handleBulkMove"
-      />
-      <WallpaperEditModal
-        v-if="showEditModal"
-        :wallpaper="editingWallpaper"
-        @close="showEditModal = false"
-        @saved="onEditSaved"
-      />
-    </main>
-  </div>
+    </div>
+
+    <!-- 模态框 -->
+    <WallpaperUploadModal
+      v-if="showUploadModal"
+      :groups="groups"
+      @close="showUploadModal = false"
+      @uploaded="onWallpaperUploaded"
+      @open-bulk="openBulkUpload"
+    />
+    <WallpaperBulkUploadModal
+      v-if="showBulkUploadModal"
+      :groups="groups"
+      @close="showBulkUploadModal = false"
+      @uploaded="onBulkUploaded"
+    />
+    <GroupCreateModal
+      v-if="showGroupModal"
+      @close="showGroupModal = false"
+      @created="onGroupCreated"
+    />
+    <GroupMoveModal
+      v-if="showMoveModal"
+      :count="selectedIds.length"
+      :groups="groups"
+      :loading="bulkMoveLoading"
+      @close="closeMoveModal"
+      @confirm="handleBulkMove"
+    />
+    <WallpaperEditModal
+      v-if="showEditModal"
+      :wallpaper="editingWallpaper"
+      @close="showEditModal = false"
+      @saved="onEditSaved"
+    />
+  </AdminLayout>
 </template>
 
 <script setup>
   import { ref, onMounted, computed } from 'vue';
+  import AdminLayout from '@/components/common/AdminLayout.vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import PaginationControls from '@/components/common/PaginationControls.vue';
   import WallpaperSidebar from '@/components/wallpaper/WallpaperSidebar.vue';
@@ -198,7 +175,7 @@
       selectedIds.value = []; // 清空选择
       displayToast('批量删除成功');
     } catch (err) {
-      alert(err.message || '批量删除失败');
+      displayToast(err?.message || '批量删除失败', 'error');
     }
   };
 
@@ -216,7 +193,7 @@
       displayToast('移动成功');
       showMoveModal.value = false;
     } catch (err) {
-      alert(err.message || '批量移动失败');
+      displayToast(err?.message || '批量移动失败', 'error');
     } finally {
       bulkMoveLoading.value = false;
     }
@@ -231,10 +208,11 @@
       displayToast(
         selectedIds.value.length === 1
           ? '壁纸已下载'
-          : `${selectedIds.value.length} 张壁纸已打包下载`
+          : `${selectedIds.value.length} 张壁纸已打包下载`,
+        'success'
       );
     } catch (err) {
-      alert(err.message || '下载失败，请稍后重试');
+      displayToast(err?.message || '下载失败，请稍后重试', 'error');
     }
   };
 
@@ -252,9 +230,9 @@
     try {
       await applyCurrentGroup(selectedGroupId.value);
       await fetchCurrentGroup();
-      alert('已将该分组设为当前应用分组');
+      displayToast('已将该分组设为当前应用分组');
     } catch (err) {
-      alert(err.message || '设置当前分组失败');
+      displayToast(err?.message || '设置当前分组失败', 'error');
     }
   };
 
@@ -282,6 +260,7 @@
   const onGroupCreated = () => {
     showGroupModal.value = false;
     fetchGroups();
+    displayToast('分组已创建');
   };
 
   // 打开编辑对话框
@@ -310,26 +289,28 @@
       // 如果刚删除的是当前选中，则切回全部
       selectedGroupId.value = '';
       await Promise.all([fetchGroups(), fetchWallpapers(null, true)]);
+      displayToast('分组已删除');
     } catch (err) {
-      alert(err.message || '删除分组失败');
+      displayToast(err?.message || '删除分组失败', 'error');
     }
   };
 
   // 打开主窗口
   const openMainWindow = () => {
-    window.open('/', '_blank');
+    window.open('/', '_blank', 'noopener,noreferrer');
   };
 
   // 无需确认的成功提示（toast）状态
   const showToast = ref(false);
   const toastMessage = ref('');
+  const toastType = ref('success');
+  const toastDuration = ref(2000);
 
-  const displayToast = (msg, duration = 2000) => {
+  const displayToast = (msg, type = 'success', duration = 2000) => {
     toastMessage.value = msg;
+    toastType.value = type;
+    toastDuration.value = duration;
     showToast.value = true;
-    setTimeout(() => {
-      showToast.value = false;
-    }, duration);
   };
 
   // 计算后的展示数据

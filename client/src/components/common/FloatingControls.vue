@@ -1,17 +1,30 @@
 <template>
   <div class="floating-controls">
-    <button @click="$emit('random')" class="control-btn" title="随机切换壁纸">
+    <button
+      type="button"
+      @click="$emit('random')"
+      class="control-btn"
+      title="随机切换壁纸"
+      aria-label="随机切换壁纸"
+    >
       🎲
     </button>
-    <button @click="$emit('message')" class="control-btn" title="留言板">
+    <button
+      type="button"
+      @click="$emit('message')"
+      class="control-btn"
+      title="留言板"
+      aria-label="打开留言板"
+    >
       💬
     </button>
     <a
       href="/wallpapers"
       target="_blank"
-      rel="noopener"
+      rel="noopener noreferrer"
       class="control-btn"
       title="管理后台"
+      aria-label="在新标签页打开管理后台"
       >🛠️</a
     >
   </div>

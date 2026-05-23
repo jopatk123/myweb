@@ -22,6 +22,7 @@
 
 <script setup>
   import { ref, watch, computed } from 'vue';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
 
   const props = defineProps({
     show: Boolean,
@@ -38,6 +39,7 @@
   const emit = defineEmits(['update:show', 'submit']);
 
   const form = ref({ name: '' });
+  const { showInfo } = useGlobalToast();
 
   const isEditMode = computed(() => props.mode === 'edit');
 
@@ -62,7 +64,7 @@
 
   const submit = () => {
     if (!form.value.name || !form.value.name.trim()) {
-      alert('请填写分组名称');
+      showInfo('请填写分组名称');
       return;
     }
     emit('submit', { ...form.value });

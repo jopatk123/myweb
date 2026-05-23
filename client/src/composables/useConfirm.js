@@ -1,4 +1,8 @@
+import { useGlobalToast } from '@/composables/useGlobalToast.js';
+
 export function useConfirm() {
+  const { showInfo } = useGlobalToast();
+
   const confirmAction = message => {
     if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
       return window.confirm(message);
@@ -7,9 +11,7 @@ export function useConfirm() {
   };
 
   const notify = message => {
-    if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-      window.alert(message);
-    }
+    showInfo(message);
   };
 
   return {

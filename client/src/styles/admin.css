@@ -13,6 +13,10 @@
   grid-template-columns: 200px 260px 1fr;
 }
 
+.global-sider-overlay {
+  display: none;
+}
+
 .global-sider {
   background: #0f172a;
   color: #e2e8f0;
@@ -26,6 +30,14 @@
   transform: translateX(-100%);
   transition: transform 0.3s ease;
   z-index: 1000;
+}
+
+.global-sider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .admin-layout.sider-visible .global-sider {
@@ -68,7 +80,20 @@
 .brand {
   font-weight: 700;
   font-size: 18px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
+}
+
+.global-sider-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  cursor: pointer;
 }
 
 .global-menu {
@@ -144,12 +169,14 @@
 
 .toolbar-row {
   margin-bottom: 12px;
+  gap: 12px;
 }
 
 .toolbar-left,
 .toolbar-right {
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 /* 表单/输入 */
@@ -399,6 +426,90 @@ table {
 .empty-hint {
   font-size: 14px;
   color: #9ca3af;
+}
+
+@media (max-width: 1024px) {
+  .admin-layout,
+  .admin-layout.sider-visible {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-layout.sider-visible .global-sider {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(280px, 82vw);
+    height: 100vh;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.24);
+    z-index: 1001;
+  }
+
+  .admin-layout.sider-visible .global-sider-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    z-index: 1000;
+  }
+
+  .global-sider-close {
+    display: inline-flex;
+  }
+
+  .module-sider {
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .content-area {
+    padding: 16px;
+  }
+
+  .toolbar,
+  .toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-left,
+  .toolbar-right,
+  .toolbar-row > * {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .file-table-wrapper,
+  .app-list,
+  .pagination-wrapper,
+  .pagination-placeholder {
+    overflow-x: auto;
+  }
+
+  .file-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .module-sider,
+  .toolbar {
+    padding: 16px;
+  }
+
+  .content-area {
+    padding: 12px;
+  }
+
+  .file-table th,
+  .app-list th,
+  .file-table td,
+  .app-list td {
+    padding: 10px 12px;
+  }
 }
 
 /* 分页 */

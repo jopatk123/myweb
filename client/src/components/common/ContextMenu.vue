@@ -7,6 +7,7 @@
     @mouseup.stop
   >
     <ul
+      ref="menuRef"
       class="ctx-menu"
       :style="{ left: `${positionX}px`, top: `${positionY}px` }"
       role="menu"
@@ -26,7 +27,14 @@
 </template>
 
 <script setup>
-  import { onMounted, onBeforeUnmount, computed, ref, watch } from 'vue';
+  import {
+    onMounted,
+    onBeforeUnmount,
+    computed,
+    nextTick,
+    ref,
+    watch,
+  } from 'vue';
 
   const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -36,6 +44,28 @@
   });
   const emit = defineEmits(['update:modelValue', 'select']);
   const openedAt = ref(0);
+  const menuRef = ref(null);
+  const menuWidth = ref(160);
+  const menuHeight = ref(0);
+  const viewportWidth = ref(0);
+  const viewportHeight = ref(0);
+  const EDGE_PADDING = 8;
+
+  function updateViewport() {
+    if (typeof window === 'undefined') return;
+    viewportWidth.value = window.innerWidth;
+    viewportHeight.value = window.innerHeight;
+  }
+
+  async function updateMenuMetrics() {
+    await nextTick();
+    updateViewport();
+    const menu = menuRef.value;
+    if (!menu) return;
+    menuWidth.value = menu.offsetWidth || 160;
+    menuHeight.value = menu.offsetHeight || 0;
+  }
+
   watch(
     () => props.modelValue,
     v => {
@@ -43,8 +73,30 @@
     }
   );
 
-  const positionX = computed(() => Math.max(0, props.x));
-  const positionY = computed(() => Math.max(0, props.y));
+  watch(
+    () => [props.modelValue, props.x, props.y, props.items.length],
+    async ([visible]) => {
+      if (!visible) return;
+      await updateMenuMetrics();
+    },
+    { flush: 'post' }
+  );
+
+  const positionX = computed(() => {
+    const maxX = Math.max(
+      EDGE_PADDING,
+      viewportWidth.value - menuWidth.value - EDGE_PADDING
+    );
+    return Math.min(Math.max(EDGE_PADDING, props.x), maxX);
+  });
+
+  const positionY = computed(() => {
+    const maxY = Math.max(
+      EDGE_PADDING,
+      viewportHeight.value - menuHeight.value - EDGE_PADDING
+    );
+    return Math.min(Math.max(EDGE_PADDING, props.y), maxY);
+  });
 
   function close() {
     emit('update:modelValue', false);
@@ -68,14 +120,25 @@
     if (e.key === 'Escape') close();
   }
 
+  function onResize() {
+    if (!props.modelValue) {
+      updateViewport();
+      return;
+    }
+    void updateMenuMetrics();
+  }
+
   onMounted(() => {
+    updateViewport();
     window.addEventListener('click', onGlobalClick);
     window.addEventListener('keydown', onKeydown);
+    window.addEventListener('resize', onResize);
   });
 
   onBeforeUnmount(() => {
     window.removeEventListener('click', onGlobalClick);
     window.removeEventListener('keydown', onKeydown);
+    window.removeEventListener('resize', onResize);
   });
 </script>
 

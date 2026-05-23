@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useConfirm } from '@/composables/useConfirm.js';
+import { useGlobalToast } from '@/composables/useGlobalToast.js';
 
 describe('useConfirm', () => {
   it('returns confirmAction and notify functions', () => {
@@ -40,13 +41,17 @@ describe('useConfirm', () => {
   });
 
   describe('notify', () => {
-    it('calls window.alert with the message', () => {
-      const spy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    it('writes the message into the global toast state', () => {
       const { notify } = useConfirm();
+      const { toastState, hideToast } = useGlobalToast();
+
+      hideToast();
 
       notify('操作成功');
 
-      expect(spy).toHaveBeenCalledWith('操作成功');
+      expect(toastState.visible).toBe(true);
+      expect(toastState.message).toBe('操作成功');
+      expect(toastState.type).toBe('info');
     });
   });
 });

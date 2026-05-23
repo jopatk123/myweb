@@ -58,6 +58,7 @@
 
 <script setup>
   import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
   import ImagePreview from './ImagePreview.vue';
 
   const props = defineProps({
@@ -76,6 +77,7 @@
 
   const internalListRef = ref(null);
   const copiedMessageId = ref(null);
+  const { showError } = useGlobalToast();
   let isUserScrolling = false;
   let scrollTimeout = null;
   let copyFeedbackTimeout = null;
@@ -142,7 +144,7 @@
       }, 1200);
     } catch (error) {
       console.error('复制留言失败:', error);
-      alert('复制失败，请手动选择文本后复制');
+      showError('复制失败，请手动选择文本后复制');
     }
   };
 

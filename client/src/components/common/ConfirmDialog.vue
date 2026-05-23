@@ -2,14 +2,18 @@
   <div
     v-if="modelValue"
     class="backdrop"
+    role="dialog"
+    aria-modal="true"
     @click.self="$emit('update:modelValue', false)"
   >
     <div class="dialog">
       <div class="title">{{ title }}</div>
       <div class="content">{{ message }}</div>
       <div class="actions">
-        <button @click="$emit('update:modelValue', false)">取消</button>
-        <button class="danger" @click="onConfirm">确认</button>
+        <button type="button" @click="$emit('update:modelValue', false)">
+          取消
+        </button>
+        <button type="button" class="danger" @click="onConfirm">确认</button>
       </div>
     </div>
   </div>
