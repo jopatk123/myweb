@@ -26,7 +26,6 @@ import {
   saveAuth,
   validatePasswordRemote,
   getPasswordStatus,
-  isAuthValid,
 } from '@/utils/passwordGate.js';
 
 // ── 辅助函数 ──────────────────────────────────────────────────

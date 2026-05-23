@@ -15,7 +15,9 @@
         >
           ⚙️
         </button>
-        <button @click="$emit('close')" class="close-btn" title="关闭">✕</button>
+        <button @click="$emit('close')" class="close-btn" title="关闭">
+          ✕
+        </button>
       </div>
     </div>
     <div class="header-search">
@@ -125,7 +127,7 @@
     background: #f1f3f5;
     color: #212529;
   }
-  
+
   .close-btn:hover {
     background: #ffe3e3;
     color: #fa5252;

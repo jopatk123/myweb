@@ -220,7 +220,7 @@ describe('WallpaperModel', () => {
       const activeRow = db
         .prepare(
           'SELECT COUNT(*) as cnt FROM wallpapers WHERE is_active = 1 AND deleted_at IS NULL'
-      )
+        )
         .get();
       expect(activeRow.cnt).toBe(1);
     });

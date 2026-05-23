@@ -74,7 +74,8 @@ export function getAppPasswordStatus() {
 }
 
 function getAppAuthSecret() {
-  const { explicitSecret, appPassword, isProduction } = getAppAuthConfigStatus();
+  const { explicitSecret, appPassword, isProduction } =
+    getAppAuthConfigStatus();
   if (explicitSecret) return explicitSecret;
   if (isProduction) return '';
   return appPassword;

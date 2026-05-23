@@ -58,8 +58,8 @@
 
 - `npm run dev`：并行前后端开发服务。
 - `npm run dev:client`, `npm run dev:server`：分别启动前端/后端。
-- `npm run build`, `npm start`：构建并运行生产后端。
-- `npm run lint`, `npm run lint:fix`, `npm run format`：ESLint 检查、修复和格式化。
+- `npm run build`, `npm start`：构建并运行生产后端。后端 `build` 通过 `server/scripts/build-check.js` 对所有源文件做 `node --check` 语法校验，并校验 `openapi.yaml` 顶部声明；不再是 `echo` 占位。
+- `npm run lint`, `npm run lint:fix`, `npm run format`, `npm run format:check`：ESLint 检查/修复、Prettier 格式化与校验（CI 会运行 `format:check`，提交前请确保通过）。
 - `npm test -w client`, `npm test -w server`：Vitest/Jest 单元测试。
 - `npm run contract-test`：校验 `server/openapi.yaml` 并检查关键路由契约覆盖。
 - `npm run migrate -w server`, `npm run seed -w server`：数据库迁移与初始化。

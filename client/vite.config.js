@@ -46,11 +46,13 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{js,vue}'],
       exclude: ['src/main.js'],
+      // 阈值锁定当前实测基线（约 86.8/74.3/64.4/86.8），允许小幅波动；
+      // 新增模块若降低覆盖，应优先补测试而非下调阈值。
       thresholds: {
-        lines: 80,
-        statements: 80,
-        branches: 70,
-        functions: 60,
+        lines: 85,
+        statements: 85,
+        branches: 73,
+        functions: 64,
       },
     },
   },

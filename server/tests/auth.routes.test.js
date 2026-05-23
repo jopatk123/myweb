@@ -3,11 +3,7 @@ import express from 'express';
 import { createHash } from 'crypto';
 
 // Build a minimal Express app that mounts the auth routes
-async function buildApp({
-  password = '',
-  nodeEnv = 'test',
-  authSecret,
-} = {}) {
+async function buildApp({ password = '', nodeEnv = 'test', authSecret } = {}) {
   // Set env before importing to ensure the route picks it up
   process.env.APP_PASSWORD = password;
   process.env.NODE_ENV = nodeEnv;

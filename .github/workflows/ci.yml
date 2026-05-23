@@ -25,6 +25,9 @@ jobs:
       - name: Lint
         run: npm run lint --if-present
 
+      - name: Format check
+        run: npm run format:check
+
       - name: Run server migrations
         run: npm --workspace server run migrate --if-present
 

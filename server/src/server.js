@@ -24,10 +24,13 @@ const PORT = appEnv.port ?? 3000;
 const { issue: authConfigIssue } = getAppAuthConfigStatus();
 
 if (authConfigIssue) {
-  bootstrapLogger.error('Server startup blocked by invalid auth configuration', {
-    issue: authConfigIssue,
-    environment: appEnv.nodeEnv,
-  });
+  bootstrapLogger.error(
+    'Server startup blocked by invalid auth configuration',
+    {
+      issue: authConfigIssue,
+      environment: appEnv.nodeEnv,
+    }
+  );
   process.exit(1);
 }
 
