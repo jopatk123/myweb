@@ -21,9 +21,7 @@
         }"
       >
         <span class="item-status">
-          {{
-            item.progress === 100 ? '✓' : index === currentIndex ? '⬆' : '○'
-          }}
+          {{ item.progress === 100 ? '✓' : index === currentIndex ? '⬆' : '○' }}
         </span>
         <div class="item-name" :title="item.name">
           {{ displayItemName(item.name) }}

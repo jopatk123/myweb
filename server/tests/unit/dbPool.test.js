@@ -14,9 +14,8 @@ jest.unstable_mockModule('../../src/utils/logger.js', () => {
 });
 
 const Database = (await import('better-sqlite3')).default;
-const { setDb, getDb, wrapTransaction, runSafe } = await import(
-  '../../src/utils/dbPool.js'
-);
+const { setDb, getDb, wrapTransaction, runSafe } =
+  await import('../../src/utils/dbPool.js');
 
 let db;
 

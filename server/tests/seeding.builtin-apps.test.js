@@ -15,9 +15,8 @@ jest.unstable_mockModule('../../src/utils/logger.js', () => {
   return { default: childLogger, logger: childLogger };
 });
 
-const { ensureBuiltinApps, seedAppsIfEmpty } = await import(
-  '../src/db/seeding.js'
-);
+const { ensureBuiltinApps, seedAppsIfEmpty } =
+  await import('../src/db/seeding.js');
 
 function createSeedingDb() {
   const db = new Database(':memory:');

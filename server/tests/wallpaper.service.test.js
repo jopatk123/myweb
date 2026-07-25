@@ -1,9 +1,24 @@
 import { jest } from '@jest/globals';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { createTestDatabase, closeTestDatabase } from './helpers/test-db.js';
-import { WallpaperService } from '../src/services/wallpaper.service.js';
 import { WALLPAPERS_DIR } from '../src/utils/upload-path.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 魔数校验由 magic-bytes.test.js 专门覆盖；此处 mock 让 service 测试专注业务逻辑
+// 注意：jest.unstable_mockModule 的相对路径解析上下文是 setup 文件，必须用绝对路径
+jest.unstable_mockModule(
+  path.resolve(__dirname, '../src/utils/magic-bytes.js'),
+  () => ({
+    assertValidImageFile: jest.fn().mockResolvedValue('image/jpeg'),
+  })
+);
+
+const { WallpaperService } =
+  await import('../src/services/wallpaper.service.js');
 
 /** 最小有效 PNG 文件头（8 字节魔数 + IHDR chunk 填充） */
 const MINIMAL_PNG = Buffer.from([

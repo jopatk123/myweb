@@ -83,10 +83,9 @@ export async function validateImageMagicBytes(filePath, _declaredMime) {
   try {
     header = await readFileHeader(filePath, 16);
   } catch (err) {
-    // 文件不存在（ENOENT）：无法对不存在的文件做魔数验证，跳过此步骤
-    // 该场景通常发生在测试环境或文件路径为虚拟路径时
+    // fail-closed：文件不存在或读取失败时一律判为无效，避免绕过魔数校验
     if (err && err.code === 'ENOENT') {
-      return { valid: true, detectedMime: null };
+      return { valid: false, detectedMime: null };
     }
     return { valid: false, detectedMime: null };
   }

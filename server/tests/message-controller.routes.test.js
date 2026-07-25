@@ -218,9 +218,14 @@ describe('MessageController - uploadImage()', () => {
   });
 
   test('POST /api/messages/upload-image with image file returns 200', async () => {
+    // 使用真实 JPEG magic bytes，通过 magic-bytes 二级校验
+    const jpegBuffer = Buffer.from([
+      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+      0x00, 0x00, 0x00, 0x01,
+    ]);
     const res = await request(app)
       .post('/api/messages/upload-image')
-      .attach('images', Buffer.from('fake-image-data'), {
+      .attach('images', jpegBuffer, {
         filename: 'test.jpg',
         contentType: 'image/jpeg',
       })

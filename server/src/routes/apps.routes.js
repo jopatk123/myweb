@@ -1,11 +1,13 @@
 import express from 'express';
 import { AppController } from '../controllers/app.controller.js';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises';
 import { parseEnvByteSize } from '../utils/env.js';
 import { APP_ICONS_DIR } from '../utils/upload-path.js';
+import { createUploader, imageOnlyFilter } from '../utils/uploader.js';
+import { assertValidImageFile } from '../utils/magic-bytes.js';
+import logger from '../utils/logger.js';
+
+const iconLogger = logger.child('AppIconUpload');
 
 export function createAppRoutes(db) {
   const router = express.Router();
@@ -19,23 +21,11 @@ export function createAppRoutes(db) {
   );
   const APP_ICON_UPLOAD_DIR = process.env.APP_ICON_UPLOAD_DIR || APP_ICONS_DIR;
 
-  const storage = multer.diskStorage({
-    destination: async (req, file, cb) => {
-      try {
-        await fs.promises.mkdir(APP_ICON_UPLOAD_DIR, { recursive: true });
-      } catch {
-        // ignore if exists or cannot create, multer will error if needed
-      }
-      cb(null, APP_ICON_UPLOAD_DIR);
-    },
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname) || '';
-      cb(null, `${uuidv4()}${ext}`);
-    },
-  });
-  const upload = multer({
-    storage,
-    limits: { fileSize: APP_ICON_UPLOAD_SIZE },
+  // 复用统一的上传工厂：imageOnlyFilter 拒绝非图片，assertValidImageFile 再做魔数校验
+  const upload = createUploader({
+    destination: APP_ICON_UPLOAD_DIR,
+    maxFileSize: APP_ICON_UPLOAD_SIZE,
+    fileFilter: imageOnlyFilter,
   });
 
   // 应用
@@ -60,23 +50,42 @@ export function createAppRoutes(db) {
     controller.remove(req, res, next)
   );
 
-  // 上传图标
-  router.post('/icons/upload', upload.single('file'), (req, res, next) => {
-    try {
+  // 上传图标：imageOnlyFilter 已拒绝非图片 MIME，此处再做魔数校验防止伪造
+  router.post(
+    '/icons/upload',
+    upload.single('file'),
+    async (req, res, next) => {
       const f = req.file;
-      if (!f) return res.status(400).json({ code: 400, message: '请选择文件' });
-      res.status(201).json({
-        code: 201,
-        data: {
-          filename: f.filename,
-          path: `/uploads/apps/icons/${f.filename}`,
-        },
-        message: '上传成功',
-      });
-    } catch (error) {
-      next(error);
+      if (!f) {
+        return res.status(400).json({ code: 400, message: '请选择文件' });
+      }
+
+      try {
+        await assertValidImageFile(f.path, f.mimetype);
+      } catch (err) {
+        await fs.unlink(f.path).catch(cleanupErr => {
+          iconLogger.warn('魔数校验失败后清理文件出错', {
+            filename: f.filename,
+            error: cleanupErr?.message,
+          });
+        });
+        return next(err);
+      }
+
+      try {
+        res.status(201).json({
+          code: 201,
+          data: {
+            filename: f.filename,
+            path: `/uploads/apps/icons/${f.filename}`,
+          },
+          message: '上传成功',
+        });
+      } catch (error) {
+        next(error);
+      }
     }
-  });
+  );
 
   // 分组
   router.get('/groups/all', (req, res, next) =>

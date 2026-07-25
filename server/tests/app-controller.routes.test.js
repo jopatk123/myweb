@@ -298,9 +298,14 @@ describe('AppController - icon upload', () => {
   });
 
   test('POST /api/apps/icons/upload with file returns 201', async () => {
+    // 使用真实 PNG magic bytes，通过 magic-bytes 二级校验
+    const pngBuffer = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+      0x49, 0x48, 0x44, 0x52,
+    ]);
     const res = await request(app)
       .post('/api/apps/icons/upload')
-      .attach('file', Buffer.from('fake-icon-data'), {
+      .attach('file', pngBuffer, {
         filename: 'icon.png',
         contentType: 'image/png',
       })

@@ -16,11 +16,16 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Dependency audit (non-blocking)
+        # 仅作信息提示，不阻塞 CI；高危漏洞应在分支内单独处理
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Lint
         run: npm run lint --if-present

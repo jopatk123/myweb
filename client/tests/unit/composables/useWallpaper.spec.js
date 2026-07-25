@@ -26,6 +26,12 @@ vi.mock('@/api/wallpaper.js', () => ({
   wallpaperApi: apiMocks,
 }));
 
+vi.mock('@/constants/env.js', () => ({
+  appEnv: {
+    apiBase: 'http://localhost:3000/api',
+  },
+}));
+
 import { ref } from 'vue';
 import { useWallpaper } from '@/composables/useWallpaper.js';
 
@@ -110,5 +116,27 @@ describe('useWallpaper composable', () => {
 
     expect(apiMocks.deleteGroup).toHaveBeenCalledWith(12);
     expect(apiMocks.getGroups).not.toHaveBeenCalled();
+  });
+});
+
+describe('useWallpaper - getWallpaperUrl formatting', () => {
+  it('should handle different filePath formats', () => {
+    const { getWallpaperUrl } = useWallpaper();
+
+    const cases = [
+      {
+        input: { filePath: 'uploads/test.jpg' },
+        expected: '/uploads/test.jpg',
+      },
+      {
+        input: { file_path: '/uploads/test.jpg' },
+        expected: '/uploads/test.jpg',
+      },
+    ];
+
+    cases.forEach(({ input, expected }) => {
+      const url = getWallpaperUrl(input, { addVersion: false });
+      expect(url).toContain(expected);
+    });
   });
 });

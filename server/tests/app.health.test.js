@@ -24,7 +24,7 @@ describe('application health endpoints', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.status).toBe('ok');
-    expect(response.body.timestamp).toBeTruthy();
+    // timestamp 字段已移除：健康检查仅返回存活状态，不暴露服务器时间戳
   });
 
   test('GET /api exposes service metadata', async () => {

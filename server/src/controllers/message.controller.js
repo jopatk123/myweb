@@ -4,11 +4,13 @@
 import { MessageService } from '../services/message.service.js';
 import { UserSessionService } from '../services/userSession.service.js';
 import fs from 'fs';
+import fsPromises from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import logger from '../utils/logger.js';
 import { createUploader, imageUploadFilter } from '../utils/uploader.js';
+import { assertValidImageFile } from '../utils/magic-bytes.js';
 import {
   DEFAULT_MESSAGE_IMAGE_MAX_SIZE,
   DEFAULT_MESSAGE_IMAGE_MAX_FILES,
@@ -142,7 +144,30 @@ export class MessageController {
       if (!files.length) {
         return res.status(400).json({ code: 400, message: '请选择图片文件' });
       }
-      const images = files.map(file => ({
+
+      // 魔数校验：imageUploadFilter 仅检查 MIME 头，此处防止伪造 MIME 上传 SVG/HTML 等
+      const validated = [];
+      try {
+        for (const file of files) {
+          await assertValidImageFile(file.path, file.mimetype);
+          validated.push(file);
+        }
+      } catch (err) {
+        // 任一文件校验失败：清理所有已落盘文件（含本次失败与之前通过的）
+        await Promise.all(
+          files.map(f =>
+            fsPromises.unlink(f.path).catch(e => {
+              msgLogger.warn('清理校验失败文件出错', {
+                filename: f.filename,
+                error: e.message,
+              });
+            })
+          )
+        );
+        return next(err);
+      }
+
+      const images = validated.map(file => ({
         filename: file.filename,
         originalName: file.originalname,
         mimeType: file.mimetype,

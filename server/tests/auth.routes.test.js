@@ -77,7 +77,7 @@ describe('Auth routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.required).toBe(true);
       expect(res.body.data.configured).toBe(true);
-      expect(res.body.data.signingReady).toBe(false);
+      // signingReady 字段已移除：仅通过 configIssue 暴露配置问题
       expect(res.body.data.configIssue).toContain('APP_AUTH_SECRET');
     });
   });

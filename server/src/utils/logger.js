@@ -29,17 +29,30 @@ if (appEnv.log.toFile) {
 const pinoOptions = {
   level: resolveLevel(),
   timestamp: pino.stdTimeFunctions.isoTime,
-  // 自动脱敏以下敏感字段，防止密码/Token 明文写入日志
+  // 自动脱敏以下敏感字段，防止密码/Token/签名密钥明文写入日志
   redact: {
     paths: [
       'password',
       'token',
       'authorization',
+      'appPassword',
+      'APP_PASSWORD',
+      'APP_AUTH_SECRET',
+      'cookie',
+      'myweb_auth',
       '*.password',
       '*.token',
+      '*.authorization',
+      '*.appPassword',
+      '*.APP_PASSWORD',
+      '*.APP_AUTH_SECRET',
+      '*.cookie',
+      '*.myweb_auth',
       'req.headers.authorization',
+      'req.headers.cookie',
       'body.password',
       'body.token',
+      'body.appPassword',
     ],
     censor: '[REDACTED]',
   },

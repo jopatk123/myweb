@@ -165,7 +165,7 @@ export async function createApp(options = {}) {
     express.static(uploadsDir, {
       maxAge: uploadsCacheSeconds * 1000,
       etag: true,
-      setHeaders(res) {
+      setHeaders(res, filePath) {
         if (uploadsCacheSeconds > 0) {
           res.setHeader(
             'Cache-Control',
@@ -174,6 +174,13 @@ export async function createApp(options = {}) {
         } else {
           res.setHeader('Cache-Control', 'no-store');
         }
+        // 统一强制下载：防止浏览器直接渲染 SVG/HTML 等可执行内容导致存储型 XSS。
+        // <img src>/<video src> 等引用不受影响，仍可正常加载。
+        const basename = path.basename(filePath);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${encodeURIComponent(basename)}"`
+        );
       },
     })
   );
@@ -197,25 +204,29 @@ export async function createApp(options = {}) {
 
   app.use('/internal/logs', requireAppAuth, createInternalLogsRoutes());
 
-  app.get('/api', (req, res) => {
-    res.json({
-      message: 'MyWeb API Server',
-      version: '1.0.0',
-      endpoints: {
-        wallpapers: '/api/wallpapers',
-        apps: '/api/apps',
-        files: '/api/files',
-        notebook: '/api/notebook',
-        workTimer: '/api/work-timer',
-        messages: '/api/messages',
-      },
+  // /api 仅在非生产环境作为开发期导航返回端点列表，生产环境不暴露
+  if (!appEnv.isProduction) {
+    app.get('/api', (req, res) => {
+      res.json({
+        message: 'MyWeb API Server',
+        version: '1.0.0',
+        endpoints: {
+          wallpapers: '/api/wallpapers',
+          apps: '/api/apps',
+          files: '/api/files',
+          notebook: '/api/notebook',
+          workTimer: '/api/work-timer',
+          messages: '/api/messages',
+        },
+      });
     });
-  });
+  }
 
   app.use(express.static(path.join(__dirname, '../../client/dist')));
 
+  // 健康检查：仅返回存活状态，不暴露时间戳等元数据
   app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok' });
   });
 
   app.get('*', (req, res, next) => {

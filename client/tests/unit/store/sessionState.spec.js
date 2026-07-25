@@ -30,9 +30,8 @@ describe('sessionState', () => {
   it('reuses a stored session id without generating a new one', async () => {
     localStorage.setItem('sessionId', 'stored-session');
 
-    const { readSessionId, ensureSessionId, sessionState } = await import(
-      '@/store/sessionState.js'
-    );
+    const { readSessionId, ensureSessionId, sessionState } =
+      await import('@/store/sessionState.js');
 
     expect(readSessionId()).toBe('stored-session');
     expect(ensureSessionId()).toBe('stored-session');
@@ -41,9 +40,8 @@ describe('sessionState', () => {
   });
 
   it('creates and caches a new session id when none exists', async () => {
-    const { ensureSessionId, readSessionId, resetSessionState } = await import(
-      '@/store/sessionState.js'
-    );
+    const { ensureSessionId, readSessionId, resetSessionState } =
+      await import('@/store/sessionState.js');
 
     const created = ensureSessionId();
 

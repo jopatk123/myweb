@@ -14,9 +14,8 @@ jest.unstable_mockModule('../../src/utils/logger.js', () => ({
   logger: childLogger,
 }));
 
-const { createRequestLogMiddleware } = await import(
-  '../../src/middleware/requestLog.middleware.js'
-);
+const { createRequestLogMiddleware } =
+  await import('../../src/middleware/requestLog.middleware.js');
 
 describe('requestLog middleware', () => {
   beforeEach(() => {

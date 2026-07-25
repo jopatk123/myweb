@@ -16,9 +16,8 @@ jest.unstable_mockModule('fs/promises', () => ({
 
 const fsMock = await import('fs/promises');
 
-const { validateImageMagicBytes, assertValidImageFile } = await import(
-  '../../src/utils/magic-bytes.js'
-);
+const { validateImageMagicBytes, assertValidImageFile } =
+  await import('../../src/utils/magic-bytes.js');
 
 /**
  * 构建一个模拟文件读取的 mock：
@@ -242,7 +241,7 @@ describe('validateImageMagicBytes', () => {
   });
 
   describe('文件读取失败', () => {
-    it('文件不存在时（ENOENT）返回 { valid: true }（跳过验证）', async () => {
+    it('文件不存在时（ENOENT）返回 { valid: false }（fail-closed）', async () => {
       fsMock.default.open.mockRejectedValue(
         Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' })
       );
@@ -252,8 +251,8 @@ describe('validateImageMagicBytes', () => {
         'image/jpeg'
       );
 
-      // 文件不存在无法验证魔数，视为通过（MIME 欺骗需要文件存在才能发生）
-      expect(result.valid).toBe(true);
+      // fail-closed：文件不存在无法验证魔数，一律判为无效，避免绕过校验
+      expect(result.valid).toBe(false);
       expect(result.detectedMime).toBeNull();
     });
 

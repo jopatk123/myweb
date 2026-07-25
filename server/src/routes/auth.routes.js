@@ -98,22 +98,18 @@ export function createAuthRoutes() {
     });
   });
 
-  // 检查是否需要密码（不暴露密码本身）
+  // 检查是否需要密码（仅返回最小必需字段，避免探测内部签名状态）
   router.get('/status', (req, res) => {
-    const {
-      passwordRequired,
-      isPasswordConfigured,
-      issue,
-      sessionSigningReady,
-    } = getAppAuthConfigStatus();
+    const { passwordRequired, isPasswordConfigured, issue } =
+      getAppAuthConfigStatus();
     res.json({
       code: 200,
       success: true,
       data: {
         required: passwordRequired,
         configured: isPasswordConfigured,
-        signingReady: sessionSigningReady,
-        configIssue: issue,
+        // 仅当存在配置问题时才告知前端，便于本地开发提示；正常状态不暴露细节
+        configIssue: issue || null,
         authenticated: issue ? false : isAppAuthRequestAuthorized(req),
       },
     });
