@@ -209,13 +209,29 @@ export class WebSocketService {
     return this.connections.send(sessionId, data);
   }
 
-  broadcast(type, data) {
-    if (typeof type === 'object' && data === undefined) {
-      this.connections.broadcast(type);
+  /**
+   * 广播消息给所有连接。
+   * @param {string} type - 消息类型
+   * @param {*} data - 消息数据
+   * @param {{ excludeClientSessionId?: string }} [options]
+   *   - excludeClientSessionId: 排除指定 clientSessionId 对应的连接（如发送者本人）
+   */
+  broadcast(type, data, options = {}) {
+    const payload =
+      typeof type === 'object' && data === undefined ? type : { type, data };
+
+    const { excludeClientSessionId } = options;
+    if (excludeClientSessionId) {
+      // ConnectionStore.broadcast 的 predicate 接收 (serverId, clientId)，
+      // 返回 false 表示跳过该连接。
+      this.connections.broadcast(payload, (_serverId, clientId) => {
+        if (!clientId) return true;
+        return clientId !== excludeClientSessionId;
+      });
       return;
     }
 
-    this.connections.broadcast({ type, data });
+    this.connections.broadcast(payload);
   }
 
   broadcastToRoom(_roomId, _eventType, _data) {

@@ -9,17 +9,43 @@ list:
         name: page
         schema:
           type: integer
+          minimum: 1
+          default: 1
       - in: query
         name: limit
         schema:
           type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
       - in: query
         name: q
         schema:
           type: string
+          maxLength: 200
     responses:
       '200':
-        description: OK
+        description: Message list retrieved successfully.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                message:
+                  type: string
+                  example: 获取留言列表成功
+                data:
+                  type: object
+                  properties:
+                    messages:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Message'
+                    pagination:
+                      $ref: '#/components/schemas/Pagination'
   post:
     summary: Send message
     description: Create a new message board entry.
@@ -41,23 +67,42 @@ list:
             properties:
               content:
                 type: string
+                maxLength: 1000
                 nullable: true
               authorName:
                 type: string
+                maxLength: 50
                 nullable: true
               authorColor:
                 type: string
+                pattern: '^#[0-9a-fA-F]{6}$'
                 nullable: true
               imageType:
                 type: string
+                maxLength: 20
                 nullable: true
               images:
                 type: array
+                maxItems: 5
+                nullable: true
                 items:
-                  type: object
+                  $ref: '#/components/schemas/MessageImage'
     responses:
       '200':
-        description: OK
+        description: Message created.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                message:
+                  type: string
+                  example: 留言发送成功
+                data:
+                  $ref: '#/components/schemas/Message'
 
 userSettings:
   get:
@@ -73,7 +118,17 @@ userSettings:
           type: string
     responses:
       '200':
-        description: OK
+        description: User settings retrieved.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                data:
+                  $ref: '#/components/schemas/UserSettings'
   put:
     summary: Update message board user settings
     description: Update per-session nickname, avatar color, and auto-open preference.
@@ -94,15 +149,27 @@ userSettings:
             properties:
               nickname:
                 type: string
+                maxLength: 50
                 nullable: true
               avatarColor:
                 type: string
+                pattern: '^#[0-9a-fA-F]{6}$'
                 nullable: true
               autoOpenEnabled:
                 type: boolean
     responses:
       '200':
-        description: Updated
+        description: Settings updated.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                data:
+                  $ref: '#/components/schemas/UserSettings'
 
 uploadImage:
   post:
@@ -119,12 +186,25 @@ uploadImage:
             properties:
               images:
                 type: array
+                maxItems: 5
                 items:
                   type: string
                   format: binary
     responses:
       '200':
-        description: Uploaded
+        description: Images uploaded.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                data:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/MessageImage'
 
 clearAll:
   delete:
@@ -147,7 +227,22 @@ clearAll:
                   - true
     responses:
       '200':
-        description: Deleted
+        description: All messages cleared.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                data:
+                  type: object
+                  properties:
+                    deletedMessages:
+                      type: integer
+                    deletedImages:
+                      type: integer
 
 byId:
   delete:
@@ -163,4 +258,90 @@ byId:
           type: integer
     responses:
       '200':
-        description: Deleted
+        description: Message deleted.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                message:
+                  type: string
+                  example: 留言删除成功
+
+components:
+  schemas:
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+        authorName:
+          type: string
+        authorColor:
+          type: string
+        sessionId:
+          type: string
+        images:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/MessageImage'
+        imageType:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp in UTC.
+        updatedAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp in UTC.
+    MessageImage:
+      type: object
+      properties:
+        filename:
+          type: string
+        originalName:
+          type: string
+          nullable: true
+        mimeType:
+          type: string
+        size:
+          type: integer
+        path:
+          type: string
+          pattern: '^uploads/message-images/[a-z0-9][a-z0-9_-]*\.[a-z0-9]+$'
+          description: |
+            Relative path under the server's uploads directory.
+            Must match `uploads/message-images/<filename>.<ext>` to prevent path traversal.
+    UserSettings:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        nickname:
+          type: string
+        avatarColor:
+          type: string
+        autoOpenEnabled:
+          type: boolean
+        lastActive:
+          type: string
+          format: date-time
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer

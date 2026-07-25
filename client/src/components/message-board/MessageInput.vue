@@ -25,7 +25,7 @@
         v-model="inputMessage"
         placeholder="输入留言内容... (Ctrl+V 粘贴图片)"
         rows="3"
-        maxlength="1000"
+        :maxlength="MESSAGE_CONTENT_MAX_LENGTH"
         @keydown.enter.exact.prevent="handleSend"
         @keydown.enter.shift.exact="handleNewLine"
         @paste="handlePaste"
@@ -48,7 +48,9 @@
           >
             📷
           </button>
-          <span class="char-count">{{ inputMessage.length }}/1000</span>
+          <span class="char-count"
+            >{{ inputMessage.length }}/{{ MESSAGE_CONTENT_MAX_LENGTH }}</span
+          >
         </div>
         <button @click="handleSend" :disabled="!canSend" class="send-btn">
           {{ sending ? '发送中...' : '发送' }}
@@ -64,6 +66,10 @@
   import { compressImage } from '@/utils/imageCompressor.js';
   import { formatFileSize } from '@/composables/useImageProcessing.js';
   import { createStableId } from '@/utils/stableId.js';
+  import {
+    MESSAGE_CONTENT_MAX_LENGTH,
+    MESSAGE_IMAGE_MAX_COUNT,
+  } from '@shared/constants.js';
 
   const props = defineProps({
     sending: { type: Boolean, required: true },
@@ -116,8 +122,8 @@
   };
 
   const addImage = async file => {
-    if (selectedImages.value.length >= 5) {
-      showInfo('最多只能选择5张图片');
+    if (selectedImages.value.length >= MESSAGE_IMAGE_MAX_COUNT) {
+      showInfo(`最多只能选择${MESSAGE_IMAGE_MAX_COUNT}张图片`);
       return;
     }
     try {

@@ -95,7 +95,10 @@ describe('MessageService', () => {
 
     test('throws when more than 5 images are provided', async () => {
       const images = Array.from({ length: 6 }, (_, i) => ({
-        path: `img-${i}.jpg`,
+        filename: `img-${i}.jpg`,
+        mimeType: 'image/jpeg',
+        size: 100,
+        path: `uploads/message-images/img-${i}.jpg`,
       }));
       await expect(
         service.sendMessage({
@@ -111,6 +114,51 @@ describe('MessageService', () => {
           images,
         })
       ).rejects.toBeInstanceOf(ValidationError);
+    });
+
+    test('rejects image with path traversal attempt', async () => {
+      // 模拟攻击者绕过前端，直接 POST /api/messages 携带非法 path
+      const maliciousImages = [
+        {
+          filename: 'a.jpg',
+          mimeType: 'image/jpeg',
+          size: 100,
+          path: '../../etc/passwd',
+        },
+      ];
+      await expect(
+        service.sendMessage({
+          content: '路径穿越',
+          sessionId: 'sess-traversal',
+          images: maliciousImages,
+        })
+      ).rejects.toThrow('图片路径格式不合法');
+      await expect(
+        service.sendMessage({
+          content: '路径穿越',
+          sessionId: 'sess-traversal',
+          images: maliciousImages,
+        })
+      ).rejects.toBeInstanceOf(ValidationError);
+    });
+
+    test('accepts image with legitimate uploads/message-images path', async () => {
+      const images = [
+        {
+          filename: '550e8400-e29b-41d4-a716-446655440000.jpg',
+          originalName: 'photo.jpg',
+          mimeType: 'image/jpeg',
+          size: 102400,
+          path: 'uploads/message-images/550e8400-e29b-41d4-a716-446655440000.jpg',
+        },
+      ];
+      const msg = await service.sendMessage({
+        content: '合法路径',
+        sessionId: 'sess-valid-path',
+        images,
+      });
+      expect(msg.images).toHaveLength(1);
+      expect(msg.images[0].path).toMatch(/^uploads\/message-images\//);
     });
 
     test('uses existing session nickname if available', async () => {
@@ -326,7 +374,14 @@ describe('MessageService', () => {
 
   describe('getMessages() with images', () => {
     test('returns messages with parsed images JSON', async () => {
-      const images = [{ path: 'uploads/message-images/parse-test.jpg' }];
+      const images = [
+        {
+          filename: 'parse-test.jpg',
+          mimeType: 'image/jpeg',
+          size: 100,
+          path: 'uploads/message-images/parse-test.jpg',
+        },
+      ];
       await service.sendMessage({
         content: '',
         sessionId: 'sess-parse-img',
@@ -342,31 +397,49 @@ describe('MessageService', () => {
     });
   });
 
-  describe('messageModel.getRecent()', () => {
-    test('returns recent messages', async () => {
-      await service.sendMessage({
-        content: '最近消息',
-        sessionId: 'recent-1',
+  describe('createdAt / updatedAt ISO timestamp format', () => {
+    test('returns ISO 8601 timestamps with Z suffix', async () => {
+      const msg = await service.sendMessage({
+        content: '时间戳测试',
+        sessionId: 'sess-ts',
       });
+      expect(msg.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+      expect(msg.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+      // 应可被 Date 正确解析为 UTC
+      const d = new Date(msg.createdAt);
+      expect(d.getTime()).not.toBeNaN();
+    });
+  });
 
-      const messages = messageModel.getRecent(5);
-      expect(Array.isArray(messages)).toBe(true);
+  describe('messageModel.findAllWithImagesBatched()', () => {
+    test('yields batches of messages with images', async () => {
+      // 插入 3 条带图留言
+      for (let i = 0; i < 3; i++) {
+        await service.sendMessage({
+          content: '',
+          sessionId: `sess-batch-${i}`,
+          images: [
+            {
+              filename: `batch-${i}.jpg`,
+              mimeType: 'image/jpeg',
+              size: 100,
+              path: `uploads/message-images/batch-${i}.jpg`,
+            },
+          ],
+          imageType: 'grid',
+        });
+      }
+      const batches = messageModel.findAllWithImagesBatched(2);
+      const all = [];
+      for (const batch of batches) all.push(...batch);
+      expect(all.length).toBeGreaterThanOrEqual(3);
+      // 每条都有 images 数组
+      expect(all.every(m => Array.isArray(m.images))).toBe(true);
     });
 
-    test('parses images in recent messages', async () => {
-      const images = [{ path: 'uploads/message-images/recent.jpg' }];
-      await service.sendMessage({
-        content: '',
-        sessionId: 'recent-img',
-        images,
-        imageType: 'grid',
-      });
-
-      const messages = messageModel.getRecent(5);
-      const withImages = messages.filter(
-        m => m.images && Array.isArray(m.images)
-      );
-      expect(withImages.length).toBeGreaterThanOrEqual(1);
+    test('throws on non-positive batchSize', () => {
+      expect(() => messageModel.findAllWithImagesBatched(0).next()).toThrow();
+      expect(() => messageModel.findAllWithImagesBatched(-1).next()).toThrow();
     });
   });
 });

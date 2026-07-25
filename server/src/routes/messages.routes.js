@@ -9,12 +9,12 @@ import {
 } from '../controllers/message.controller.js';
 import {
   validateBody,
+  validateQuery,
   sendMessageSchema,
   updateUserSettingsSchema,
   clearAllMessagesSchema,
   getMessagesSchema,
 } from '../dto/message.dto.js';
-import { validateQuery } from '../dto/wallpaper.dto.js';
 
 export function createMessageRoutes(db) {
   const router = express.Router();

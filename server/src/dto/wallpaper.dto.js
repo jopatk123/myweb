@@ -1,39 +1,8 @@
 import Joi from 'joi';
 
-// 验证中间件生成器
-export function validateBody(schema) {
-  return (req, res, next) => {
-    const { error, value } = schema.validate(req.body, {
-      convert: true,
-      abortEarly: false,
-    });
-    if (error) {
-      return res
-        .status(400)
-        .json({ code: 400, message: '请求参数错误', errors: error.details });
-    }
-    // 覆盖为转换后的值（例如字符串数字转换为 number）
-    req.body = value;
-    next();
-  };
-}
-
-// 查询参数验证中间件
-export function validateQuery(schema) {
-  return (req, res, next) => {
-    const { error, value } = schema.validate(req.query, {
-      convert: true,
-      abortEarly: false,
-    });
-    if (error) {
-      return res
-        .status(400)
-        .json({ code: 400, message: '查询参数错误', errors: error.details });
-    }
-    req.query = value;
-    next();
-  };
-}
+// 校验中间件统一抽离到 dto/common.js，避免各业务 dto 重复实现，
+// 同时消除"留言路由从壁纸 dto 导入 validateQuery"这类跨模块耦合。
+export { validateBody, validateQuery } from './common.js';
 
 // 上传（multipart）场景：req.body 经 multer 填充后仍可校验
 export const uploadWallpaperSchema = Joi.object({

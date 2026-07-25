@@ -63,6 +63,7 @@
 - `npm test -w client`, `npm test -w server`：Vitest/Jest 单元测试。
 - `npm run contract-test`：校验 `server/openapi.yaml` 并检查关键路由契约覆盖。
 - `npm run migrate -w server`, `npm run seed -w server`：数据库迁移与初始化。
+- `npm run cleanup:message-images -w server`：清理 `server/uploads/message-images/` 中未被任何留言引用的孤儿图片。默认 dry-run 仅打印，加 `-- --apply` 实际删除。建议通过 cron 每日低峰期运行。
 
 ## 部署与容器
 

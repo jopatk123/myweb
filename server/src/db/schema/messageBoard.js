@@ -7,6 +7,9 @@ import logger from '../../utils/logger.js';
 const schemaLogger = logger.child('Schema:MessageBoard');
 
 export function initMessageTables(db) {
+  // 注意：SQLite 中 VARCHAR(N) 仅为类型提示，并不强制长度限制（实际存储按 TEXT 处理）。
+  // session_id 此处保持 VARCHAR(36) 与 uuid v4 字符长度一致即可；
+  // 若未来切换为更长的会话标识，无需重建表，SQLite 会按 TEXT 透明存储。
   const messagesTableSql = `
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

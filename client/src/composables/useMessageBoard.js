@@ -124,11 +124,20 @@ export function useMessageBoard() {
       });
 
       if (response.code === 200) {
-        // 消息会通过WebSocket实时推送，这里不需要手动添加
+        // 服务端广播 newMessage 时会排除发送者自身，避免重复推送；
+        // 因此发送方需要手动把新消息加入本地列表，保证立即可见。
+        const newMessage = response.data;
+        if (newMessage && !messages.value.find(m => m.id === newMessage.id)) {
+          messages.value.push(newMessage);
+          syncPaginationTotal(pagination.total + 1);
+          if (messages.value.length > pagination.limit) {
+            messages.value.shift();
+          }
+        }
         // 同步打开/激活留言板窗口（发送者本地立即可见）
         syncMessageBoardWindow();
 
-        return response.data;
+        return newMessage;
       }
     } catch (err) {
       error.value = err.message || '发送留言失败';

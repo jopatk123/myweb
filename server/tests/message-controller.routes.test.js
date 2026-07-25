@@ -54,10 +54,46 @@ describe('MessageController - sendMessage()', () => {
       .send({
         content: '有图片的留言',
         imageType: 'grid',
-        images: [{ path: 'uploads/message-images/test.jpg' }],
+        images: [
+          {
+            filename: 'test.jpg',
+            mimeType: 'image/jpeg',
+            size: 102400,
+            path: 'uploads/message-images/test.jpg',
+          },
+        ],
       })
       .expect(200);
     expect(res.body.code).toBe(200);
+  });
+
+  test('POST /api/messages rejects image with path traversal', async () => {
+    const res = await request(app)
+      .post('/api/messages')
+      .send({
+        content: '路径穿越',
+        images: [
+          {
+            filename: 'evil.jpg',
+            mimeType: 'image/jpeg',
+            size: 100,
+            path: '../../etc/passwd',
+          },
+        ],
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe(400);
+  });
+
+  test('POST /api/messages rejects image with missing required fields', async () => {
+    const res = await request(app)
+      .post('/api/messages')
+      .send({
+        content: '缺字段',
+        images: [{ path: 'uploads/message-images/test.jpg' }],
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe(400);
   });
 
   test('POST /api/messages returns error for empty content and no images', async () => {
@@ -168,12 +204,31 @@ describe('MessageController - wsServer broadcast branches', () => {
   test('POST /api/messages broadcasts newMessage via wsServer', async () => {
     const res = await request(app)
       .post('/api/messages')
+      .set('x-session-id', 'broadcaster-session')
       .send({ content: 'ws广播测试' })
       .expect(200);
     expect(res.body.code).toBe(200);
+    // 广播时携带 excludeClientSessionId 选项以避免回推给发送者自身
     expect(mockWsServer.broadcast).toHaveBeenCalledWith(
       'newMessage',
-      expect.any(Object)
+      expect.any(Object),
+      expect.objectContaining({
+        excludeClientSessionId: 'broadcaster-session',
+      })
+    );
+  });
+
+  test('POST /api/messages without x-session-id excludes "anonymous" session', async () => {
+    await request(app)
+      .post('/api/messages')
+      .send({ content: '匿名广播' })
+      .expect(200);
+    expect(mockWsServer.broadcast).toHaveBeenCalledWith(
+      'newMessage',
+      expect.any(Object),
+      expect.objectContaining({
+        excludeClientSessionId: 'anonymous',
+      })
     );
   });
 

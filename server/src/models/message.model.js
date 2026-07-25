@@ -77,6 +77,27 @@ export class MessageModel {
     return this.findById(result.lastInsertRowid);
   }
 
+  /**
+   * 将 SQLite CURRENT_TIMESTAMP（UTC，格式 `YYYY-MM-DD HH:MM:SS`）
+   * 转换为 ISO 8601 字符串（`YYYY-MM-DDTHH:MM:SSZ`）。
+   * 避免前端 `new Date('YYYY-MM-DD HH:MM:SS')` 在不同浏览器中被解析为本地时间，
+   * 导致留言时间偏移。
+   */
+  _toIsoTimestamp(value) {
+    if (!value || typeof value !== 'string') return value;
+    // 已经是 ISO 格式则原样返回
+    if (value.endsWith('Z') || value.includes('T')) return value;
+    return `${value.replace(' ', 'T')}Z`;
+  }
+
+  _normalizeRow(row) {
+    if (!row) return row;
+    if (row.images) row.images = this._parseImages(row.images);
+    if (row.createdAt) row.createdAt = this._toIsoTimestamp(row.createdAt);
+    if (row.updatedAt) row.updatedAt = this._toIsoTimestamp(row.updatedAt);
+    return row;
+  }
+
   findById(id) {
     const stmt = this.db.prepare(`
       SELECT id, content, author_name as authorName, author_color as authorColor,
@@ -84,9 +105,7 @@ export class MessageModel {
              created_at as createdAt, updated_at as updatedAt
       FROM messages WHERE id = ?
     `);
-    const message = stmt.get(id);
-    if (message?.images) message.images = this._parseImages(message.images);
-    return message;
+    return this._normalizeRow(stmt.get(id));
   }
 
   findAll({ limit = 50, offset = 0, order = 'DESC', search = '' } = {}) {
@@ -117,10 +136,7 @@ export class MessageModel {
       LIMIT ? OFFSET ?
     `);
     params.push(limit, offset);
-    return stmt.all(...params).map(m => {
-      if (m.images) m.images = this._parseImages(m.images);
-      return m;
-    });
+    return stmt.all(...params).map(m => this._normalizeRow(m));
   }
 
   count({ search = '' } = {}) {
@@ -158,26 +174,38 @@ export class MessageModel {
       FROM messages WHERE images IS NOT NULL AND images != ''
       ORDER BY created_at DESC
     `);
-    return stmt.all().map(m => {
-      if (m.images) m.images = this._parseImages(m.images);
-      return m;
-    });
+    return stmt.all().map(m => this._normalizeRow(m));
   }
 
-  deleteAll() {
-    return this.db.prepare('DELETE FROM messages').run();
-  }
-
-  getRecent(limit = 10) {
+  /**
+   * 分批迭代所有带图留言，避免 clearAll 一次性读入内存导致 OOM。
+   * 返回 generator，每次 yield 一批（最多 batchSize 条）。
+   * @param {number} batchSize
+   * @returns {Generator<Array<object>>}
+   */
+  *findAllWithImagesBatched(batchSize = 500) {
+    if (!Number.isFinite(batchSize) || batchSize <= 0) {
+      throw new Error('batchSize 必须是正整数');
+    }
     const stmt = this.db.prepare(`
       SELECT id, content, author_name as authorName, author_color as authorColor,
              session_id as sessionId, images, image_type as imageType,
              created_at as createdAt, updated_at as updatedAt
-      FROM messages ORDER BY created_at DESC LIMIT ?
+      FROM messages WHERE images IS NOT NULL AND images != ''
+      ORDER BY id ASC
+      LIMIT ? OFFSET ?
     `);
-    return stmt.all(limit).map(m => {
-      if (m.images) m.images = this._parseImages(m.images);
-      return m;
-    });
+    let offset = 0;
+    while (true) {
+      const rows = stmt.all(batchSize, offset);
+      if (rows.length === 0) break;
+      yield rows.map(m => this._normalizeRow(m));
+      if (rows.length < batchSize) break;
+      offset += batchSize;
+    }
+  }
+
+  deleteAll() {
+    return this.db.prepare('DELETE FROM messages').run();
   }
 }

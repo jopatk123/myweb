@@ -14,7 +14,8 @@
     "migrate:rollback": "knex migrate:rollback --knexfile ./knexfile.js",
     "seed": "knex seed:run --knexfile ./knexfile.js",
     "db:check": "node src/utils/db-check.js",
-    "db:setup": "npm run migrate && npm run db:check"
+    "db:setup": "npm run migrate && npm run db:check",
+    "cleanup:message-images": "node scripts/cleanup-message-images.js"
   },
   "dependencies": {
     "archiver": "^7.0.1",

@@ -99,9 +99,19 @@ export function useWebSocket() {
           }
           if (reconnectAttempts.value < webSocketState.maxReconnectAttempts) {
             reconnectAttempts.value++;
-            reconnectTimer.value = setTimeout(() => {
-              connect();
-            }, 3000 * reconnectAttempts.value);
+            // 指数退避 + 随机抖动：避免大量客户端同时重连导致服务端惊群。
+            // 基础延迟 1s × 2^(attempts-1)，上限 30s，再叠加 0~1 倍基础延迟的抖动。
+            const baseDelay = Math.min(
+              30000,
+              1000 * 2 ** (reconnectAttempts.value - 1)
+            );
+            const jitter = Math.random() * baseDelay * 0.5;
+            reconnectTimer.value = setTimeout(
+              () => {
+                connect();
+              },
+              Math.round(baseDelay + jitter)
+            );
           }
         };
 
