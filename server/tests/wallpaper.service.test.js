@@ -190,9 +190,12 @@ test('deleteGroup throws when group has wallpapers', async () => {
     group.id
   );
 
-  // Should throw
-  await expect(async () => service.deleteGroup(group.id)).rejects.toThrow(
-    '分组下还有壁纸'
+  // Should throw ConflictError (409) — 业务规则冲突，不是服务器错误
+  await expect(async () => service.deleteGroup(group.id)).rejects.toMatchObject(
+    {
+      status: 409,
+      message: '分组下还有壁纸，无法删除',
+    }
   );
 });
 
@@ -202,8 +205,11 @@ test('updateGroup throws when group does not exist', () => {
   );
 });
 
-test('deleteGroup throws when group does not exist', () => {
+test('deleteGroup throws NotFoundError when group does not exist', () => {
   expect(() => service.deleteGroup(999999)).toThrow('分组不存在');
+  expect(() => service.deleteGroup(999999)).toThrow(
+    expect.objectContaining({ status: 404 })
+  );
 });
 
 test('setCurrentGroup throws when group does not exist', () => {

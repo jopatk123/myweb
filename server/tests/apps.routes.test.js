@@ -128,7 +128,7 @@ describe('Apps routes - update app', () => {
       .send({
         name: '尝试修改内置应用',
       })
-      .expect(400);
+      .expect(403);
 
     expect(res.body.message).toBe('内置应用不允许编辑');
   });

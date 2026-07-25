@@ -152,3 +152,27 @@ describe('FileService.remove()', () => {
     modelDeleteSpy.mockRestore();
   });
 });
+
+describe('FileService.get()', () => {
+  test('throws NotFoundError when file does not exist', () => {
+    expect(() => service.get(999999)).toThrow('文件不存在');
+    expect(() => service.get(999999)).toThrow(
+      expect.objectContaining({ status: 404 })
+    );
+  });
+
+  test('returns the row when file exists', () => {
+    const row = service.create({
+      originalName: 'get-test.txt',
+      storedName: 'get-test-1.txt',
+      filePath: 'uploads/files/get-test-1.txt',
+      mimeType: 'text/plain',
+      fileSize: 1,
+      uploaderId: 'u-get',
+    });
+
+    const result = service.get(row.id);
+    expect(result).toBeTruthy();
+    expect(result.id).toBe(row.id);
+  });
+});

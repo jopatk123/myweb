@@ -151,7 +151,7 @@ describe('AppController - update()', () => {
     expect(res.body.code).toBe(404);
   });
 
-  test('returns 400 when updating builtin app', async () => {
+  test('returns 403 when updating builtin app', async () => {
     const id = insertApp({
       name: '内置App',
       slug: 'builtin-app-u',
@@ -160,8 +160,8 @@ describe('AppController - update()', () => {
     const res = await request(app)
       .put(`/api/apps/${id}`)
       .send({ name: '修改内置' })
-      .expect(400);
-    expect(res.body.code).toBe(400);
+      .expect(403);
+    expect(res.body.code).toBe(403);
   });
 });
 

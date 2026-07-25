@@ -1,5 +1,4 @@
 import express from 'express';
-import fs from 'fs';
 import { FileService } from '../services/file.service.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import { detectTypeCategory, FILE_CATEGORIES } from '../utils/file-metadata.js';
@@ -30,19 +29,12 @@ const MAX_UPLOAD_FILES = Math.max(
 );
 
 // 允许所有文件类型上传 - 可通过环境变量 FILE_ALLOW_ALL_TYPES=false 开启过滤
+// 注：uploads/files 目录由 createUploadDirs() 在应用启动时统一创建，此处无需重复创建。
 
 function isAllowedFile(file) {
   if (process.env.FILE_ALLOW_ALL_TYPES !== 'false') return true;
   const category = detectTypeCategory(file.mimetype, file.originalname);
   return category !== FILE_CATEGORIES.OTHER;
-}
-
-if (!fs.existsSync(FILES_DIR)) {
-  try {
-    fs.mkdirSync(FILES_DIR, { recursive: true });
-  } catch (e) {
-    fileLogger.warn('无法创建 files 上传目录', { error: e.message });
-  }
 }
 
 const fileFilter = (_req, file, cb) => {

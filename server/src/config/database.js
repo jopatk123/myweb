@@ -21,6 +21,14 @@ const __dirname = path.dirname(__filename);
 
 const dbLogger = logger.child('Database');
 
+/**
+ * 数据库双抽象说明：
+ * - 运行时使用 better-sqlite3（同步 API），性能高且与单进程模型契合。
+ * - 迁移阶段使用 knex（异步 API）仅用于 migrate.latest()，迁移文件内部
+ *   仍通过 better-sqlite3 直接执行 DDL，因为 SQLite 的 DDL 不支持事务回滚，
+ *   且 better-sqlite3 的同步语义让迁移逻辑更可预测。
+ * - 两者共享同一个数据库文件，knex 实例用完即 destroy，不参与运行时。
+ */
 async function runMigrations(resolvedPath) {
   const knexConfig = {
     client: 'better-sqlite3',

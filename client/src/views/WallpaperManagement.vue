@@ -46,13 +46,6 @@
       @edit="openEditModal"
     />
 
-    <Toast
-      v-model:modelValue="showToast"
-      :message="toastMessage"
-      :type="toastType"
-      :duration="toastDuration"
-    />
-
     <!-- 空状态 -->
     <div v-if="!loading && filteredWallpapers.length === 0" class="empty-state">
       <p>暂无壁纸，点击右上方“上传壁纸”添加</p>
@@ -120,7 +113,7 @@
   import WallpaperEditModal from '@/components/wallpaper/WallpaperEditModal.vue';
   import GroupCreateModal from '@/components/wallpaper/GroupCreateModal.vue';
   import GroupMoveModal from '@/components/wallpaper/GroupMoveModal.vue';
-  import Toast from '@/components/common/Toast.vue';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
 
   const {
     wallpapers,
@@ -146,6 +139,8 @@
     setPage,
     setLimit,
   } = useWallpaper();
+
+  const { showSuccess, showError } = useGlobalToast();
 
   const selectedGroupId = ref('');
   const showUploadModal = ref(false);
@@ -173,9 +168,9 @@
     try {
       await deleteMultipleWallpapers(selectedIds.value, selectedGroupId.value);
       selectedIds.value = []; // 清空选择
-      displayToast('批量删除成功');
+      showSuccess('批量删除成功');
     } catch (err) {
-      displayToast(err?.message || '批量删除失败', 'error');
+      showError(err?.message || '批量删除失败');
     }
   };
 
@@ -190,10 +185,10 @@
         selectedGroupId.value
       );
       selectedIds.value = []; // 清空选择
-      displayToast('移动成功');
+      showSuccess('移动成功');
       showMoveModal.value = false;
     } catch (err) {
-      displayToast(err?.message || '批量移动失败', 'error');
+      showError(err?.message || '批量移动失败');
     } finally {
       bulkMoveLoading.value = false;
     }
@@ -205,14 +200,13 @@
 
     try {
       await downloadWallpapers(selectedIds.value);
-      displayToast(
+      showSuccess(
         selectedIds.value.length === 1
           ? '壁纸已下载'
-          : `${selectedIds.value.length} 张壁纸已打包下载`,
-        'success'
+          : `${selectedIds.value.length} 张壁纸已打包下载`
       );
     } catch (err) {
-      displayToast(err?.message || '下载失败，请稍后重试', 'error');
+      showError(err?.message || '下载失败，请稍后重试');
     }
   };
 
@@ -230,9 +224,9 @@
     try {
       await applyCurrentGroup(selectedGroupId.value);
       await fetchCurrentGroup();
-      displayToast('已将该分组设为当前应用分组');
+      showSuccess('已将该分组设为当前应用分组');
     } catch (err) {
-      displayToast(err?.message || '设置当前分组失败', 'error');
+      showError(err?.message || '设置当前分组失败');
     }
   };
 
@@ -260,7 +254,7 @@
   const onGroupCreated = () => {
     showGroupModal.value = false;
     fetchGroups();
-    displayToast('分组已创建');
+    showSuccess('分组已创建');
   };
 
   // 打开编辑对话框
@@ -273,7 +267,7 @@
     showEditModal.value = false;
     editingWallpaper.value = null;
     await fetchWallpapers(selectedGroupId.value || null, true);
-    displayToast('编辑保存成功');
+    showSuccess('编辑保存成功');
   };
 
   // 删除分组（来自侧栏按钮）
@@ -289,28 +283,15 @@
       // 如果刚删除的是当前选中，则切回全部
       selectedGroupId.value = '';
       await Promise.all([fetchGroups(), fetchWallpapers(null, true)]);
-      displayToast('分组已删除');
+      showSuccess('分组已删除');
     } catch (err) {
-      displayToast(err?.message || '删除分组失败', 'error');
+      showError(err?.message || '删除分组失败');
     }
   };
 
   // 打开主窗口
   const openMainWindow = () => {
     window.open('/', '_blank', 'noopener,noreferrer');
-  };
-
-  // 无需确认的成功提示（toast）状态
-  const showToast = ref(false);
-  const toastMessage = ref('');
-  const toastType = ref('success');
-  const toastDuration = ref(2000);
-
-  const displayToast = (msg, type = 'success', duration = 2000) => {
-    toastMessage.value = msg;
-    toastType.value = type;
-    toastDuration.value = duration;
-    showToast.value = true;
   };
 
   // 计算后的展示数据
@@ -331,10 +312,10 @@
   });
 
   // 在 groups 列表中标注当前应用分组
+  // currentGroup.value 可能是 null、分组对象（含 id）或原始 id（applyCurrentGroup 设置）
   const groupsWithFlag = computed(() => {
-    const cg = (typeof currentGroup === 'object' ? currentGroup : null) || null;
-    const currentId =
-      cg && cg.value ? cg.value.id || cg.value : currentGroup.value;
+    const cg = currentGroup.value;
+    const currentId = cg == null ? null : typeof cg === 'object' ? cg.id : cg;
     return (groups.value || []).map(g => ({
       ...g,
       is_current: String(g.id) === String(currentId),

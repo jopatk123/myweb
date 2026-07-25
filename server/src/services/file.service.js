@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import { FileModel } from '../models/file.model.js';
 import logger from '../utils/logger.js';
 import { toUploadsAbsolutePath } from '../utils/upload-path.js';
+import { NotFoundError } from '../utils/errors.js';
 import {
   buildFileUrl,
   detectTypeCategory,
@@ -31,9 +32,7 @@ export class FileService {
   get(id) {
     const row = this.model.findById(id);
     if (!row) {
-      const err = new Error('文件不存在');
-      err.status = 404;
-      throw err;
+      throw new NotFoundError('文件不存在');
     }
     return row;
   }

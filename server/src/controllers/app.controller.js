@@ -7,6 +7,7 @@ import {
   buildUpdateAppPayload,
   validateAppPayload,
 } from '../utils/app-request.js';
+import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 import logger from '../utils/logger.js';
 
 const appCtrlLogger = logger.child('AppController');
@@ -72,14 +73,10 @@ export class AppController {
       // 检查应用是否存在且不是内置应用
       const existingApp = await this.service.getAppById(id);
       if (!existingApp) {
-        const err = new Error('应用不存在');
-        err.status = 404;
-        throw err;
+        throw new NotFoundError('应用不存在');
       }
       if (existingApp.is_builtin) {
-        const err = new Error('内置应用不允许编辑');
-        err.status = 400;
-        throw err;
+        throw new ForbiddenError('内置应用不允许编辑');
       }
 
       const validatedPayload = await validateAppPayload(req.body, {

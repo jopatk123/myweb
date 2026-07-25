@@ -142,7 +142,6 @@ export class AppService {
           await this.deleteIconFileIfExists(iconFilename);
         }
       } catch (e) {
-        void e;
         appServiceLogger.warn('[AppService.deleteApp] 清理图标失败', {
           error: e?.message || e,
         });
@@ -212,8 +211,9 @@ export class AppService {
         presetIconFilename,
       });
     } catch (error) {
-      void error;
-      appServiceLogger.error('复制预选图标失败');
+      appServiceLogger.error('复制预选图标失败', {
+        error: error?.message || error,
+      });
       throw new Error(`复制预选图标失败: ${error?.message || '未知错误'}`);
     }
   }

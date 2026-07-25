@@ -5,7 +5,11 @@ import fs from 'fs/promises';
 import logger from '../utils/logger.js';
 import { toUploadsAbsolutePath } from '../utils/upload-path.js';
 import { assertValidImageFile } from '../utils/magic-bytes.js';
-import { NotFoundError, ValidationError } from '../utils/errors.js';
+import {
+  NotFoundError,
+  ValidationError,
+  ConflictError,
+} from '../utils/errors.js';
 import { WallpaperThumbnailManager } from './wallpaper-thumbnail.service.js';
 
 const wallpaperLogger = logger.child('WallpaperService');
@@ -250,9 +254,7 @@ export class WallpaperService {
   getGroupById(id) {
     const group = this.groupModel.findById(id);
     if (!group) {
-      const err = new Error('分组不存在');
-      err.status = 404;
-      throw err;
+      throw new NotFoundError('分组不存在');
     }
     return group;
   }
@@ -270,7 +272,7 @@ export class WallpaperService {
     this.getGroupById(id);
     const wallpapers = this.wallpaperModel.findAll({ groupId: id });
     if (wallpapers.length > 0) {
-      throw new Error('分组下还有壁纸，无法删除');
+      throw new ConflictError('分组下还有壁纸，无法删除');
     }
     return this.groupModel.delete(id);
   }
