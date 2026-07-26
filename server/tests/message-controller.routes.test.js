@@ -257,9 +257,11 @@ describe('MessageController - wsServer broadcast branches', () => {
       .send({ confirm: true })
       .expect(200);
     expect(res.body.code).toBe(200);
+    // 广播时排除发起者自身，避免发起者前端重复处理
     expect(mockWsServer.broadcast).toHaveBeenCalledWith(
       'messagesCleared',
-      expect.any(Object)
+      expect.any(Object),
+      expect.objectContaining({ excludeClientSessionId: expect.any(String) })
     );
   });
 });

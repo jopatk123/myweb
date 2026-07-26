@@ -21,7 +21,13 @@ export function useMessageBoard() {
   });
 
   // WebSocket连接
-  const { isConnected, onMessage, offMessage } = useWebSocket();
+  const {
+    isConnected,
+    reconnectAttempts,
+    maxReconnectAttempts,
+    onMessage,
+    offMessage,
+  } = useWebSocket();
   // 目前 messageBoard 通过 API 推送并由 WebSocket 接收广播
   const windowManager = useWindowManager();
 
@@ -39,6 +45,14 @@ export function useMessageBoard() {
       ? Math.ceil(pagination.total / pagination.limit)
       : 0;
   };
+
+  // 计算属性提前定义，便于后续方法引用
+  const hasMessages = computed(() => messages.value.length > 0);
+  const canLoadMore = computed(() => pagination.page < pagination.totalPages);
+  const isSearching = computed(() => searchQuery.value.trim().length > 0);
+
+  // 搜索防抖计时器：在 watch 之前声明，避免依赖 hoisting
+  let searchDebounceTimer = null;
 
   const syncMessageBoardWindow = () => {
     try {
@@ -98,6 +112,35 @@ export function useMessageBoard() {
       console.error('Fetch messages error:', err);
     } finally {
       loading.value = false;
+    }
+  };
+
+  // 加载更多历史留言（分页向后翻）
+  // 用于"加载更多"按钮：把更旧的消息 unshift 到列表前面，不影响当前滚动位置。
+  const loadingMore = ref(false);
+  const loadMoreMessages = async () => {
+    if (!canLoadMore.value || loadingMore.value || loading.value) return;
+    const nextPage = pagination.page + 1;
+    try {
+      loadingMore.value = true;
+      const normalizedSearch = searchQuery.value.trim();
+      const response = await messageAPI.getMessages({
+        page: nextPage,
+        limit: pagination.limit,
+        ...(normalizedSearch ? { q: normalizedSearch } : {}),
+      });
+      if (response.code === 200) {
+        // service 层返回的 messages 已按 ASC（旧→新）排序，
+        // 当前 messages.value 也是 ASC，更旧的消息应放到前面。
+        const olderMessages = response.data.messages || [];
+        messages.value = [...olderMessages, ...messages.value];
+        Object.assign(pagination, response.data.pagination || {});
+      }
+    } catch (err) {
+      error.value = err.message || '加载更多失败';
+      console.error('Load more messages error:', err);
+    } finally {
+      loadingMore.value = false;
     }
   };
 
@@ -314,10 +357,6 @@ export function useMessageBoard() {
   };
 
   // 计算属性
-  const hasMessages = computed(() => messages.value.length > 0);
-  const canLoadMore = computed(() => pagination.page < pagination.totalPages);
-  const isSearching = computed(() => searchQuery.value.trim().length > 0);
-
   const setSearchQuery = value => {
     searchQuery.value = value || '';
   };
@@ -344,7 +383,6 @@ export function useMessageBoard() {
     }
   });
 
-  let searchDebounceTimer = null;
   watch(
     searchQuery,
     newQuery => {
@@ -361,11 +399,14 @@ export function useMessageBoard() {
     // 数据
     messages,
     loading,
+    loadingMore,
     sending,
     error,
     userSettings,
     pagination,
     isConnected,
+    reconnectAttempts,
+    maxReconnectAttempts,
     searchQuery,
 
     // 计算属性
@@ -375,6 +416,7 @@ export function useMessageBoard() {
 
     // 方法
     fetchMessages,
+    loadMoreMessages,
     sendMessage,
     deleteMessage,
     clearAllMessages,

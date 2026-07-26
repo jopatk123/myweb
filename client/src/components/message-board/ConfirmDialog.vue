@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-  import { computed } from 'vue';
+  import { computed, watch, onBeforeUnmount } from 'vue';
 
   const props = defineProps({
     visible: { type: Boolean, default: false },
@@ -32,11 +32,35 @@
     cancelText: { type: String, default: '取消' },
   });
 
-  defineEmits(['cancel', 'confirm']);
+  const emit = defineEmits(['cancel', 'confirm']);
 
   const normalizedLines = computed(() =>
     props.lines.length ? props.lines : ['确定要继续吗？']
   );
+
+  // 对话框打开期间监听 ESC 键关闭，符合通用对话框约定
+  const handleKeydown = event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      emit('cancel');
+    }
+  };
+
+  watch(
+    () => props.visible,
+    visible => {
+      if (visible) {
+        document.addEventListener('keydown', handleKeydown);
+      } else {
+        document.removeEventListener('keydown', handleKeydown);
+      }
+    },
+    { immediate: true }
+  );
+
+  onBeforeUnmount(() => {
+    document.removeEventListener('keydown', handleKeydown);
+  });
 </script>
 
 <style scoped>

@@ -37,9 +37,10 @@ export class MessageService {
   async cleanupMessageImages(images = []) {
     if (!Array.isArray(images)) return;
 
+    // 先过滤出合法路径，避免在循环中混入非法 path 触发路径穿越
+    const validPaths = [];
     for (const image of images) {
       if (!image?.path) continue;
-
       // 双重校验：DTO 层已限制 path 形式，service 层再校验一次，
       // 防止 DB 历史脏数据或绕过 DTO 的调用方触发路径穿越。
       if (!MESSAGE_IMAGE_PATH_PATTERN.test(image.path)) {
@@ -48,20 +49,27 @@ export class MessageService {
         });
         continue;
       }
-
-      const imagePath = path.join(__dirname, '../../', image.path);
-      try {
-        await fs.unlink(imagePath);
-        msgServiceLogger.info('删除图片文件', { path: imagePath });
-      } catch (error) {
-        if (error.code !== 'ENOENT') {
-          msgServiceLogger.error('删除图片文件失败', {
-            path: imagePath,
-            error,
-          });
-        }
-      }
+      validPaths.push(image.path);
     }
+
+    // 并发清理：单条留言图片数量少（≤ MESSAGE_IMAGE_MAX_COUNT），
+    // clearAll 场景下数量较大，串行 O(n) 耗时高，改为 Promise.all 并行。
+    await Promise.all(
+      validPaths.map(async imgPath => {
+        const imagePath = path.join(__dirname, '../../', imgPath);
+        try {
+          await fs.unlink(imagePath);
+          msgServiceLogger.info('删除图片文件', { path: imagePath });
+        } catch (error) {
+          if (error.code !== 'ENOENT') {
+            msgServiceLogger.error('删除图片文件失败', {
+              path: imagePath,
+              error,
+            });
+          }
+        }
+      })
+    );
   }
 
   async sendMessage({
@@ -157,25 +165,33 @@ export class MessageService {
   }
 
   async clearAllMessages() {
-    // 顺序：DB 删除先行，保证用户侧立即看不到留言；文件清理失败只影响磁盘，不影响正确性。
-    // 分批扫描带图留言，避免留言量极大时一次性读入内存导致 OOM。
-    const batches =
-      this.messageModel.findAllWithImagesBatched(CLEAR_ALL_BATCH_SIZE);
-    let deletedImagesCount = 0;
-    for (const batch of batches) {
+    // 顺序：DB 删除先行，保证用户侧立即看不到留言；文件清理失败只影响磁盘，
+    // 孤儿文件可由 scripts/cleanup-message-images.js 定期清理。
+    //
+    // 实现步骤：
+    // 1. 先分批扫描收集所有图片路径到内存（只存 path 字符串，单条约 50 字节，
+    //    即使 1 万张图也仅约 500KB，远低于完整留言对象）；
+    // 2. 调用 deleteAll 删除 DB 中所有留言（如果这步失败，文件尚未动，保持一致）；
+    // 3. deleteAll 成功后再并发清理图片文件。
+    const allImages = [];
+    for (const batch of this.messageModel.findAllWithImagesBatched(
+      CLEAR_ALL_BATCH_SIZE
+    )) {
       for (const message of batch) {
-        await this.cleanupMessageImages(message.images);
-        deletedImagesCount += Array.isArray(message.images)
-          ? message.images.length
-          : 0;
+        if (Array.isArray(message.images)) {
+          allImages.push(...message.images);
+        }
       }
     }
 
     const result = this.messageModel.deleteAll();
 
+    // 文件清理失败不影响 DB 已清空的状态，仅记录日志
+    await this.cleanupMessageImages(allImages);
+
     return {
       deletedMessages: result.changes || 0,
-      deletedImages: deletedImagesCount,
+      deletedImages: allImages.length,
     };
   }
 }

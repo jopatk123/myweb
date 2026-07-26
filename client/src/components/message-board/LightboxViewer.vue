@@ -18,10 +18,17 @@
       </button>
 
       <div class="lightbox-image-container">
+        <div v-if="imageLoading" class="image-loading">
+          <span class="loading-spinner"></span>
+          <span class="loading-text">加载中...</span>
+        </div>
         <img
           :src="getImageUrl(images[currentIndex])"
           :alt="images[currentIndex]?.originalName || '图片'"
           class="lightbox-image"
+          :class="{ 'is-loading': imageLoading }"
+          @load="onImageLoaded"
+          @error="onImageLoadError"
         />
         <!-- 保存图片按钮 -->
         <button
@@ -47,9 +54,10 @@
 </template>
 
 <script setup>
+  import { ref, watch } from 'vue';
   import { useImagePreview } from '@/composables/useImagePreview';
 
-  defineProps({
+  const props = defineProps({
     visible: {
       type: Boolean,
       default: false,
@@ -67,6 +75,29 @@
   defineEmits(['close', 'prev', 'next', 'save', 'select']);
 
   const { getImageUrl } = useImagePreview();
+
+  // 大图加载状态：切换图片或打开查看器时显示 loading，load 完成后隐藏
+  const imageLoading = ref(false);
+
+  const startLoading = () => {
+    imageLoading.value = true;
+  };
+
+  const onImageLoaded = () => {
+    imageLoading.value = false;
+  };
+
+  const onImageLoadError = () => {
+    imageLoading.value = false;
+  };
+
+  // 切换图片或打开时重置 loading 状态
+  watch(
+    () => [props.visible, props.currentIndex],
+    () => {
+      if (props.visible) startLoading();
+    }
+  );
 
   const getImageKey = (image, index) =>
     image?.id ??
@@ -148,6 +179,44 @@
     max-height: 80vh;
     object-fit: contain;
     border-radius: 8px;
+    transition: opacity 0.2s;
+  }
+
+  .lightbox-image.is-loading {
+    opacity: 0;
+  }
+
+  .image-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    z-index: 1;
+  }
+
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .loading-text {
+    font-size: 13px;
+    opacity: 0.85;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .save-image-btn {

@@ -219,6 +219,8 @@ export function useWebSocket() {
   return {
     ws,
     isConnected,
+    reconnectAttempts,
+    maxReconnectAttempts: webSocketState.maxReconnectAttempts,
     connect,
     disconnect,
     send,

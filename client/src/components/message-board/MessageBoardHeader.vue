@@ -3,8 +3,8 @@
     <div class="header-top">
       <div class="header-left">
         <h3>💬 留言板</h3>
-        <span class="online-status" :class="{ connected: isConnected }">
-          {{ isConnected ? '已连接' : '连接中...' }}
+        <span class="online-status" :class="statusClass">
+          {{ statusText }}
         </span>
       </div>
       <div class="header-right">
@@ -45,8 +45,12 @@
 </template>
 
 <script setup>
-  defineProps({
+  import { computed } from 'vue';
+
+  const props = defineProps({
     isConnected: { type: Boolean, required: true },
+    reconnectAttempts: { type: Number, default: 0 },
+    maxReconnectAttempts: { type: Number, default: 5 },
     searchQuery: { type: String, default: '' },
     searchCount: { type: Number, default: 0 },
     loading: { type: Boolean, default: false },
@@ -54,6 +58,30 @@
   });
 
   defineEmits(['toggle-settings', 'close', 'update:search-query']);
+
+  // 连接状态文案与样式：
+  // - 已连接：绿色
+  // - 重连中：黄色（reconnectAttempts > 0 且未超上限）
+  // - 已断开：灰色（重连次数超上限，或从未连上）
+  const statusText = computed(() => {
+    if (props.isConnected) return '已连接';
+    if (
+      props.reconnectAttempts > 0 &&
+      props.reconnectAttempts < props.maxReconnectAttempts
+    ) {
+      return `重连中 ${props.reconnectAttempts}/${props.maxReconnectAttempts}`;
+    }
+    return '未连接';
+  });
+
+  const statusClass = computed(() => ({
+    connected: props.isConnected,
+    reconnecting:
+      !props.isConnected &&
+      props.reconnectAttempts > 0 &&
+      props.reconnectAttempts < props.maxReconnectAttempts,
+    disconnected: !props.isConnected,
+  }));
 </script>
 
 <style scoped>
@@ -98,6 +126,16 @@
   .online-status.connected {
     color: #2b8a3e;
     background: #ebfbee;
+  }
+
+  .online-status.reconnecting {
+    color: #e67700;
+    background: #fff9db;
+  }
+
+  .online-status.disconnected {
+    color: #c92a2a;
+    background: #fff5f5;
   }
 
   .header-right {

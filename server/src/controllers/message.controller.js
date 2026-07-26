@@ -200,9 +200,18 @@ export class MessageController {
           .status(400)
           .json({ code: 400, message: '需要确认才能清除所有留言' });
       }
+      const sessionId = req.headers['x-session-id'] || 'anonymous';
       const result = await this.service.clearAllMessages();
       if (req.app.get('wsServer')) {
-        req.app.get('wsServer').broadcast('messagesCleared', {});
+        // 排除发起者自身：发起者前端已在 clearAllMessages composable 中
+        // 立即清空本地列表，重复推送反而触发额外处理。
+        req.app
+          .get('wsServer')
+          .broadcast(
+            'messagesCleared',
+            {},
+            { excludeClientSessionId: sessionId }
+          );
       }
       res.json({ code: 200, message: '留言板已清空', data: result });
     } catch (error) {

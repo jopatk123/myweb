@@ -29,7 +29,6 @@
         @keydown.enter.exact.prevent="handleSend"
         @keydown.enter.shift.exact="handleNewLine"
         @paste="handlePaste"
-        :disabled="sending"
       ></textarea>
       <div class="input-actions">
         <div class="input-left">
@@ -51,6 +50,15 @@
           <span class="char-count"
             >{{ inputMessage.length }}/{{ MESSAGE_CONTENT_MAX_LENGTH }}</span
           >
+          <span
+            v-if="selectedImages.length > 0"
+            class="image-count"
+            :class="{
+              'count-warn': selectedImages.length >= MESSAGE_IMAGE_MAX_COUNT,
+            }"
+          >
+            🖼️ {{ selectedImages.length }}/{{ MESSAGE_IMAGE_MAX_COUNT }}
+          </span>
         </div>
         <button @click="handleSend" :disabled="!canSend" class="send-btn">
           {{ sending ? '发送中...' : '发送' }}
@@ -324,6 +332,21 @@
   .char-count {
     font-size: 11px;
     color: #868e96;
+  }
+
+  .image-count {
+    font-size: 11px;
+    color: #495057;
+    padding: 2px 6px;
+    background: #edf8ff;
+    border-radius: 8px;
+    border: 1px solid #d0ebff;
+  }
+
+  .image-count.count-warn {
+    color: #c92a2a;
+    background: #fff5f5;
+    border-color: #ffd8d8;
   }
 
   .send-btn {

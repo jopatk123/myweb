@@ -12,6 +12,25 @@
       <span v-else>还没有留言，来发第一条吧！</span>
     </div>
 
+    <!-- 加载更多历史留言：放在列表顶部，让用户向上滚动时能看到入口 -->
+    <div
+      v-if="canLoadMore && hasMessages && !isSearching"
+      class="load-more-bar"
+    >
+      <button
+        type="button"
+        class="load-more-btn"
+        :disabled="loadingMore"
+        @click="$emit('request-load-more')"
+      >
+        {{ loadingMore ? '加载中...' : '加载更多历史留言' }}
+      </button>
+      <span class="pagination-meta">
+        第 {{ pagination.page }} / {{ pagination.totalPages }} 页 · 共
+        {{ pagination.total }} 条
+      </span>
+    </div>
+
     <div v-for="message in messages" :key="message.id" class="message-item">
       <div
         class="message-avatar"
@@ -57,13 +76,21 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+  import {
+    ref,
+    computed,
+    onMounted,
+    onBeforeUnmount,
+    watch,
+    nextTick,
+  } from 'vue';
   import { useGlobalToast } from '@/composables/useGlobalToast.js';
   import ImagePreview from './ImagePreview.vue';
 
   const props = defineProps({
     messages: { type: Array, required: true },
     loading: { type: Boolean, required: true },
+    loadingMore: { type: Boolean, default: false },
     hasMessages: { type: Boolean, required: true },
     error: { type: [String, Object], default: '' },
     listRef: { type: [Function, Object], default: null },
@@ -71,9 +98,14 @@
     isSearching: { type: Boolean, default: false },
     searchQuery: { type: String, default: '' },
     deletingMessageId: { type: Number, default: null },
+    canLoadMore: { type: Boolean, default: false },
+    pagination: {
+      type: Object,
+      default: () => ({ page: 1, totalPages: 0, total: 0 }),
+    },
   });
 
-  defineEmits(['retry', 'request-delete']);
+  defineEmits(['retry', 'request-delete', 'request-load-more']);
 
   const internalListRef = ref(null);
   const copiedMessageId = ref(null);
@@ -81,6 +113,14 @@
   let isUserScrolling = false;
   let scrollTimeout = null;
   let copyFeedbackTimeout = null;
+  // 加载更多期间不触发自动滚动到底部
+  let suppressAutoScroll = false;
+
+  // 用于判断是否为"新增消息"场景（而非加载更多 / 删除）
+  const lastMessageId = computed(
+    () => props.messages[props.messages.length - 1]?.id
+  );
+  const messagesLength = computed(() => props.messages.length);
 
   const getListElement = () => {
     return (
@@ -175,17 +215,25 @@
     if (copyFeedbackTimeout) clearTimeout(copyFeedbackTimeout);
   });
 
-  // 当 messages 变化时，如果用户没有在手动滚动，则滚动到底部
+  // 加载更多开始时设置抑制标志，结束时清除
   watch(
-    () => props.messages.length,
-    (newLen, oldLen) => {
-      if (newLen === oldLen) return;
-      if (!isUserScrolling && !props.isSearching) {
-        // 使用平滑滚动以在发送/接收时更自然
-        scrollToBottom('smooth');
-      }
+    () => props.loadingMore,
+    isLoadingMore => {
+      suppressAutoScroll = isLoadingMore;
     }
   );
+
+  // 只在"新增消息"时滚动到底部：
+  // - 长度增加且 lastId 变化（新增一条最新消息）
+  // - 加载更多时长度增加但 lastId 不变（suppressAutoScroll 也兜底）
+  // - 删除消息时长度减少，不滚动
+  watch([messagesLength, lastMessageId], ([newLen, newId], [oldLen, oldId]) => {
+    if (suppressAutoScroll || props.isSearching) return;
+    if (newLen <= (oldLen ?? 0)) return;
+    if (newId === oldId) return;
+    if (isUserScrolling) return;
+    scrollToBottom('smooth');
+  });
 </script>
 
 <style scoped>
@@ -226,6 +274,44 @@
 
   .retry-btn:hover {
     background: #e03131;
+  }
+
+  .load-more-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0 4px;
+    border-bottom: 1px dashed #e9ecef;
+    margin-bottom: 4px;
+  }
+
+  .load-more-btn {
+    padding: 6px 16px;
+    background: #edf8ff;
+    color: #1864ab;
+    border: 1px solid #d0ebff;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 12px;
+    transition:
+      background-color 0.2s,
+      border-color 0.2s;
+  }
+
+  .load-more-btn:hover:not(:disabled) {
+    background: #d0ebff;
+    border-color: #74c0fc;
+  }
+
+  .load-more-btn:disabled {
+    cursor: wait;
+    opacity: 0.6;
+  }
+
+  .pagination-meta {
+    font-size: 11px;
+    color: #adb5bd;
   }
 
   .message-item {

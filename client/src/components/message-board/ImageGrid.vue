@@ -10,6 +10,8 @@
       <img
         :src="getImageUrl(image)"
         :alt="image.originalName || '图片'"
+        loading="lazy"
+        decoding="async"
         @load="onImageLoad"
         @error="onImageError"
       />
@@ -58,7 +60,7 @@
 
   .image-item {
     position: relative;
-    aspect-ratio: 1;
+    /* 保留图片原始比例，仅限制最大高度，避免长图被强制裁剪为正方形 */
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
@@ -67,6 +69,8 @@
     transition:
       transform 0.2s,
       box-shadow 0.2s;
+    min-height: 80px;
+    max-height: 240px;
   }
 
   .image-item:hover {
@@ -77,6 +81,7 @@
   .image-item img {
     width: 100%;
     height: 100%;
+    max-height: 240px;
     object-fit: cover;
     display: block;
   }

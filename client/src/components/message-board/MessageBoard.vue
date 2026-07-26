@@ -2,6 +2,8 @@
   <div class="message-board">
     <MessageBoardHeader
       :is-connected="isConnected"
+      :reconnect-attempts="reconnectAttempts"
+      :max-reconnect-attempts="maxReconnectAttempts"
       :search-query="searchQuery"
       :search-count="pagination.total"
       :loading="loading"
@@ -23,14 +25,18 @@
     <MessageList
       :messages="messages"
       :loading="loading"
+      :loading-more="loadingMore"
       :has-messages="hasMessages"
       :error="error"
       :is-searching="isSearching"
       :search-query="searchQuery"
       :list-ref="messageListRef"
       :deleting-message-id="deletingMessageId"
+      :can-load-more="canLoadMore"
+      :pagination="pagination"
       :format-time="formatTime"
       @request-delete="promptDeleteMessage"
+      @request-load-more="handleLoadMore"
       @retry="fetchMessages()"
     />
 
@@ -80,15 +86,20 @@
   const {
     messages,
     loading,
+    loadingMore,
     sending,
     error,
     userSettings,
     pagination,
     isConnected,
+    reconnectAttempts,
+    maxReconnectAttempts,
     searchQuery,
     isSearching,
     hasMessages,
+    canLoadMore,
     fetchMessages,
+    loadMoreMessages,
     sendMessage,
     uploadImages,
     deleteMessage,
@@ -195,6 +206,20 @@
     }
   };
 
+  // 加载更多历史消息：保留用户当前滚动位置，避免被新加载的旧消息顶走
+  const handleLoadMore = async () => {
+    const listEl = messageListRef.value;
+    const prevScrollHeight = listEl?.scrollHeight ?? 0;
+    const prevScrollTop = listEl?.scrollTop ?? 0;
+    await loadMoreMessages();
+    // 加载完成后恢复滚动位置，让用户继续从原来位置查看
+    nextTick(() => {
+      if (!listEl) return;
+      const newScrollHeight = listEl.scrollHeight;
+      listEl.scrollTop = prevScrollTop + (newScrollHeight - prevScrollHeight);
+    });
+  };
+
   // 滚动到底部
   const scrollToBottom = () => {
     if (messageListRef.value) {
@@ -235,17 +260,9 @@
     { immediate: true }
   );
 
-  // 监听新消息，自动滚动到底部
-  watch(
-    messages,
-    () => {
-      if (isSearching.value) return;
-      nextTick(() => {
-        scrollToBottom();
-      });
-    },
-    { deep: true }
-  );
+  // 注：滚动到底部的逻辑由 MessageList 内部统一管理
+  // （基于 isUserScrolling 标志判断是否自动滚动），
+  // 此处不再 deep watch messages，避免双重滚动冲突与性能开销。
 </script>
 
 <style scoped>
