@@ -297,28 +297,21 @@ export class WallpaperModel extends BaseModel {
     }
 
     const where = `WHERE ${whereClauses.join(' AND ')}`;
-    const totalRow = this.db
-      .prepare(`SELECT COUNT(*) AS total FROM wallpapers ${where}`)
-      .get(...params);
-    const total = Number(totalRow?.total || 0);
 
-    if (total <= 0) {
-      return undefined;
-    }
-
-    const offset = Math.floor(Math.random() * total);
-
+    // 使用 ORDER BY RANDOM() 替代 OFFSET 随机：
+    // - 无需先 COUNT 再 OFFSET，减少一次查询
+    // - 壁纸数量在个人桌面场景下有限，RANDOM() 全表扫描开销可接受
     return this.db
       .prepare(
         `
           SELECT *
           FROM wallpapers
           ${where}
-          ORDER BY id
-          LIMIT 1 OFFSET ?
+          ORDER BY RANDOM()
+          LIMIT 1
         `
       )
-      .get(...params, offset);
+      .get(...params);
   }
 
   trackThumbnailCache(wallpaperId, cachePath) {

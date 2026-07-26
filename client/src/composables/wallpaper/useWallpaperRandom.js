@@ -61,9 +61,20 @@ export function createWallpaperRandom({ currentGroup, loading, error }) {
     return item?.wallpaper || null;
   }
 
+  // 拿到随机壁纸后，显式调用 PUT /:id/active 切换活跃状态。
+  // 后端 GET /random 已改为无副作用，前端需自行触发切换。
+  // 异步执行，不阻塞主流程；失败仅警告，不影响壁纸显示。
+  function applyActiveWallpaper(wallpaper) {
+    if (wallpaper?.id == null) return;
+    wallpaperApi.setActiveWallpaper(wallpaper.id).catch(err => {
+      console.warn('设置活跃壁纸失败:', err);
+    });
+  }
+
   async function randomWallpaper(groupId = null) {
     const cached = consumePreloadedWallpaper(groupId);
     if (cached) {
+      applyActiveWallpaper(cached);
       void ensurePreloaded(2, groupId).catch(err => {
         console.warn('预加载壁纸失败:', err);
       });
@@ -84,6 +95,7 @@ export function createWallpaperRandom({ currentGroup, loading, error }) {
           img.src = getWallpaperUrl(image) || image.url || '';
         });
       }
+      applyActiveWallpaper(image);
       void ensurePreloaded(2, groupId).catch(err => {
         console.warn('预加载壁纸失败:', err);
       });

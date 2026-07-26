@@ -61,14 +61,9 @@ describe('WallpaperService#getRandomWallpaper', () => {
     expect(result).toBeDefined();
     expect(result.id).toBe(wallpaper.id);
     expect(result.group_id).toBe(groupId);
-
-    const activeRow = db
-      .prepare('SELECT is_active FROM wallpapers WHERE id = ?')
-      .get(result.id);
-    expect(activeRow.is_active).toBe(1);
   });
 
-  test('records active wallpaper in runtime state when selecting randomly', () => {
+  test('does not change active state when selecting randomly (no side effects)', () => {
     const wallpaper = insertWallpaper({ filename: 'runtime-state.jpg' });
 
     const result = service.getRandomWallpaper(null);
@@ -76,12 +71,19 @@ describe('WallpaperService#getRandomWallpaper', () => {
     expect(result).toBeDefined();
     expect(result.id).toBe(wallpaper.id);
 
+    // getRandomWallpaper 应保持 GET 幂等语义，不主动切换活跃状态。
+    // 活跃壁纸的切换应由调用方通过 PUT /:id/active 显式触发。
+    const activeRow = db
+      .prepare('SELECT is_active FROM wallpapers WHERE id = ?')
+      .get(result.id);
+    expect(activeRow.is_active).toBe(0);
+
     const stateRow = db
       .prepare(
         'SELECT active_wallpaper_id FROM wallpaper_runtime_state WHERE id = 1'
       )
       .get();
-    expect(stateRow.active_wallpaper_id).toBe(wallpaper.id);
+    expect(stateRow?.active_wallpaper_id).toBeNull();
   });
 
   test('falls back to any wallpaper when requested group has none', () => {

@@ -111,16 +111,10 @@ export class WallpaperService {
   }
 
   async updateWallpaper(id, data) {
-    const existing = this.getWallpaperById(id);
-    const updated = this.wallpaperModel.update(id, mapToSnake(data));
-
-    const existingPath = existing?.file_path;
-    const updatedPath = updated?.file_path;
-    if (existingPath && updatedPath && existingPath !== updatedPath) {
-      await this.thumbnails.purgeCache(existing.id);
-    }
-
-    return updated;
+    // 校验壁纸存在，不存在则抛 NotFoundError
+    this.getWallpaperById(id);
+    // DTO 仅允许更新 name，file_path 不会变化，无需清理缩略图缓存
+    return this.wallpaperModel.update(id, mapToSnake(data));
   }
 
   async deleteWallpaper(id) {
@@ -239,10 +233,9 @@ export class WallpaperService {
       wallpaper = this.wallpaperModel.getRandomByGroup(null);
     }
 
-    if (wallpaper) {
-      this.wallpaperModel.setActive(wallpaper.id);
-    }
-
+    // 注意：此处仅返回随机壁纸，不主动切换活跃状态。
+    // GET 请求应保持幂等/无副作用，活跃壁纸的切换由调用方通过
+    // PUT /:id/active 显式触发，避免"获取即切换"的隐式语义。
     return wallpaper;
   }
 

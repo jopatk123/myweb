@@ -72,6 +72,11 @@ export const wallpaperApi = {
     return api.get('/wallpapers/active');
   },
 
+  // 设置活跃壁纸
+  setActiveWallpaper(id) {
+    return api.put(`/wallpapers/${id}/active`);
+  },
+
   // 随机获取壁纸
   getRandomWallpaper(groupId = null) {
     return api.get('/wallpapers/random', { params: { groupId } });

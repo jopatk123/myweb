@@ -2,7 +2,7 @@
   <div class="toolbar">
     <input
       :value="keyword"
-      @input="$emit('update:keyword', $event.target.value)"
+      @input="onInput"
       class="search-input"
       placeholder="搜索：名称/备注/关键字…"
     />
@@ -15,6 +15,8 @@
 </template>
 
 <script setup>
+  import { onScopeDispose } from 'vue';
+
   defineProps({
     keyword: {
       type: String,
@@ -22,7 +24,26 @@
     },
   });
 
-  defineEmits(['update:keyword']);
+  const emit = defineEmits(['update:keyword']);
+
+  // 搜索防抖：避免快速输入时频繁触发父组件 computed 重算
+  const DEBOUNCE_MS = 200;
+  let debounceTimer = null;
+
+  const onInput = event => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      emit('update:keyword', event.target.value);
+    }, DEBOUNCE_MS);
+  };
+
+  onScopeDispose(() => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+  });
 </script>
 
 <style scoped>

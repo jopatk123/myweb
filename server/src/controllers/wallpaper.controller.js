@@ -130,9 +130,7 @@ export class WallpaperController {
   async updateWallpaper(req, res, next) {
     try {
       const { id } = req.params;
-      const data = { ...req.body };
-      if (data.description !== undefined) delete data.description;
-      const wallpaper = await this.service.updateWallpaper(id, data);
+      const wallpaper = await this.service.updateWallpaper(id, req.body);
       res.json({ code: 200, data: wallpaper, message: '更新成功' });
     } catch (error) {
       next(error);

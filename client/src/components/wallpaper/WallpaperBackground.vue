@@ -18,7 +18,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, watch } from 'vue';
+  import { ref, computed, onMounted, watch, onScopeDispose } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { useWallpaperAnimation } from '@/composables/useWallpaperAnimation.js';
 
@@ -50,7 +50,7 @@
   const wallpaperStyle = computed(() => {
     const baseStyle = {
       backgroundImage: currentWallpaper.value
-        ? `url(${getWallpaperUrl(currentWallpaper.value)})`
+        ? `url("${getWallpaperUrl(currentWallpaper.value)}")`
         : 'none',
     };
 
@@ -94,7 +94,33 @@
     return `${baseUrl}${separator}_retry=${retryCount}_${Date.now()}`;
   };
 
+  // 加载令牌：每次开始新壁纸加载时递增，过期回调通过比对令牌丢弃自身结果，
+  // 避免快速切换壁纸时旧回调污染新状态。
+  let loadToken = 0;
+  let retryTimer = null;
+  let pendingImage = null;
+
+  const clearRetryTimer = () => {
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+  };
+
+  const abortPendingLoad = () => {
+    loadToken += 1;
+    clearRetryTimer();
+    if (pendingImage) {
+      // 置空 src 以中止进行中的 Image 加载
+      pendingImage.src = '';
+      pendingImage = null;
+    }
+  };
+
   const updateWallpaper = wallpaper => {
+    // 开始新一轮加载，使上一轮的回调与定时器失效
+    abortPendingLoad();
+
     if (!wallpaper) {
       currentWallpaper.value = null;
       loadRetries.value = 0;
@@ -102,8 +128,11 @@
     }
 
     loadRetries.value = 0;
+    const token = loadToken;
 
     const attemptLoad = retryCount => {
+      if (token !== loadToken) return; // 已被新一轮加载取代
+
       const preloadUrl = buildPreloadUrl(wallpaper, retryCount);
       if (!preloadUrl) {
         currentWallpaper.value = null;
@@ -111,7 +140,11 @@
       }
 
       const img = new Image();
+      pendingImage = img;
       img.onload = () => {
+        if (token !== loadToken) return; // 丢弃过期回调
+        pendingImage = null;
+
         currentWallpaper.value = wallpaper;
 
         // 壁纸加载成功后，播放随机动画
@@ -124,21 +157,24 @@
         }
       };
       img.onerror = () => {
+        if (token !== loadToken) return; // 丢弃过期回调
+        pendingImage = null;
+
         if (retryCount < MAX_RETRIES) {
           const nextRetry = retryCount + 1;
           loadRetries.value = nextRetry;
           console.warn(
             `壁纸加载失败，第 ${nextRetry}/${MAX_RETRIES} 次重试...`
           );
-          setTimeout(() => {
+          retryTimer = setTimeout(() => {
+            retryTimer = null;
             attemptLoad(nextRetry);
           }, 1000 * nextRetry);
         } else {
           console.warn('壁纸加载失败，已重试', MAX_RETRIES, '次');
-          currentWallpaper.value = wallpaper;
+          // 加载失败后回退到默认背景，避免显示 broken image 占满桌面
+          currentWallpaper.value = null;
           currentAnimationStyle.value = null;
-          // 即使加载失败也更新 key
-          wallpaperKey.value += 1;
         }
       };
 
@@ -147,6 +183,11 @@
 
     attemptLoad(0);
   };
+
+  onScopeDispose(() => {
+    // 组件卸载时使所有待处理回调失效并清理资源
+    abortPendingLoad();
+  });
 
   watch(
     sourceWallpaper,
