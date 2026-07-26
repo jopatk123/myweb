@@ -3,7 +3,51 @@ import { filesApi } from '@/api/files.js';
 import { unwrapData } from '@/api/httpClient.js';
 import { createStableId } from '@/utils/stableId.js';
 
-export function useFiles() {
+/** 单批次最大并发上传数 */
+const DEFAULT_CONCURRENCY = 3;
+
+/**
+ * 工作器主循环：从共享索引取下一个文件上传
+ *
+ * 多个 worker 共享同一个 `sharedIndex` 对象，确保每个文件只被一个 worker 取走。
+ * 取消时通过 AbortSignal 通知 axios 中断请求，worker 退出循环。
+ */
+async function runWorkerLoop(ctx) {
+  while (true) {
+    if (ctx.isAborted() || ctx.signal?.aborted) break;
+
+    const i = ctx.sharedIndex.value;
+    if (i >= ctx.fileArray.length) break;
+    ctx.sharedIndex.value = i + 1;
+
+    const file = ctx.fileArray[i];
+    try {
+      await filesApi.upload(
+        [file],
+        progress => {
+          if (ctx.isAborted()) return;
+          ctx.onFileProgress(i, progress);
+        },
+        ctx.signal
+      );
+      ctx.onFileComplete(i);
+    } catch (err) {
+      if (
+        ctx.signal?.aborted ||
+        err?.name === 'AbortError' ||
+        err?.code === 'ERR_CANCELED'
+      ) {
+        // 用户主动取消，正常退出循环
+        break;
+      }
+      throw err;
+    }
+  }
+}
+
+export function useFiles({
+  concurrency: concurrencyOption = DEFAULT_CONCURRENCY,
+} = {}) {
   const items = ref([]);
   const page = ref(1);
   const limit = ref(20);
@@ -19,8 +63,10 @@ export function useFiles() {
   const uploadQueue = ref([]);
   const error = ref('');
   const lastError = ref(null);
+  const isCancelled = ref(false);
   let cleanupTimer = null;
   let isDisposed = false;
+  let activeController = null;
 
   const totalPages = computed(() =>
     Math.ceil((total.value || 0) / (limit.value || 1))
@@ -52,10 +98,19 @@ export function useFiles() {
     }
   }
 
+  /**
+   * 并发上传多个文件
+   * @param {File[]|File} files
+   */
   async function upload(files) {
     if (isDisposed) return;
+    if (uploading.value) {
+      // 已有上传进行中，避免重复触发
+      return;
+    }
 
     uploading.value = true;
+    isCancelled.value = false;
     uploadProgress.value = 0;
     uploadedBytes.value = 0;
     totalBytes.value = 0;
@@ -63,7 +118,6 @@ export function useFiles() {
     uploadQueue.value = [];
     error.value = '';
 
-    // 计算总文件大小和准备上传队列
     const fileArray = Array.isArray(files) ? files : [files];
     totalBytes.value = fileArray.reduce((sum, file) => sum + file.size, 0);
     uploadQueue.value = fileArray.map(file => ({
@@ -73,56 +127,86 @@ export function useFiles() {
       progress: 0,
     }));
 
+    // 单批次 AbortController：cancelUpload 或组件卸载时触发
+    const controller = new AbortController();
+    activeController = controller;
+
+    // 单文件已上传字节缓存，用于汇总 uploadedBytes
+    const fileUploadedBytes = new Array(fileArray.length).fill(0);
+    const sharedIndex = { value: 0 };
+
+    const updateAggregate = () => {
+      const sumBytes = fileUploadedBytes.reduce((a, b) => a + b, 0);
+      uploadedBytes.value = sumBytes;
+      uploadProgress.value = totalBytes.value
+        ? Math.round((sumBytes / totalBytes.value) * 100)
+        : 0;
+    };
+
+    const onFileProgress = (i, progress) => {
+      const file = fileArray[i];
+      fileUploadedBytes[i] = Math.round((progress / 100) * file.size);
+      if (uploadQueue.value[i]) {
+        uploadQueue.value[i].progress = progress;
+      }
+      // 更新当前正在上传的文件名（取进度非 0/100 的最新一个）
+      if (progress > 0 && progress < 100) {
+        currentFileName.value = file.name;
+      }
+      updateAggregate();
+    };
+
+    const onFileComplete = i => {
+      const file = fileArray[i];
+      fileUploadedBytes[i] = file.size;
+      if (uploadQueue.value[i]) {
+        uploadQueue.value[i].progress = 100;
+      }
+      updateAggregate();
+    };
+
     try {
       lastError.value = null;
-      let totalUploadedBytes = 0;
+      const concurrency = Math.min(
+        Math.max(1, concurrencyOption),
+        fileArray.length
+      );
 
-      // 逐个上传文件，更新进度
-      for (let i = 0; i < fileArray.length; i++) {
-        const file = fileArray[i];
-        currentFileName.value = file.name;
+      const workerCtx = {
+        fileArray,
+        sharedIndex,
+        isAborted: () => isDisposed || controller.signal.aborted,
+        onFileProgress,
+        onFileComplete,
+        signal: controller.signal,
+      };
 
-        await filesApi.upload([file], progress => {
-          if (isDisposed) return;
-          // 计算当前文件的已上传字节数
-          const currentFileUploaded = Math.round((progress / 100) * file.size);
-          // 累积总上传字节数
-          uploadedBytes.value = totalUploadedBytes + currentFileUploaded;
-          // 计算总体进度
-          uploadProgress.value = Math.round(
-            (uploadedBytes.value / totalBytes.value) * 100
-          );
-
-          // 更新队列中当前文件的进度
-          if (uploadQueue.value[i]) {
-            uploadQueue.value[i].progress = progress;
-          }
-        });
-
-        // 当前文件上传完成，更新队列进度为100%并累积字节数
-        totalUploadedBytes += file.size;
-        if (!isDisposed) {
-          uploadedBytes.value = totalUploadedBytes;
-          uploadProgress.value = Math.round(
-            (uploadedBytes.value / totalBytes.value) * 100
-          );
-
-          if (uploadQueue.value[i]) {
-            uploadQueue.value[i].progress = 100;
-          }
-        }
+      const workers = [];
+      for (let w = 0; w < concurrency; w++) {
+        workers.push(runWorkerLoop(workerCtx));
       }
+      await Promise.all(workers);
 
-      if (!isDisposed) {
+      if (!isDisposed && !controller.signal.aborted) {
         await fetchList();
       }
     } catch (e) {
-      lastError.value = e;
-      error.value = e.message || '上传失败';
-      throw e;
+      if (
+        controller.signal.aborted ||
+        e?.name === 'AbortError' ||
+        e?.code === 'ERR_CANCELED'
+      ) {
+        // 用户主动取消，不视为错误
+        isCancelled.value = true;
+      } else {
+        lastError.value = e;
+        error.value = e.message || '上传失败';
+        throw e;
+      }
     } finally {
       if (!isDisposed) {
         uploading.value = false;
+        activeController = null;
         // 延迟清除进度信息，让用户看到完成状态
         if (cleanupTimer) {
           clearTimeout(cleanupTimer);
@@ -137,6 +221,17 @@ export function useFiles() {
           cleanupTimer = null;
         }, 2000);
       }
+    }
+  }
+
+  /**
+   * 取消当前正在进行的上传批次
+   */
+  function cancelUpload() {
+    if (activeController) {
+      activeController.abort();
+      activeController = null;
+      isCancelled.value = true;
     }
   }
 
@@ -159,6 +254,11 @@ export function useFiles() {
 
   onScopeDispose(() => {
     isDisposed = true;
+    // 取消正在进行的上传
+    if (activeController) {
+      activeController.abort();
+      activeController = null;
+    }
     if (cleanupTimer) {
       clearTimeout(cleanupTimer);
       cleanupTimer = null;
@@ -182,8 +282,10 @@ export function useFiles() {
     uploadQueue,
     error,
     lastError,
+    isCancelled,
     fetchList,
     upload,
+    cancelUpload,
     remove,
     getDownloadUrl,
     setPage: p => (page.value = Number(p) || 1),

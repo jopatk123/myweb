@@ -11,10 +11,14 @@
             <option value="">全部类型</option>
             <option value="image">图片</option>
             <option value="video">视频</option>
+            <option value="audio">音频</option>
             <option value="word">Word</option>
             <option value="excel">Excel</option>
+            <option value="ppt">PPT</option>
+            <option value="pdf">PDF</option>
+            <option value="text">文本</option>
+            <option value="code">代码</option>
             <option value="archive">压缩包</option>
-            <option value="audio">音频</option>
             <option value="other">其他</option>
           </select>
         </div>
@@ -60,9 +64,7 @@
     <div class="file-list-container">
       <div class="file-list-header">
         <h3 class="list-title">文件列表</h3>
-        <span class="file-count" v-if="items.length > 0"
-          >共 {{ items.length }} 个文件</span
-        >
+        <span class="file-count" v-if="total > 0">共 {{ total }} 个文件</span>
       </div>
 
       <div class="file-table-wrapper">
@@ -212,10 +214,14 @@
     const icons = {
       image: '🖼️',
       video: '🎥',
+      audio: '🎵',
       word: '📝',
       excel: '📊',
+      ppt: '📽️',
+      pdf: '📄',
+      text: '📃',
+      code: '💻',
       archive: '📦',
-      audio: '🎵',
       other: '📄',
     };
     return icons[type] || '📄';

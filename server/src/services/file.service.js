@@ -7,18 +7,9 @@ import {
   buildFileUrl,
   detectTypeCategory,
   normalizeStoredPath,
-  EXTENSION_TYPE_MAP,
-  FILE_CATEGORIES,
-  MIME_TYPE_MAP,
 } from '../utils/file-metadata.js';
 
 const fileServiceLogger = logger.child('FileService');
-export {
-  detectTypeCategory,
-  FILE_CATEGORIES,
-  MIME_TYPE_MAP,
-  EXTENSION_TYPE_MAP,
-};
 
 export class FileService {
   constructor(db) {
@@ -62,7 +53,6 @@ export class FileService {
       fileUrl,
       uploaderId,
     };
-    // FileModel.create expects camelCase keys; pass payload directly
     return this.model.create(payload);
   }
 
@@ -75,31 +65,73 @@ export class FileService {
     return txn(items);
   }
 
+  /**
+   * 软删除文件：先在事务中标记 deleted_at，再异步清理磁盘文件
+   *
+   * 设计权衡：
+   * - DB 软删除是事务原子操作，确保用户立即无法访问该文件
+   * - 磁盘清理异步执行，失败仅记日志（孤儿文件可由后续清理任务处理）
+   * - 相比"先删磁盘再删 DB"，避免磁盘删除成功但 DB 删除失败导致的孤儿记录
+   * - 相比"先 DB 物理删除再删磁盘"，保留 DB 记录便于审计与磁盘清理失败时重试
+   */
   async remove(id) {
-    const file = this.get(id);
-    const filePath = file.file_path;
-
-    // 先删磁盘文件，再删数据库记录，避免 DB 已清而文件残留成孤儿文件
-    const absolutePath = toUploadsAbsolutePath(filePath);
-    if (!absolutePath) {
-      fileServiceLogger.warn('拒绝删除非上传目录文件', { path: filePath });
-    } else {
-      try {
-        await fs.unlink(absolutePath);
-      } catch (err) {
-        if (err.code !== 'ENOENT') {
-          fileServiceLogger.error('删除磁盘文件失败，已取消数据库删除', {
-            path: filePath,
-            error: err?.message,
-          });
-          const error = new Error('删除文件失败，请稍后重试');
-          error.status = 500;
-          throw error;
-        }
-      }
+    // includeDeleted=true 以便能拿到已软删记录的 filePath 进行磁盘清理
+    // （兜底场景：上次软删除成功但磁盘清理失败）
+    const file = this.model.findById(id, { includeDeleted: true });
+    if (!file) {
+      throw new NotFoundError('文件不存在');
     }
 
-    this.model.delete(id);
+    // 已软删记录直接返回，避免重复清理
+    if (file.deleted_at) {
+      return true;
+    }
+
+    // 事务内软删除：原子操作，确保用户立即无法访问
+    this.model.softDelete(id);
+
+    // 事务外异步清理磁盘文件：失败仅记日志，不影响已完成的软删除
+    this.scheduleDiskCleanup(file.file_path, id).catch(err => {
+      fileServiceLogger.error('异步清理磁盘文件失败', {
+        id,
+        path: file.file_path,
+        error: err?.message,
+      });
+    });
+
     return true;
+  }
+
+  /**
+   * 异步清理磁盘文件
+   * @param {string} storedPath 数据库中保存的相对路径
+   * @param {number} id 文件 ID（用于日志）
+   */
+  async scheduleDiskCleanup(storedPath, id) {
+    if (!storedPath) {
+      fileServiceLogger.warn('磁盘清理跳过：文件路径缺失', { id });
+      return;
+    }
+
+    const absolutePath = toUploadsAbsolutePath(storedPath);
+    if (!absolutePath) {
+      fileServiceLogger.warn('拒绝删除非上传目录文件', {
+        id,
+        path: storedPath,
+      });
+      return;
+    }
+
+    try {
+      await fs.unlink(absolutePath);
+      fileServiceLogger.debug('磁盘文件已清理', { id, path: storedPath });
+    } catch (err) {
+      if (err?.code === 'ENOENT') {
+        // 文件已不存在，无需处理
+        return;
+      }
+      // 其他错误向上抛出，由调用方记日志
+      throw err;
+    }
   }
 }

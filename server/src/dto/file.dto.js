@@ -1,6 +1,7 @@
 import Joi from 'joi';
 
-export { validateBody, validateQuery } from './wallpaper.dto.js';
+// 校验中间件统一从 common.js 导入，避免跨模块依赖（如历史上从 wallpaper.dto 导入）
+export { validateBody, validateQuery } from './common.js';
 
 /**
  * 路径参数 id 校验中间件（正整数）

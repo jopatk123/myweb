@@ -19,7 +19,12 @@
             v-html="previewHtml"
           ></div>
           <div v-else class="fallback">
-            无法预览该文件，您可以点击下方下载并在本地查看。
+            <span v-if="previewError" class="error-text">{{
+              previewError
+            }}</span>
+            <template v-else>
+              无法预览该文件，您可以点击下方下载并在本地查看。
+            </template>
             <div style="margin-top: 10px">
               <a
                 :href="previewUrl"
@@ -33,7 +38,9 @@
         </div>
         <pre v-else-if="isText" class="text-preview"
           >{{
-            previewText || '无法预览该文件，您可以点击下方下载并在本地查看。'
+            previewText ||
+            previewError ||
+            '无法预览该文件，您可以点击下方下载并在本地查看。'
           }}
         </pre>
         <div v-else class="fallback">暂不支持该类型预览</div>
@@ -49,6 +56,10 @@
   const props = defineProps({
     file: { type: Object, default: null },
   });
+
+  // 文档/表格预览的硬上限（不依赖服务端 Content-Length，避免缺失头时无防护）
+  const MAX_PREVIEW_ARRAY_BUFFER = 10 * 1024 * 1024; // 10MB（Word/Excel）
+  const MAX_PREVIEW_TEXT = 2 * 1024 * 1024; // 2MB（文本/Markdown）
 
   const typeCat = computed(() =>
     String(props.file?.typeCategory || props.file?.type_category || '')
@@ -122,26 +133,78 @@
   const loading = ref(false);
   const previewHtml = ref('');
   const previewText = ref('');
+  const previewError = ref('');
 
+  /**
+   * 流式读取响应体到 ArrayBuffer，限制最大字节数
+   * 不依赖 Content-Length 头（服务端可能未设置），通过实际读取字节数防护
+   */
   async function fetchArrayBuffer(url) {
     const resp = await fetch(url, { credentials: 'include' });
     if (!resp.ok) throw new Error('无法获取文件');
-    const size = Number(resp.headers.get('content-length') || 0);
-    if (size && size > 10 * 1024 * 1024) throw new Error('文件过大');
-    return await resp.arrayBuffer();
+
+    if (!resp.body) {
+      // 无流式支持时回退到 arrayBuffer（一次性读取）
+      const buf = await resp.arrayBuffer();
+      if (buf.byteLength > MAX_PREVIEW_ARRAY_BUFFER) {
+        throw new Error('文件过大，无法在浏览器预览');
+      }
+      return buf;
+    }
+
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_PREVIEW_ARRAY_BUFFER) {
+        reader.cancel().catch(() => {});
+        throw new Error('文件过大，无法在浏览器预览（上限 10MB）');
+      }
+      chunks.push(value);
+    }
+    return new Blob(chunks).arrayBuffer();
   }
 
+  /**
+   * 流式读取响应体到文本，限制最大字节数
+   */
   async function fetchText(url) {
     const resp = await fetch(url, { credentials: 'include' });
     if (!resp.ok) throw new Error('无法获取文件');
-    const size = Number(resp.headers.get('content-length') || 0);
-    if (size && size > 2 * 1024 * 1024) throw new Error('文件过大');
-    return await resp.text();
+
+    if (!resp.body) {
+      const text = await resp.text();
+      if (text.length > MAX_PREVIEW_TEXT) {
+        throw new Error('文件过大，无法在浏览器预览');
+      }
+      return text;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let result = '';
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_PREVIEW_TEXT) {
+        reader.cancel().catch(() => {});
+        throw new Error('文件过大，无法在浏览器预览（上限 2MB）');
+      }
+      result += decoder.decode(value, { stream: true });
+    }
+    result += decoder.decode();
+    return result;
   }
 
   async function generatePreview() {
     previewHtml.value = '';
     previewText.value = '';
+    previewError.value = '';
     if (!previewUrl.value) return;
     loading.value = true;
     try {
@@ -182,9 +245,11 @@
           previewText.value = rawText;
         }
       }
-    } catch {
+    } catch (e) {
       previewHtml.value = '';
       previewText.value = '';
+      previewError.value = e?.message || '预览生成失败';
+      console.warn('[FilePreviewWindow] 预览生成失败', e);
     } finally {
       loading.value = false;
     }
@@ -195,12 +260,11 @@
     () => props.file,
     () => {
       if (isWord.value || isExcel.value || isMarkdown.value || isText.value)
-        generatePreview().catch(e =>
-          console.warn('[FilePreviewWindow] 预览生成失败，已降级', e)
-        );
+        generatePreview();
       else {
         previewHtml.value = '';
         previewText.value = '';
+        previewError.value = '';
       }
     },
     { immediate: true }
@@ -321,5 +385,9 @@
     padding-left: 12px;
     border-left: 4px solid #cbd5e1;
     color: #475569;
+  }
+  .error-text {
+    color: #fca5a5;
+    font-size: 13px;
   }
 </style>

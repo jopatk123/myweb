@@ -12,7 +12,13 @@ function buildAuthHeaders() {
 }
 
 export const filesApi = {
-  upload(files, onUploadProgress) {
+  /**
+   * 上传文件
+   * @param {File[]} files
+   * @param {(progress:number, loaded:number, total:number)=>void} [onUploadProgress]
+   * @param {AbortSignal} [signal] 可选的 AbortSignal，用于取消上传
+   */
+  upload(files, onUploadProgress, signal) {
     const form = new FormData();
     const arr = Array.isArray(files) ? files : [files];
     for (const f of arr) form.append('file', f);
@@ -24,6 +30,7 @@ export const filesApi = {
         const pct = Math.round((e.loaded * 100) / e.total);
         onUploadProgress(pct, e.loaded, e.total);
       },
+      signal,
     });
   },
 

@@ -83,7 +83,7 @@ describe('useFiles composable', () => {
     stop();
   });
 
-  it('uploads files sequentially and refreshes list', async () => {
+  it('uploads files concurrently and refreshes list', async () => {
     vi.useFakeTimers();
     const fileA = new File(['a'], 'a.txt', { type: 'text/plain' });
     const fileB = new File(['b'], 'b.txt', { type: 'text/plain' });
@@ -125,6 +125,83 @@ describe('useFiles composable', () => {
     expect(uploadQueue.value.length).toBe(0);
     expect(uploadProgress.value).toBe(0);
     expect(uploadedBytes.value).toBe(0);
+
+    stop();
+  });
+
+  it('cancelUpload aborts in-flight uploads and marks isCancelled', async () => {
+    vi.useFakeTimers();
+    // 使用较大文件让进度百分比聚合后非零（避免 1 字节文件 30% 取整为 0）
+    const payload = 'x'.repeat(1000);
+    const fileA = new File([payload], 'a.txt', { type: 'text/plain' });
+    const fileB = new File([payload], 'b.txt', { type: 'text/plain' });
+    const fileC = new File([payload], 'c.txt', { type: 'text/plain' });
+
+    apiMocks.upload.mockImplementation(
+      (_files, onProgress, signal) =>
+        new Promise((resolve, reject) => {
+          // 触发一次进度，让 worker 进入"传输中"状态
+          onProgress(30);
+          if (signal) {
+            signal.addEventListener('abort', () => {
+              const err = new Error('canceled');
+              err.name = 'AbortError';
+              err.code = 'ERR_CANCELED';
+              reject(err);
+            });
+          }
+          // 不主动 resolve，等待 abort 触发 reject
+        })
+    );
+    apiMocks.list.mockResolvedValue({
+      code: 200,
+      success: true,
+      data: { files: [], pagination: { total: 0 } },
+    });
+
+    const {
+      upload,
+      cancelUpload,
+      isCancelled,
+      uploading,
+      uploadProgress,
+      stop,
+    } = mountUseFiles();
+
+    // 启动上传（3 个文件，并发 3）
+    const uploadPromise = upload([fileA, fileB, fileC]);
+
+    // 让 worker 进入传输中
+    await flushPromises();
+
+    expect(uploading.value).toBe(true);
+    expect(uploadProgress.value).toBeGreaterThan(0);
+
+    // 用户主动取消
+    cancelUpload();
+
+    expect(isCancelled.value).toBe(true);
+
+    await expect(uploadPromise).resolves.toBeUndefined();
+
+    // 取消后 uploading 应复位
+    expect(uploading.value).toBe(false);
+
+    // list 不应被调用（取消后不刷新列表）
+    expect(apiMocks.list).not.toHaveBeenCalled();
+
+    vi.runAllTimers();
+    await flushPromises();
+
+    stop();
+  });
+
+  it('cancelUpload is a no-op when no upload is active', () => {
+    const { cancelUpload, isCancelled, stop } = mountUseFiles();
+
+    expect(() => cancelUpload()).not.toThrow();
+    // 没有进行中的上传时，isCancelled 不应被翻转
+    expect(isCancelled.value).toBe(false);
 
     stop();
   });

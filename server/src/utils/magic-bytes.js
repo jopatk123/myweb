@@ -5,6 +5,7 @@
  * 防止攻击者通过伪造 Content-Type 上传恶意文件（MIME 欺骗攻击）。
  */
 import fs from 'fs/promises';
+import { detectTypeCategory, FILE_CATEGORIES } from './file-metadata.js';
 
 /**
  * 已知图片格式的魔数签名
@@ -40,6 +41,92 @@ const IMAGE_SIGNATURES = [
   // ICO: 00 00 01 00
   { offset: 0, bytes: [0x00, 0x00, 0x01, 0x00], mime: 'image/x-icon' },
 ];
+
+/**
+ * 压缩包格式魔数签名
+ */
+const ARCHIVE_SIGNATURES = [
+  // ZIP (含 Office OOXML 容器、jar 等): PK\x03\x04 / PK\x05\x06(空归档) / PK\x07\x08
+  {
+    offset: 0,
+    bytes: [0x50, 0x4b, 0x03, 0x04],
+    mime: 'application/zip',
+    category: FILE_CATEGORIES.ARCHIVE,
+  },
+  {
+    offset: 0,
+    bytes: [0x50, 0x4b, 0x05, 0x06],
+    mime: 'application/zip',
+    category: FILE_CATEGORIES.ARCHIVE,
+  },
+  {
+    offset: 0,
+    bytes: [0x50, 0x4b, 0x07, 0x08],
+    mime: 'application/zip',
+    category: FILE_CATEGORIES.ARCHIVE,
+  },
+  // 7z: 7z \xBC \xAF \x27 \x1C
+  {
+    offset: 0,
+    bytes: [0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c],
+    mime: 'application/x-7z-compressed',
+    category: FILE_CATEGORIES.ARCHIVE,
+  },
+  // RAR v4: Rar!\x1A\x07\x00 ; RAR v5: Rar!\x1A\x07\x01\x00
+  {
+    offset: 0,
+    bytes: [0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00],
+    mime: 'application/x-rar-compressed',
+    category: FILE_CATEGORIES.ARCHIVE,
+  },
+  {
+    offset: 0,
+    bytes: [0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00],
+    mime: 'application/vnd.rar',
+    category: FILE_CATEGORIES.ARCHIVE,
+  },
+  // gzip: \x1F \x8B
+  {
+    offset: 0,
+    bytes: [0x1f, 0x8b],
+    mime: 'application/gzip',
+    category: FILE_CATEGORIES.ARCHIVE,
+  },
+  // bzip2: BZh
+  {
+    offset: 0,
+    bytes: [0x42, 0x5a, 0x68],
+    mime: 'application/x-bzip2',
+    category: FILE_CATEGORIES.ARCHIVE,
+  },
+  // xz: \xFD 7 z X Z \x00
+  {
+    offset: 0,
+    bytes: [0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00],
+    mime: 'application/x-xz',
+    category: FILE_CATEGORIES.ARCHIVE,
+  },
+];
+
+/**
+ * PDF 魔数：%PDF-
+ */
+const PDF_SIGNATURE = {
+  offset: 0,
+  bytes: [0x25, 0x50, 0x44, 0x46, 0x2d], // %PDF-
+  mime: 'application/pdf',
+  category: FILE_CATEGORIES.PDF,
+};
+
+/**
+ * tar 格式：在 offset 257 处有 "ustar" 标识
+ */
+const TAR_SIGNATURE = {
+  offset: 257,
+  bytes: [0x75, 0x73, 0x74, 0x61, 0x72], // ustar
+  mime: 'application/x-tar',
+  category: FILE_CATEGORIES.ARCHIVE,
+};
 
 /**
  * 从文件中读取前 N 个字节
@@ -146,4 +233,94 @@ export async function assertValidImageFile(filePath, declaredMime) {
   }
 
   return detectedMime;
+}
+
+/**
+ * 验证压缩包/PDF 文件（通过魔数检测）
+ *
+ * @param {string} filePath 文件磁盘绝对路径
+ * @param {string} declaredMime 声明的 MIME 类型
+ * @returns {Promise<{ valid: boolean; detectedMime: string | null }>}
+ */
+export async function validateArchiveMagicBytes(filePath, declaredMime) {
+  let header;
+  try {
+    // tar 的 ustar 标识在 offset 257，至少读 262 字节
+    header = await readFileHeader(filePath, 262);
+  } catch (err) {
+    if (err && err.code === 'ENOENT') {
+      return { valid: false, detectedMime: null };
+    }
+    return { valid: false, detectedMime: null };
+  }
+
+  // PDF
+  if (matchesSignature(header, PDF_SIGNATURE.offset, PDF_SIGNATURE.bytes)) {
+    return { valid: true, detectedMime: PDF_SIGNATURE.mime };
+  }
+
+  // 通用压缩包
+  for (const sig of ARCHIVE_SIGNATURES) {
+    if (matchesSignature(header, sig.offset, sig.bytes)) {
+      return { valid: true, detectedMime: sig.mime };
+    }
+  }
+
+  // tar：仅在声明 MIME 为 tar 时才校验（ustar 标识在 offset 257，读取成本较高）
+  if (declaredMime === 'application/x-tar') {
+    if (matchesSignature(header, TAR_SIGNATURE.offset, TAR_SIGNATURE.bytes)) {
+      return { valid: true, detectedMime: TAR_SIGNATURE.mime };
+    }
+  }
+
+  return { valid: false, detectedMime: null };
+}
+
+/**
+ * 通用上传文件魔数校验：根据声明的 MIME 类型选择对应校验策略
+ *
+ * - 图片：走 assertValidImageFile（保留原有严格策略）
+ * - 压缩包 / PDF：走 validateArchiveMagicBytes
+ * - 其他类型（Office 文档/视频/音频/文本/代码）：暂不校验，
+ *   依赖白名单 MIME + 扩展名拦截（Office OOXML 校验复杂，且白名单已拒绝可执行类型）
+ *
+ * @param {string} filePath 文件磁盘绝对路径
+ * @param {string} declaredMime 声明的 MIME 类型
+ * @param {string} [originalName] 原始文件名（用于推断类型，当 MIME 缺失时）
+ * @throws {Error} 当文件内容与声明类型不符时抛出 status=422 错误
+ */
+export async function assertValidUploadedFile(
+  filePath,
+  declaredMime,
+  originalName = ''
+) {
+  const category = detectTypeCategory(declaredMime, originalName);
+
+  // 图片严格校验
+  if (category === FILE_CATEGORIES.IMAGE) {
+    return assertValidImageFile(filePath, declaredMime);
+  }
+
+  // 压缩包 / PDF 校验
+  if (
+    category === FILE_CATEGORIES.ARCHIVE ||
+    category === FILE_CATEGORIES.PDF
+  ) {
+    const { valid, detectedMime } = await validateArchiveMagicBytes(
+      filePath,
+      declaredMime
+    );
+    if (!valid) {
+      const err = new Error(
+        `文件内容与声称的类型不符：声称为 "${declaredMime || '未知'}"，但文件头不匹配已知压缩包/PDF 格式`
+      );
+      err.status = 422;
+      err.code = 'INVALID_FILE_CONTENT';
+      throw err;
+    }
+    return detectedMime;
+  }
+
+  // 其他类型暂不校验
+  return null;
 }

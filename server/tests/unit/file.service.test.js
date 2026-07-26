@@ -81,7 +81,7 @@ describe('FileService.create()', () => {
 });
 
 describe('FileService.remove()', () => {
-  test('returns true when stored path is outside uploads root', async () => {
+  test('skips disk cleanup when stored path is outside uploads root', async () => {
     const row = service.create({
       originalName: 'bad.txt',
       storedName: 'bad-1.txt',
@@ -98,33 +98,7 @@ describe('FileService.remove()', () => {
     expect(unlinkSpy).not.toHaveBeenCalled();
   });
 
-  test('throws on unexpected unlink errors and keeps the DB record', async () => {
-    const row = service.create({
-      originalName: 'io.txt',
-      storedName: 'io-1.txt',
-      filePath: 'uploads/files/io-1.txt',
-      mimeType: 'text/plain',
-      fileSize: 1,
-      uploaderId: 'u6',
-    });
-
-    const unlinkSpy = jest
-      .spyOn(fs, 'unlink')
-      .mockRejectedValueOnce(
-        Object.assign(new Error('permission denied'), { code: 'EACCES' })
-      );
-    const modelDeleteSpy = jest.spyOn(service.model, 'delete');
-
-    await expect(service.remove(row.id)).rejects.toMatchObject({
-      message: '删除文件失败，请稍后重试',
-      status: 500,
-    });
-    expect(unlinkSpy).toHaveBeenCalled();
-    expect(modelDeleteSpy).not.toHaveBeenCalled();
-    expect(service.get(row.id)).toBeTruthy();
-  });
-
-  test('deletes disk file before DB record to prevent orphaned files', async () => {
+  test('soft deletes DB record first, then cleans disk file', async () => {
     const row = service.create({
       originalName: 'order.txt',
       storedName: 'order-1.txt',
@@ -138,18 +112,96 @@ describe('FileService.remove()', () => {
     const unlinkSpy = jest.spyOn(fs, 'unlink').mockImplementation(async () => {
       callOrder.push('unlink');
     });
-    const modelDeleteSpy = jest
-      .spyOn(service.model, 'delete')
+    const softDeleteSpy = jest
+      .spyOn(service.model, 'softDelete')
       .mockImplementation(() => {
-        callOrder.push('dbDelete');
+        callOrder.push('softDelete');
+        return { changes: 1 };
       });
 
     await service.remove(row.id);
 
-    expect(callOrder).toEqual(['unlink', 'dbDelete']);
+    // 软删除先发生（同步），磁盘清理随后（异步）
+    expect(callOrder).toEqual(['softDelete', 'unlink']);
 
     unlinkSpy.mockRestore();
-    modelDeleteSpy.mockRestore();
+    softDeleteSpy.mockRestore();
+  });
+
+  test('completes soft delete even when disk cleanup fails', async () => {
+    const row = service.create({
+      originalName: 'io.txt',
+      storedName: 'io-1.txt',
+      filePath: 'uploads/files/io-1.txt',
+      mimeType: 'text/plain',
+      fileSize: 1,
+      uploaderId: 'u6',
+    });
+
+    // 磁盘清理失败（非 ENOENT），软删除仍应完成
+    const unlinkSpy = jest
+      .spyOn(fs, 'unlink')
+      .mockRejectedValueOnce(
+        Object.assign(new Error('permission denied'), { code: 'EACCES' })
+      );
+
+    const result = await service.remove(row.id);
+
+    expect(result).toBe(true);
+    expect(unlinkSpy).toHaveBeenCalled();
+
+    // 软删除已生效：默认查询应抛 NotFoundError
+    expect(() => service.get(row.id)).toThrow('文件不存在');
+    // 但 includeDeleted 查询应能拿到（保留记录便于审计/重试）
+    const softDeleted = service.model.findById(row.id, {
+      includeDeleted: true,
+    });
+    expect(softDeleted).toBeTruthy();
+    expect(softDeleted.deleted_at).not.toBeNull();
+  });
+
+  test('returns true without re-cleaning when file is already soft-deleted', async () => {
+    const row = service.create({
+      originalName: 'twice.txt',
+      storedName: 'twice-1.txt',
+      filePath: 'uploads/files/twice-1.txt',
+      mimeType: 'text/plain',
+      fileSize: 1,
+      uploaderId: 'u8',
+    });
+
+    await service.remove(row.id);
+
+    // 第二次删除：不应再次触发磁盘清理，且应幂等返回 true
+    const unlinkSpy = jest.spyOn(fs, 'unlink').mockResolvedValue(undefined);
+    const result = await service.remove(row.id);
+
+    expect(result).toBe(true);
+    expect(unlinkSpy).not.toHaveBeenCalled();
+    unlinkSpy.mockRestore();
+  });
+
+  test('ignores ENOENT during disk cleanup (file already gone)', async () => {
+    const row = service.create({
+      originalName: 'ghost.txt',
+      storedName: 'ghost-1.txt',
+      filePath: 'uploads/files/ghost-1.txt',
+      mimeType: 'text/plain',
+      fileSize: 1,
+      uploaderId: 'u9',
+    });
+
+    const unlinkSpy = jest
+      .spyOn(fs, 'unlink')
+      .mockRejectedValueOnce(
+        Object.assign(new Error('not found'), { code: 'ENOENT' })
+      );
+
+    const result = await service.remove(row.id);
+
+    expect(result).toBe(true);
+    expect(unlinkSpy).toHaveBeenCalled();
+    unlinkSpy.mockRestore();
   });
 });
 

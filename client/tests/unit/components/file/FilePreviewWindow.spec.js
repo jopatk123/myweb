@@ -146,4 +146,94 @@ describe('FilePreviewWindow', () => {
 
     expect(getByText('暂不支持该类型预览')).toBeTruthy();
   });
+
+  it('shows error text when text preview fetch fails', async () => {
+    fetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: { get: () => null },
+    });
+
+    const { findByText } = render(FilePreviewWindow, {
+      props: {
+        file: mkFile({
+          originalName: 'missing.txt',
+          typeCategory: 'text',
+          mimeType: 'text/plain',
+          fileUrl: '/uploads/missing.txt',
+        }),
+      },
+    });
+
+    expect(await findByText('无法获取文件')).toBeTruthy();
+  });
+
+  it('streams text preview and rejects when exceeding size limit', async () => {
+    // 构造一个会超过 2MB 文本上限的 ReadableStream
+    const oversizedChunk = new Uint8Array(3 * 1024 * 1024); // 3MB
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(oversizedChunk);
+        controller.close();
+      },
+    });
+
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      body: stream,
+    });
+
+    const { container } = render(FilePreviewWindow, {
+      props: {
+        file: mkFile({
+          originalName: 'huge.txt',
+          typeCategory: 'text',
+          mimeType: 'text/plain',
+          fileUrl: '/uploads/huge.txt',
+        }),
+      },
+    });
+
+    await waitFor(() => {
+      const pre = container.querySelector('pre');
+      expect(pre?.textContent || '').toContain('文件过大');
+    });
+  });
+
+  it('streams array buffer and rejects when exceeding size limit', async () => {
+    // Word 文档走 fetchArrayBuffer，上限 10MB
+    const oversizedChunk = new Uint8Array(11 * 1024 * 1024); // 11MB
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(oversizedChunk);
+        controller.close();
+      },
+    });
+
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      body: stream,
+    });
+
+    const { container } = render(FilePreviewWindow, {
+      props: {
+        file: mkFile({
+          originalName: 'huge.docx',
+          typeCategory: 'word',
+          mimeType:
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          fileUrl: '/uploads/huge.docx',
+        }),
+      },
+    });
+
+    await waitFor(() => {
+      const errEl = container.querySelector('.error-text');
+      expect(errEl?.textContent || '').toContain('文件过大');
+    });
+  });
 });

@@ -3,7 +3,7 @@ import {
   FILE_CATEGORIES,
   MIME_TYPE_MAP,
   EXTENSION_TYPE_MAP,
-} from '../src/services/file.service.js';
+} from '../src/utils/file-metadata.js';
 
 describe('file.service - detectTypeCategory', () => {
   describe('MIME type detection', () => {

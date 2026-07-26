@@ -1,16 +1,3 @@
-/**
- * 文件类型分类枚举
- */
-export const FILE_CATEGORIES = {
-  IMAGE: 'image',
-  VIDEO: 'video',
-  AUDIO: 'audio',
-  WORD: 'word',
-  EXCEL: 'excel',
-  PPT: 'ppt',
-  PDF: 'pdf',
-  TEXT: 'text',
-  CODE: 'code',
-  ARCHIVE: 'archive',
-  OTHER: 'other',
-};
+// 文件类型分类枚举的单一真相源在 shared/fileTypes.js
+// 此处仅做 re-export 以保持现有导入路径不变
+export { FILE_CATEGORIES } from '@shared/fileTypes.js';
