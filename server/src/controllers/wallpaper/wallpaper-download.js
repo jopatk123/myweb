@@ -40,7 +40,17 @@ export async function streamWallpaperDownload(res, wallpapers) {
     const singleName = wallpaper.original_name || `wallpaper_${wallpaper.id}`;
     res.setHeader('Content-Disposition', buildContentDisposition(singleName));
     res.setHeader('Content-Type', wallpaper.mime_type || 'image/jpeg');
-    createReadStream(filePath).pipe(res);
+    const singleStream = createReadStream(filePath);
+    singleStream.on('error', err => {
+      downloadLogger.error('单文件下载流错误', {
+        id: wallpaper.id,
+        filePath,
+        error: err?.message || err,
+      });
+      // headers 已发送，只能终止响应避免客户端挂起
+      res.destroy();
+    });
+    singleStream.pipe(res);
     return;
   }
 
@@ -82,6 +92,9 @@ export async function streamWallpaperDownload(res, wallpapers) {
     downloadLogger.error('Archive error', err);
     if (!res.headersSent) {
       res.status(500).json({ code: 500, message: 'ZIP 打包失败' });
+    } else {
+      // headers 已发送，无法再返回错误码，直接终止响应避免客户端挂起
+      res.destroy();
     }
   });
 

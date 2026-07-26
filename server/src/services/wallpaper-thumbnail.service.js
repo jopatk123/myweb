@@ -149,10 +149,14 @@ export class WallpaperThumbnailManager {
       regenerate = true;
     }
 
+    // 仅由"实际执行生成"的请求记录缓存路径，
+    // 命中缓存或等待并发锁的请求无需重复写 DB。
+    let freshlyGenerated = false;
     if (regenerate) {
       if (this.#generationLocks.has(cachedPath)) {
         await this.#generationLocks.get(cachedPath);
       } else {
+        freshlyGenerated = true;
         const task = generateThumbnailToFile(
           originalPath,
           cachedPath,
@@ -171,7 +175,9 @@ export class WallpaperThumbnailManager {
     }
 
     const thumbStats = await fs.stat(cachedPath);
-    this.wallpaperModel.trackThumbnailCache(wallpaper.id, cachedRelativePath);
+    if (freshlyGenerated) {
+      this.wallpaperModel.trackThumbnailCache(wallpaper.id, cachedRelativePath);
+    }
     const etag = `W/"${thumbStats.size}-${Math.round(thumbStats.mtimeMs)}"`;
 
     return {

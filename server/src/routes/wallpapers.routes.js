@@ -2,12 +2,15 @@ import express from 'express';
 import { WallpaperController } from '../controllers/wallpaper.controller.js';
 import {
   validateBody,
+  validateQuery,
   uploadWallpaperSchema,
   deleteWallpapersSchema,
   moveWallpapersSchema,
   updateGroupSchema,
   createGroupSchema,
   updateWallpaperSchema,
+  downloadWallpapersSchema,
+  listWallpapersQuerySchema,
 } from '../dto/wallpaper.dto.js';
 
 export function createWallpaperRoutes(db) {
@@ -15,7 +18,9 @@ export function createWallpaperRoutes(db) {
   const controller = new WallpaperController(db);
 
   // 壁纸路由
-  router.get('/', (req, res, next) => controller.getWallpapers(req, res, next));
+  router.get('/', validateQuery(listWallpapersQuerySchema), (req, res, next) =>
+    controller.getWallpapers(req, res, next)
+  );
   router.get('/active', (req, res, next) =>
     controller.getActiveWallpaper(req, res, next)
   );
@@ -44,8 +49,10 @@ export function createWallpaperRoutes(db) {
   router.put('/move', validateBody(moveWallpapersSchema), (req, res, next) =>
     controller.moveWallpapers(req, res, next)
   );
-  router.post('/download', (req, res, next) =>
-    controller.downloadWallpapers(req, res, next)
+  router.post(
+    '/download',
+    validateBody(downloadWallpapersSchema),
+    (req, res, next) => controller.downloadWallpapers(req, res, next)
   );
 
   router.put(

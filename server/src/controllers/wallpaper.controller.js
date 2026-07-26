@@ -6,6 +6,9 @@ import { createUploader, imageOnlyFilter } from '../utils/uploader.js';
 import { DEFAULT_WALLPAPER_MAX_SIZE } from '../constants/limits.js';
 import { WALLPAPERS_DIR, toUploadsRelativePath } from '../utils/upload-path.js';
 import { streamWallpaperDownload } from './wallpaper/wallpaper-download.js';
+import logger from '../utils/logger.js';
+
+const controllerLogger = logger.child('WallpaperController');
 
 function sanitizePositiveIds(ids) {
   if (!Array.isArray(ids) || ids.length === 0) return [];
@@ -83,7 +86,16 @@ export class WallpaperController {
       });
 
       const stream = createReadStream(filePath);
-      stream.on('error', error => next(error));
+      stream.on('error', error => {
+        // headers 已发送，无法再走 next(error) 返回错误响应，
+        // 只能记录日志并终止流，避免客户端挂起及 "headers already sent" 噪声。
+        controllerLogger.error('缩略图流读取错误', {
+          id,
+          filePath,
+          error: error?.message || error,
+        });
+        res.destroy();
+      });
       return stream.pipe(res);
     } catch (error) {
       next(error);

@@ -9,7 +9,12 @@ const RANDOM_THROTTLE_MS = 1000;
  * 壁纸预加载队列与随机切换。
  * 预加载根据分组键缓存，切换时优先消费缓存以减少切换抖动。
  */
-export function createWallpaperRandom({ currentGroup, loading, error }) {
+export function createWallpaperRandom({
+  currentGroup,
+  loading,
+  error,
+  activeWallpaper,
+}) {
   const preloadedWallpapers = ref([]);
   const isPreloading = ref(false);
 
@@ -63,12 +68,20 @@ export function createWallpaperRandom({ currentGroup, loading, error }) {
 
   // 拿到随机壁纸后，显式调用 PUT /:id/active 切换活跃状态。
   // 后端 GET /random 已改为无副作用，前端需自行触发切换。
-  // 异步执行，不阻塞主流程；失败仅警告，不影响壁纸显示。
+  // 异步执行，不阻塞主流程；成功后同步本地 activeWallpaper 状态，
+  // 失败仅警告，不影响壁纸显示。
   function applyActiveWallpaper(wallpaper) {
     if (wallpaper?.id == null) return;
-    wallpaperApi.setActiveWallpaper(wallpaper.id).catch(err => {
-      console.warn('设置活跃壁纸失败:', err);
-    });
+    wallpaperApi
+      .setActiveWallpaper(wallpaper.id)
+      .then(() => {
+        if (activeWallpaper) {
+          activeWallpaper.value = wallpaper;
+        }
+      })
+      .catch(err => {
+        console.warn('设置活跃壁纸失败:', err);
+      });
   }
 
   async function randomWallpaper(groupId = null) {
@@ -109,11 +122,11 @@ export function createWallpaperRandom({ currentGroup, loading, error }) {
   }
 
   let lastRandomTime = 0;
-  function randomWallpaperThrottled() {
+  function randomWallpaperThrottled(groupId = null) {
     const now = Date.now();
     if (now - lastRandomTime < RANDOM_THROTTLE_MS) return;
     lastRandomTime = now;
-    return randomWallpaper();
+    return randomWallpaper(groupId);
   }
 
   return {

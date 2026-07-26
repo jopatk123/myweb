@@ -43,7 +43,12 @@ export function useWallpaper() {
     fetchActiveWallpaper: query.fetchActiveWallpaper,
   });
 
-  const random = createWallpaperRandom({ currentGroup, loading, error });
+  const random = createWallpaperRandom({
+    currentGroup,
+    loading,
+    error,
+    activeWallpaper,
+  });
 
   const hasWallpapers = computed(() => wallpapers.value.length > 0);
   const hasGroups = computed(() => groups.value.length > 0);
