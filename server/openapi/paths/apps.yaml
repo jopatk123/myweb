@@ -1,3 +1,8 @@
+# 应用模块 API 路径定义
+#
+# 所有路由均挂在 /api/apps 下，并需通过 requireAppAuth 中间件鉴权。
+# 请求体字段使用 camelCase（服务端 case-helper 中间件归一化）。
+
 list:
   get:
     summary: List apps
@@ -26,7 +31,10 @@ list:
         description: OK
   post:
     summary: Create app
-    description: Create a new app.
+    description: |
+      Create a new app.
+      slug 由服务端根据 name 自动生成（若发生冲突会追加 -2/-3... 后缀），
+      客户端即便传 slug 也会被丢弃。
     tags:
       - Apps
     requestBody:
@@ -38,6 +46,7 @@ list:
     responses:
       '201':
         description: Created
+
 byId:
   get:
     summary: Get app by id
@@ -53,9 +62,14 @@ byId:
     responses:
       '200':
         description: OK
+      '404':
+        description: App not found
   put:
     summary: Update app
-    description: Update an app by numeric id.
+    description: |
+      Update an app by numeric id.
+      内置应用（is_builtin=true）禁止编辑，控制器会返回 403。
+      is_builtin 字段不可通过 API 修改。
     tags:
       - Apps
     parameters:
@@ -72,9 +86,16 @@ byId:
     responses:
       '200':
         description: OK
+      '403':
+        description: Built-in apps cannot be edited
+      '404':
+        description: App not found
   delete:
     summary: Delete app
-    description: Delete an app by numeric id.
+    description: |
+      Delete an app by numeric id（硬删除）。
+      若被删除应用的图标没有被其它应用引用，会同步清理图标文件。
+      内置应用禁止删除。
     tags:
       - Apps
     parameters:
@@ -104,20 +125,19 @@ visibleById:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              visible:
-                type: boolean
-            required:
-              - visible
+            $ref: '../components/schemas/app.yaml#/AppSetVisible'
     responses:
       '200':
         description: Updated
+      '404':
+        description: App not found
 
 autostartById:
   put:
     summary: Set app autostart
-    description: Update the autostart state for one app by numeric id or slug.
+    description: |
+      Update the autostart state for one app by numeric id or slug.
+      路径参数 id 既可以是数字（按主键查询），也可以是 slug 字符串。
     tags:
       - Apps
     parameters:
@@ -126,25 +146,26 @@ autostartById:
         required: true
         schema:
           type: string
+          description: 数字 id 或 slug
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              isAutostart:
-                type: boolean
-            required:
-              - isAutostart
+            $ref: '../components/schemas/app.yaml#/AppSetAutostart'
     responses:
       '200':
         description: Updated
+      '404':
+        description: App not found
 
 bulkVisible:
   put:
     summary: Update visibility for multiple apps
-    description: Set the visible state for multiple apps in one request.
+    description: |
+      Set the visible state for multiple apps in one request.
+      响应 data 字段返回 { updated: N }，表示实际被更新的应用数
+      （不存在的应用 id 不会计入）。
     tags:
       - Apps
     requestBody:
@@ -152,17 +173,7 @@ bulkVisible:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              ids:
-                type: array
-                items:
-                  type: integer
-              visible:
-                type: boolean
-            required:
-              - ids
-              - visible
+            $ref: '../components/schemas/app.yaml#/AppBulkVisible'
     responses:
       '200':
         description: Updated
@@ -170,7 +181,10 @@ bulkVisible:
 move:
   put:
     summary: Move apps to a group
-    description: Move multiple apps to a target group.
+    description: |
+      Move multiple apps to a target group.
+      targetGroupId 为 null 表示移动到无分组；若提供则必须为已存在且未删除的分组 id。
+      响应 data 字段返回 { moved: N }，表示实际被移动的应用数。
     tags:
       - Apps
     requestBody:
@@ -178,27 +192,21 @@ move:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              ids:
-                type: array
-                items:
-                  type: integer
-              targetGroupId:
-                oneOf:
-                  - type: integer
-                  - type: 'null'
-            required:
-              - ids
-              - targetGroupId
+            $ref: '../components/schemas/app.yaml#/AppMove'
     responses:
       '200':
         description: Updated
+      '404':
+        description: Target group not found
 
 iconUpload:
   post:
     summary: Upload custom app icon
-    description: Upload one custom icon file for app creation or editing.
+    description: |
+      Upload one custom icon file for app creation or editing.
+      仅支持 JPEG / PNG / GIF / WebP / BMP / TIFF / AVIF / ICO，
+      通过 MIME 过滤 + 魔数双重校验；不支持 SVG（SVG 无可靠的 magic bytes）。
+      大小受 APP_ICON_MAX_UPLOAD_SIZE 限制（默认 5MB）。
     tags:
       - Apps
     requestBody:
@@ -216,11 +224,20 @@ iconUpload:
     responses:
       '201':
         description: Created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: string
+      '400':
+        description: Invalid file type or size exceeded
 
 groupsAll:
   get:
     summary: List app groups
-    description: Return all app groups.
+    description: Return all app groups (excluding soft-deleted).
     tags:
       - Apps
     responses:
@@ -230,7 +247,10 @@ groupsAll:
 groups:
   post:
     summary: Create app group
-    description: Create a new app group.
+    description: |
+      Create a new app group.
+      不允许调用方设置 isDefault（API schema 已剔除该字段），
+      默认分组由服务端维护唯一性。
     tags:
       - Apps
     requestBody:
@@ -238,14 +258,7 @@ groups:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              name:
-                type: string
-              isDefault:
-                type: boolean
-            required:
-              - name
+            $ref: '../components/schemas/app.yaml#/AppGroupCreate'
     responses:
       '201':
         description: Created
@@ -253,7 +266,9 @@ groups:
 groupById:
   put:
     summary: Update app group
-    description: Update an app group by id.
+    description: |
+      Update an app group by id.
+      不允许通过 API 修改 isDefault。
     tags:
       - Apps
     parameters:
@@ -266,18 +281,16 @@ groupById:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              name:
-                type: string
-              isDefault:
-                type: boolean
+            $ref: '../components/schemas/app.yaml#/AppGroupUpdate'
     responses:
       '200':
         description: Updated
   delete:
     summary: Delete app group
-    description: Delete an app group by id.
+    description: |
+      Delete an app group by id（软删除）。
+      默认分组（is_default=1）不可删除，会返回 400。
+      删除分组前会把其下未软删的应用移动到默认分组（事务保证原子性）。
     tags:
       - Apps
     parameters:
@@ -289,3 +302,5 @@ groupById:
     responses:
       '200':
         description: Deleted
+      '400':
+        description: Default group cannot be deleted

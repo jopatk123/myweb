@@ -1,24 +1,161 @@
+# 应用模块请求体 schema
+#
+# 注意：服务端 [middleware/case-helper.js](../../../src/utils/case-helper.js)
+# 会把请求体键名归一化为 camelCase，因此客户端发送的字段名应使用 camelCase
+# （如 iconFilename / targetUrl / groupId / isAutostart / isVisible / presetIcon）。
+# slug 由服务端根据 name 自动生成，客户端即便传 slug 也会被丢弃。
+
 AppCreate:
   type: object
   properties:
     name:
       type: string
-    slug:
-      type: string
+      minLength: 1
+      maxLength: 100
+      description: 应用名称（必填）
     description:
       type: string
-    icon_filename:
+      description: 应用描述
+    targetUrl:
       type: string
+      format: uri
+      nullable: true
+      description: 第三方应用的跳转 URL；内置组件型应用可留空
+    iconFilename:
+      type: string
+      nullable: true
+      description: 已上传的图标文件名（来自 /api/apps/icons/upload）
+    presetIcon:
+      type: string
+      nullable: true
+      description: 预选图标文件名，服务端会复制到 uploads 目录
+    groupId:
+      type: integer
+      nullable: true
+      description: 所属分组 id；为空表示无分组
+    isVisible:
+      type: boolean
+      default: true
+      description: 是否在桌面可见
+    isAutostart:
+      type: boolean
+      default: false
+      description: 是否随桌面启动自动打开
   required:
     - name
-    - slug
+  additionalProperties: false
 
 AppUpdate:
   type: object
   properties:
     name:
       type: string
-    slug:
-      type: string
+      minLength: 1
+      maxLength: 100
     description:
       type: string
+    targetUrl:
+      type: string
+      format: uri
+      nullable: true
+    iconFilename:
+      type: string
+      nullable: true
+    presetIcon:
+      type: string
+      nullable: true
+    groupId:
+      type: integer
+      nullable: true
+    isVisible:
+      type: boolean
+    isAutostart:
+      type: boolean
+  additionalProperties: false
+  # 内置应用不允许通过 API 更新，控制器会返回 403
+
+AppSetVisible:
+  type: object
+  properties:
+    visible:
+      type: boolean
+  required:
+    - visible
+  additionalProperties: false
+
+AppSetAutostart:
+  type: object
+  properties:
+    isAutostart:
+      type: boolean
+  required:
+    - isAutostart
+  additionalProperties: false
+
+AppBulkVisible:
+  type: object
+  properties:
+    ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+        minimum: 1
+      minItems: 1
+    visible:
+      type: boolean
+  required:
+    - ids
+    - visible
+  additionalProperties: false
+
+AppMove:
+  type: object
+  properties:
+    ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+        minimum: 1
+      minItems: 1
+    targetGroupId:
+      type: integer
+      format: int64
+      minimum: 1
+      nullable: true
+      description: 目标分组 id；为 null 表示移动到无分组
+  required:
+    - ids
+  additionalProperties: false
+
+AppGroupCreate:
+  type: object
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 100
+  required:
+    - name
+  additionalProperties: false
+  # 不允许调用方设置 isDefault；默认分组由服务端维护唯一性
+
+AppGroupUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 100
+  additionalProperties: false
+
+AppIconUploadResponse:
+  type: object
+  properties:
+    filename:
+      type: string
+      description: 上传后的图标文件名（UUID + 原扩展名）
+  required:
+    - filename
+  additionalProperties: false

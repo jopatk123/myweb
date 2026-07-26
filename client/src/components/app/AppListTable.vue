@@ -27,7 +27,7 @@
           </td>
           <td>
             <img
-              v-if="app.icon_filename || app.iconFilename"
+              v-if="app.iconFilename"
               :src="getAppIconUrl(app)"
               alt="icon"
               class="icon"
@@ -35,13 +35,13 @@
             <span v-else class="icon placeholder">—</span>
           </td>
           <td>{{ app.name }}</td>
-          <td>{{ (app.isBuiltin ?? app.is_builtin) ? '内置' : '第三方' }}</td>
-          <td>{{ displayGroupName(app.groupId || app.group_id) }}</td>
+          <td>{{ app.isBuiltin ? '内置' : '第三方' }}</td>
+          <td>{{ displayGroupName(app.groupId) }}</td>
           <td>
             <label class="switch">
               <input
                 type="checkbox"
-                :checked="!!(app.isVisible ?? app.is_visible)"
+                :checked="!!app.isVisible"
                 @change="$emit('toggle-visible', app, $event.target.checked)"
               />
               <span class="slider"></span>
@@ -51,7 +51,7 @@
             <label class="switch">
               <input
                 type="checkbox"
-                :checked="!!(app.isAutostart ?? app.is_autostart)"
+                :checked="!!app.isAutostart"
                 @change="$emit('toggle-autostart', app, $event.target.checked)"
               />
               <span class="slider"></span>
@@ -62,7 +62,7 @@
               class="btn btn-sm btn-secondary"
               :disabled="isBuiltin(app)"
               :title="isBuiltin(app) ? '内置应用不可编辑' : '编辑'"
-              @click="!isBuiltin(app) && $emit('edit', app)"
+              @click="$emit('edit', app)"
             >
               编辑
             </button>
@@ -70,7 +70,7 @@
               class="btn btn-sm btn-danger"
               :disabled="isBuiltin(app)"
               :title="isBuiltin(app) ? '内置应用不可删除' : '删除'"
-              @click="!isBuiltin(app) && $emit('delete', app.id)"
+              @click="$emit('delete', app.id)"
             >
               删除
             </button>
@@ -113,10 +113,7 @@
   ]);
 
   const isBuiltin = app => {
-    return (
-      (app.isBuiltin ?? app.is_builtin) === 1 ||
-      (app.isBuiltin ?? app.is_builtin) === true
-    );
+    return app.isBuiltin === 1 || app.isBuiltin === true;
   };
 
   const displayGroupName = groupId => {

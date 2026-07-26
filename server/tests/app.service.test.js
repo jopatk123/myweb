@@ -138,6 +138,21 @@ test('copyPresetIcon throws when icon missing', async () => {
   );
 });
 
+test('copyPresetIcon does not copy from uploadsDir (Q2 regression)', async () => {
+  // Q2 修复：copyPresetIcon 只在 publicIconsDir / presetIconsDir 中查找，
+  // 不应从 uploadsDir（其它用户上传过的图标）中复制。
+  // 即使 uploadsDir 中存在同名文件，也应抛出「文件不存在」错误。
+  const uploadedIconPath = path.join(
+    service.uploadsDir,
+    'uploaded-by-other.svg'
+  );
+  await fs.writeFile(uploadedIconPath, '<svg></svg>');
+
+  await expect(service.copyPresetIcon('uploaded-by-other.svg')).rejects.toThrow(
+    '预选图标文件不存在: uploaded-by-other.svg'
+  );
+});
+
 test('deleteIconFileIfExists handles existing and missing files', async () => {
   const filePath = path.join(service.uploadsDir, 'to-remove.png');
   await fs.writeFile(filePath, 'test');

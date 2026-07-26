@@ -2,6 +2,7 @@
  * 应用分组模型（单分组）
  */
 import logger from '../utils/logger.js';
+import { ValidationError } from '../utils/errors.js';
 
 const groupLogger = logger.child('AppGroupModel');
 
@@ -76,6 +77,14 @@ export class AppGroupModel {
       params.push(slug);
     }
     if (is_default !== undefined) {
+      // 维护默认分组唯一不变量：设新默认时取消其它默认分组
+      if (is_default) {
+        this.db
+          .prepare(
+            'UPDATE app_groups SET is_default = 0, updated_at = CURRENT_TIMESTAMP WHERE is_default = 1 AND id != ?'
+          )
+          .run(id);
+      }
       fields.push('is_default = ?');
       params.push(is_default ? 1 : 0);
     }
@@ -88,39 +97,38 @@ export class AppGroupModel {
   }
 
   softDelete(id) {
-    // 删除分组前：
-    // 1) 不允许删除默认分组（is_default = 1）
-    // 2) 确保存在默认分组（若不存在则创建），并把要删除分组下的应用移动到默认分组
-    const row = this.db
-      .prepare('SELECT id, is_default FROM app_groups WHERE id = ?')
-      .get(id);
-    if (!row) return false;
-    if (row.is_default) {
-      const err = new Error('默认分组不可删除');
-      err.status = 400;
-      throw err;
-    }
+    // 整体事务化，避免「应用已搬走但分组未软删」的不一致状态
+    const tx = this.db.transaction(() => {
+      // 删除分组前：
+      // 1) 不允许删除默认分组（is_default = 1）
+      // 2) 确保存在默认分组（若不存在则创建），并把要删除分组下的应用移动到默认分组
+      const row = this.db
+        .prepare('SELECT id, is_default FROM app_groups WHERE id = ?')
+        .get(id);
+      if (!row) return false;
+      if (row.is_default) {
+        throw new ValidationError('默认分组不可删除');
+      }
 
-    // 查找默认分组 id
-    let def = this.db
-      .prepare('SELECT id FROM app_groups WHERE is_default = 1')
-      .get();
-    let defaultId = def ? def.id : null;
-    if (!defaultId) {
-      // 若缺失默认分组，则创建一个
-      const insert = this.db
-        .prepare(
-          'INSERT INTO app_groups (name, slug, is_default) VALUES (?,?,?)'
-        )
-        .run('默认', 'default', 1);
-      defaultId = insert.lastInsertRowid;
-      groupLogger.info('[softDelete] created default group', { defaultId });
-    }
+      // 查找默认分组 id
+      let def = this.db
+        .prepare('SELECT id FROM app_groups WHERE is_default = 1')
+        .get();
+      let defaultId = def ? def.id : null;
+      if (!defaultId) {
+        // 若缺失默认分组，则创建一个
+        const insert = this.db
+          .prepare(
+            'INSERT INTO app_groups (name, slug, is_default) VALUES (?,?,?)'
+          )
+          .run('默认', 'default', 1);
+        defaultId = insert.lastInsertRowid;
+        groupLogger.info('[softDelete] created default group', { defaultId });
+      }
 
-    // 将属于该分组的应用移动到默认分组
-    try {
+      // 将属于该分组的应用移动到默认分组（仅限未软删应用）
       const upd = this.db.prepare(
-        'UPDATE apps SET group_id = ? WHERE group_id = ?'
+        'UPDATE apps SET group_id = ? WHERE group_id = ? AND deleted_at IS NULL'
       );
       const infoUpd = upd.run(defaultId, id);
       groupLogger.info('[softDelete] moved apps to default group', {
@@ -128,25 +136,23 @@ export class AppGroupModel {
         fromGroup: id,
         toDefault: defaultId,
       });
-    } catch (e) {
-      groupLogger.warn('[softDelete] failed to move apps', {
-        error: e?.message || String(e),
-      });
-    }
 
-    // 标记软删除
-    const sql = `
-      UPDATE app_groups
-      SET deleted_at = CURRENT_TIMESTAMP,
-          is_default = CASE WHEN is_default = 1 THEN 0 ELSE is_default END,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `;
-    const info = this.db.prepare(sql).run(id);
-    groupLogger.info('[softDelete] soft-deleted group', {
-      id,
-      changes: info.changes,
+      // 标记软删除
+      const sql = `
+        UPDATE app_groups
+        SET deleted_at = CURRENT_TIMESTAMP,
+            is_default = CASE WHEN is_default = 1 THEN 0 ELSE is_default END,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+      const info = this.db.prepare(sql).run(id);
+      groupLogger.info('[softDelete] soft-deleted group', {
+        id,
+        changes: info.changes,
+      });
+      return info.changes === undefined ? true : info.changes;
     });
-    return info.changes === undefined ? true : info.changes;
+
+    return tx();
   }
 }

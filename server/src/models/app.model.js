@@ -122,13 +122,13 @@ export class AppModel extends BaseModel {
   }
 
   setVisible(id, visible) {
-    const sql = `UPDATE apps SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    const sql = `UPDATE apps SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL`;
     this.db.prepare(sql).run(visible ? 1 : 0, id);
     return this.findById(id);
   }
 
   setAutostart(id, autostart) {
-    const sql = `UPDATE apps SET is_autostart = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    const sql = `UPDATE apps SET is_autostart = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL`;
     this.db.prepare(sql).run(autostart ? 1 : 0, id);
     return this.findById(id);
   }
@@ -162,7 +162,7 @@ export class AppModel extends BaseModel {
 
   moveToGroup(ids, targetGroupId) {
     const placeholders = ids.map(() => '?').join(',');
-    const sql = `UPDATE apps SET group_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`;
+    const sql = `UPDATE apps SET group_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders}) AND deleted_at IS NULL`;
     const info = this.db.prepare(sql).run(targetGroupId, ...ids);
     appModelLogger.debug('moveToGroup', {
       params: [targetGroupId, ...ids],

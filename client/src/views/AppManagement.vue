@@ -116,6 +116,8 @@
     updateGroup,
     deleteGroup,
     moveApps,
+    setPage,
+    setLimit,
   } = useApps();
 
   const keyword = ref('');
@@ -218,14 +220,9 @@
       await setAutostart(app.id, checked);
       await reloadApps();
     } catch (e) {
-      console.error('[AppManagement] onToggleAutostart error', e);
       showError(e?.message || '设置自启动失败');
     }
   }
-
-  // 分页控制
-  const setPage = p => (page.value = p);
-  const setLimit = l => (limit.value = l);
 
   async function prevPage() {
     if (page.value <= 1) return;

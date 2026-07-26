@@ -1,5 +1,6 @@
 import { createTestDatabase, closeTestDatabase } from '../helpers/test-db.js';
 import { AppGroupModel } from '../../src/models/app-group.model.js';
+import { ValidationError } from '../../src/utils/errors.js';
 
 describe('AppGroupModel', () => {
   let db;
@@ -132,6 +133,32 @@ describe('AppGroupModel', () => {
       const updated = model.update(g.id, { is_default: 1 });
       expect(updated.is_default).toBe(1);
     });
+
+    test('setting is_default=true clears other default groups (D6 invariant)', () => {
+      // D6 修复：update 时维护默认分组唯一不变量
+      const defaultGroup = model.findAll().find(g => g.is_default === 1);
+      expect(defaultGroup).toBeDefined();
+
+      const newDefault = model.create({
+        name: '新默认',
+        slug: 'new-default-u',
+      });
+      model.update(newDefault.id, { is_default: 1 });
+
+      // 旧默认分组应被取消默认
+      const oldDefault = model.findById(defaultGroup.id);
+      expect(oldDefault.is_default).toBe(0);
+
+      // 新默认应生效
+      const updated = model.findById(newDefault.id);
+      expect(updated.is_default).toBe(1);
+
+      // 全表仅一个默认分组
+      const allDefaults = db
+        .prepare('SELECT COUNT(*) AS cnt FROM app_groups WHERE is_default = 1')
+        .get();
+      expect(allDefaults.cnt).toBe(1);
+    });
   });
 
   describe('softDelete()', () => {
@@ -142,12 +169,19 @@ describe('AppGroupModel', () => {
       expect(model.findById(g.id)).toBeUndefined();
     });
 
-    test('throws 400 when trying to delete default group', () => {
+    test('throws ValidationError when trying to delete default group', () => {
+      // B4 修复：默认分组不可删除应抛 ValidationError（而非裸 Error）
       const defaultGroup = model.findAll().find(g => g.is_default === 1);
       if (!defaultGroup) return; // 无默认分组时跳过
-      expect(() => model.softDelete(defaultGroup.id)).toThrow(
-        '默认分组不可删除'
-      );
+      let caught;
+      try {
+        model.softDelete(defaultGroup.id);
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).toBeInstanceOf(ValidationError);
+      expect(caught.message).toBe('默认分组不可删除');
+      expect(caught.status).toBe(400);
     });
 
     test('returns false for non-existent group', () => {
@@ -185,6 +219,42 @@ describe('AppGroupModel', () => {
       });
       // softDelete 应该自动重建默认组
       expect(() => model.softDelete(g.id)).not.toThrow();
+    });
+
+    test('does not move soft-deleted apps when moving to default group', () => {
+      // D3 修复：softDelete 移动应用时只移动未软删的应用
+      const defaultGroup = model.findAll().find(g => g.is_default === 1);
+      expect(defaultGroup).toBeDefined();
+
+      const g = model.create({
+        name: '混合状态分组',
+        slug: 'mixed-state-u',
+      });
+      // 插入一个未软删应用 + 一个已软删应用
+      const ins1 = db
+        .prepare(
+          `INSERT INTO apps (name, slug, group_id, is_builtin) VALUES ('alive-app', 'alive-app-u', ?, 0)`
+        )
+        .run(g.id);
+      const ins2 = db
+        .prepare(
+          `INSERT INTO apps (name, slug, group_id, is_builtin, deleted_at) VALUES ('dead-app', 'dead-app-u', ?, 0, CURRENT_TIMESTAMP)`
+        )
+        .run(g.id);
+
+      model.softDelete(g.id);
+
+      // 未软删应用应被移动到默认分组
+      const alive = db
+        .prepare('SELECT group_id FROM apps WHERE id = ?')
+        .get(Number(ins1.lastInsertRowid));
+      expect(alive.group_id).toBe(defaultGroup.id);
+
+      // 已软删应用不应被移动（其 group_id 仍指向原分组）
+      const dead = db
+        .prepare('SELECT group_id FROM apps WHERE id = ?')
+        .get(Number(ins2.lastInsertRowid));
+      expect(dead.group_id).toBe(g.id);
     });
   });
 });

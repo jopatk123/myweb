@@ -126,7 +126,9 @@
     }
 
     // 若存在延迟上传的本地文件，则先上传获取 filename
-    if (pendingFile.value && !form.value.icon_filename) {
+    // 注意：之前用 form.value.icon_filename（snake_case）做判断是 bug
+    // — form.value 的字段是 camelCase 的 iconFilename，snake_case 永远 undefined
+    if (pendingFile.value && !form.value.iconFilename) {
       try {
         const formData = new FormData();
         formData.append('file', pendingFile.value);

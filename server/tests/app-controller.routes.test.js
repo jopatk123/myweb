@@ -186,6 +186,44 @@ describe('AppController - setVisible()', () => {
       .send({ visible: false })
       .expect(200);
     expect(res.body.code).toBe(200);
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.isVisible).toBe(0);
+  });
+
+  test('string "false" is normalized to boolean false (regression for B2)', async () => {
+    // 历史 bug：原 setVisible 用 !!visible，导致字符串 "false" 被当作 true。
+    // 引入 dto schema 后，Joi 会把字符串 "false" 正确转为 boolean false。
+    const id = insertApp({ name: '字符串false', slug: 'str-false-u' });
+    const res = await request(app)
+      .put(`/api/apps/${id}/visible`)
+      .send({ visible: 'false' })
+      .expect(200);
+    expect(res.body.code).toBe(200);
+    expect(res.body.data.isVisible).toBe(0);
+
+    // 反向验证：字符串 "true" 应被转为 true
+    const res2 = await request(app)
+      .put(`/api/apps/${id}/visible`)
+      .send({ visible: 'true' })
+      .expect(200);
+    expect(res2.body.data.isVisible).toBe(1);
+  });
+
+  test('returns 404 for non-existent app', async () => {
+    const res = await request(app)
+      .put('/api/apps/999999/visible')
+      .send({ visible: true })
+      .expect(404);
+    expect(res.body.code).toBe(404);
+  });
+
+  test('returns 400 when visible is missing', async () => {
+    const id = insertApp({ name: '缺字段', slug: 'no-visible-u' });
+    const res = await request(app)
+      .put(`/api/apps/${id}/visible`)
+      .send({})
+      .expect(400);
+    expect(res.body.code).toBe(400);
   });
 });
 
@@ -198,6 +236,9 @@ describe('AppController - bulkVisible()', () => {
       .send({ ids: [id1, id2], visible: true })
       .expect(200);
     expect(res.body.code).toBe(200);
+    // Q6 修复：bulkVisible 现在返回 data: { updated: N }
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.updated).toBe(2);
   });
 
   test('returns 400 when ids is empty', async () => {
@@ -206,6 +247,26 @@ describe('AppController - bulkVisible()', () => {
       .send({ ids: [], visible: true })
       .expect(400);
     expect(res.body.code).toBe(400);
+  });
+
+  test('string "false" is normalized to boolean false (regression for B2)', async () => {
+    const id1 = insertApp({ name: '批量字符串False', slug: 'bulk-str-false' });
+    const res = await request(app)
+      .put('/api/apps/bulk/visible')
+      .send({ ids: [id1], visible: 'false' })
+      .expect(200);
+    expect(res.body.code).toBe(200);
+    const row = db.prepare('SELECT is_visible FROM apps WHERE id = ?').get(id1);
+    expect(row.is_visible).toBe(0);
+  });
+
+  test('updated count excludes non-existent app ids', async () => {
+    const id1 = insertApp({ name: '存在App', slug: 'exists-u' });
+    const res = await request(app)
+      .put('/api/apps/bulk/visible')
+      .send({ ids: [id1, 999999], visible: true })
+      .expect(200);
+    expect(res.body.data.updated).toBe(1);
   });
 });
 
@@ -220,6 +281,9 @@ describe('AppController - move()', () => {
       .send({ ids: [id], targetGroupId: group ? group.id : null })
       .expect(200);
     expect(res.body.code).toBe(200);
+    // Q6 修复：move 现在返回 data: { moved: N }
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.moved).toBe(1);
   });
 
   test('returns 400 when ids is empty', async () => {
@@ -228,6 +292,37 @@ describe('AppController - move()', () => {
       .send({ ids: [], targetGroupId: 1 })
       .expect(400);
     expect(res.body.code).toBe(400);
+  });
+
+  test('returns 404 when target group does not exist (regression for D4)', async () => {
+    const id = insertApp({ name: 'MoveApp2', slug: 'move-app-u2' });
+    const res = await request(app)
+      .put('/api/apps/move')
+      .send({ ids: [id], targetGroupId: 999999 })
+      .expect(404);
+    expect(res.body.code).toBe(404);
+    expect(res.body.message).toMatch(/目标分组/);
+  });
+
+  test('allows null targetGroupId to move apps to no group', async () => {
+    const id = insertApp({ name: 'MoveToNull', slug: 'move-null-u' });
+    const res = await request(app)
+      .put('/api/apps/move')
+      .send({ ids: [id], targetGroupId: null })
+      .expect(200);
+    expect(res.body.code).toBe(200);
+    expect(res.body.data.moved).toBe(1);
+    const row = db.prepare('SELECT group_id FROM apps WHERE id = ?').get(id);
+    expect(row.group_id).toBeNull();
+  });
+
+  test('allows omitting targetGroupId (defaults to null)', async () => {
+    const id = insertApp({ name: 'MoveOmit', slug: 'move-omit-u' });
+    const res = await request(app)
+      .put('/api/apps/move')
+      .send({ ids: [id] })
+      .expect(200);
+    expect(res.body.code).toBe(200);
   });
 });
 

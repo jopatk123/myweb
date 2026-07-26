@@ -5,6 +5,15 @@ import { parseEnvByteSize } from '../utils/env.js';
 import { APP_ICONS_DIR } from '../utils/upload-path.js';
 import { createUploader, imageOnlyFilter } from '../utils/uploader.js';
 import { assertValidImageFile } from '../utils/magic-bytes.js';
+import { validateBody } from '../dto/common.js';
+import {
+  bulkVisibleSchema,
+  createGroupSchema,
+  moveAppsSchema,
+  setAutostartSchema,
+  setVisibleSchema,
+  updateGroupSchema,
+} from '../dto/app.dto.js';
 import logger from '../utils/logger.js';
 
 const iconLogger = logger.child('AppIconUpload');
@@ -32,17 +41,25 @@ export function createAppRoutes(db) {
   router.get('/', (req, res, next) => controller.list(req, res, next));
   router.get('/:id(\\d+)', (req, res, next) => controller.get(req, res, next));
   router.post('/', (req, res, next) => controller.create(req, res, next));
-  router.put('/:id(\\d+)/visible', (req, res, next) =>
-    controller.setVisible(req, res, next)
+  router.put(
+    '/:id(\\d+)/visible',
+    validateBody(setVisibleSchema),
+    (req, res, next) => controller.setVisible(req, res, next)
   );
   // slug 模式：支持按 slug 切换自启动
-  router.put('/:id/autostart', (req, res, next) =>
-    controller.setAutostart(req, res, next)
+  router.put(
+    '/:id/autostart',
+    validateBody(setAutostartSchema),
+    (req, res, next) => controller.setAutostart(req, res, next)
   );
-  router.put('/bulk/visible', (req, res, next) =>
-    controller.bulkVisible(req, res, next)
+  router.put(
+    '/bulk/visible',
+    validateBody(bulkVisibleSchema),
+    (req, res, next) => controller.bulkVisible(req, res, next)
   );
-  router.put('/move', (req, res, next) => controller.move(req, res, next));
+  router.put('/move', validateBody(moveAppsSchema), (req, res, next) =>
+    controller.move(req, res, next)
+  );
   router.put('/:id(\\d+)', (req, res, next) =>
     controller.update(req, res, next)
   );
@@ -91,22 +108,21 @@ export function createAppRoutes(db) {
   router.get('/groups/all', (req, res, next) =>
     controller.listGroups(req, res, next)
   );
-  router.post('/groups', (req, res, next) =>
+  router.post('/groups', validateBody(createGroupSchema), (req, res, next) =>
     controller.createGroup(req, res, next)
   );
-  router.put('/groups/:id', (req, res, next) =>
+  router.put('/groups/:id', validateBody(updateGroupSchema), (req, res, next) =>
     controller.updateGroup(req, res, next)
   );
   router.delete('/groups/:id', (req, res, next) =>
     controller.deleteGroup(req, res, next)
   );
 
-  // 调试：未匹配到的 apps 子路由
+  // 调试：未匹配到的 apps 子路由（不回显 originalUrl，避免泄露内部路径信息）
   router.use((req, res) => {
     res.status(404).json({
       code: 404,
       message: 'Subroute Not Found',
-      path: req.originalUrl,
       method: req.method,
     });
   });

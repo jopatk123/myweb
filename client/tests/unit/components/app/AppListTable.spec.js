@@ -4,7 +4,7 @@ import AppListTable from '@/components/app/AppListTable.vue';
 
 vi.mock('@/composables/useApps.js', () => ({
   getAppIconUrl: vi.fn(app => {
-    const filename = app?.iconFilename || app?.icon_filename;
+    const filename = app?.iconFilename;
     return filename ? `/uploads/apps/icons/${filename}` : '';
   }),
 }));
@@ -17,16 +17,17 @@ describe('AppListTable', () => {
     allSelected: false,
   };
 
+  // 测试 fixture 使用 camelCase，与后端 normalizeResponseMiddleware 归一化后的字段名一致
   it('renders app list with basic info', () => {
     const apps = [
       {
         id: 1,
         name: 'Test App',
         slug: 'test-app',
-        is_builtin: 0,
-        group_id: null,
-        is_visible: 1,
-        is_autostart: 0,
+        isBuiltin: 0,
+        groupId: null,
+        isVisible: 1,
+        isAutostart: 0,
       },
     ];
 
@@ -44,10 +45,10 @@ describe('AppListTable', () => {
         id: 1,
         name: 'Builtin App',
         slug: 'builtin-app',
-        is_builtin: 1,
-        group_id: null,
-        is_visible: 1,
-        is_autostart: 0,
+        isBuiltin: 1,
+        groupId: null,
+        isVisible: 1,
+        isAutostart: 0,
       },
     ];
 
@@ -64,10 +65,10 @@ describe('AppListTable', () => {
         id: 1,
         name: 'Builtin App',
         slug: 'builtin-app',
-        is_builtin: 1,
-        group_id: null,
-        is_visible: 1,
-        is_autostart: 0,
+        isBuiltin: 1,
+        groupId: null,
+        isVisible: 1,
+        isAutostart: 0,
       },
     ];
 
@@ -93,10 +94,10 @@ describe('AppListTable', () => {
         id: 2,
         name: 'Custom App',
         slug: 'custom-app',
-        is_builtin: 0,
-        group_id: null,
-        is_visible: 1,
-        is_autostart: 0,
+        isBuiltin: 0,
+        groupId: null,
+        isVisible: 1,
+        isAutostart: 0,
       },
     ];
 
@@ -122,10 +123,10 @@ describe('AppListTable', () => {
         id: 2,
         name: 'Custom App',
         slug: 'custom-app',
-        is_builtin: 0,
-        group_id: null,
-        is_visible: 1,
-        is_autostart: 0,
+        isBuiltin: 0,
+        groupId: null,
+        isVisible: 1,
+        isAutostart: 0,
       },
     ];
 
@@ -149,10 +150,10 @@ describe('AppListTable', () => {
         id: 1,
         name: 'Builtin App',
         slug: 'builtin-app',
-        is_builtin: 1,
-        group_id: null,
-        is_visible: 1,
-        is_autostart: 0,
+        isBuiltin: 1,
+        groupId: null,
+        isVisible: 1,
+        isAutostart: 0,
       },
     ];
 
@@ -176,10 +177,10 @@ describe('AppListTable', () => {
         id: 2,
         name: 'Custom App',
         slug: 'custom-app',
-        is_builtin: 0,
-        group_id: null,
-        is_visible: 1,
-        is_autostart: 0,
+        isBuiltin: 0,
+        groupId: null,
+        isVisible: 1,
+        isAutostart: 0,
       },
     ];
 

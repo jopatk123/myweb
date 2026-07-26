@@ -1,4 +1,3 @@
-import Joi from 'joi';
 import { AppService } from '../services/app.service.js';
 import { mapToSnake } from '../utils/field-mapper.js';
 import {
@@ -19,7 +18,7 @@ export class AppController {
 
   async list(req, res, next) {
     try {
-      // req.query is normalized to camelCase by middleware, so accept camelCase keys
+      // req.query 已被中间件归一化为 camelCase
       const { groupId, visible, page, limit } = req.query;
       const query = {
         groupId: groupId || null,
@@ -110,8 +109,10 @@ export class AppController {
   async setVisible(req, res, next) {
     try {
       const id = Number(req.params.id);
+      // req.body.visible 已由 dto schema 转换为强 boolean，避免字符串 "false" 被当作 true
       const { visible } = req.body;
-      const app = await this.service.setAppVisible(id, !!visible);
+      const app = await this.service.setAppVisible(id, visible);
+      if (!app) throw new NotFoundError('应用不存在');
       res.json({ code: 200, data: app, message: '设置成功' });
     } catch (error) {
       next(error);
@@ -124,17 +125,9 @@ export class AppController {
       if (!paramRaw) {
         return res.status(400).json({ code: 400, message: '缺少应用标识' });
       }
-      // middleware 已将请求体归一化为 camelCase，直接读取 isAutostart
-      const body = req.body || {};
-      const autostartRaw = body.isAutostart;
-      // 布尔化：'0'/'false'/0/false 视为关闭，其他真值视为开启
-      const isFalsey =
-        autostartRaw === false ||
-        autostartRaw === 0 ||
-        autostartRaw === '0' ||
-        autostartRaw === 'false';
-      const autostart = !isFalsey && Boolean(autostartRaw);
-      const app = await this.service.setAppAutostart(paramRaw, autostart);
+      // req.body.isAutostart 已由 dto schema 转换为强 boolean
+      const { isAutostart } = req.body;
+      const app = await this.service.setAppAutostart(paramRaw, isAutostart);
       res.json({ code: 200, data: app, message: '设置成功' });
     } catch (error) {
       next(error);
@@ -144,15 +137,15 @@ export class AppController {
   async bulkVisible(req, res, next) {
     try {
       const { ids, visible } = req.body;
-      if (!Array.isArray(ids) || ids.length === 0) {
-        return res
-          .status(400)
-          .json({ code: 400, message: 'ids 必须为非空数组' });
-      }
-      await Promise.all(
-        ids.map(id => this.service.setAppVisible(Number(id), !!visible))
+      const results = await Promise.all(
+        ids.map(id => this.service.setAppVisible(Number(id), visible))
       );
-      res.json({ code: 200, message: '批量设置成功' });
+      const updated = results.filter(Boolean).length;
+      res.json({
+        code: 200,
+        data: { updated },
+        message: '批量设置成功',
+      });
     } catch (error) {
       next(error);
     }
@@ -161,28 +154,8 @@ export class AppController {
   async move(req, res, next) {
     try {
       const { ids, targetGroupId } = req.body;
-      if (!Array.isArray(ids) || ids.length === 0) {
-        return res
-          .status(400)
-          .json({ code: 400, message: 'ids 必须为非空数组' });
-      }
-      // targetGroupId 允许 null/空字符串（移动到默认分组），但若提供则必须可转为整数
-      let normalizedGroupId = null;
-      if (
-        targetGroupId !== null &&
-        targetGroupId !== undefined &&
-        targetGroupId !== ''
-      ) {
-        const num = Number(targetGroupId);
-        if (!Number.isInteger(num) || num <= 0) {
-          return res
-            .status(400)
-            .json({ code: 400, message: 'targetGroupId 必须为正整数' });
-        }
-        normalizedGroupId = num;
-      }
-      await this.service.moveApps(ids.map(Number), normalizedGroupId);
-      res.json({ code: 200, message: '移动成功' });
+      const moved = await this.service.moveApps(ids, targetGroupId);
+      res.json({ code: 200, data: { moved }, message: '移动成功' });
     } catch (error) {
       next(error);
     }
@@ -200,12 +173,8 @@ export class AppController {
 
   async createGroup(req, res, next) {
     try {
-      const schema = Joi.object({
-        name: Joi.string().min(1).max(100).required(),
-        isDefault: Joi.boolean().optional(),
-      });
-      const payload = await schema.validateAsync(req.body);
-      const group = await this.service.createGroup(mapToSnake(payload));
+      // req.body 已由 dto schema 校验，仅包含 name（API 不允许调用方设置 isDefault）
+      const group = await this.service.createGroup(mapToSnake(req.body));
       res.status(201).json({ code: 201, data: group, message: '创建成功' });
     } catch (error) {
       next(error);
@@ -215,12 +184,7 @@ export class AppController {
   async updateGroup(req, res, next) {
     try {
       const id = Number(req.params.id);
-      const schema = Joi.object({
-        name: Joi.string().min(1).max(100).optional(),
-        isDefault: Joi.boolean().optional(),
-      });
-      const payload = await schema.validateAsync(req.body);
-      const group = await this.service.updateGroup(id, mapToSnake(payload));
+      const group = await this.service.updateGroup(id, mapToSnake(req.body));
       res.json({ code: 200, data: group, message: '更新成功' });
     } catch (err) {
       next(err);

@@ -141,6 +141,9 @@
     uploadedIcon.value = '';
     emit('update:modelValue', icon.path);
     emit('update:iconFilename', null); // 清除上传的文件名
+    // 通知父组件清空待上传文件，避免用户先选上传文件再切回预设时
+    // 旧 pendingFile 仍被当作提交依据，覆盖用户最终选择的预设图标
+    emit('select-file', null);
   }
 
   async function onFileSelected(e) {

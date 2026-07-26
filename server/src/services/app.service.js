@@ -171,6 +171,13 @@ export class AppService {
   }
 
   moveApps(ids, targetGroupId) {
+    // 校验目标分组存在且未软删（targetGroupId 为 null 表示移动到「无分组」，跳过校验）
+    if (targetGroupId !== null && targetGroupId !== undefined) {
+      const targetGroup = this.groupModel.findById(targetGroupId);
+      if (!targetGroup) {
+        throw new NotFoundError('目标分组不存在');
+      }
+    }
     return this.appModel.moveToGroup(ids, targetGroupId);
   }
 
