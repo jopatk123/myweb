@@ -3,8 +3,8 @@ import { NotebookNoteService } from '../services/notebook-note.service.js';
 
 const noteSchema = Joi.object({
   title: Joi.string().min(1).max(300).required(),
-  description: Joi.string().allow('', null).optional(),
-  category: Joi.string().allow('', null).optional(),
+  description: Joi.string().max(2000).allow('', null).optional(),
+  category: Joi.string().max(50).allow('', null).optional(),
   priority: Joi.string().valid('low', 'medium', 'high').optional(),
   completed: Joi.boolean().optional(),
 });

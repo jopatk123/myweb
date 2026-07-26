@@ -127,11 +127,14 @@ export class AppController {
       // middleware 已将请求体归一化为 camelCase，直接读取 isAutostart
       const body = req.body || {};
       const autostartRaw = body.isAutostart;
-      // 强制布尔化（支持字符串 '0'/'1' 或数字）
-      const autostart = !!(autostartRaw === '0' || autostartRaw === 0
-        ? false
-        : autostartRaw);
-      const app = this.service.setAppAutostart(paramRaw, autostart);
+      // 布尔化：'0'/'false'/0/false 视为关闭，其他真值视为开启
+      const isFalsey =
+        autostartRaw === false ||
+        autostartRaw === 0 ||
+        autostartRaw === '0' ||
+        autostartRaw === 'false';
+      const autostart = !isFalsey && Boolean(autostartRaw);
+      const app = await this.service.setAppAutostart(paramRaw, autostart);
       res.json({ code: 200, data: app, message: '设置成功' });
     } catch (error) {
       next(error);
@@ -163,7 +166,22 @@ export class AppController {
           .status(400)
           .json({ code: 400, message: 'ids 必须为非空数组' });
       }
-      await this.service.moveApps(ids.map(Number), Number(targetGroupId));
+      // targetGroupId 允许 null/空字符串（移动到默认分组），但若提供则必须可转为整数
+      let normalizedGroupId = null;
+      if (
+        targetGroupId !== null &&
+        targetGroupId !== undefined &&
+        targetGroupId !== ''
+      ) {
+        const num = Number(targetGroupId);
+        if (!Number.isInteger(num) || num <= 0) {
+          return res
+            .status(400)
+            .json({ code: 400, message: 'targetGroupId 必须为正整数' });
+        }
+        normalizedGroupId = num;
+      }
+      await this.service.moveApps(ids.map(Number), normalizedGroupId);
       res.json({ code: 200, message: '移动成功' });
     } catch (error) {
       next(error);

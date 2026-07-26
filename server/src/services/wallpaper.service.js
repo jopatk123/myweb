@@ -118,8 +118,8 @@ export class WallpaperService {
   }
 
   async deleteWallpaper(id) {
+    // getWallpaperById 已在不存在时抛 NotFoundError，此处无需重复判断
     const wallpaper = this.getWallpaperById(id);
-    if (!wallpaper) return;
 
     this.wallpaperModel.clearActiveIfMatches(id);
     const dbResult = this.wallpaperModel.delete(id);

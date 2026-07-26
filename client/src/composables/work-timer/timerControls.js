@@ -99,8 +99,22 @@ export class TimerControls {
     startWorkTime.value = null;
   }
 
-  resetTimer(endTime, isTimerActive, startWorkTime) {
-    this.stopTimer(isTimerActive, startWorkTime);
+  resetTimer(
+    endTime,
+    isTimerActive,
+    startWorkTime,
+    totalMs,
+    workSessions,
+    saveWorkSessionsFn
+  ) {
+    this.stopTimer(
+      isTimerActive,
+      startWorkTime,
+      totalMs,
+      workSessions,
+      saveWorkSessionsFn,
+      endTime
+    );
     endTime.value = '18:00';
   }
 

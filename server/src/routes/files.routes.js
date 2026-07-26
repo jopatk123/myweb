@@ -1,10 +1,12 @@
 import express from 'express';
+import fs from 'fs/promises';
 import { FileService } from '../services/file.service.js';
 import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import { detectTypeCategory, FILE_CATEGORIES } from '../utils/file-metadata.js';
 import { normaliseUploadedFileName } from '../utils/upload.js';
 import logger from '../utils/logger.js';
 import { createUploader } from '../utils/uploader.js';
+import { assertValidImageFile } from '../utils/magic-bytes.js';
 import { DEFAULT_FILE_MAX_SIZE } from '../constants/limits.js';
 import { validateQuery, validateId, listFilesSchema } from '../dto/file.dto.js';
 import { FILES_DIR } from '../utils/upload-path.js';
@@ -55,6 +57,30 @@ const upload = createUploader({
   fileFilter,
 });
 
+async function validateImageFiles(files) {
+  // 对声明为图片的文件做 magic bytes 校验，防止伪造 MIME 上传可执行内容。
+  // 非图片文件不校验（如文档、压缩包等），与图标/壁纸/留言板图片的严格策略保持一致。
+  const imageFiles = files.filter(f => f.mimetype?.startsWith('image/'));
+  for (const file of imageFiles) {
+    await assertValidImageFile(file.path, file.mimetype);
+  }
+}
+
+async function cleanupFiles(files) {
+  await Promise.allSettled(
+    files.map(f =>
+      fs.unlink(f.path).catch(err => {
+        if (err.code !== 'ENOENT') {
+          fileLogger.warn('清理上传文件出错', {
+            filename: f.filename,
+            error: err.message,
+          });
+        }
+      })
+    )
+  );
+}
+
 export function createFileRoutes(db) {
   const router = express.Router();
   const service = new FileService(db);
@@ -71,6 +97,14 @@ export function createFileRoutes(db) {
           return res
             .status(400)
             .json({ code: 400, success: false, message: '请选择文件' });
+
+        // 图片类文件做 magic bytes 校验，失败时清理所有已落盘文件
+        try {
+          await validateImageFiles(files);
+        } catch (validationErr) {
+          await cleanupFiles(files);
+          return next(validationErr);
+        }
 
         const payloads = buildUploadPayloads(files, baseUrl);
 

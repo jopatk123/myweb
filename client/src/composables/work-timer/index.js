@@ -77,7 +77,14 @@ export function useWorkTimer() {
   }
 
   function resetTimer() {
-    timerControls.resetTimer(endTime, isTimerActive, startWorkTime);
+    timerControls.resetTimer(
+      endTime,
+      isTimerActive,
+      startWorkTime,
+      totalMs,
+      workSessions,
+      () => saveWorkSessions(workSessions.value)
+    );
   }
 
   // 监听
@@ -148,6 +155,9 @@ export function useWorkTimer() {
       clearInterval(clockInterval);
       clockInterval = null;
     }
+
+    // 组件卸载时停止心跳定时器，避免窗口关闭后仍持续向服务器发送心跳
+    heartbeatManager.stopHeartbeatInterval();
 
     if (removeOnlineListener) {
       removeOnlineListener();

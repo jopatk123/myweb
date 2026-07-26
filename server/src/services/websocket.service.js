@@ -147,7 +147,13 @@ export class WebSocketService {
     try {
       const url = new URL(req.url, 'http://localhost');
       const candidate = (url.searchParams.get('sessionId') || '').trim();
-      if (candidate && candidate.length <= 200) {
+      // 限制长度并校验字符集，防止注入异常字符
+      // 允许：字母、数字、连字符、下划线，长度 1-200
+      if (
+        candidate &&
+        candidate.length <= 200 &&
+        /^[A-Za-z0-9_-]+$/.test(candidate)
+      ) {
         return candidate;
       }
     } catch {

@@ -1,6 +1,11 @@
 import { jest } from '@jest/globals';
 import { createTestDatabase, closeTestDatabase } from '../helpers/test-db.js';
 import { WorkTimerController } from '../../src/controllers/worktimer.controller.js';
+import {
+  startTimerSchema,
+  heartbeatSchema,
+  stopTimerSchema,
+} from '../../src/dto/worktimer.dto.js';
 
 describe('WorkTimerController', () => {
   let db;
@@ -50,7 +55,8 @@ describe('WorkTimerController', () => {
     test('passes targetEndTime to session', () => {
       req.body = {
         sessionId: 'sess-target',
-        targetEndTime: new Date(Date.now() + 3600000).toISOString(),
+        // 前端实际传入 "HH:MM" 格式（如 "18:00"）
+        targetEndTime: '18:00',
       };
       controller.start(req, res, next);
       expect(res.json).toHaveBeenCalled();
@@ -188,6 +194,77 @@ describe('WorkTimerController', () => {
       });
       controller.stats(req, res, next);
       expect(next).toHaveBeenCalledWith(expect.any(Error));
+    });
+  });
+
+  describe('DTO schema validation', () => {
+    test('startTimerSchema accepts "HH:MM" targetEndTime (前端实际格式)', () => {
+      const { error, value } = startTimerSchema.validate({
+        sessionId: 'sess-1',
+        targetEndTime: '18:00',
+      });
+      expect(error).toBeUndefined();
+      expect(value.targetEndTime).toBe('18:00');
+    });
+
+    test('startTimerSchema rejects invalid targetEndTime format', () => {
+      const cases = [
+        '2023-01-01T00:00:00.000Z', // ISO 日期（前端不传此格式）
+        '25:00', // 非法小时
+        '12:60', // 非法分钟
+        'abc',
+        '1:2',
+      ];
+      for (const targetEndTime of cases) {
+        const { error } = startTimerSchema.validate({
+          sessionId: 'sess-1',
+          targetEndTime,
+        });
+        expect(error).toBeDefined();
+      }
+    });
+
+    test('startTimerSchema allows null/undefined targetEndTime', () => {
+      const { error: err1 } = startTimerSchema.validate({
+        sessionId: 'sess-1',
+        targetEndTime: null,
+      });
+      expect(err1).toBeUndefined();
+
+      const { error: err2 } = startTimerSchema.validate({
+        sessionId: 'sess-1',
+      });
+      expect(err2).toBeUndefined();
+    });
+
+    test('heartbeatSchema defaults incrementMs to 0', () => {
+      const { error, value } = heartbeatSchema.validate({
+        sessionId: 'sess-1',
+      });
+      expect(error).toBeUndefined();
+      expect(value.incrementMs).toBe(0);
+    });
+
+    test('heartbeatSchema rejects negative or non-integer incrementMs', () => {
+      const { error: err1 } = heartbeatSchema.validate({
+        sessionId: 'sess-1',
+        incrementMs: -1,
+      });
+      expect(err1).toBeDefined();
+
+      const { error: err2 } = heartbeatSchema.validate({
+        sessionId: 'sess-1',
+        incrementMs: 1.5,
+      });
+      expect(err2).toBeDefined();
+    });
+
+    test('stopTimerSchema accepts finalIncrementMs as null', () => {
+      const { error } = stopTimerSchema.validate({
+        sessionId: 'sess-1',
+        finalIncrementMs: null,
+      });
+      expect(error).toBeUndefined();
     });
   });
 });

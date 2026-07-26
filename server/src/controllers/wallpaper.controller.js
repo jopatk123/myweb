@@ -1,5 +1,6 @@
 import { WallpaperService } from '../services/wallpaper.service.js';
 import { createReadStream } from 'fs';
+import fsPromises from 'fs/promises';
 import { normalizeKeys } from '../utils/case-helper.js';
 import { parseEnvByteSize } from '../utils/env.js';
 import { createUploader, imageOnlyFilter } from '../utils/uploader.js';
@@ -135,6 +136,15 @@ export class WallpaperController {
       const wallpaper = await this.service.uploadWallpaper(fileData, groupId);
       res.status(201).json({ code: 201, data: wallpaper, message: '上传成功' });
     } catch (error) {
+      // service 内的 magic bytes 校验或 DB 写入失败时，清理 multer 已落盘的文件，避免孤儿文件
+      if (req.file?.path) {
+        fsPromises.unlink(req.file.path).catch(cleanupErr => {
+          controllerLogger.warn('壁纸上传失败后清理文件出错', {
+            filename: req.file.filename,
+            error: cleanupErr?.message,
+          });
+        });
+      }
       next(error);
     }
   }

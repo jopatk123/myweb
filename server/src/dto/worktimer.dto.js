@@ -3,10 +3,16 @@ import { ONE_DAY_MS } from '../constants/limits.js';
 
 export { validateBody } from './wallpaper.dto.js';
 
+// 目标下班时间，前端传入 "HH:MM" 格式（如 "18:00"）
+const targetEndTimePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 export const startTimerSchema = Joi.object({
   sessionId: Joi.string().max(100).required(),
   startTime: Joi.string().isoDate().allow(null).optional(),
-  targetEndTime: Joi.string().isoDate().allow(null).optional(),
+  targetEndTime: Joi.string()
+    .pattern(targetEndTimePattern)
+    .allow(null)
+    .optional(),
 });
 
 export const heartbeatSchema = Joi.object({

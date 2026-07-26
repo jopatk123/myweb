@@ -48,7 +48,7 @@
   const previousValue = ref(null);
   const operator = ref(null);
   const waitingForOperand = ref(false);
-  const MAX_HISTORY_ENTRIES = 6;
+  const MAX_HISTORY_ENTRIES = 50;
   // 聚焦状态 (只有聚焦时才处理键盘事件)
   const isFocused = ref(false);
   const appEl = ref(null);
@@ -270,21 +270,35 @@
   }
 
   // 执行计算
+  // 浮点运算可能出现精度误差（如 0.1+0.2=0.30000000000000004），
+  // 通过 Math.round 取整到 10 位小数以消除误差，同时保留足够精度。
+  function roundResult(value) {
+    if (!Number.isFinite(value)) return value;
+    return Math.round(value * 1e10) / 1e10;
+  }
+
   function performCalculation(a, b, op) {
+    let result;
     switch (op) {
       case '+':
-        return a + b;
+        result = a + b;
+        break;
       case '-':
-        return a - b;
+        result = a - b;
+        break;
       case '*':
-        return a * b;
+        result = a * b;
+        break;
       case '/':
-        return b !== 0 ? a / b : 0;
+        result = b !== 0 ? a / b : 0;
+        break;
       case '%':
-        return a % b;
+        result = a % b;
+        break;
       default:
-        return b;
+        result = b;
     }
+    return roundResult(result);
   }
 
   // 获取运算符符号

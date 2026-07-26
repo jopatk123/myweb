@@ -51,4 +51,13 @@ describe('CalculatorApp', () => {
     expect(queryByLabelText('计算历史')).not.toBeInTheDocument();
     expect(getByText('暂无记录')).toBeInTheDocument();
   });
+
+  it('消除浮点运算精度误差（0.1 + 0.2 = 0.3）', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, ['0', '.', '1', '+', '0', '.', '2', '=']);
+
+    // 未做精度处理时显示 0.30000000000000004，处理后应为 0.3
+    expect(getByTestId('calculator-display')).toHaveTextContent('0.3');
+  });
 });
