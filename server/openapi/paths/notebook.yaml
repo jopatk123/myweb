@@ -9,25 +9,63 @@ list:
         name: page
         schema:
           type: integer
+          minimum: 1
+          default: 1
       - in: query
         name: limit
         schema:
           type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
       - in: query
         name: search
         schema:
           type: string
+        description: |
+          Matched against title and description with `LIKE`.
+          `%` and `_` in the term are treated as literals.
       - in: query
         name: status
         schema:
           type: string
+          enum:
+            - all
+            - pending
+            - completed
+          default: all
       - in: query
         name: category
         schema:
           type: string
+        description: Exact category match. The literal value `all` disables filtering.
     responses:
       '200':
-        description: OK
+        description: Notebook note list retrieved successfully.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                message:
+                  type: string
+                  example: 获取成功
+                data:
+                  type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/NotebookNote'
+                    total:
+                      type: integer
+                    page:
+                      type: integer
+                    limit:
+                      type: integer
   post:
     summary: Create notebook note
     description: Create a notebook note.
@@ -44,11 +82,15 @@ list:
             properties:
               title:
                 type: string
+                minLength: 1
+                maxLength: 300
               description:
                 type: string
+                maxLength: 2000
                 nullable: true
               category:
                 type: string
+                maxLength: 50
                 nullable: true
               priority:
                 type: string
@@ -60,7 +102,20 @@ list:
                 type: boolean
     responses:
       '201':
-        description: Created
+        description: Notebook note created.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 201
+                message:
+                  type: string
+                  example: 创建成功
+                data:
+                  $ref: '#/components/schemas/NotebookNote'
 
 byId:
   get:
@@ -76,10 +131,25 @@ byId:
           type: integer
     responses:
       '200':
-        description: OK
+        description: Notebook note retrieved.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                message:
+                  type: string
+                  example: 获取成功
+                data:
+                  $ref: '#/components/schemas/NotebookNote'
+      '404':
+        description: Notebook note not found
   put:
     summary: Update notebook note
-    description: Update one notebook note by id.
+    description: Partially update one notebook note by id. Returns 404 when the note does not exist.
     tags:
       - Notebook
     parameters:
@@ -97,11 +167,15 @@ byId:
             properties:
               title:
                 type: string
+                minLength: 1
+                maxLength: 300
               description:
                 type: string
+                maxLength: 2000
                 nullable: true
               category:
                 type: string
+                maxLength: 50
                 nullable: true
               priority:
                 type: string
@@ -113,10 +187,25 @@ byId:
                 type: boolean
     responses:
       '200':
-        description: Updated
+        description: Notebook note updated.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                message:
+                  type: string
+                  example: 更新成功
+                data:
+                  $ref: '#/components/schemas/NotebookNote'
+      '404':
+        description: Notebook note not found
   delete:
     summary: Delete notebook note
-    description: Delete one notebook note by id.
+    description: Delete one notebook note by id. Idempotent.
     tags:
       - Notebook
     parameters:
@@ -127,4 +216,53 @@ byId:
           type: integer
     responses:
       '200':
-        description: Deleted
+        description: Notebook note deleted.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: integer
+                  example: 200
+                message:
+                  type: string
+                  example: 删除成功
+
+components:
+  schemas:
+    NotebookNote:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        priority:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+        completed:
+          type: integer
+          enum:
+            - 0
+            - 1
+          description: Stored as SQLite boolean flag; clients normalize it to boolean.
+        created_at:
+          type: string
+          format: date-time
+          description: |
+            SQLite CURRENT_TIMESTAMP in UTC. Serialized without an explicit
+            timezone offset (`YYYY-MM-DD HH:MM:SS`); clients must interpret it as UTC.
+        updated_at:
+          type: string
+          format: date-time
+          description: Same format and semantics as created_at.

@@ -62,19 +62,175 @@ describe('useNotebook', () => {
     const state = await createState();
     await state.initializeData();
 
-    expect(notebookApiMock.list).toHaveBeenCalledTimes(1);
+    expect(notebookApiMock.list).toHaveBeenCalledWith({
+      page: 1,
+      limit: 200,
+    });
     expect(state.notes.value).toHaveLength(1);
     expect(state.notes.value[0]).toMatchObject({
       id: 1,
       title: '服务端笔记',
       completed: true,
-      createdAt: '2025-06-01T10:00:00Z',
-      updatedAt: '2025-06-02T10:00:00Z',
+      createdAt: '2025-06-01T10:00:00.000Z',
+      updatedAt: '2025-06-02T10:00:00.000Z',
     });
     expect(state.serverReady.value).toBe(true);
   });
 
-  it('creates note with current API contract and clears category', async () => {
+  it('fetches additional pages until the server total is exhausted', async () => {
+    const firstPage = Array.from({ length: 200 }, (_, i) => ({
+      id: i + 1,
+      title: `笔记${i + 1}`,
+      completed: 0,
+      created_at: '2025-06-01 10:00:00',
+      updated_at: '2025-06-01 10:00:00',
+    }));
+    const secondPage = [
+      {
+        id: 201,
+        title: '第201条',
+        completed: 0,
+        created_at: '2025-05-01 10:00:00',
+        updated_at: '2025-05-01 10:00:00',
+      },
+    ];
+
+    notebookApiMock.list
+      .mockResolvedValueOnce({
+        code: 200,
+        data: { items: firstPage, total: 201, page: 1, limit: 200 },
+      })
+      .mockResolvedValueOnce({
+        code: 200,
+        data: { items: secondPage, total: 201, page: 2, limit: 200 },
+      });
+
+    const state = await createState();
+    await state.initializeData();
+
+    expect(notebookApiMock.list).toHaveBeenCalledTimes(2);
+    expect(notebookApiMock.list).toHaveBeenLastCalledWith({
+      page: 2,
+      limit: 200,
+    });
+    expect(state.notes.value).toHaveLength(201);
+  });
+
+  it('normalizes SQLite timestamps into UTC ISO strings', async () => {
+    notebookApiMock.list.mockResolvedValue({
+      code: 200,
+      data: {
+        items: [
+          {
+            id: 1,
+            title: '时间戳笔记',
+            completed: 0,
+            created_at: '2025-06-01 10:00:00',
+            updated_at: '2025-06-02 08:30:00',
+          },
+        ],
+        total: 1,
+      },
+    });
+
+    const state = await createState();
+    await state.initializeData();
+
+    expect(state.notes.value[0].createdAt).toBe('2025-06-01T10:00:00.000Z');
+    expect(state.notes.value[0].updatedAt).toBe('2025-06-02T08:30:00.000Z');
+  });
+
+  it('keeps offline-created local notes after the server data loads', async () => {
+    localStorage.setItem(
+      'notebook-notes',
+      JSON.stringify([
+        {
+          id: 'offline-1',
+          title: '离线新增',
+          description: '',
+          category: '',
+          completed: false,
+          priority: 'medium',
+          createdAt: '2025-06-03T10:00:00Z',
+          updatedAt: '2025-06-03T10:00:00Z',
+        },
+        {
+          id: 1,
+          title: '服务端旧版',
+          description: '',
+          completed: false,
+          priority: 'low',
+          createdAt: '2025-06-01T10:00:00Z',
+          updatedAt: '2025-06-01T10:00:00Z',
+        },
+      ])
+    );
+    notebookApiMock.list.mockResolvedValue({
+      code: 200,
+      data: {
+        items: [
+          {
+            id: 1,
+            title: '服务端新版',
+            completed: 0,
+            priority: 'low',
+            created_at: '2025-06-01 10:00:00',
+            updated_at: '2025-06-01 10:00:00',
+          },
+        ],
+        total: 1,
+      },
+    });
+
+    const state = await createState();
+    await state.initializeData();
+
+    expect(state.serverReady.value).toBe(true);
+    // 离线新增的笔记被保留，而不是被服务器数据覆盖丢弃
+    expect(state.notes.value.map(note => note.title)).toEqual([
+      '离线新增',
+      '服务端新版',
+    ]);
+  });
+
+  it('prefers the local mirror edit when it is newer than the server row', async () => {
+    localStorage.setItem(
+      'notebook-notes',
+      JSON.stringify([
+        {
+          id: 1,
+          title: '离线编辑后的标题',
+          description: '',
+          completed: false,
+          priority: 'medium',
+          createdAt: '2025-06-01T10:00:00Z',
+          updatedAt: '2025-06-05T10:00:00Z',
+        },
+      ])
+    );
+    notebookApiMock.list.mockResolvedValue({
+      code: 200,
+      data: {
+        items: [
+          {
+            id: 1,
+            title: '服务端旧标题',
+            completed: 0,
+            created_at: '2025-06-01 10:00:00',
+            updated_at: '2025-06-01 10:00:00',
+          },
+        ],
+        total: 1,
+      },
+    });
+
+    const state = await createState();
+    await state.initializeData();
+
+    expect(state.notes.value[0].title).toBe('离线编辑后的标题');
+  });
+
+  it('creates note with current API contract and passes category through', async () => {
     notebookApiMock.create.mockResolvedValue({
       code: 201,
       data: {

@@ -11,6 +11,8 @@
         v-if="!showAddForm && !editingNote"
         v-model:search="searchQuery"
         v-model:filter="filterStatus"
+        v-model:category="filterCategory"
+        :categories="availableCategories"
         v-model:compact-view="compactView"
         @add-note="showAddForm = true"
       />
@@ -56,7 +58,7 @@
         <LoadMoreButton
           v-if="!showAddForm && !editingNote"
           :show="filteredNotes.length > 0 && hasMoreNotes"
-          :remaining-count="notes.length - displayLimit"
+          :remaining-count="filteredTotal - displayLimit"
           :on-load-more="loadMoreNotes"
         />
 
@@ -102,8 +104,15 @@
     initializeData,
   } = useNotebook();
 
-  const { searchQuery, filterStatus, filteredNotes, hasMoreNotes } =
-    useNotebookFilters(notes, displayLimit, resetDisplayLimit);
+  const {
+    searchQuery,
+    filterStatus,
+    filterCategory,
+    availableCategories,
+    filteredNotes,
+    filteredTotal,
+    hasMoreNotes,
+  } = useNotebookFilters(notes, displayLimit, resetDisplayLimit);
 
   const appEl = ref(null);
   const showAddForm = ref(false);

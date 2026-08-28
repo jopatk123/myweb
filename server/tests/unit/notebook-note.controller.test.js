@@ -142,14 +142,15 @@ describe('NotebookNoteController', () => {
       );
     });
 
-    test('returns response when note does not exist (update silently proceeds)', async () => {
+    test('calls next with NotFoundError when note does not exist', async () => {
       req.params = { id: '999999' };
       req.body = { title: '不存在的笔记' };
       await controller.update(req, res, next);
-      // service.update returns undefined for non-existent id (no throw)
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 200 })
+      // service.update throws NotFoundError for non-existent id（对齐 get 的 404 语义）
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 404, message: '笔记不存在' })
       );
+      expect(res.json).not.toHaveBeenCalled();
     });
 
     test('calls next on invalid priority during update', async () => {

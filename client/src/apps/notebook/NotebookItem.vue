@@ -35,7 +35,7 @@
 
         <div v-if="!compactView" class="note-footer">
           <span class="note-date">
-            {{ formatDate(note.updatedAt || note.createdAt) }}
+            {{ formatRelativeDate(note.updatedAt || note.createdAt) }}
           </span>
         </div>
       </div>
@@ -57,6 +57,9 @@
 </template>
 
 <script setup>
+  import { useConfirm } from '../../composables/useConfirm.js';
+  import { formatRelativeDate } from '../../utils/datetime.js';
+
   defineProps({
     note: {
       type: Object,
@@ -70,8 +73,10 @@
 
   const emit = defineEmits(['edit', 'delete', 'toggleStatus']);
 
+  const { confirmAction } = useConfirm();
+
   function handleDelete() {
-    if (confirm('确定要删除这条笔记吗？')) {
+    if (confirmAction('确定要删除这条笔记吗？')) {
       emit('delete');
     }
   }
@@ -83,26 +88,6 @@
       high: '高',
     };
     return priorityMap[priority] || '中';
-  }
-
-  function formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) {
-      return '今天';
-    } else if (diffDays === 2) {
-      return '昨天';
-    } else if (diffDays <= 7) {
-      return `${diffDays - 1}天前`;
-    } else {
-      return date.toLocaleDateString('zh-CN', {
-        month: 'short',
-        day: 'numeric',
-      });
-    }
   }
 </script>
 

@@ -13,6 +13,23 @@
 
       <div class="filter-group">
         <select
+          v-model="categoryValue"
+          @change="updateCategory"
+          class="filter-select"
+        >
+          <option value="all">全部分类</option>
+          <option
+            v-for="category in categories"
+            :key="category"
+            :value="category"
+          >
+            {{ category }}
+          </option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <select
           v-model="filterValue"
           @change="updateFilter"
           class="filter-select"
@@ -50,6 +67,14 @@
       type: String,
       default: 'all',
     },
+    category: {
+      type: String,
+      default: 'all',
+    },
+    categories: {
+      type: Array,
+      default: () => [],
+    },
     compactView: {
       type: Boolean,
       default: false,
@@ -59,12 +84,14 @@
   const emit = defineEmits([
     'update:search',
     'update:filter',
+    'update:category',
     'update:compactView',
     'addNote',
   ]);
 
   const searchValue = ref(props.search);
   const filterValue = ref(props.filter);
+  const categoryValue = ref(props.category);
   const compactView = ref(props.compactView);
 
   watch(
@@ -80,6 +107,12 @@
     }
   );
   watch(
+    () => props.category,
+    newVal => {
+      categoryValue.value = newVal;
+    }
+  );
+  watch(
     () => props.compactView,
     newVal => {
       compactView.value = newVal;
@@ -92,6 +125,10 @@
 
   function updateFilter() {
     emit('update:filter', filterValue.value);
+  }
+
+  function updateCategory() {
+    emit('update:category', categoryValue.value);
   }
 
   function toggleCompactView() {

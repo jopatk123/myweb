@@ -2,6 +2,7 @@ import { ref, computed, watch } from 'vue';
 import { notebookApi } from '../api/notebook.js';
 import { unwrapData } from '../api/httpClient.js';
 import { generateId } from '../utils/idGenerator.js';
+import { parseServerDate } from '@/utils/datetime.js';
 import { readJsonStorageItem, writeJsonStorageItem } from '@/utils/storage.js';
 
 export function useNotebook() {
@@ -20,7 +21,23 @@ export function useNotebook() {
     () => notes.value.filter(note => !note.completed).length
   );
 
+  // 服务端 SQLite 时间戳（'YYYY-MM-DD HH:MM:SS'，UTC 无时区标记）
+  // 统一归一为 ISO 字符串，避免 Safari 等环境解析出 Invalid Date
+  function normalizeTimestamp(value, fallback) {
+    if (!value) return fallback;
+    const date = parseServerDate(value);
+    return date ? date.toISOString() : value;
+  }
+
   function normalizeNote(row = {}) {
+    const createdAt = normalizeTimestamp(
+      row.createdAt || row.created_at,
+      new Date().toISOString()
+    );
+    const updatedAt = normalizeTimestamp(
+      row.updatedAt || row.updated_at || row.createdAt || row.created_at,
+      createdAt
+    );
     return {
       id: row.id ?? generateId(),
       title: row.title || '',
@@ -28,13 +45,8 @@ export function useNotebook() {
       category: row.category || '',
       priority: row.priority || 'medium',
       completed: !!(row.completed === true || row.completed === 1),
-      createdAt: row.createdAt || row.created_at || new Date().toISOString(),
-      updatedAt:
-        row.updatedAt ||
-        row.updated_at ||
-        row.createdAt ||
-        row.created_at ||
-        new Date().toISOString(),
+      createdAt,
+      updatedAt,
     };
   }
 
@@ -43,7 +55,7 @@ export function useNotebook() {
       title: noteData.title?.trim() || '',
       description: noteData.description?.trim() || '',
       priority: noteData.priority || 'medium',
-      category: '',
+      category: noteData.category?.trim() || '',
       completed,
     };
   }
@@ -124,15 +136,83 @@ export function useNotebook() {
     );
   }
 
+  /**
+   * 拉取服务端全量笔记：分页循环直到取满 total，
+   * 保证本地过滤/统计基于完整数据（服务端单页上限 200）。
+   */
+  async function fetchAllServerNotes() {
+    const pageSize = 200;
+    const first = unwrapData(
+      await notebookApi.list({ page: 1, limit: pageSize })
+    );
+    const firstItems = Array.isArray(first) ? first : first?.items || [];
+    const total = Array.isArray(first)
+      ? firstItems.length
+      : Number(first?.total) || firstItems.length;
+
+    const items = [...firstItems];
+    while (items.length < total) {
+      const page = Math.floor(items.length / pageSize) + 1;
+      const next = unwrapData(
+        await notebookApi.list({ page, limit: pageSize })
+      );
+      const nextItems = Array.isArray(next) ? next : next?.items || [];
+      if (nextItems.length === 0) break;
+      items.push(...nextItems);
+    }
+    return items;
+  }
+
+  /**
+   * 合并服务器数据与本地镜像：
+   * - 离线期间新建的笔记（字符串 id，服务端不存在）必须保留，避免被覆盖丢失；
+   * - 离线期间对已有笔记的本地修改按 updatedAt 较新者胜出（单用户场景）。
+   */
+  function mergeWithLocalMirror(serverNotes) {
+    const saved = readJsonStorageItem('notebook-notes', [], storageError => {
+      console.error('加载本地笔记失败:', storageError);
+    });
+    if (!Array.isArray(saved) || saved.length === 0) {
+      return [...serverNotes];
+    }
+
+    const merged = [...serverNotes];
+    const serverById = new Map(serverNotes.map(note => [note.id, note]));
+    for (const raw of saved) {
+      const local = normalizeNote(raw);
+      if (typeof local.id !== 'number') {
+        if (!merged.some(note => note.id === local.id)) {
+          merged.push(local);
+        }
+        continue;
+      }
+      const server = serverById.get(local.id);
+      if (
+        server &&
+        new Date(local.updatedAt).getTime() >
+          new Date(server.updatedAt).getTime()
+      ) {
+        const index = merged.findIndex(note => note.id === local.id);
+        if (index !== -1) {
+          merged[index] = local;
+        }
+      }
+    }
+
+    return merged.sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    );
+  }
+
   async function loadNotes() {
     loading.value = true;
     error.value = null;
 
     try {
-      const raw = await notebookApi.list();
-      const data = unwrapData(raw);
-      const items = Array.isArray(data) ? data : data?.items || [];
-      notes.value = items.map(normalizeNote);
+      const items = await fetchAllServerNotes();
+      const serverNotes = items.map(normalizeNote);
+      notes.value = mergeWithLocalMirror(serverNotes);
       persistLocalMirror();
       serverReady.value = true;
       return true;

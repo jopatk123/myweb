@@ -103,6 +103,17 @@ describe('NotebookNoteService database integration', () => {
     expect(updated.updated_at >= originalUpdatedAt).toBe(true);
   });
 
+  test('update throws 404 error when note does not exist', () => {
+    expect(() => service.update(9999, { title: '不存在的笔记' })).toThrow(
+      '笔记不存在'
+    );
+    try {
+      service.update(9999, { completed: true });
+    } catch (error) {
+      expect(error.status).toBe(404);
+    }
+  });
+
   test('remove deletes record and returns deletion result', () => {
     const created = service.create({ title: '临时笔记' });
 

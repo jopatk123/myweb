@@ -8,6 +8,7 @@ function createNotes() {
       id: 1,
       title: '买牛奶',
       description: '超市买无糖牛奶',
+      category: 'life',
       completed: false,
       createdAt: '2025-06-01T10:00:00Z',
       updatedAt: '2025-06-01T10:00:00Z',
@@ -16,6 +17,7 @@ function createNotes() {
       id: 2,
       title: '写代码',
       description: '实现新功能',
+      category: 'work',
       completed: false,
       createdAt: '2025-06-02T10:00:00Z',
       updatedAt: '2025-06-02T10:00:00Z',
@@ -24,6 +26,7 @@ function createNotes() {
       id: 3,
       title: '读书',
       description: '读完Vue3文档',
+      category: '',
       completed: true,
       createdAt: '2025-06-03T10:00:00Z',
       updatedAt: '2025-06-03T10:00:00Z',
@@ -32,6 +35,7 @@ function createNotes() {
       id: 4,
       title: '买菜',
       description: '做晚饭',
+      category: 'life',
       completed: true,
       createdAt: '2025-05-28T10:00:00Z',
       updatedAt: '2025-05-28T10:00:00Z',
@@ -40,6 +44,7 @@ function createNotes() {
       id: 5,
       title: '运动',
       description: null,
+      category: '',
       completed: false,
       createdAt: '2025-06-04T10:00:00Z',
       updatedAt: '2025-06-04T10:00:00Z',
@@ -161,5 +166,61 @@ describe('useNotebookFilters', () => {
     await nextTick();
 
     expect(resetDisplayLimit).toHaveBeenCalledTimes(2);
+  });
+
+  it('filters by category', async () => {
+    const { filteredNotes, filterCategory } = setup();
+
+    filterCategory.value = 'work';
+    await nextTick();
+
+    expect(filteredNotes.value.map(note => note.title)).toEqual(['写代码']);
+  });
+
+  it('combines category with status and search filters', async () => {
+    const { filteredNotes, filterCategory, filterStatus, searchQuery } =
+      setup();
+
+    filterCategory.value = 'life';
+    filterStatus.value = 'completed';
+    await nextTick();
+
+    expect(filteredNotes.value.map(note => note.title)).toEqual(['买菜']);
+
+    searchQuery.value = '买菜';
+    await nextTick();
+
+    expect(filteredNotes.value).toHaveLength(1);
+  });
+
+  it('derives available categories from notes in order of appearance', () => {
+    const { availableCategories } = setup();
+
+    expect(availableCategories.value).toEqual(['life', 'work']);
+  });
+
+  it('keeps the selected category in options even when no note matches', async () => {
+    const { availableCategories, filterCategory, notes } = setup();
+
+    filterCategory.value = 'hobby';
+    await nextTick();
+
+    expect(availableCategories.value).toContain('hobby');
+
+    notes.value = [];
+    await nextTick();
+
+    expect(availableCategories.value).toEqual(['hobby']);
+  });
+
+  it('exposes filteredTotal for the untruncated filtered count', async () => {
+    const { filteredTotal, filterStatus } = setup(2);
+
+    expect(filteredTotal.value).toBe(5);
+
+    filterStatus.value = 'completed';
+    await nextTick();
+
+    expect(filteredTotal.value).toBe(2);
   });
 });

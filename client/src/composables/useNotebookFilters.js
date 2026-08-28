@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue';
 export function useNotebookFilters(notes, displayLimit, resetDisplayLimit) {
   const searchQuery = ref('');
   const filterStatus = ref('all');
+  const filterCategory = ref('all');
 
   const normalizedSearchQuery = computed(() =>
     searchQuery.value.trim().toLowerCase()
@@ -18,12 +19,32 @@ export function useNotebookFilters(notes, displayLimit, resetDisplayLimit) {
     );
   }
 
-  function applyFilters() {
+  // 从现有笔记中提取分类选项（保持出现顺序去重），
+  // 并始终包含当前已选中的分类，避免选中后选项消失
+  const availableCategories = computed(() => {
+    const seen = new Set();
+    for (const note of notes.value) {
+      const category = note.category?.trim();
+      if (category) seen.add(category);
+    }
+    if (filterCategory.value !== 'all') {
+      seen.add(filterCategory.value);
+    }
+    return [...seen];
+  });
+
+  // 过滤 + 排序只计算一次，filteredNotes / hasMoreNotes / filteredTotal
+  // 均从该结果派生，避免同一依赖变化触发两遍完整计算
+  const allFilteredNotes = computed(() => {
     let result = [...notes.value];
 
     if (filterStatus.value !== 'all') {
       const isCompleted = filterStatus.value === 'completed';
       result = result.filter(note => note.completed === isCompleted);
+    }
+
+    if (filterCategory.value !== 'all') {
+      result = result.filter(note => note.category === filterCategory.value);
     }
 
     if (normalizedSearchQuery.value) {
@@ -47,17 +68,19 @@ export function useNotebookFilters(notes, displayLimit, resetDisplayLimit) {
         new Date(getNoteTimestamp(right)) - new Date(getNoteTimestamp(left))
       );
     });
-  }
+  });
 
   const filteredNotes = computed(() => {
-    return applyFilters().slice(0, displayLimit.value);
+    return allFilteredNotes.value.slice(0, displayLimit.value);
   });
+
+  const filteredTotal = computed(() => allFilteredNotes.value.length);
 
   const hasMoreNotes = computed(() => {
-    return applyFilters().length > displayLimit.value;
+    return allFilteredNotes.value.length > displayLimit.value;
   });
 
-  watch([searchQuery, filterStatus], () => {
+  watch([searchQuery, filterStatus, filterCategory], () => {
     if (typeof resetDisplayLimit === 'function') {
       resetDisplayLimit();
     }
@@ -66,7 +89,10 @@ export function useNotebookFilters(notes, displayLimit, resetDisplayLimit) {
   return {
     searchQuery,
     filterStatus,
+    filterCategory,
+    availableCategories,
     filteredNotes,
+    filteredTotal,
     hasMoreNotes,
   };
 }

@@ -21,7 +21,11 @@ export class NotebookNoteService {
   }
 
   update(id, data) {
-    return this.model.update(id, data);
+    const row = this.model.update(id, data);
+    // 与 get 对齐：更新不存在的笔记必须返回 404，
+    // 否则前端会拿到空 data 并误建本地幽灵记录
+    if (!row) throw new NotFoundError('笔记不存在');
+    return row;
   }
 
   remove(id) {

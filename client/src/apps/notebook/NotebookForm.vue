@@ -29,6 +29,16 @@
 
       <div class="form-row">
         <div class="form-group flex-1">
+          <label class="form-label">分类</label>
+          <input
+            v-model="formData.category"
+            type="text"
+            placeholder="例如：工作 / 生活（可留空）"
+            class="form-input"
+            maxlength="50"
+          />
+        </div>
+        <div class="form-group flex-1">
           <label class="form-label">优先级</label>
           <select v-model="formData.priority" class="form-select">
             <option value="low">低</option>
@@ -73,6 +83,7 @@
   const formData = reactive({
     title: '',
     description: '',
+    category: '',
     priority: 'medium',
   });
 
@@ -84,6 +95,7 @@
       if (newNote) {
         formData.title = newNote.title || '';
         formData.description = newNote.description || '';
+        formData.category = newNote.category || '';
         formData.priority = newNote.priority || 'medium';
       } else {
         resetForm();
@@ -95,6 +107,7 @@
   function resetForm() {
     formData.title = '';
     formData.description = '';
+    formData.category = '';
     formData.priority = 'medium';
   }
 
@@ -104,6 +117,7 @@
     emit('save', {
       title: formData.title.trim(),
       description: formData.description.trim(),
+      category: formData.category.trim(),
       priority: formData.priority,
     });
 
