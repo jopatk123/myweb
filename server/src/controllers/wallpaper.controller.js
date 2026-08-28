@@ -200,7 +200,11 @@ export class WallpaperController {
       if (sanitizedIds.length === 0) {
         return res.status(400).json({ code: 400, message: '提供的壁纸ID无效' });
       }
-      if (groupId !== null && groupId !== undefined && groupId !== '') {
+      if (groupId === '') {
+        // DTO 允许空字符串表示"移出分组"，统一归一为 null，
+        // 否则会把 '' 直接写入 group_id 触发外键约束错误
+        groupId = null;
+      } else if (groupId !== null && groupId !== undefined) {
         groupId = Number(groupId);
       }
       await this.service.moveMultipleWallpapers(sanitizedIds, groupId);

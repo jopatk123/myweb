@@ -275,7 +275,11 @@
     if (!selectedGroupId.value) return;
     const g = groups.value.find(g => g.id === selectedGroupId.value);
     const name = g ? g.name : '';
-    if (!confirm(`确定要删除分组 "${name}" 吗？此操作将不会删除分组下的壁纸。`))
+    if (
+      !confirm(
+        `确定要删除分组 "${name}" 吗？分组下存在壁纸时将无法删除，需先移出壁纸。`
+      )
+    )
       return;
 
     try {

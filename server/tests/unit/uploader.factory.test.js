@@ -34,13 +34,17 @@ describe('imageOnlyFilter', () => {
   });
 
   test('rejects application/pdf', async () => {
-    await expect(callFilter('application/pdf')).rejects.toThrow(
-      '只支持图片文件'
-    );
+    await expect(callFilter('application/pdf')).rejects.toMatchObject({
+      message: '只支持图片文件',
+      status: 400,
+    });
   });
 
   test('rejects text/plain', async () => {
-    await expect(callFilter('text/plain')).rejects.toThrow('只支持图片文件');
+    await expect(callFilter('text/plain')).rejects.toMatchObject({
+      message: '只支持图片文件',
+      status: 400,
+    });
   });
 });
 
@@ -62,7 +66,10 @@ describe('imageUploadFilter', () => {
   });
 
   test('rejects video/mp4 with correct message', async () => {
-    await expect(callFilter('video/mp4')).rejects.toThrow('只允许上传图片文件');
+    await expect(callFilter('video/mp4')).rejects.toMatchObject({
+      message: '只允许上传图片文件',
+      status: 400,
+    });
   });
 });
 

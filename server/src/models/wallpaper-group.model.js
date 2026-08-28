@@ -1,6 +1,8 @@
 /**
  * 壁纸分组模型
  */
+import { ConflictError } from '../utils/errors.js';
+
 export class WallpaperGroupModel {
   constructor(db) {
     this.db = db;
@@ -91,7 +93,8 @@ export class WallpaperGroupModel {
     // 检查是否为默认分组
     const group = this.findById(id);
     if (group?.is_default) {
-      throw new Error('不能删除默认分组');
+      // 使用 ConflictError 携带 409 状态码，避免被错误中间件误判为 500
+      throw new ConflictError('不能删除默认分组');
     }
 
     const sql =
@@ -116,18 +119,22 @@ export class WallpaperGroupModel {
   }
 
   setCurrent(id) {
-    // 先清空当前标记（只影响未删除的分组）
-    this.db
-      .prepare(
-        'UPDATE wallpaper_groups SET is_current = 0 WHERE deleted_at IS NULL'
-      )
-      .run();
-    // 设置指定分组为当前
-    this.db
-      .prepare(
-        'UPDATE wallpaper_groups SET is_current = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL'
-      )
-      .run(id);
+    // 事务内原子完成"先清空其他分组 is_current，再设置指定分组"，
+    // 两步分离时中间失败会导致所有分组 is_current=0
+    this.db.transaction(() => {
+      // 先清空当前标记（只影响未删除的分组）
+      this.db
+        .prepare(
+          'UPDATE wallpaper_groups SET is_current = 0 WHERE deleted_at IS NULL'
+        )
+        .run();
+      // 设置指定分组为当前
+      this.db
+        .prepare(
+          'UPDATE wallpaper_groups SET is_current = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL'
+        )
+        .run(id);
+    })();
     return this.findById(id);
   }
 }

@@ -10,7 +10,9 @@
         <div class="form-group">
           <label>选择分组：</label>
           <select v-model="targetGroupId">
-            <option :value="null">默认分组</option>
+            <!-- null 表示移出分组（group_id 置空），并非"默认分组"；
+                 默认分组本身是真实分组，出现在下方分组列表中 -->
+            <option :value="null">未分组</option>
             <option v-for="group in groups" :key="group.id" :value="group.id">
               {{ group.name }}
             </option>

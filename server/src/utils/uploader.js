@@ -42,12 +42,15 @@ export function createUploader({
 /**
  * 仅接受图片文件（适用于壁纸上传）
  * 不修改 file.originalname。
+ * 拒绝时携带 status=400，避免错误中间件把客户端错误误判为 500。
  */
 export function imageOnlyFilter(_req, file, cb) {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error('只支持图片文件'), false);
+    const err = new Error('只支持图片文件');
+    err.status = 400;
+    cb(err, false);
   }
 }
 
@@ -59,6 +62,8 @@ export function imageUploadFilter(_req, file, cb) {
     normaliseUploadedFileName(file);
     cb(null, true);
   } else {
-    cb(new Error('只允许上传图片文件'), false);
+    const err = new Error('只允许上传图片文件');
+    err.status = 400;
+    cb(err, false);
   }
 }

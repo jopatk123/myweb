@@ -182,6 +182,27 @@ describe('WallpaperController - moveWallpapers()', () => {
       .expect(400);
     expect(res.body.code).toBe(400);
   });
+
+  test('accepts empty-string groupId and clears group (移出分组)', async () => {
+    const groupRow = db
+      .prepare('SELECT id FROM wallpaper_groups WHERE is_default = 1')
+      .get();
+    const id = insertWallpaper({
+      name: '待移出壁纸',
+      groupId: groupRow ? groupRow.id : null,
+    });
+
+    const res = await request(app)
+      .put('/api/wallpapers/move')
+      .send({ ids: [id], groupId: '' })
+      .expect(200);
+
+    expect(res.body.code).toBe(200);
+    const row = db
+      .prepare('SELECT group_id FROM wallpapers WHERE id = ?')
+      .get(id);
+    expect(row.group_id).toBeNull();
+  });
 });
 
 describe('WallpaperController - setActiveWallpaper()', () => {
@@ -474,6 +495,17 @@ describe('WallpaperController - Groups error paths', () => {
     // Try to delete the group → should fail
     const res = await request(app).delete(`/api/wallpapers/groups/${gid}`);
     expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  test('DELETE default group returns 409', async () => {
+    const defaultGroup = db
+      .prepare('SELECT id FROM wallpaper_groups WHERE is_default = 1')
+      .get();
+    const res = await request(app)
+      .delete(`/api/wallpapers/groups/${defaultGroup.id}`)
+      .expect(409);
+    expect(res.body.code).toBe(409);
+    expect(res.body.message).toBe('不能删除默认分组');
   });
 });
 
