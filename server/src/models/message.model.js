@@ -2,6 +2,7 @@
  * 留言模型（构造函数注入 db）
  */
 import logger from '../utils/logger.js';
+import { escapeLikePattern } from './base.model.js';
 
 export const messageModelLogger = logger.child('MessageModel');
 
@@ -109,6 +110,15 @@ export class MessageModel {
   }
 
   findAll({ limit = 50, offset = 0, order = 'DESC', search = '' } = {}) {
+    // 排序方向白名单校验（与 BaseModel.normalizeOrderByClause 同等防御），
+    // order 直接拼入 SQL，若不校验未来透传外部输入会成为注入点
+    const normalizedOrder = String(order || 'DESC')
+      .trim()
+      .toUpperCase();
+    if (normalizedOrder !== 'ASC' && normalizedOrder !== 'DESC') {
+      throw new Error(`Unsafe ORDER BY direction: ${order}`);
+    }
+
     const normalizedSearch = typeof search === 'string' ? search.trim() : '';
     const hasSearch = normalizedSearch.length > 0;
 
@@ -121,8 +131,10 @@ export class MessageModel {
           'WHERE id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?)';
         params.push(this._escapeForFts5(normalizedSearch));
       } else {
-        whereSql = 'WHERE content LIKE ? OR author_name LIKE ?';
-        const term = `%${normalizedSearch}%`;
+        // ESCAPE '\'：搜索词中的 %/_ 经 escapeLikePattern 转义后按字面量匹配
+        whereSql =
+          "WHERE content LIKE ? ESCAPE '\\' OR author_name LIKE ? ESCAPE '\\'";
+        const term = `%${escapeLikePattern(normalizedSearch)}%`;
         params.push(term, term);
       }
     }
@@ -132,7 +144,7 @@ export class MessageModel {
              session_id as sessionId, images, image_type as imageType,
              created_at as createdAt, updated_at as updatedAt
       FROM messages ${whereSql}
-      ORDER BY created_at ${order}
+      ORDER BY created_at ${normalizedOrder}
       LIMIT ? OFFSET ?
     `);
     params.push(limit, offset);
@@ -154,10 +166,10 @@ export class MessageModel {
         .get(this._escapeForFts5(normalizedSearch)).count;
     }
 
-    const term = `%${normalizedSearch}%`;
+    const term = `%${escapeLikePattern(normalizedSearch)}%`;
     return this.db
       .prepare(
-        'SELECT COUNT(*) as count FROM messages WHERE content LIKE ? OR author_name LIKE ?'
+        "SELECT COUNT(*) as count FROM messages WHERE content LIKE ? ESCAPE '\\' OR author_name LIKE ? ESCAPE '\\'"
       )
       .get(term, term).count;
   }

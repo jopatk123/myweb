@@ -1,3 +1,10 @@
+/**
+ * 工作计时服务
+ *
+ * 分层权衡：该模块均为单表简单读写与聚合（upsert / 自增 / SUM），
+ * 无复杂业务查询，直接使用 db.prepare 而未单独抽 model 层，
+ * 避免仅做转发的过度分层。
+ */
 export class WorkTimerService {
   constructor(db) {
     this.db = db;
@@ -28,16 +35,19 @@ export class WorkTimerService {
     return stmt.run(session);
   }
 
+  /**
+   * 心跳自增累计时长。
+   * 使用单语句原子自增（duration = duration + ?），避免 SELECT-后-JS 聚合-再-UPDATE
+   * 的读-改-写模式：一旦未来引入多进程/异步驱动即会丢失并发自增。
+   */
   incrementSessionDuration(id, incrementMs, lastUpdateIso) {
-    const get = this.db.prepare(`SELECT * FROM work_sessions WHERE id = ?`);
-    const row = get.get(id);
-    if (!row) return null;
-
-    const newDuration = (row.duration || 0) + incrementMs;
     const upd = this.db.prepare(`
-      UPDATE work_sessions SET duration = ?, last_update = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      UPDATE work_sessions
+      SET duration = COALESCE(duration, 0) + ?, last_update = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
     `);
-    upd.run(newDuration, lastUpdateIso, id);
+    const result = upd.run(incrementMs, lastUpdateIso, id);
+    if (result.changes === 0) return null;
 
     return this.getTotals();
   }
@@ -64,25 +74,24 @@ export class WorkTimerService {
     weekStart.setHours(0, 0, 0, 0);
     const weekStartStr = this.getLocalDateString(weekStart);
 
-    // 统一从 work_sessions 聚合，避免不同口径不一致
-    const totalRow = this.db
-      .prepare(`SELECT SUM(duration) as total FROM work_sessions`)
-      .get();
-    const todayRow = this.db
+    // 单次全表扫描同时聚合 total/today/week（心跳高频路径，避免 3 次扫描）；
+    // work_sessions 只增不删，行数量级为每日数行，全表 SUM 成本可接受
+    const row = this.db
       .prepare(
-        `SELECT SUM(duration) as today FROM work_sessions WHERE date = ?`
+        `
+        SELECT
+          SUM(duration) AS total,
+          SUM(CASE WHEN date = ? THEN duration ELSE 0 END) AS today,
+          SUM(CASE WHEN date >= ? THEN duration ELSE 0 END) AS week
+        FROM work_sessions
+      `
       )
-      .get(todayStr);
-    const weekRow = this.db
-      .prepare(
-        `SELECT SUM(duration) as week FROM work_sessions WHERE date >= ?`
-      )
-      .get(weekStartStr);
+      .get(todayStr, weekStartStr);
 
     return {
-      totalMs: totalRow.total || 0,
-      todayMs: todayRow.today || 0,
-      weekMs: weekRow.week || 0,
+      totalMs: row.total || 0,
+      todayMs: row.today || 0,
+      weekMs: row.week || 0,
     };
   }
 }

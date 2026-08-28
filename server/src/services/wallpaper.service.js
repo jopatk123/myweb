@@ -121,8 +121,8 @@ export class WallpaperService {
     // getWallpaperById 已在不存在时抛 NotFoundError，此处无需重复判断
     const wallpaper = this.getWallpaperById(id);
 
-    this.wallpaperModel.clearActiveIfMatches(id);
-    const dbResult = this.wallpaperModel.delete(id);
+    // 事务内原子完成清激活 + 软删除，避免两步分离在中间失败时状态不一致
+    const dbResult = this.wallpaperModel.deleteAndClearActive(id);
 
     try {
       const diskPath = toUploadsAbsolutePath(wallpaper.file_path);
@@ -149,39 +149,34 @@ export class WallpaperService {
     const wallpapers = this.wallpaperModel.findManyByIds(ids);
     if (!wallpapers || wallpapers.length === 0) return;
 
-    const activeWallpaperId = this.wallpaperModel.getActiveId();
-    if (
-      activeWallpaperId &&
-      wallpapers.some(
-        wallpaper => Number(wallpaper.id) === Number(activeWallpaperId)
-      )
-    ) {
-      this.wallpaperModel.clearActiveIfMatches(activeWallpaperId);
-    }
+    // 事务内原子完成命中激活壁纸的清激活 + 批量软删除
+    const dbResult = this.wallpaperModel.deleteManyAndClearActive(ids);
 
-    const dbResult = this.wallpaperModel.deleteMany(ids);
-
-    for (const wallpaper of wallpapers) {
-      try {
-        const diskPath = toUploadsAbsolutePath(wallpaper.file_path);
-        if (!diskPath) {
-          wallpaperLogger.warn('跳过删除非法壁纸路径', {
-            path: wallpaper.file_path,
-          });
-        } else {
-          await fs.unlink(diskPath);
+    // 磁盘文件与缩略图缓存并行清理（对比串行 O(n)，量大时明显更快；
+    // 各项独立捕获错误，单项失败不影响其他清理）
+    await Promise.all(
+      wallpapers.map(async wallpaper => {
+        try {
+          const diskPath = toUploadsAbsolutePath(wallpaper.file_path);
+          if (!diskPath) {
+            wallpaperLogger.warn('跳过删除非法壁纸路径', {
+              path: wallpaper.file_path,
+            });
+          } else {
+            await fs.unlink(diskPath);
+          }
+        } catch (error) {
+          if (error.code !== 'ENOENT') {
+            wallpaperLogger.warn(
+              `批量删除壁纸时文件删除失败（已忽略）: ${wallpaper.file_path}`,
+              { error: error && error.message }
+            );
+          }
         }
-      } catch (error) {
-        if (error.code !== 'ENOENT') {
-          wallpaperLogger.warn(
-            `批量删除壁纸时文件删除失败（已忽略）: ${wallpaper.file_path}`,
-            { error: error && error.message }
-          );
-        }
-      }
 
-      await this.thumbnails.purgeCache(wallpaper.id);
-    }
+        await this.thumbnails.purgeCache(wallpaper.id);
+      })
+    );
 
     return dbResult;
   }

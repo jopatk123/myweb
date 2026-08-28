@@ -1,8 +1,14 @@
+import { escapeLikePattern } from './base.model.js';
+
 export class NotebookNoteModel {
   constructor(db) {
     this.db = db;
   }
 
+  /**
+   * 分页查询（clamp 与返回契约对齐 BaseModel.paginate：limit 1~200、
+   * 返回 { items, total, page, limit }）
+   */
   findAll({
     page = 1,
     limit = 50,
@@ -10,6 +16,9 @@ export class NotebookNoteModel {
     status = 'all',
     category = 'all',
   } = {}) {
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.min(200, Math.max(1, Number(limit) || 50));
+
     const whereClauses = [];
     const params = [];
 
@@ -23,8 +32,12 @@ export class NotebookNoteModel {
       params.push(category);
     }
     if (search) {
-      whereClauses.push('(title LIKE ? OR description LIKE ?)');
-      params.push(`%${search}%`, `%${search}%`);
+      // ESCAPE '\'：搜索词中的 %/_ 按字面量匹配
+      whereClauses.push(
+        "(title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')"
+      );
+      const term = `%${escapeLikePattern(search)}%`;
+      params.push(term, term);
     }
 
     const where = whereClauses.length
@@ -34,14 +47,14 @@ export class NotebookNoteModel {
       .prepare(`SELECT COUNT(*) AS total FROM notebook_notes ${where}`)
       .get(...params);
     const total = totalRow?.total || 0;
-    const offset = (Number(page) - 1) * Number(limit);
+    const offset = (safePage - 1) * safeLimit;
     const rows = this.db
       .prepare(
         `SELECT * FROM notebook_notes ${where} ORDER BY completed ASC, created_at DESC LIMIT ? OFFSET ?`
       )
-      .all(...params, Number(limit), offset);
+      .all(...params, safeLimit, offset);
 
-    return { items: rows, total };
+    return { items: rows, total, page: safePage, limit: safeLimit };
   }
 
   findById(id) {

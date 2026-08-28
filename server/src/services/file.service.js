@@ -59,6 +59,9 @@ export class FileService {
   createMany(entries = []) {
     const items = Array.isArray(entries) ? entries : [entries];
     if (!items.length) return [];
+    // 设计权衡：跨层直接访问 this.model.db 开事务（model 层未提供事务封装）。
+    // 批量插入需原子性，且单条记录的类型识别/路径归一逻辑复用本 service 的
+    // create 实现，避免在 model 层重复维护同一套字段加工。
     const txn = this.model.db.transaction(data =>
       data.map(item => this.create(item))
     );

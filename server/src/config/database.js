@@ -91,6 +91,10 @@ export async function initDatabase(options = {}) {
     try {
       initMessageTables(db);
     } catch (e) {
+      // FTS5 编译特性缺失时 CREATE VIRTUAL TABLE ... USING fts5 会抛错。
+      // 此处吞错是有意设计：留言搜索在 message.model._hasFts5() 检测不到
+      // 虚拟表时会自动降级为 LIKE 查询，功能不中断；文件库场景由
+      // schema-parity 测试兜底保证表结构一致。
       dbLogger.warn('无法初始化 message board 表（非致命）', {
         error: e,
       });

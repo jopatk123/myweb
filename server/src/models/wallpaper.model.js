@@ -218,37 +218,72 @@ export class WallpaperModel extends BaseModel {
     return this.findById(id);
   }
 
+  /**
+   * 清激活状态的两条语句（仅事务体内调用，不含事务包裹）：
+   * 置空 is_active 并将 runtime_state 单行的 active_wallpaper_id 置 NULL
+   */
+  _clearActiveStatements(id) {
+    this.db
+      .prepare(
+        `
+          UPDATE wallpapers
+          SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `
+      )
+      .run(id);
+
+    this.db
+      .prepare(
+        `
+          INSERT INTO wallpaper_runtime_state (id, active_wallpaper_id, updated_at)
+          VALUES (1, NULL, CURRENT_TIMESTAMP)
+          ON CONFLICT(id) DO UPDATE SET
+            active_wallpaper_id = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        `
+      )
+      .run();
+  }
+
   clearActiveIfMatches(id) {
     const currentActiveId = this.getActiveId();
     if (!currentActiveId || Number(currentActiveId) !== Number(id)) {
       return false;
     }
 
-    this.db.transaction(() => {
-      this.db
-        .prepare(
-          `
-            UPDATE wallpapers
-            SET is_active = 0, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-          `
-        )
-        .run(id);
-
-      this.db
-        .prepare(
-          `
-            INSERT INTO wallpaper_runtime_state (id, active_wallpaper_id, updated_at)
-            VALUES (1, NULL, CURRENT_TIMESTAMP)
-            ON CONFLICT(id) DO UPDATE SET
-              active_wallpaper_id = NULL,
-              updated_at = CURRENT_TIMESTAMP
-          `
-        )
-        .run();
-    })();
-
+    this.db.transaction(() => this._clearActiveStatements(id))();
     return true;
+  }
+
+  /**
+   * 事务内原子完成「清理激活状态 + 软删除」。
+   * 供 service 层替代先 clearActiveIfMatches 再 delete 的两步调用：
+   * 两步分离时若中间失败会出现「激活已清但壁纸未删」的不一致状态。
+   */
+  deleteAndClearActive(id) {
+    return this.db.transaction(() => {
+      const currentActiveId = this.getActiveId();
+      if (currentActiveId && Number(currentActiveId) === Number(id)) {
+        this._clearActiveStatements(id);
+      }
+      return this.delete(id);
+    })();
+  }
+
+  /** 批量版 deleteAndClearActive：激活壁纸命中 ids 时一并清激活 */
+  deleteManyAndClearActive(ids) {
+    if (!ids || ids.length === 0) return null;
+    return this.db.transaction(() => {
+      const currentActiveId = this.getActiveId();
+      if (
+        currentActiveId &&
+        ids.some(id => Number(id) === Number(currentActiveId))
+      ) {
+        this._clearActiveStatements(currentActiveId);
+      }
+      return this.deleteMany(ids);
+    })();
   }
 
   getActive() {

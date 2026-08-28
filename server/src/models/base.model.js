@@ -36,6 +36,14 @@ function normalizeOrderByClause(orderBy) {
   return `${match[1]} ${match[2].toUpperCase()}`;
 }
 
+/**
+ * 转义 LIKE 搜索词中的通配符（\ % _），配合 `LIKE ? ESCAPE '\'` 使用，
+ * 使用户输入中的 % 和 _ 按字面量匹配而非通配符生效。
+ */
+export function escapeLikePattern(term) {
+  return String(term).replace(/[\\%_]/g, ch => `\\${ch}`);
+}
+
 export class BaseModel {
   constructor(db) {
     this.db = db;

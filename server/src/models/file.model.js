@@ -1,4 +1,4 @@
-import { BaseModel } from './base.model.js';
+import { BaseModel, escapeLikePattern } from './base.model.js';
 
 /**
  * files 表数据访问层
@@ -58,8 +58,12 @@ export class FileModel extends BaseModel {
       params.push(String(type).toLowerCase());
     }
     if (normalizedSearch) {
-      whereClauses.push('(original_name LIKE ? OR stored_name LIKE ?)');
-      params.push(`%${normalizedSearch}%`, `%${normalizedSearch}%`);
+      // ESCAPE '\'：搜索词中的 %/_ 按字面量匹配
+      whereClauses.push(
+        "(original_name LIKE ? ESCAPE '\\' OR stored_name LIKE ? ESCAPE '\\')"
+      );
+      const term = `%${escapeLikePattern(normalizedSearch)}%`;
+      params.push(term, term);
     }
 
     const where = whereClauses.length

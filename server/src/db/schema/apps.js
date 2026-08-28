@@ -46,6 +46,7 @@ export function initAppTables(db) {
     CREATE INDEX IF NOT EXISTS idx_apps_is_autostart ON apps(is_autostart);
     CREATE INDEX IF NOT EXISTS idx_apps_deleted_at ON apps(deleted_at);
     CREATE INDEX IF NOT EXISTS idx_apps_slug ON apps(slug);
+    CREATE INDEX IF NOT EXISTS idx_apps_icon_filename ON apps(icon_filename);
   `;
 
   db.exec(appGroupTableSql);

@@ -12,29 +12,24 @@ export class UserSessionModel {
     avatarColor = '#007bff',
     autoOpenEnabled = true,
   }) {
-    const updateStmt = this.db.prepare(`
-      UPDATE user_sessions
-      SET nickname = ?, avatar_color = ?, auto_open_enabled = ?,
-          last_active = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-      WHERE session_id = ?
-    `);
-    const updateResult = updateStmt.run(
-      nickname,
-      avatarColor,
-      autoOpenEnabled ? 1 : 0,
-      sessionId
-    );
-    if (updateResult.changes === 0) {
-      this.db
-        .prepare(
-          `
+    // 单语句原子 upsert（与 worktimer.service 的 ON CONFLICT 风格一致），
+    // 避免 UPDATE-then-INSERT 在并发场景下触发 UNIQUE 约束冲突
+    this.db
+      .prepare(
+        `
         INSERT INTO user_sessions (session_id, nickname, avatar_color, auto_open_enabled,
                                    last_active, created_at, updated_at)
         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(session_id) DO UPDATE SET
+          nickname = excluded.nickname,
+          avatar_color = excluded.avatar_color,
+          auto_open_enabled = excluded.auto_open_enabled,
+          last_active = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
       `
-        )
-        .run(sessionId, nickname, avatarColor, autoOpenEnabled ? 1 : 0);
-    }
+      )
+      .run(sessionId, nickname, avatarColor, autoOpenEnabled ? 1 : 0);
+
     const result = this.findBySessionId(sessionId);
     if (result) result.autoOpenEnabled = Boolean(result.autoOpenEnabled);
     return result;
