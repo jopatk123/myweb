@@ -120,12 +120,33 @@ export class AppService {
     return this.appModel.create(nextPayload);
   }
 
-  updateApp(id, payload) {
+  async updateApp(id, payload) {
     const existing = this.appModel.findById(id);
     const nextPayload = buildUpdateAppPayload(id, existing, payload, slug =>
       this.appModel.findBySlug(slug)
     );
-    return this.appModel.update(id, nextPayload);
+    const updated = this.appModel.update(id, nextPayload);
+
+    // 图标被替换时，清理旧图标文件（仅当无其它未删除应用引用时）
+    const oldIconFilename = existing?.icon_filename;
+    if (
+      oldIconFilename &&
+      updated &&
+      updated.icon_filename !== oldIconFilename
+    ) {
+      try {
+        const count = this.appModel.countByIconFilename(oldIconFilename);
+        if (count === 0) {
+          await this.deleteIconFileIfExists(oldIconFilename);
+        }
+      } catch (e) {
+        appServiceLogger.warn('[AppService.updateApp] 清理旧图标失败', {
+          error: e?.message || e,
+        });
+      }
+    }
+
+    return updated;
   }
 
   async deleteApp(id) {
@@ -199,6 +220,7 @@ export class AppService {
 
   updateGroup(id, payload) {
     const existing = this.groupModel.findById(id);
+    if (!existing) throw new NotFoundError('分组不存在');
     const nextPayload = buildUpdateGroupPayload(
       id,
       existing,
@@ -209,6 +231,8 @@ export class AppService {
   }
 
   deleteGroup(id) {
+    const existing = this.groupModel.findById(id);
+    if (!existing) throw new NotFoundError('分组不存在');
     return this.groupModel.softDelete(id);
   }
 

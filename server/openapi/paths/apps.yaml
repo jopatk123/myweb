@@ -285,6 +285,8 @@ groupById:
     responses:
       '200':
         description: Updated
+      '404':
+        description: Group not found
   delete:
     summary: Delete app group
     description: |
@@ -304,3 +306,5 @@ groupById:
         description: Deleted
       '400':
         description: Default group cannot be deleted
+      '404':
+        description: Group not found

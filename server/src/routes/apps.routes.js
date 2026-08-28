@@ -111,10 +111,12 @@ export function createAppRoutes(db) {
   router.post('/groups', validateBody(createGroupSchema), (req, res, next) =>
     controller.createGroup(req, res, next)
   );
-  router.put('/groups/:id', validateBody(updateGroupSchema), (req, res, next) =>
-    controller.updateGroup(req, res, next)
+  router.put(
+    '/groups/:id(\\d+)',
+    validateBody(updateGroupSchema),
+    (req, res, next) => controller.updateGroup(req, res, next)
   );
-  router.delete('/groups/:id', (req, res, next) =>
+  router.delete('/groups/:id(\\d+)', (req, res, next) =>
     controller.deleteGroup(req, res, next)
   );
 

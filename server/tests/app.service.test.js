@@ -212,7 +212,7 @@ test('updateApp updates third-party app successfully', async () => {
     is_builtin: 0,
   });
 
-  const updated = service.updateApp(created.id, {
+  const updated = await service.updateApp(created.id, {
     name: '更新后的应用',
     target_url: 'https://updated.com',
   });
@@ -229,7 +229,7 @@ test('updateApp does not change is_builtin flag even if provided', async () => {
   });
 
   // 尝试将 is_builtin 设置为 1（在 controller 层会被过滤掉）
-  const updated = service.updateApp(created.id, {
+  const updated = await service.updateApp(created.id, {
     name: '更新后的应用',
     is_builtin: 1,
   });
@@ -262,22 +262,102 @@ test('updateApp regenerates slug without mutating caller payload', async () => {
   });
   const payload = { name: '新的应用名' };
 
-  const updated = service.updateApp(created.id, payload);
+  const updated = await service.updateApp(created.id, payload);
 
   expect(updated.slug).toBeTruthy();
   expect(updated.slug).not.toBe('original-app');
   expect(payload).toEqual({ name: '新的应用名' });
 });
 
-test('createGroup and updateGroup keep caller payload immutable', () => {
+test('createGroup and updateGroup keep caller payload immutable', async () => {
   const createPayload = { name: '我的分组' };
   const created = service.createGroup(createPayload);
   expect(created.slug).toBeTruthy();
   expect(createPayload).toEqual({ name: '我的分组' });
 
   const updatePayload = { name: '新的分组名' };
-  const updated = service.updateGroup(created.id, updatePayload);
+  const updated = await service.updateGroup(created.id, updatePayload);
   expect(updated.slug).toBeTruthy();
   expect(updated.slug).not.toBe(created.slug);
   expect(updatePayload).toEqual({ name: '新的分组名' });
+});
+
+test('updateGroup and deleteGroup throw 404 for missing groups', () => {
+  try {
+    service.updateGroup(999999, { name: '任意名' });
+    throw new Error('expected updateGroup to throw');
+  } catch (e) {
+    expect(e.message).toBe('分组不存在');
+    expect(e.status).toBe(404);
+  }
+
+  try {
+    service.deleteGroup(999999);
+    throw new Error('expected deleteGroup to throw');
+  } catch (e) {
+    expect(e.message).toBe('分组不存在');
+    expect(e.status).toBe(404);
+  }
+});
+
+test('updateApp removes old icon file when icon replaced and unreferenced', async () => {
+  const oldIconFilename = 'old-icon.png';
+  const newIconFilename = 'new-icon.png';
+  const oldIconPath = path.join(service.uploadsDir, oldIconFilename);
+  const newIconPath = path.join(service.uploadsDir, newIconFilename);
+  await fs.writeFile(oldIconPath, 'old-content');
+  await fs.writeFile(newIconPath, 'new-content');
+
+  const app = await service.createApp({
+    name: '换图标应用',
+    slug: 'replace-icon-app',
+    icon_filename: oldIconFilename,
+  });
+
+  const updated = await service.updateApp(app.id, {
+    icon_filename: newIconFilename,
+  });
+
+  expect(updated.icon_filename).toBe(newIconFilename);
+  await expect(fs.access(oldIconPath)).rejects.toThrow();
+  // 新图标文件不受影响
+  await expect(fs.access(newIconPath)).resolves.toBeUndefined();
+});
+
+test('updateApp keeps old icon file when still referenced by another app', async () => {
+  const oldIconFilename = 'shared-icon.png';
+  const oldIconPath = path.join(service.uploadsDir, oldIconFilename);
+  await fs.writeFile(oldIconPath, 'shared-content');
+
+  await service.createApp({
+    name: '引用者A',
+    slug: 'icon-ref-a',
+    icon_filename: oldIconFilename,
+  });
+  const appB = await service.createApp({
+    name: '引用者B',
+    slug: 'icon-ref-b',
+    icon_filename: oldIconFilename,
+  });
+
+  await service.updateApp(appB.id, { icon_filename: 'b-new.png' });
+
+  // A 仍在引用旧图标，文件必须保留
+  await expect(fs.access(oldIconPath)).resolves.toBeUndefined();
+});
+
+test('updateApp keeps icon file when icon_filename unchanged', async () => {
+  const iconFilename = 'keep-icon.png';
+  const iconPath = path.join(service.uploadsDir, iconFilename);
+  await fs.writeFile(iconPath, 'keep-content');
+
+  const app = await service.createApp({
+    name: '不改图标应用',
+    slug: 'keep-icon-app',
+    icon_filename: iconFilename,
+  });
+
+  await service.updateApp(app.id, { name: '改名不换图标' });
+
+  await expect(fs.access(iconPath)).resolves.toBeUndefined();
 });

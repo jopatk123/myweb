@@ -384,6 +384,35 @@ describe('AppController - Groups', () => {
       .expect(200);
     expect(res.body.code).toBe(200);
   });
+
+  test('PUT /api/apps/groups/999999 returns 404 for missing group', async () => {
+    const res = await request(app)
+      .put('/api/apps/groups/999999')
+      .send({ name: '不存在的分组' })
+      .expect(404);
+    expect(res.body.message).toBe('分组不存在');
+  });
+
+  test('DELETE /api/apps/groups/999999 returns 404 for missing group', async () => {
+    const res = await request(app)
+      .delete('/api/apps/groups/999999')
+      .expect(404);
+    expect(res.body.message).toBe('分组不存在');
+  });
+
+  test('non-numeric group ids are rejected with 404', async () => {
+    // (\d+) 约束使非数字 id 不会进入 controller，由子路由 fallback 统一 404
+    const putRes = await request(app)
+      .put('/api/apps/groups/abc')
+      .send({ name: '任意名' })
+      .expect(404);
+    expect(putRes.body.code).toBe(404);
+
+    const deleteRes = await request(app)
+      .delete('/api/apps/groups/all')
+      .expect(404);
+    expect(deleteRes.body.code).toBe(404);
+  });
 });
 
 describe('AppController - icon upload', () => {

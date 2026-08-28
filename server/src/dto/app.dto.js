@@ -24,7 +24,8 @@ export const bulkVisibleSchema = Joi.object({
 
 export const moveAppsSchema = Joi.object({
   ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
-  // 允许 null（移动到默认分组）或正整数（目标分组 id）；不传时默认 null
+  // 允许 null（移动到无分组，group_id 置空）或正整数（目标分组 id）；不传时默认 null
+  // 注意：默认分组是真实分组（出现在分组列表中），并非 null 的语义
   targetGroupId: Joi.alternatives()
     .try(Joi.number().integer().positive(), Joi.valid(null))
     .optional()
