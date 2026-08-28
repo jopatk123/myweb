@@ -51,10 +51,12 @@ export class TimerControls {
         );
       })
       .finally(() => {
+        // 传递 endTime 的 ref 本体（与 stopTimer 路径一致），
+        // 心跳离线分支需要 endTime.value，传字符串会得到 undefined
         this.heartbeatManager.startHeartbeatInterval(
           startWorkTime.value,
           sessionId,
-          endTime.value,
+          endTime,
           totalMs,
           workSessions,
           saveWorkSessionsFn

@@ -300,7 +300,8 @@ if [[ -z "$HEALTH_URL" ]]; then
     fi
     HEALTH_URL="http://${HOST_PART}:${PORT_PART}/health"
   else
-    TARGET_PORT=${PORT:-3000}
+    # 宿主机端口由 compose 的 ${BACKEND_PORT:-3000} 决定，回退时保持一致
+    TARGET_PORT=${BACKEND_PORT:-3000}
     HEALTH_URL="http://127.0.0.1:${TARGET_PORT}/health"
   fi
 fi
@@ -329,8 +330,8 @@ if [[ -n "$PORT_MAPPING" ]]; then
   echo "  Web UI : http://${HOST_PART}:${PORT_PART}/"
   echo "  Health : $HEALTH_URL"
 else
-  if [[ -n "${PORT:-}" ]]; then
-    echo "  Web UI : http://127.0.0.1:${PORT}/"
+  if [[ -n "${BACKEND_PORT:-}" ]]; then
+    echo "  Web UI : http://127.0.0.1:${BACKEND_PORT}/"
   else
     echo "  Web UI : http://127.0.0.1:3000/"
   fi

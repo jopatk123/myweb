@@ -6,6 +6,20 @@ import { toUploadsAbsolutePath } from '../../utils/upload-path.js';
 const downloadLogger = logger.child('WallpaperDownload');
 
 /**
+ * 净化 zip 条目名：original_name 来自上传时客户端可控的 multipart filename，
+ * 必须剥离路径分隔符与控制字符，避免 Zip Slip（解压时目录逃逸）。
+ */
+function sanitizeZipEntryName(name, fallback) {
+  const base = String(name)
+    .split(/[\\/]/)
+    .pop()
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f]/g, '')
+    .trim();
+  return base || fallback;
+}
+
+/**
  * 生成符合 RFC 6266 的 Content-Disposition 头值。
  * - 使用 filename*=UTF-8'' 确保非 ASCII 文件名正确传递
  * - 同时提供 ASCII 安全回退，避免旧客户端乱码
@@ -65,7 +79,10 @@ export async function streamWallpaperDownload(res, wallpapers) {
     if (existsSync(filePath)) {
       archiveEntries.push({
         filePath,
-        name: wallpaper.original_name || `wallpaper_${wallpaper.id}`,
+        name: sanitizeZipEntryName(
+          wallpaper.original_name,
+          `wallpaper_${wallpaper.id}`
+        ),
       });
     } else {
       downloadLogger.warn('下载时壁纸文件不存在（已跳过）', {

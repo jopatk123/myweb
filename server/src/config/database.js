@@ -12,7 +12,7 @@ import {
   initWorkTimerTables,
 } from '../db/schema.js';
 import { ensureWallpaperColumns, ensureAppsColumns } from '../db/migration.js';
-import { ensureBuiltinApps, seedAppsIfEmpty } from '../db/seeding.js';
+import { ensureBuiltinApps } from '../db/seeding.js';
 import logger from '../utils/logger.js';
 import { resolveDatabasePath, applyDatabasePathOverride } from './env.js';
 
@@ -112,8 +112,6 @@ export async function initDatabase(options = {}) {
   // 确保内置应用存在（用于恢复误删或旧库缺失）
   if (seedBuiltinApps) {
     ensureBuiltinApps(db);
-    // 数据种子：仅当 apps 表为空时插入示例应用（兼容旧逻辑）
-    seedAppsIfEmpty(db);
   }
 
   if (!silent) {

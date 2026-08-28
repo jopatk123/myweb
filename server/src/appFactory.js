@@ -88,9 +88,6 @@ function resolveCorsOptions() {
       // 拒绝无 origin 的跨域请求（服务端调用等本地直接请求除外）
       // 无 origin 头时说明是同源请求或服务端请求，直接放行
       if (!origin) {
-        // 不附带 Origin 头的请求（如直接 curl 或同源），允许通过
-        // 但若配置了严格来源列表，仍拒绝无 origin 跨域请求
-        if (appEnv.cors.allowAll) return callback(null, true);
         // 没有 origin 意味着同源请求，允许
         return callback(null, true);
       }
@@ -115,7 +112,9 @@ export async function createApp(options = {}) {
 
   const app = express();
 
-  app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
+  // 仅信任 loopback 反代（同机 nginx 等）。不信任 uniquelocal/linklocal：
+  // 否则局域网直连客户端可伪造 X-Forwarded-For 伪造 req.ip，绕过按 IP 的登录限流。
+  app.set('trust proxy', 'loopback');
 
   await createUploadDirs();
 

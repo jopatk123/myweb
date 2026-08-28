@@ -274,12 +274,11 @@
 <style scoped>
   .viewer {
     width: 100%;
-    height: 100%;
+    height: calc(100% - 45px);
     background: #111;
     color: #fff;
     display: flex;
     flex-direction: column;
-    height: calc(100% - 45px);
   }
   .header {
     padding: 8px 12px;
@@ -292,13 +291,6 @@
     justify-content: center;
     padding: 10px;
     overflow: hidden;
-  }
-  .doc-frame {
-    width: 100%;
-    height: 100%;
-    border: none;
-    background: #fff;
-    border-radius: 8px;
   }
   .media {
     max-width: 100%;
@@ -317,16 +309,6 @@
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     white-space: pre-wrap;
-  }
-  .doc-actions {
-    position: absolute;
-    top: 12px;
-    right: 20px;
-    z-index: 10;
-  }
-  .doc-tip {
-    font-size: 13px;
-    color: #555;
   }
   .btn {
     border: 1px solid rgba(150, 150, 150, 0.4);

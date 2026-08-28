@@ -6,7 +6,6 @@ import {
   loadAuthPayload,
   saveAuth,
   validatePasswordRemote,
-  checkPasswordRequired,
 } from '@/utils/passwordGate.js';
 import { AUTH_STORAGE_KEY, AUTH_TTL_DAYS } from '@/constants/auth.js';
 
@@ -126,36 +125,5 @@ describe('validatePasswordRemote', () => {
       )
     );
     expect(await validatePasswordRemote(null)).toBe(false);
-  });
-});
-
-describe('checkPasswordRequired', () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  it('后端 required=true 时返回 true', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(makeResponse({ data: { data: { required: true } } }))
-    );
-    expect(await checkPasswordRequired()).toBe(true);
-  });
-
-  it('后端 required=false 时返回 false', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(
-          makeResponse({ data: { data: { required: false } } })
-        )
-    );
-    expect(await checkPasswordRequired()).toBe(false);
-  });
-
-  it('fetch 失败时默认返回 true', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('timeout')));
-    expect(await checkPasswordRequired()).toBe(true);
   });
 });

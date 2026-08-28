@@ -95,5 +95,4 @@ server/uploads/message-images/*
 
 # Keep .gitkeep files
 !.gitkeep
-package-lock.json
 

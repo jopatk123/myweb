@@ -24,8 +24,9 @@ jest.unstable_mockModule('../../src/utils/logger.js', () => {
   return { default: childLogger, logger: childLogger };
 });
 
-const { WebSocketService } =
-  await import('../../src/services/websocket.service.js');
+const { WebSocketService } = await import(
+  '../../src/services/websocket.service.js'
+);
 
 describe('WebSocketService', () => {
   let service;

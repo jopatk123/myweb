@@ -24,3 +24,5 @@ jobs:
           set -euo pipefail
           # 查找仓库中所有 shell 脚本并运行 shellcheck（忽略 node_modules）
           find . -type f -name '*.sh' -not -path './node_modules/*' -print0 | xargs -0 shellcheck -x
+          # husky 钩子无扩展名，单独纳入检查
+          shellcheck -x .husky/pre-commit

@@ -240,10 +240,6 @@ export class WebSocketService {
     this.connections.broadcast(payload);
   }
 
-  broadcastToRoom(_roomId, _eventType, _data) {
-    return undefined;
-  }
-
   getOnlineCount() {
     return this.connections.size;
   }

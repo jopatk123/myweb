@@ -1,5 +1,6 @@
 /**
- * Seeding helpers: insert builtin apps and seed example apps when empty.
+ * Seeding helpers: insert and repair builtin apps.
+ * 单一真相源：shared/builtin-apps.js 的 BUILTIN_APP_DEFINITIONS。
  */
 
 import { BUILTIN_APP_DEFINITIONS } from '../../../shared/builtin-apps.js';
@@ -37,60 +38,6 @@ function removeObsoleteBuiltinApps(db) {
   for (const row of rows) {
     deleteStmt.run(row.id);
     seedLogger.info(`Removed obsolete builtin app: ${row.slug}`);
-  }
-}
-
-export function seedAppsIfEmpty(db) {
-  try {
-    const row = db
-      .prepare('SELECT COUNT(1) AS c FROM apps WHERE deleted_at IS NULL')
-      .get();
-    if (row && row.c === 0) {
-      // 确保默认分组存在
-      const g = db
-        .prepare(
-          "SELECT id FROM app_groups WHERE slug = 'default' AND deleted_at IS NULL"
-        )
-        .get();
-      const gid = g ? g.id : null;
-      const insert = db.prepare(
-        `INSERT INTO apps (name, slug, description, icon_filename, group_id, is_visible, is_builtin, target_url) VALUES (?,?,?,?,?,?,?,?)`
-      );
-      insert.run(
-        '计算器',
-        'calculator',
-        '科学计算器，支持基本运算和内存功能',
-        'calculator-128.png',
-        gid,
-        1,
-        1,
-        null
-      );
-      seedLogger.info('Seeded example app: calculator');
-
-      const hasNotebook = db
-        .prepare('SELECT id FROM apps WHERE slug = ? AND deleted_at IS NULL')
-        .get('notebook');
-      if (!hasNotebook) {
-        try {
-          insert.run(
-            '笔记本',
-            'notebook',
-            '待办事项管理，记录和跟踪日常任务',
-            'notebook-128.svg',
-            gid,
-            1,
-            1,
-            null
-          );
-          seedLogger.info('Seeded example app: notebook');
-        } catch {
-          // ignore duplicate
-        }
-      }
-    }
-  } catch (e) {
-    seedLogger.warn('seedAppsIfEmpty warning', { error: e?.message || e });
   }
 }
 

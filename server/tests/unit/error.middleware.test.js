@@ -20,8 +20,9 @@ jest.unstable_mockModule('../../src/config/env.js', () => ({
   },
 }));
 
-const { default: errorHandler } =
-  await import('../../src/middleware/error.middleware.js');
+const { default: errorHandler } = await import(
+  '../../src/middleware/error.middleware.js'
+);
 
 function createMockReqRes() {
   const req = {

@@ -11,7 +11,6 @@ export default {
   roots: ['<rootDir>/tests'],
   moduleFileExtensions: ['js', 'mjs', 'json'],
   testMatch: ['**/?(*.)+(spec|test).[tj]s?(x)', '**/?(*.)+(spec|test).mjs'],
-  testPathIgnorePatterns: ['<rootDir>/../client/'],
   transform: {},
   // 允许 server 源码通过相对路径引用仓库根目录的 shared/ 模块
   // （如 src/constants/limits.js 中的 re-export）。

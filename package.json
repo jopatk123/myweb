@@ -41,7 +41,9 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
-    "vue-eslint-parser": "^10.2.0"
+    "vitest": "^3.2.7",
+    "vue-eslint-parser": "^10.2.0",
+    "yaml": "^2.6.1"
   },
   "overrides": {
     "tar-fs": "^2.1.4",

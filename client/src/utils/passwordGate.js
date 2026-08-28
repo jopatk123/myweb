@@ -123,13 +123,4 @@ export async function validatePasswordRemote(input) {
   return data.success === true;
 }
 
-export async function checkPasswordRequired() {
-  try {
-    const status = await getPasswordStatus();
-    return status.required;
-  } catch {
-    return true;
-  }
-}
-
 export { MS_PER_DAY };

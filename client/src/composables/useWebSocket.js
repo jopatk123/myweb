@@ -201,7 +201,8 @@ export function useWebSocket() {
 
   // 组件挂载时连接
   onMounted(() => {
-    connect();
+    // connect() 返回 promise；后端不可达时会 reject，必须捕获避免 unhandled rejection
+    connect().catch(() => {});
   });
 
   // 组件卸载时不主动断开（保持单例），如需断开请显式调用 disconnect()

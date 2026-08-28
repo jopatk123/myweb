@@ -4,7 +4,7 @@
 
 ## 核心快照
 
-- **工作区**：`client/`（Vite + Vue 3）、`server/`（Express + WebSocket + Knex + SQLite）、`docs/`、`uploads/`、`tests/` 提供文档与资源。
+- **工作区**：`client/`（Vite + Vue 3）、`server/`（Express + WebSocket + Knex + SQLite）、`shared/`（前后端共享常量）、`docs/`。
 - **主要能力**：桌面化 UI、文件与媒体管理、多端协作游戏/消息、SQLite 数据持久化、Docker 部署脚本。
 - **开发支撑**：Vitest/Jest、ESLint+Prettier、commitizen/Husky、Spectral 校验 OpenAPI。
 
@@ -25,7 +25,7 @@
    npm run dev
    ```
 
-   前端默认在 5173，Vite 会代理 `/api` 和 `/ws` 到后端。
+   前端默认在 5173，Vite 会将 `/api`、`/internal`、`/uploads`（HTTP）与 `/ws`（WebSocket）代理到后端。
 
 3. **单独调试**
 
@@ -52,7 +52,7 @@
 
 - `client/`：Vue 3 桌面 Shell，内置 calculator、notebook、work-timer 等应用；composables、components、api、styles 等模块分层。
 - `server/`：Express app + WebSocket、路由/控制器/服务/模型/DTO、Knex 迁移+seed、uploads（files/etc）、data/myweb.db、logs、OpenAPI。
-- `docker-compose.yml` + `Dockerfile` + `deploy.sh`：一键构建并带环境变量支持；`build_myweb_images_tar.sh` 可离线打包镜像。
+- `docker-compose.yml` + `Dockerfile` + `deploy.sh`：一键构建并带环境变量支持；`docker save` 可离线导出镜像。
 
 ## 重点脚本
 
@@ -94,8 +94,8 @@
 | `LOG_TO_FILE`               | `1`           | 是否写入后端文件日志                                                                                              |
 | `LOG_LEVEL`                 | 空            | 可选日志级别覆盖                                                                                                  |
 | `VERBOSE_LOGGING`           | `0`           | 是否启用 debug 级别详细日志                                                                                       |
+| `UPLOADS_CACHE_MAX_AGE`     | `2592000`     | `/uploads` 静态资源的 Cache-Control 有效期（秒），设为 `0` 则禁用缓存                                             |
 | `DOCKER_BUILDKIT`           | `1`           | 构建时启用 BuildKit                                                                                               |
-| `DOMAIN`                    | `localhost`   | Docker Compose 项目域                                                                                             |
 
 ## 数据与存储
 

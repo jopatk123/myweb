@@ -127,6 +127,14 @@ export class AppModel extends BaseModel {
     return this.findById(id);
   }
 
+  setVisibleByIds(ids, visible) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    const placeholders = ids.map(() => '?').join(',');
+    const sql = `UPDATE apps SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders}) AND deleted_at IS NULL`;
+    const info = this.db.prepare(sql).run(visible ? 1 : 0, ...ids);
+    return info.changes === undefined ? true : info.changes;
+  }
+
   setAutostart(id, autostart) {
     const sql = `UPDATE apps SET is_autostart = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL`;
     this.db.prepare(sql).run(autostart ? 1 : 0, id);

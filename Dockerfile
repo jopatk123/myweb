@@ -8,27 +8,23 @@ WORKDIR /app
 
 # 只有在不使用本地客户端时才构建
 RUN if [ "$USE_LOCAL_CLIENT" = "0" ]; then \
-        echo "Building client in container..."; \
+    echo "Building client in container..."; \
     else \
-        echo "Skipping client build, using local build..."; \
-        mkdir -p /app/client/dist; \
-        exit 0; \
+    echo "Skipping client build, using local build..."; \
+    mkdir -p /app/client/dist; \
+    exit 0; \
     fi
 
-# 复制客户端的 package 文件
-COPY client/package*.json ./client/
+# 复制客户端的 package 文件与根 lockfile（lockfile 已入库，保证确定性安装）
 COPY package*.json ./
+COPY client/package*.json ./client/
 
-# 在客户端构建阶段使用 npm ci 以获得确定性依赖
+# 仅安装 client workspace 依赖（workspace 模式下依赖装到根目录）；
+# USE_LOCAL_CLIENT=1 时跳过安装，直接透传本地已构建产物
 RUN if [ "$USE_LOCAL_CLIENT" = "0" ]; then \
-        cd client && \
-        # prefer deterministic install when a lockfile exists, otherwise fall back to npm install
-        if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then \
-            npm ci --silent; \
-        else \
-            echo "package-lock.json not found, falling back to 'npm install'"; \
-            npm install --silent; \
-        fi; \
+    npm ci --workspace=client --silent; \
+    else \
+    echo "Skipping client deps install, using local build..."; \
     fi
 
 # 复制共享代码和客户端源代码（@shared alias 依赖）
@@ -37,7 +33,7 @@ COPY client/ ./client/
 
 # 构建客户端应用
 RUN if [ "$USE_LOCAL_CLIENT" = "0" ]; then \
-        cd client && npm run build; \
+    cd client && npm run build; \
     fi
 
 # =================== 构建阶段：服务端依赖 ===================
@@ -51,13 +47,14 @@ WORKDIR /app
 # 安装构建原生模块所需的工具（better-sqlite3 等依赖）仅在构建阶段
 RUN apk add --no-cache python3 make g++ pkgconf
 
-# 只有在不跳过服务端安装时才安装依赖
+# 只有不跳过服务端安装时才安装依赖
+# （workspace 模式下依赖装到 /app/node_modules，skip 分支需创建同路径空目录供 runtime COPY）
 RUN if [ "$SKIP_SERVER_NPM_INSTALL" = "0" ]; then \
-        echo "Installing server dependencies in container..."; \
+    echo "Installing server dependencies in container..."; \
     else \
-        echo "Skipping server npm install..."; \
-        mkdir -p /app/server/node_modules; \
-        exit 0; \
+    echo "Skipping server npm install..."; \
+    mkdir -p /app/node_modules; \
+    exit 0; \
     fi
 
 # 复制所有 package 文件（支持工作区）
@@ -69,10 +66,9 @@ COPY client/package*.json ./client/
 ENV HUSKY=0
 ENV SKIP_HUSKY=1
 
-# 在构建环境中安装 server 依赖
-# 注：先使用 npm install 以确保 lock file 与 package.json 同步，避免 npm ci 因版本不匹配而失败
+# 在构建环境中安装 server 依赖（lockfile 已入库，使用 npm ci 确保与 package.json 严格一致）
 RUN if [ "$SKIP_SERVER_NPM_INSTALL" = "0" ]; then \
-        npm install --workspace=server --omit=dev; \
+    npm ci --workspace=server --omit=dev; \
     fi
 
 # =================== 运行时阶段 ===================
@@ -99,21 +95,15 @@ COPY shared/ ./shared/
 
 # 获取构建参数
 ARG SKIP_SERVER_NPM_INSTALL=0
-ARG USE_LOCAL_CLIENT=0
 
 # 复制依赖（工作区模式下依赖在根目录）
 # 在 server-deps 阶段我们安装了依赖到 /app/node_modules
 COPY --from=server-deps /app/node_modules ./node_modules
 
-# 创建客户端目录并复制构建文件
+# 创建客户端目录并复制构建文件（USE_LOCAL_CLIENT=1 时，client-builder 阶段
+# 直接透传本地已构建的 client/dist；=0 时透传容器内构建产物，两者路径一致）
 RUN mkdir -p ./client/dist
 COPY --from=client-builder /app/client/dist ./client/dist
-
-# 如果使用本地客户端，创建一个特殊标记文件
-RUN if [ "$USE_LOCAL_CLIENT" = "1" ]; then \
-        rm -rf ./client/dist/* && \
-        echo "Using local client build" > ./client/dist/.use-local-client; \
-    fi
 
 # 创建必要的目录并设置权限
 RUN mkdir -p server/data server/logs server/uploads && \
@@ -128,8 +118,8 @@ USER nodejs
 # 暴露端口
 EXPOSE 3000
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# 健康检查（timeout 需大于 health-check.js 内部的 5s 请求超时）
+HEALTHCHECK --interval=30s --timeout=8s --start-period=5s --retries=3 \
     CMD node server/src/utils/health-check.js || exit 1
 
 # 使用 dumb-init 进行正确的信号处理

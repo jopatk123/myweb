@@ -137,10 +137,11 @@ export class AppController {
   async bulkVisible(req, res, next) {
     try {
       const { ids, visible } = req.body;
-      const results = await Promise.all(
-        ids.map(id => this.service.setAppVisible(Number(id), visible))
+      // 单条 UPDATE ... IN 批量更新，避免逐条 UPDATE + 回查的 N+1
+      const updated = await this.service.setAppsVisible(
+        ids.map(id => Number(id)),
+        visible
       );
-      const updated = results.filter(Boolean).length;
       res.json({
         code: 200,
         data: { updated },

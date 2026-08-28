@@ -24,8 +24,9 @@ export class NotebookNoteController {
         category = 'all',
       } = req.query;
       const result = this.service.list({
-        page: Number(page) || 1,
-        limit: Number(limit) || 50,
+        // 取整 + 钳制：小数（如 limit=2.7）绑定 LIMIT ? 会导致 SQLite datatype mismatch
+        page: Math.max(1, Math.trunc(Number(page)) || 1),
+        limit: Math.min(Math.max(1, Math.trunc(Number(limit)) || 50), 200),
         search: search || '',
         status: status || 'all',
         category: category || 'all',

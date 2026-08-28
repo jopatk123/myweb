@@ -42,7 +42,7 @@ export const updateWallpaperSchema = Joi.object({
 
 export const createGroupSchema = Joi.object({
   name: Joi.string().max(100).required(),
-  isDefault: Joi.boolean().optional(),
+  // isDefault 不允许通过创建接口设置，默认分组由服务端维护唯一性
 });
 
 export const updateGroupSchema = Joi.object({

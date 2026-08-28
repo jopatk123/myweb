@@ -15,8 +15,7 @@ jest.unstable_mockModule('../../src/utils/logger.js', () => {
   return { default: childLogger, logger: childLogger };
 });
 
-const { ensureBuiltinApps, seedAppsIfEmpty } =
-  await import('../src/db/seeding.js');
+const { ensureBuiltinApps } = await import('../src/db/seeding.js');
 
 function createSeedingDb() {
   const db = new Database(':memory:');
@@ -135,55 +134,6 @@ describe('ensureBuiltinApps', () => {
     };
 
     expect(() => ensureBuiltinApps(badDb)).not.toThrow();
-    expect(mockWarn).toHaveBeenCalled();
-  });
-});
-
-describe('seedAppsIfEmpty', () => {
-  test('seeds calculator and notebook when apps table is empty', () => {
-    const db = createSeedingDb();
-
-    seedAppsIfEmpty(db);
-
-    const calculator = db
-      .prepare('SELECT slug, is_builtin FROM apps WHERE slug = ?')
-      .get('calculator');
-    const notebook = db
-      .prepare('SELECT slug, is_builtin FROM apps WHERE slug = ?')
-      .get('notebook');
-
-    expect(calculator).toMatchObject({ slug: 'calculator', is_builtin: 1 });
-    expect(notebook).toMatchObject({ slug: 'notebook', is_builtin: 1 });
-
-    db.close();
-  });
-
-  test('does not seed when non-deleted apps already exist', () => {
-    const db = createSeedingDb();
-    db.prepare(
-      `INSERT INTO apps (name, slug, description, icon_filename, is_visible, is_builtin, deleted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run('Existing App', 'existing-app', 'existing', 'x.png', 1, 0, null);
-
-    seedAppsIfEmpty(db);
-
-    const count = db
-      .prepare('SELECT COUNT(1) AS c FROM apps WHERE deleted_at IS NULL')
-      .get();
-    expect(count.c).toBe(1);
-
-    db.close();
-  });
-
-  test('handles db errors without throwing', () => {
-    mockWarn.mockClear();
-    const badDb = {
-      prepare() {
-        throw new Error('seed-fail');
-      },
-    };
-
-    expect(() => seedAppsIfEmpty(badDb)).not.toThrow();
     expect(mockWarn).toHaveBeenCalled();
   });
 });

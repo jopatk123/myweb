@@ -111,6 +111,9 @@
         errorMessage.value = '系统尚未配置访问密码，请联系管理员。';
       }
     } catch {
+      // 网络异常时有意保持现状（fail-open）：门禁只是 UI 层，
+      // 真正的鉴权由后端 requireAppAuth 对所有业务接口强制执行（未认证一律 401）。
+      // 若改为 fail-closed，后端短暂重启/不可达会把持有合法会话的用户整体锁死。
       errorMessage.value = '验证服务异常，请稍后重试。';
     }
   });

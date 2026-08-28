@@ -155,6 +155,10 @@ export class AppService {
     return this.appModel.setVisible(id, visible);
   }
 
+  setAppsVisible(ids, visible) {
+    return this.appModel.setVisibleByIds(ids, visible);
+  }
+
   setAppAutostart(idOrSlug, autostart) {
     const target = resolveAutostartTarget(idOrSlug);
 

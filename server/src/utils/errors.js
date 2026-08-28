@@ -55,17 +55,3 @@ export class ForbiddenError extends AppError {
     super(message, 403, 'FORBIDDEN');
   }
 }
-
-/** 401 未认证 */
-export class UnauthorizedError extends AppError {
-  constructor(message = '未认证，请先登录') {
-    super(message, 401, 'UNAUTHORIZED');
-  }
-}
-
-/** 500 内部服务器错误（兜底） */
-export class InternalError extends AppError {
-  constructor(message = '服务器内部错误') {
-    super(message, 500, 'INTERNAL_ERROR');
-  }
-}

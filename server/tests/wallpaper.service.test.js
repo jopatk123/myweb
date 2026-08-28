@@ -17,8 +17,9 @@ jest.unstable_mockModule(
   })
 );
 
-const { WallpaperService } =
-  await import('../src/services/wallpaper.service.js');
+const { WallpaperService } = await import(
+  '../src/services/wallpaper.service.js'
+);
 
 /** 最小有效 PNG 文件头（8 字节魔数 + IHDR chunk 填充） */
 const MINIMAL_PNG = Buffer.from([

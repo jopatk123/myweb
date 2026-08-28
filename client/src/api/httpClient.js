@@ -1,12 +1,9 @@
 import axios from 'axios';
-import { appEnv, normalizeApiBase } from '@/constants/env.js';
+import { appEnv } from '@/constants/env.js';
 
-let cachedBase = appEnv.apiBase;
-
+// appEnv.apiBase 已在模块加载时由 normalizeApiBase 归一化，恒为非空
 export function getApiBase() {
-  if (cachedBase) return cachedBase;
-  cachedBase = normalizeApiBase(appEnv.rawApiBase ?? '/api');
-  return cachedBase;
+  return appEnv.apiBase;
 }
 
 export function buildApiUrl(path = '') {

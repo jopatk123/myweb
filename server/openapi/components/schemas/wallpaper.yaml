@@ -35,8 +35,6 @@ GroupCreate:
   properties:
     name:
       type: string
-    isDefault:
-      type: boolean
   required:
     - name
 

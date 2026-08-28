@@ -76,10 +76,12 @@ temp/
 .cache/
 
 # 数据库文件（在开发环境中）
+*.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlite3
+server/data/
 
 # 上传和用户内容（改用数据卷）
 uploads/

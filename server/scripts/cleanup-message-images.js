@@ -101,6 +101,7 @@ async function main() {
     scriptLogger.info('发现孤儿图片', { count: orphans.length });
 
     let deletedCount = 0;
+    let wouldDeleteCount = 0;
     let failedCount = 0;
     for (const name of orphans) {
       const filePath = join(IMAGES_DIR, name);
@@ -110,10 +111,11 @@ async function main() {
         if (apply) {
           await unlink(filePath);
           scriptLogger.info('已删除', { file: name, sizeKB });
+          deletedCount++;
         } else {
           scriptLogger.info('将删除', { file: name, sizeKB });
+          wouldDeleteCount++;
         }
-        deletedCount++;
       } catch (err) {
         failedCount++;
         scriptLogger.warn('删除失败', { file: name, error: err.message });
@@ -122,6 +124,7 @@ async function main() {
     scriptLogger.info('清理完成', {
       mode: apply ? 'apply' : 'dry-run',
       deleted: deletedCount,
+      wouldDelete: wouldDeleteCount,
       failed: failedCount,
     });
   } finally {

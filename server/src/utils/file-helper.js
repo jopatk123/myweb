@@ -30,24 +30,3 @@ export async function createUploadDirs() {
     }
   }
 }
-
-export function getFileExtension(filename) {
-  return path.extname(filename).toLowerCase();
-}
-
-export function isImageFile(mimetype) {
-  return mimetype.startsWith('image/');
-}
-
-export async function deleteFile(filePath) {
-  try {
-    await fs.unlink(filePath);
-    return true;
-  } catch (error) {
-    fileLogger.warn('Failed to delete file', {
-      filePath,
-      error,
-    });
-    return false;
-  }
-}
