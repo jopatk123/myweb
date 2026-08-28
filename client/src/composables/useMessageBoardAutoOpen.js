@@ -5,7 +5,7 @@ import { onMounted, onScopeDispose, defineAsyncComponent } from 'vue';
 import { useWebSocket } from './useWebSocket.js';
 import { useWindowManager } from './useWindowManager.js';
 import { getAppComponentBySlug } from '@/apps/registry.js';
-import { readSessionId } from '@/store/sessionState.js';
+import { messageBoardState } from '@/store/messageBoardState.js';
 
 const messageBoardComponent =
   getAppComponentBySlug('message-board') ||
@@ -56,21 +56,14 @@ export function useMessageBoardAutoOpen() {
 
   /**
    * 处理新消息事件。
-   * 服务端广播时附带 autoOpenSessions（已启用自动打开且近期活跃的会话 ID 列表）。
-   * 只有当前会话在该列表中时才弹出窗口，以遵守用户在设置面板中的"自动打开新消息"开关。
+   * 服务端仅广播消息本身，是否自动弹出由客户端本地开关
+   * （messageBoardState.autoOpenEnabled，随用户设置拉取/更新而同步）
+   * 决定，遵守用户在设置面板中的"自动打开新消息"偏好。
+   * 不再依赖服务端广播 autoOpenSessions 列表——该列表会把其他
+   * 活跃会话的 sessionId 泄露给所有客户端。
    */
-  const handleNewMessage = /* istanbul ignore next */ data => {
-    const sessionId = readSessionId();
-    if (!sessionId) return;
-
-    const { autoOpenSessions } = data || {};
-    if (
-      !Array.isArray(autoOpenSessions) ||
-      !autoOpenSessions.includes(sessionId)
-    ) {
-      return;
-    }
-
+  const handleNewMessage = () => {
+    if (!messageBoardState.autoOpenEnabled) return;
     openMessageBoard({ activate: false });
   };
 

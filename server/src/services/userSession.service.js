@@ -24,11 +24,14 @@ export class UserSessionService {
     if (avatarColor && !COLOR_PATTERN.test(avatarColor)) {
       throw new ValidationError('颜色格式不正确，请使用 #rrggbb 格式');
     }
+    // 部分更新语义：未提供的字段保留现有值（首次创建才落到默认值），
+    // 避免 PUT 只传 nickname 时把用户已关闭的 autoOpenEnabled 重置为 true
+    const existing = this.userSessionModel.findBySessionId(sessionId);
     return this.userSessionModel.upsert({
       sessionId,
-      nickname: nickname || 'Anonymous',
-      avatarColor: avatarColor || '#007bff',
-      autoOpenEnabled: autoOpenEnabled === undefined ? true : autoOpenEnabled,
+      nickname: nickname || existing?.nickname || 'Anonymous',
+      avatarColor: avatarColor || existing?.avatarColor || '#007bff',
+      autoOpenEnabled: autoOpenEnabled ?? existing?.autoOpenEnabled ?? true,
     });
   }
 

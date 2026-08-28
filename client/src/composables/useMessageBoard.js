@@ -5,6 +5,7 @@ import { ref, reactive, computed, onMounted, onScopeDispose, watch } from 'vue';
 import { useWindowManager } from './useWindowManager.js';
 import { messageAPI } from '@/api/message.js';
 import { useWebSocket } from './useWebSocket.js';
+import { syncAutoOpenEnabled } from '@/store/messageBoardState.js';
 
 export function useMessageBoard() {
   const messages = ref([]);
@@ -169,12 +170,15 @@ export function useMessageBoard() {
       if (response.code === 200) {
         // 服务端广播 newMessage 时会排除发送者自身，避免重复推送；
         // 因此发送方需要手动把新消息加入本地列表，保证立即可见。
+        // 搜索视图下不追加：保持当前搜索结果纯净（与 handleNewMessage 一致）。
         const newMessage = response.data;
-        if (newMessage && !messages.value.find(m => m.id === newMessage.id)) {
-          messages.value.push(newMessage);
-          syncPaginationTotal(pagination.total + 1);
-          if (messages.value.length > pagination.limit) {
-            messages.value.shift();
+        if (!isSearching.value && newMessage) {
+          if (!messages.value.find(m => m.id === newMessage.id)) {
+            messages.value.push(newMessage);
+            syncPaginationTotal(pagination.total + 1);
+            if (messages.value.length > pagination.limit) {
+              messages.value.shift();
+            }
           }
         }
         // 同步打开/激活留言板窗口（发送者本地立即可见）
@@ -233,6 +237,8 @@ export function useMessageBoard() {
         if (typeof userSettings.autoOpenEnabled === 'number') {
           userSettings.autoOpenEnabled = Boolean(userSettings.autoOpenEnabled);
         }
+        // 同步到跨组件共享状态（自动打开监听依赖）
+        syncAutoOpenEnabled(userSettings.autoOpenEnabled);
       }
     } catch (err) {
       console.error('Fetch user settings error:', err);
@@ -249,6 +255,8 @@ export function useMessageBoard() {
         if (typeof userSettings.autoOpenEnabled === 'number') {
           userSettings.autoOpenEnabled = Boolean(userSettings.autoOpenEnabled);
         }
+        // 同步到跨组件共享状态（自动打开监听依赖）
+        syncAutoOpenEnabled(userSettings.autoOpenEnabled);
         return response.data;
       }
     } catch (err) {

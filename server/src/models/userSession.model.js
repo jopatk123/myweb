@@ -50,19 +50,6 @@ export class UserSessionModel {
     return result;
   }
 
-  getAutoOpenEnabledSessions() {
-    return this.db
-      .prepare(
-        `
-      SELECT session_id as sessionId FROM user_sessions
-      WHERE auto_open_enabled = 1
-        AND datetime(last_active) >= datetime('now', '-30 minutes')
-    `
-      )
-      .all()
-      .map(r => r.sessionId);
-  }
-
   updateLastActive(sessionId) {
     this.db
       .prepare(

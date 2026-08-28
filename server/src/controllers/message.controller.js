@@ -10,6 +10,7 @@ import { parseEnvByteSize, parseEnvNumber } from '../utils/env.js';
 import logger from '../utils/logger.js';
 import { createUploader, imageUploadFilter } from '../utils/uploader.js';
 import { assertValidImageFile } from '../utils/magic-bytes.js';
+import { ValidationError } from '../utils/errors.js';
 import {
   DEFAULT_MESSAGE_IMAGE_MAX_SIZE,
   DEFAULT_MESSAGE_IMAGE_MAX_FILES,
@@ -31,6 +32,35 @@ export const MESSAGE_IMAGE_MAX_FILES = Math.max(
   parseEnvNumber('MESSAGE_IMAGE_MAX_FILES', DEFAULT_MESSAGE_IMAGE_MAX_FILES)
 );
 
+// X-Session-Id 格式白名单：仅允许字母/数字/下划线/连字符，1-64 位。
+// 与前端 uuid v4 及既有测试用的短会话标识兼容；拒绝任意超长/特殊字符
+// 字符串直接入库（SQLite VARCHAR(N) 不强制长度）。
+const SESSION_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * 解析请求会话标识：缺失/空时回退 'anonymous'（无会话客户端的公共身份），
+ * 存在但格式非法时抛 400，防止脏数据入库与会话冒充。
+ */
+function resolveSessionId(req) {
+  const raw = req.headers['x-session-id'];
+  if (raw === undefined || raw === '') return 'anonymous';
+  const sessionId = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof sessionId !== 'string' || !SESSION_ID_PATTERN.test(sessionId)) {
+    throw new ValidationError('会话标识格式不正确');
+  }
+  return sessionId;
+}
+
+/**
+ * 用户设置出站脱敏：剥离 sessionId（调用方自身的会话标识无需回传，
+ * 保持与留言响应一致的"内部字段不外露"契约）。
+ */
+function toPublicSettings(userSession) {
+  if (!userSession) return userSession;
+  const { sessionId: _sessionId, ...publicSettings } = userSession;
+  return publicSettings;
+}
+
 // multer 实例无需 db，保持模块级导出
 export const uploadImage = createUploader({
   destination: imagesDir,
@@ -49,7 +79,7 @@ export class MessageController {
   async sendMessage(req, res, next) {
     try {
       const { content, authorName, authorColor, images, imageType } = req.body;
-      const sessionId = req.headers['x-session-id'] || 'anonymous';
+      const sessionId = resolveSessionId(req);
 
       const message = await this.service.sendMessage({
         content,
@@ -61,17 +91,17 @@ export class MessageController {
       });
 
       if (req.app.get('wsServer')) {
-        const autoOpenSessions = this.service.getAutoOpenSessions();
         // 广播时排除发送者自身，避免前端收到重复推送后再做去重；
         // 发送者前端已通过 syncMessageBoardWindow 立即同步本地窗口。
-        req.app.get('wsServer').broadcast(
-          'newMessage',
-          {
-            message,
-            autoOpenSessions,
-          },
-          { excludeClientSessionId: sessionId }
-        );
+        // 自动打开与否由各客户端依据本地用户设置自行判断，
+        // 不再广播 autoOpenSessions（避免向所有客户端泄露他人会话 ID）。
+        req.app
+          .get('wsServer')
+          .broadcast(
+            'newMessage',
+            { message },
+            { excludeClientSessionId: sessionId }
+          );
       }
 
       res.json({ code: 200, message: '留言发送成功', data: message });
@@ -121,14 +151,18 @@ export class MessageController {
   async updateUserSettings(req, res, next) {
     try {
       const { nickname, avatarColor, autoOpenEnabled } = req.body;
-      const sessionId = req.headers['x-session-id'] || 'anonymous';
+      const sessionId = resolveSessionId(req);
       const userSession = await this.sessionService.updateUserSettings({
         sessionId,
         nickname,
         avatarColor,
         autoOpenEnabled,
       });
-      res.json({ code: 200, message: '用户设置更新成功', data: userSession });
+      res.json({
+        code: 200,
+        message: '用户设置更新成功',
+        data: toPublicSettings(userSession),
+      });
     } catch (error) {
       next(error);
     }
@@ -136,9 +170,13 @@ export class MessageController {
 
   async getUserSettings(req, res, next) {
     try {
-      const sessionId = req.headers['x-session-id'] || 'anonymous';
+      const sessionId = resolveSessionId(req);
       const userSession = await this.sessionService.getUserSettings(sessionId);
-      res.json({ code: 200, message: '获取用户设置成功', data: userSession });
+      res.json({
+        code: 200,
+        message: '获取用户设置成功',
+        data: toPublicSettings(userSession),
+      });
     } catch (error) {
       next(error);
     }
@@ -200,7 +238,7 @@ export class MessageController {
           .status(400)
           .json({ code: 400, message: '需要确认才能清除所有留言' });
       }
-      const sessionId = req.headers['x-session-id'] || 'anonymous';
+      const sessionId = resolveSessionId(req);
       const result = await this.service.clearAllMessages();
       if (req.app.get('wsServer')) {
         // 排除发起者自身：发起者前端已在 clearAllMessages composable 中

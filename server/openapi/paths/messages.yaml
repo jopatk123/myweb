@@ -57,7 +57,11 @@ list:
         required: false
         schema:
           type: string
-        description: Optional client session id used to associate user settings.
+          pattern: '^[A-Za-z0-9_-]{1,64}$'
+        description: |
+          Optional client session id used to associate user settings.
+          Must match `^[A-Za-z0-9_-]{1,64}$`; requests with an invalid
+          session id are rejected with 400.
     requestBody:
       required: true
       content:
@@ -116,6 +120,7 @@ userSettings:
         required: false
         schema:
           type: string
+          pattern: '^[A-Za-z0-9_-]{1,64}$'
     responses:
       '200':
         description: User settings retrieved.
@@ -140,6 +145,7 @@ userSettings:
         required: false
         schema:
           type: string
+          pattern: '^[A-Za-z0-9_-]{1,64}$'
     requestBody:
       required: true
       content:
@@ -284,8 +290,6 @@ components:
           type: string
         authorColor:
           type: string
-        sessionId:
-          type: string
         images:
           type: array
           nullable: true
@@ -302,6 +306,9 @@ components:
           type: string
           format: date-time
           description: ISO 8601 timestamp in UTC.
+      description: |
+        sessionId is an internal field and is intentionally omitted
+        from message payloads (never exposed to other clients).
     MessageImage:
       type: object
       properties:
@@ -323,8 +330,6 @@ components:
     UserSettings:
       type: object
       properties:
-        sessionId:
-          type: string
         nickname:
           type: string
         avatarColor:
@@ -334,6 +339,7 @@ components:
         lastActive:
           type: string
           format: date-time
+      description: sessionId is an internal field and is omitted from responses.
     Pagination:
       type: object
       properties:

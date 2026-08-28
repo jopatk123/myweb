@@ -102,6 +102,22 @@ describe('UserSessionService', () => {
       });
       expect(result.autoOpenEnabled).toBe(false);
     });
+
+    test('partial update preserves autoOpenEnabled=false and nickname', async () => {
+      // 回归测试：PUT 只传部分字段时不应把已有设置重置为默认值
+      await service.updateUserSettings({
+        sessionId: 'sess-partial',
+        nickname: 'KeepMe',
+        autoOpenEnabled: false,
+      });
+      const updated = await service.updateUserSettings({
+        sessionId: 'sess-partial',
+        avatarColor: '#00ff00',
+      });
+      expect(updated.nickname).toBe('KeepMe');
+      expect(updated.autoOpenEnabled).toBe(false);
+      expect(updated.avatarColor).toBe('#00ff00');
+    });
   });
 
   describe('getUserSettings()', () => {

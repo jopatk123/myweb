@@ -224,6 +224,27 @@ describe('MessageService', () => {
       expect(result.messages.some(m => m.content === '找到我')).toBe(true);
     });
 
+    test('supports Chinese substring search (CJK falls back to LIKE, not FTS5)', async () => {
+      // 回归测试：FTS5 默认 unicode61 分词器不切分 CJK 连续文本，
+      // 含 CJK 的搜索词必须回退 LIKE，否则子串搜索静默失效
+      await service.sendMessage({
+        content: '今天天气很好，适合写代码',
+        sessionId: 's-cjk',
+      });
+      await service.sendMessage({
+        content: '完全无关的内容',
+        sessionId: 's-cjk2',
+      });
+
+      const result = await service.getMessages({ search: '天气' });
+      expect(result.messages.some(m => m.content.includes('天气'))).toBe(true);
+
+      // count 与 findAll 走同一回退策略，保证分页总数一致
+      const result2 = await service.getMessages({ search: '写代码' });
+      expect(result2.pagination.total).toBe(1);
+      expect(result2.messages[0].content).toContain('写代码');
+    });
+
     test('returns correct total in pagination', async () => {
       await service.sendMessage({ content: '第一条', sessionId: 'p1' });
       await service.sendMessage({ content: '第二条', sessionId: 'p2' });
@@ -281,17 +302,6 @@ describe('MessageService', () => {
       );
 
       unlinkSpy.mockRestore();
-    });
-  });
-
-  describe('getAutoOpenSessions()', () => {
-    test('returns sessions with auto open enabled', () => {
-      userSessionModel.upsert({
-        sessionId: 'auto-open-1',
-        autoOpenEnabled: true,
-      });
-      const sessions = service.getAutoOpenSessions();
-      expect(Array.isArray(sessions)).toBe(true);
     });
   });
 

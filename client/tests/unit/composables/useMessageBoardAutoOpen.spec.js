@@ -7,17 +7,19 @@ const websocketMocks = vi.hoisted(() => ({
   offMessage: vi.fn(),
 }));
 
+const windowMocks = vi.hoisted(() => ({
+  createWindow: vi.fn(),
+  findWindowByAppAll: vi.fn(() => null),
+  setActiveWindow: vi.fn(),
+  showWindowWithoutFocus: vi.fn(),
+}));
+
 vi.mock('@/composables/useWebSocket.js', () => ({
   useWebSocket: () => websocketMocks,
 }));
 
 vi.mock('@/composables/useWindowManager.js', () => ({
-  useWindowManager: () => ({
-    createWindow: vi.fn(),
-    findWindowByAppAll: vi.fn(() => null),
-    setActiveWindow: vi.fn(),
-    showWindowWithoutFocus: vi.fn(),
-  }),
+  useWindowManager: () => windowMocks,
 }));
 
 vi.mock('@/apps/registry.js', () => ({
@@ -25,6 +27,10 @@ vi.mock('@/apps/registry.js', () => ({
 }));
 
 import { useMessageBoardAutoOpen } from '@/composables/useMessageBoardAutoOpen.js';
+import {
+  messageBoardState,
+  syncAutoOpenEnabled,
+} from '@/store/messageBoardState.js';
 
 const TestComponent = defineComponent({
   setup() {
@@ -33,10 +39,27 @@ const TestComponent = defineComponent({
   },
 });
 
+/** 渲染测试组件并捕获注册的 newMessage 处理器 */
+async function renderAndCaptureHandler() {
+  const view = render(TestComponent);
+  await nextTick();
+  const registration = websocketMocks.onMessage.mock.calls.find(
+    ([event]) => event === 'newMessage'
+  );
+  const handler = registration?.[1];
+  expect(handler).toBeTypeOf('function');
+  return { view, handler };
+}
+
 describe('useMessageBoardAutoOpen', () => {
   beforeEach(() => {
     websocketMocks.onMessage.mockClear();
     websocketMocks.offMessage.mockClear();
+    windowMocks.createWindow.mockClear();
+    windowMocks.findWindowByAppAll.mockClear();
+    windowMocks.findWindowByAppAll.mockReturnValue(null);
+    windowMocks.showWindowWithoutFocus.mockClear();
+    messageBoardState.autoOpenEnabled = false;
   });
 
   it('registers and unregisters the newMessage handler', async () => {
@@ -54,5 +77,36 @@ describe('useMessageBoardAutoOpen', () => {
       'newMessage',
       expect.any(Function)
     );
+  });
+
+  it('does not auto-open when local toggle is disabled', async () => {
+    const { handler } = await renderAndCaptureHandler();
+
+    handler({ message: { id: 1 } });
+
+    expect(windowMocks.createWindow).not.toHaveBeenCalled();
+  });
+
+  it('auto-opens the board on newMessage when local toggle is enabled', async () => {
+    syncAutoOpenEnabled(true);
+    const { handler } = await renderAndCaptureHandler();
+
+    handler({ message: { id: 2 } });
+
+    expect(windowMocks.createWindow).toHaveBeenCalledTimes(1);
+    expect(windowMocks.createWindow).toHaveBeenCalledWith(
+      expect.objectContaining({ appSlug: 'message-board', activate: false })
+    );
+  });
+
+  it('shows the existing window without stealing focus when already created', async () => {
+    syncAutoOpenEnabled(true);
+    const { handler } = await renderAndCaptureHandler();
+    windowMocks.findWindowByAppAll.mockReturnValueOnce({ id: 42 });
+
+    handler({ message: { id: 3 } });
+
+    expect(windowMocks.createWindow).not.toHaveBeenCalled();
+    expect(windowMocks.showWindowWithoutFocus).toHaveBeenCalledWith(42);
   });
 });

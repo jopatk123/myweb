@@ -160,37 +160,22 @@ export class MessageService {
     };
   }
 
-  getAutoOpenSessions() {
-    return this.userSessionModel.getAutoOpenEnabledSessions();
-  }
-
   async clearAllMessages() {
     // 顺序：DB 删除先行，保证用户侧立即看不到留言；文件清理失败只影响磁盘，
     // 孤儿文件可由 scripts/cleanup-message-images.js 定期清理。
     //
     // 实现步骤：
-    // 1. 先分批扫描收集所有图片路径到内存（只存 path 字符串，单条约 50 字节，
-    //    即使 1 万张图也仅约 500KB，远低于完整留言对象）；
-    // 2. 调用 deleteAll 删除 DB 中所有留言（如果这步失败，文件尚未动，保持一致）；
-    // 3. deleteAll 成功后再并发清理图片文件。
-    const allImages = [];
-    for (const batch of this.messageModel.findAllWithImagesBatched(
-      CLEAR_ALL_BATCH_SIZE
-    )) {
-      for (const message of batch) {
-        if (Array.isArray(message.images)) {
-          allImages.push(...message.images);
-        }
-      }
-    }
+    // 1. 在同一事务内分批扫描收集所有图片路径到内存（只存 path 字符串，
+    //    单条约 50 字节，即使 1 万张图也仅约 500KB）并删除所有留言 ——
+    //    事务保证扫描与删除原子完成，扫描期间新写入的留言不会被误删（无孤儿文件竞态）；
+    // 2. 事务提交成功后再并发清理图片文件，文件清理失败仅记录日志。
+    const { images: allImages, changes } =
+      this.messageModel.collectImagesAndDeleteAll(CLEAR_ALL_BATCH_SIZE);
 
-    const result = this.messageModel.deleteAll();
-
-    // 文件清理失败不影响 DB 已清空的状态，仅记录日志
     await this.cleanupMessageImages(allImages);
 
     return {
-      deletedMessages: result.changes || 0,
+      deletedMessages: changes || 0,
       deletedImages: allImages.length,
     };
   }

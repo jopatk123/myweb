@@ -77,6 +77,7 @@
   import {
     MESSAGE_CONTENT_MAX_LENGTH,
     MESSAGE_IMAGE_MAX_COUNT,
+    MESSAGE_IMAGE_MAX_SIZE,
   } from '@shared/constants.js';
 
   const props = defineProps({
@@ -138,14 +139,14 @@
       let processedFile = file;
       let originalSize = file.size;
       let compressed = false;
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > MESSAGE_IMAGE_MAX_SIZE) {
         try {
           processedFile = await compressImage(file);
           compressed = true;
           const compressedSizeText = formatFileSize(processedFile.size);
-          if (processedFile.size > 5 * 1024 * 1024) {
+          if (processedFile.size > MESSAGE_IMAGE_MAX_SIZE) {
             showInfo(
-              `图片压缩后仍然超过5MB限制 (${compressedSizeText})，无法添加`
+              `图片压缩后仍然超过 ${formatFileSize(MESSAGE_IMAGE_MAX_SIZE)} 限制 (${compressedSizeText})，无法添加`
             );
             return;
           }

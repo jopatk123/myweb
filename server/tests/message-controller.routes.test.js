@@ -100,6 +100,36 @@ describe('MessageController - sendMessage()', () => {
     const res = await request(app).post('/api/messages').send({ content: '' });
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
+
+  test('POST /api/messages response does not expose sessionId', async () => {
+    const res = await request(app)
+      .post('/api/messages')
+      .set('x-session-id', 'leak-check-session')
+      .send({ content: '脱敏检查' })
+      .expect(200);
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data).not.toHaveProperty('sessionId');
+  });
+
+  test.each(['bad session id!', 'a'.repeat(65), 'sess;drop'])(
+    'POST /api/messages rejects invalid x-session-id (%s)',
+    async invalidId => {
+      const res = await request(app)
+        .post('/api/messages')
+        .set('x-session-id', invalidId)
+        .send({ content: '非法会话' });
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe(400);
+    }
+  );
+
+  test('PUT /api/messages/user-settings rejects invalid x-session-id', async () => {
+    const res = await request(app)
+      .put('/api/messages/user-settings')
+      .set('x-session-id', 'invalid id with spaces')
+      .send({ nickname: 'X' });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('MessageController - getMessages()', () => {
@@ -154,6 +184,15 @@ describe('MessageController - updateUserSettings()', () => {
       .expect(200);
     expect(res.body.code).toBe(200);
     expect(res.body.data.nickname).toBe('TestUser');
+  });
+
+  test('PUT /api/messages/user-settings response does not expose sessionId', async () => {
+    const res = await request(app)
+      .put('/api/messages/user-settings')
+      .set('x-session-id', 'settings-omit-session')
+      .send({ nickname: 'NoLeak' })
+      .expect(200);
+    expect(res.body.data).not.toHaveProperty('sessionId');
   });
 });
 

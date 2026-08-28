@@ -16,3 +16,12 @@ export const MESSAGE_CONTENT_MAX_LENGTH = 1000;
 
 /** 单条留言最多附带图片数量（前后端一致） */
 export const MESSAGE_IMAGE_MAX_COUNT = 5;
+
+/**
+ * 留言板单张图片大小默认上限（5 MiB）。
+ * 服务端实际限制可经 MESSAGE_IMAGE_MAX_SIZE 环境变量覆盖
+ * （见 server/src/constants/limits.js 的 DEFAULT_MESSAGE_IMAGE_MAX_SIZE），
+ * 此处为前端上传前预检用的默认镜像值：前端以此做压缩/拦截预检，
+ * 最终以服务端校验为准。
+ */
+export const MESSAGE_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
