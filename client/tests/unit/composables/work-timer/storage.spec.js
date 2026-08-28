@@ -8,10 +8,13 @@ import {
   loadPendingHeartbeats,
   savePendingStarts,
   loadPendingStarts,
+  savePendingStops,
+  loadPendingStops,
   saveTotalMs,
   loadTotalMs,
   clearPendingHeartbeats,
   clearPendingStarts,
+  clearPendingStops,
 } from '@/composables/work-timer/storage.js';
 
 // jsdom 22 + vitest 0.34 下 localStorage 可能没有 setItem/clear 等标准方法，
@@ -118,6 +121,21 @@ describe('work-timer storage', () => {
     });
   });
 
+  describe('savePendingStops / loadPendingStops', () => {
+    it('saves and loads pending stops', () => {
+      const stops = [{ sessionId: 's1', endTimeIso: '2025-01-01T18:00:00Z' }];
+
+      savePendingStops(stops);
+      const loaded = loadPendingStops();
+
+      expect(loaded).toEqual(stops);
+    });
+
+    it('returns empty array when no data', () => {
+      expect(loadPendingStops()).toEqual([]);
+    });
+  });
+
   describe('saveTotalMs / loadTotalMs', () => {
     it('saves and loads total ms', () => {
       saveTotalMs(360000);
@@ -147,6 +165,14 @@ describe('work-timer storage', () => {
       savePendingStarts([{ sessionId: 's1' }]);
       clearPendingStarts();
       expect(loadPendingStarts()).toEqual([]);
+    });
+  });
+
+  describe('clearPendingStops', () => {
+    it('removes pending stops from storage', () => {
+      savePendingStops([{ sessionId: 's1' }]);
+      clearPendingStops();
+      expect(loadPendingStops()).toEqual([]);
     });
   });
 

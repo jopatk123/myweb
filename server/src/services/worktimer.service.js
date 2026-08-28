@@ -19,6 +19,12 @@ export class WorkTimerService {
     return `${y}-${m}-${day}`;
   }
 
+  /**
+   * 创建或恢复会话。
+   * ON CONFLICT 为「恢复」语义：不得用 start 请求里的 duration=0 清零
+   * 已通过心跳累计的时长（否则离线重放 start 会丢失工作记录），
+   * 因此冲突时保留原 duration，仅刷新 last_update / end_time / 目标时间。
+   */
   upsertSession(session) {
     const stmt = this.db.prepare(`
       INSERT INTO work_sessions (id, date, start_time, last_update, end_time, duration, target_end_time, is_active, created_at, updated_at)
@@ -26,7 +32,7 @@ export class WorkTimerService {
       ON CONFLICT(id) DO UPDATE SET
         last_update = @last_update,
         end_time = COALESCE(@end_time, end_time),
-        duration = @duration,
+        duration = COALESCE(work_sessions.duration, @duration),
         target_end_time = COALESCE(@target_end_time, target_end_time),
         is_active = @is_active,
         updated_at = CURRENT_TIMESTAMP

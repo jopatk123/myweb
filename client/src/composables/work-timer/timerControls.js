@@ -26,6 +26,7 @@ export class TimerControls {
 
     const sessionId = uuidv4();
     this.heartbeatManager.setCurrentSessionId(sessionId);
+    this.heartbeatManager.setSessionStartIso(startWorkTime.value.toISOString());
     this.heartbeatManager.setLastHeartbeatTs(startWorkTime.value.getTime());
 
     // 仅在本地保存占位，并等待心跳来累计时长；避免重复 push 结束会话

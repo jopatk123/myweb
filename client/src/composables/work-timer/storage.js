@@ -51,6 +51,18 @@ export function loadPendingStarts() {
   return readJsonStorageItem('work-timer-pending-starts', []);
 }
 
+export function savePendingStops(pendingStops) {
+  writeJsonStorageItem('work-timer-pending-stops', pendingStops);
+}
+
+export function loadPendingStops() {
+  return readJsonStorageItem('work-timer-pending-stops', []);
+}
+
+export function clearPendingStops() {
+  removeStorageItem('work-timer-pending-stops');
+}
+
 export function saveTotalMs(totalMs) {
   writeStorageItem('work-timer-total-ms', String(totalMs));
 }

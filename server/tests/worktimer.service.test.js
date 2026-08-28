@@ -40,13 +40,16 @@ describe('WorkTimerService database integration', () => {
     expect(row.is_active).toBe(1);
     expect(row.duration).toBe(0);
 
+    // 心跳累计时长后，恢复（重新 start 同一 sessionId）不得清零已累计时长
+    service.incrementSessionDuration('session-1', 60000, startIso);
+
     service.upsertSession({
       id: 'session-1',
       date: today,
       start_time: startIso,
       last_update: startIso,
       end_time: null,
-      duration: 60000,
+      duration: 0,
       target_end_time: '2025-01-01T10:00:00.000Z',
       is_active: 1,
     });
@@ -54,6 +57,7 @@ describe('WorkTimerService database integration', () => {
     row = db
       .prepare('SELECT * FROM work_sessions WHERE id = ?')
       .get('session-1');
+    // 冲突分支保留已累计的 duration（离线重放 start 的恢复语义）
     expect(row.duration).toBe(60000);
     expect(row.target_end_time).toBe('2025-01-01T10:00:00.000Z');
     expect(row.updated_at).not.toBeUndefined();

@@ -17,6 +17,9 @@ services:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
       - DB_PATH=/app/server/data/myweb.db
+      # 时区：下班计时器按服务器本地时间归属会话日期并聚合今日/本周统计，
+      # 默认按东八区；需变更时在 .env 中设置 TZ
+      - TZ=${TZ:-Asia/Shanghai}
     volumes:
       # 持久化数据卷
       - myweb-data:/app/server/data

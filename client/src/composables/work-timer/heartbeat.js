@@ -4,9 +4,12 @@ import {
   loadPendingHeartbeats,
   savePendingStarts,
   loadPendingStarts,
+  savePendingStops,
+  loadPendingStops,
   saveTotalMs,
   clearPendingHeartbeats,
   clearPendingStarts,
+  clearPendingStops,
 } from './storage.js';
 
 // 心跳机制管理
@@ -14,9 +17,11 @@ export class HeartbeatManager {
   constructor() {
     this.heartbeatTimer = null;
     this.currentSessionId = null;
+    this.sessionStartIso = null; // 当前会话的真实开始时间（离线入队用）
     this.lastHeartbeatTs = null; // ms
     this.pendingHeartbeats = [];
     this.pendingStarts = [];
+    this.pendingStops = [];
   }
 
   startHeartbeatInterval(
@@ -76,8 +81,16 @@ export class HeartbeatManager {
   }
 
   enqueuePendingStart(sessionId, startIso, targetEndTime) {
+    // 同一会话只入队一次，避免离线期间反复心跳产生重复 start；
+    // 重复重放 start 虽已由服务端「冲突保留 duration」兜底，仍不应放大请求
+    if (this.pendingStarts.some(s => s.sessionId === sessionId)) return;
     this.pendingStarts.push({ sessionId, startIso, targetEndTime });
     savePendingStarts(this.pendingStarts);
+  }
+
+  enqueuePendingStop(sessionId, endTimeIso) {
+    this.pendingStops.push({ sessionId, endTimeIso });
+    savePendingStops(this.pendingStops);
   }
 
   async flushPendingHeartbeats() {
@@ -121,7 +134,24 @@ export class HeartbeatManager {
       // 恢复队列以便重试
       this.pendingHeartbeats = pending.concat(this.pendingHeartbeats || []);
       savePendingHeartbeats(this.pendingHeartbeats);
+      return;
     }
+
+    // 心跳落库后再结束会话（重放顺序：start → heartbeat → stop）
+    const stops = (this.pendingStops || []).slice();
+    this.pendingStops = [];
+    for (const s of stops) {
+      try {
+        // finalIncrementMs 传 null：对应的最终增量已由心跳落库，避免重复累计
+        await worktimerApi.stopSession(s.sessionId, s.endTimeIso, null);
+      } catch (error) {
+        console.warn('刷新待发送工作会话结束请求失败:', error);
+        this.pendingStops.unshift(s);
+        savePendingStops(this.pendingStops);
+        return;
+      }
+    }
+    clearPendingStops();
   }
 
   async sendHeartbeat(
@@ -136,11 +166,11 @@ export class HeartbeatManager {
     if (!this.currentSessionId) return;
 
     if (!navigator.onLine) {
-      // 若会话未在服务器创建，则也 enqueue start
-      if (this.lastHeartbeatTs) {
+      // 若会话未在服务器创建，则也 enqueue start（同一会话只入队一次）
+      if (this.sessionStartIso) {
         this.enqueuePendingStart(
           this.currentSessionId,
-          new Date(this.lastHeartbeatTs).toISOString(),
+          this.sessionStartIso,
           endTime.value
         );
       }
@@ -149,6 +179,10 @@ export class HeartbeatManager {
         incrementMs,
         lastUpdateIso
       );
+      // 离线结束时 stop 请求也必须持久化，否则会话在服务端永远处于激活状态
+      if (endSession) {
+        this.enqueuePendingStop(this.currentSessionId, lastUpdateIso);
+      }
       return;
     }
 
@@ -185,10 +219,14 @@ export class HeartbeatManager {
       await this.flushPendingHeartbeats();
 
       if (endSession) {
+        // 最终增量已由上面的 heartbeat 落库，finalIncrementMs 传 null，
+        // 否则服务端 stop 会再累加一次造成双重计数
         await worktimerApi
-          .stopSession(this.currentSessionId, lastUpdateIso, incrementMs)
+          .stopSession(this.currentSessionId, lastUpdateIso, null)
           .catch(error => {
             console.warn('结束工作会话失败:', error);
+            // stop 失败需持久化重试，否则会话在服务端永远处于激活状态
+            this.enqueuePendingStop(this.currentSessionId, lastUpdateIso);
           });
         this.currentSessionId = null;
       }
@@ -199,12 +237,24 @@ export class HeartbeatManager {
         incrementMs,
         lastUpdateIso
       );
+      if (endSession) {
+        this.enqueuePendingStop(this.currentSessionId, lastUpdateIso);
+      }
     }
   }
 
   loadPendingFromStorage() {
     this.pendingHeartbeats = loadPendingHeartbeats();
     this.pendingStarts = loadPendingStarts();
+    this.pendingStops = loadPendingStops();
+  }
+
+  getSessionStartIso() {
+    return this.sessionStartIso;
+  }
+
+  setSessionStartIso(iso) {
+    this.sessionStartIso = iso;
   }
 
   getCurrentSessionId() {

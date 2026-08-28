@@ -23,13 +23,18 @@ export function createComputedProperties(
     return calculateTimeRemaining(endTime.value, nowMs.value);
   });
 
+  // 注意：calculateTimeRemaining 会把已过的结束时间顺延到明天（恒 > 0），
+  // 因此加班判定必须基于 calculateOvertime（今天实际已超过结束时间的毫秒数）
   const isOvertime = computed(() => {
-    return isTimerActive.value && timeRemaining.value === 0;
+    return (
+      isTimerActive.value && calculateOvertime(endTime.value, nowMs.value) > 0
+    );
   });
 
   const isWarning = computed(() => {
     return (
       isTimerActive.value &&
+      !isOvertime.value &&
       timeRemaining.value > 0 &&
       timeRemaining.value <= 30 * 60 * 1000
     );

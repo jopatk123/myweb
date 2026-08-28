@@ -74,8 +74,9 @@ RUN if [ "$SKIP_SERVER_NPM_INSTALL" = "0" ]; then \
 # =================== 运行时阶段 ===================
 FROM node:20-alpine AS runtime
 
-# 安装运行期依赖：dumb-init 用于信号处理；ffmpeg 供音频转码/压缩功能使用
-RUN apk add --no-cache dumb-init ffmpeg
+# 安装运行期依赖：dumb-init 用于信号处理；ffmpeg 供音频转码/压缩功能使用；
+# tzdata 供 TZ 环境变量解析时区名（下班计时器依赖服务器本地日期聚合统计）
+RUN apk add --no-cache dumb-init ffmpeg tzdata
 
 # 创建应用用户以提高安全性
 RUN addgroup -g 1001 -S nodejs && \

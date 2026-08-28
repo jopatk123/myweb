@@ -21,7 +21,8 @@ start:
                 nullable: true
               targetEndTime:
                 type: string
-                format: date-time
+                description: 目标下班时间，"HH:MM" 格式（如 "18:00"）
+                pattern: '^([01]\d|2[0-3]):[0-5]\d$'
                 nullable: true
     responses:
       '200':
