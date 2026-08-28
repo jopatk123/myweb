@@ -52,3 +52,74 @@ describe('uploads static caching', () => {
     }
   });
 });
+
+describe('client static & api caching', () => {
+  // 使用独立临时目录模拟 client/dist，避免与真实构建产物或其他测试文件竞态
+  const clientDistDir = path.join(__dirname, 'tmp-spa-dist');
+  const clientAssetsDir = path.join(clientDistDir, 'assets');
+  const assetFileName = '__cache-test-asset-abc123__.js';
+  const assetFilePath = path.join(clientAssetsDir, assetFileName);
+
+  let spaApp;
+  let spaDb;
+
+  beforeAll(async () => {
+    await fs.mkdir(clientAssetsDir, { recursive: true });
+    await fs.writeFile(assetFilePath, 'console.log("cache-test-asset");');
+    await fs.writeFile(
+      path.join(clientDistDir, 'index.html'),
+      '<html><body>spa-cache-test</body></html>'
+    );
+
+    const created = await createApp({
+      dbPath: ':memory:',
+      seedBuiltinApps: false,
+      silentDbLogs: true,
+      clientDistDir,
+    });
+
+    spaApp = created.app;
+    spaDb = created.db;
+  });
+
+  afterAll(async () => {
+    await fs.rm(clientDistDir, { recursive: true, force: true });
+    spaDb?.close?.();
+  });
+
+  it('serves hashed build assets with one-year immutable cache', async () => {
+    const response = await request(spaApp).get(`/assets/${assetFileName}`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe(
+      'public, max-age=31536000, immutable'
+    );
+  });
+
+  it('serves index.html with no-cache for revalidation', async () => {
+    const response = await request(spaApp).get('/index.html');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-cache');
+  });
+
+  it('sends no-cache on the SPA fallback route', async () => {
+    const response = await request(spaApp).get('/some-spa-route');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('spa-cache-test');
+    expect(response.headers['cache-control']).toBe('no-cache');
+  });
+
+  it('marks API responses as no-store', async () => {
+    const listResponse = await request(spaApp).get('/api');
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.headers['cache-control']).toBe('no-store');
+
+    const notFoundResponse = await request(spaApp).get('/api/not-existing');
+
+    expect(notFoundResponse.status).toBe(404);
+    expect(notFoundResponse.headers['cache-control']).toBe('no-store');
+  });
+});

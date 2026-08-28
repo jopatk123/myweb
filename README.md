@@ -104,6 +104,14 @@
 - **上传目录**：`server/uploads/{files,wallpapers,apps,message-images}`，Docker volumes `myweb-data`, `myweb-uploads`, `myweb-logs` 保持持久。
 - **API 文档**：`server/openapi.yaml`（Spectral 校验结果输出到 `contract-report.json`）。
 
+## 缓存策略
+
+- **前端构建产物**（`/assets/*`，Vite 内容 hash 文件名）：`public, max-age=31536000, immutable` 一年长缓存，内容变更由 hash 文件名保证 URL 变化。
+- **`index.html` 与 SPA 路由 fallback**：`no-cache`，每次经 ETag 协商校验，发版后立即生效（由新版 index.html 引用新的 hash 资源完成版本更替）。
+- **`/uploads` 上传资源**：`private, max-age=30天, immutable`（`UPLOADS_CACHE_MAX_AGE` 可调，设 `0` 禁用并返回 `no-store`）。
+- **壁纸缩略图 API**：`private, max-age=30天, immutable` + 弱 ETag/304 协商缓存。
+- **API（`/api/*`）**：`no-store`，不缓存（缩略图等自带缓存头的路由在其 handler 内覆盖）。
+
 ## 测试与验证
 
 - `npm test -w client` / `npm test -w server`，可加 `test:cov` 查看覆盖率。

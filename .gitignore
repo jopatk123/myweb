@@ -88,6 +88,7 @@ myweb-latest.tar
 .cache/
 contract-report.json
 server/tests/tmp-app-service/
+server/tests/tmp-spa-dist/
 
 # Uploads
 server/uploads/files/*

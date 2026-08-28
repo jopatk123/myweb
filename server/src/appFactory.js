@@ -108,6 +108,8 @@ export async function createApp(options = {}) {
     dbPath,
     seedBuiltinApps = true,
     silentDbLogs = appEnv.isTest,
+    // 生产环境使用真实前端构建产物；测试可注入临时目录避免触碰真实 dist
+    clientDistDir: providedClientDistDir,
   } = options;
 
   const app = express();
@@ -193,6 +195,13 @@ export async function createApp(options = {}) {
     }));
   setDb(db);
 
+  // API 响应默认禁止缓存：数据均为实时同步型，避免被浏览器/代理持久化。
+  // 自带缓存头的路由（如壁纸缩略图）会在 handler 内用 res.set 覆盖该头。
+  app.use('/api', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   app.use('/api/wallpapers', requireAppAuth, createWallpaperRoutes(db));
   app.use('/api/apps', requireAppAuth, createAppRoutes(db));
   app.use('/api/files', requireAppAuth, createFileRoutes(db));
@@ -221,7 +230,32 @@ export async function createApp(options = {}) {
     });
   }
 
-  app.use(express.static(path.join(__dirname, '../../client/dist')));
+  const clientDistDir =
+    providedClientDistDir || path.join(__dirname, '../../client/dist');
+
+  // 带内容 hash 的构建产物（Vite assets/*-[hash].js）：内容变更必然导致文件名变化，
+  // 可安全使用一年 immutable 长缓存，老用户二次访问直接命中磁盘缓存零请求
+  app.use(
+    '/assets',
+    express.static(path.join(clientDistDir, 'assets'), {
+      etag: true,
+      setHeaders(res) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      },
+    })
+  );
+
+  // SPA 其余静态文件（index.html、public 根下未 hash 的图标等）：
+  // 强制协商缓存（no-cache 仍可走 ETag 304），发版后 index.html 立即生效，
+  // 由其引用的新 hash 资源名完成版本更替，杜绝浏览器启发式缓存导致的旧版残留
+  app.use(
+    express.static(clientDistDir, {
+      etag: true,
+      setHeaders(res) {
+        res.setHeader('Cache-Control', 'no-cache');
+      },
+    })
+  );
 
   // 健康检查：仅返回存活状态，不暴露时间戳等元数据
   app.get('/health', (req, res) => {
@@ -230,7 +264,8 @@ export async function createApp(options = {}) {
 
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
-    res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(clientDistDir, 'index.html'));
   });
 
   app.use((req, res) => {
