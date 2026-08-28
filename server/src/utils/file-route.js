@@ -8,7 +8,7 @@ function createHttpError(message, status) {
   return error;
 }
 
-export function isTrustedBaseUrl(req, value) {
+function isTrustedBaseUrl(req, value) {
   try {
     const candidate = new URL(value);
     if (!['http:', 'https:'].includes(candidate.protocol)) {

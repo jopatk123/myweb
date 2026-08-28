@@ -29,7 +29,7 @@
     "prepare": "husky || true"
   },
   "devDependencies": {
-    "@babel/core": "^7.28.3",
+    "@eslint/js": "^9.33.0",
     "@stoplight/spectral-cli": "^6.15.0",
     "commitizen": "^4.3.0",
     "concurrently": "^9.2.1",

@@ -22,7 +22,7 @@ const __dirname = path.dirname(__filename);
 
 const imagesDir = path.join(__dirname, '../../uploads/message-images');
 
-export const MESSAGE_IMAGE_MAX_SIZE = parseEnvByteSize(
+const MESSAGE_IMAGE_MAX_SIZE = parseEnvByteSize(
   'MESSAGE_IMAGE_MAX_SIZE',
   DEFAULT_MESSAGE_IMAGE_MAX_SIZE
 );

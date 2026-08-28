@@ -110,6 +110,6 @@ export function createLogger(moduleName = 'app', options = {}) {
   return l;
 }
 
-export const logger = createLogger('Server');
+const logger = createLogger('Server');
 
 export default logger;

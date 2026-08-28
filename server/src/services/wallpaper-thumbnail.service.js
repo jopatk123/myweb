@@ -11,7 +11,7 @@ import { NotFoundError, ValidationError } from '../utils/errors.js';
 
 const thumbnailLogger = logger.child('WallpaperThumbnail');
 
-export const THUMBNAIL_DEFAULT_WIDTH = 320;
+const THUMBNAIL_DEFAULT_WIDTH = 320;
 const THUMBNAIL_MIN_SIZE = 50;
 const THUMBNAIL_MAX_SIZE = 3840;
 const SUPPORTED_THUMBNAIL_FORMATS = new Set([

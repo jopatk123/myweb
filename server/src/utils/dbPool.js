@@ -13,5 +13,3 @@ export function getDb() {
   }
   return dbInstance;
 }
-
-export default { setDb, getDb };

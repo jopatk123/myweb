@@ -15,5 +15,3 @@ export function mapToSnake(obj) {
   }
   return res;
 }
-
-export default { mapToSnake };

@@ -24,7 +24,7 @@ function sanitizeZipEntryName(name, fallback) {
  * - 使用 filename*=UTF-8'' 确保非 ASCII 文件名正确传递
  * - 同时提供 ASCII 安全回退，避免旧客户端乱码
  */
-export function buildContentDisposition(name) {
+function buildContentDisposition(name) {
   const safe = String(name).replace(/[^\w\-. ]/g, '_');
   const encoded = encodeURIComponent(name);
   return `attachment; filename="${safe}"; filename*=UTF-8''${encoded}`;

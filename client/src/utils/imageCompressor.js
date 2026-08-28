@@ -125,26 +125,3 @@ function calculateDimensions(originalWidth, originalHeight) {
 
   return { width, height };
 }
-
-/**
- * 批量压缩图片
- * @param {File[]} files - 图片文件数组
- * @param {number} maxSize - 最大文件大小（字节）
- * @returns {Promise<File[]>} 压缩后的图片文件数组
- */
-export async function compressImages(files, maxSize = MAX_FILE_SIZE) {
-  const compressedFiles = [];
-
-  for (const file of files) {
-    try {
-      const compressedFile = await compressImage(file, maxSize);
-      compressedFiles.push(compressedFile);
-    } catch (error) {
-      console.error('图片压缩失败:', error);
-      // 如果压缩失败，使用原文件
-      compressedFiles.push(file);
-    }
-  }
-
-  return compressedFiles;
-}

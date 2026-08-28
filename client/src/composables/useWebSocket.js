@@ -229,5 +229,3 @@ export function useWebSocket() {
     offMessage,
   };
 }
-
-export { resetWebSocketState } from '@/store/webSocketState.js';

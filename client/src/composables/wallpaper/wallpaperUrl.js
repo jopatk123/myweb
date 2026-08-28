@@ -11,7 +11,7 @@ const MIME_TO_EXTENSION = {
   'application/x-zip-compressed': 'zip',
 };
 
-export function getFileExtension(mimeType) {
+function getFileExtension(mimeType) {
   return MIME_TO_EXTENSION[mimeType] || 'bin';
 }
 

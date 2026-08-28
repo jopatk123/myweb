@@ -33,7 +33,7 @@ export const BUILTIN_APP_DEFINITIONS = [
   },
 ];
 
-export function getBuiltinAppDefinition(slug) {
+function getBuiltinAppDefinition(slug) {
   return BUILTIN_APP_DEFINITIONS.find(app => app.slug === slug) || null;
 }
 

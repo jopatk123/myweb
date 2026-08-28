@@ -155,5 +155,3 @@ export function useAppWindowResize(windowRef, posRef, savePosition) {
     onResizeStart,
   };
 }
-
-export { MIN_WIDTH, MIN_HEIGHT };

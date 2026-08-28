@@ -1,10 +1,6 @@
 import { ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  readStorageItem,
-  removeStorageItem,
-  writeStorageItem,
-} from '@/utils/storage.js';
+import { readStorageItem, writeStorageItem } from '@/utils/storage.js';
 
 const SESSION_STORAGE_KEY = 'sessionId';
 
@@ -38,18 +34,6 @@ export function ensureSessionId() {
   cacheSessionId(newSessionId);
   writeStorageItem(SESSION_STORAGE_KEY, newSessionId);
   return newSessionId;
-}
-
-export function setSessionId(sessionId) {
-  if (!sessionId) {
-    sessionState.sessionId.value = null;
-    removeStorageItem(SESSION_STORAGE_KEY);
-    return null;
-  }
-
-  cacheSessionId(sessionId);
-  writeStorageItem(SESSION_STORAGE_KEY, sessionId);
-  return sessionId;
 }
 
 export function resetSessionState() {

@@ -297,5 +297,3 @@ export function useApps() {
     getAppIconUrl,
   };
 }
-
-export { resetAppsState } from '@/store/appsState.js';

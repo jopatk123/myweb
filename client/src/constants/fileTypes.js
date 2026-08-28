@@ -6,7 +6,7 @@
 export { FILE_CATEGORIES } from './fileTypes/categories.js';
 export { MIME_TYPE_MAP } from './fileTypes/mimeMap.js';
 export { EXTENSION_TYPE_MAP } from './fileTypes/extensionMap.js';
-export { FILE_TYPE_ICONS, PREVIEWABLE_CATEGORIES } from './fileTypes/icons.js';
+export { FILE_TYPE_ICONS } from './fileTypes/icons.js';
 export { UPLOAD_SIZE_LIMITS } from './fileTypes/uploadLimits.js';
 export {
   getFileCategory,

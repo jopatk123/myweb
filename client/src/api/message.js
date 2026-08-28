@@ -77,5 +77,3 @@ export const messageAPI = {
     return messageApi.delete('/clear-all', { data: { confirm: true } });
   },
 };
-
-export default messageAPI;

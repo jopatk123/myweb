@@ -1,7 +1,7 @@
 import { createHmac } from 'crypto';
 import { constantTimeEquals } from './crypto.js';
 
-export const APP_AUTH_COOKIE_NAME = 'myweb_auth';
+const APP_AUTH_COOKIE_NAME = 'myweb_auth';
 
 const DEFAULT_AUTH_TTL_DAYS = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -112,7 +112,7 @@ function decodePayload(encodedPayload) {
   }
 }
 
-export function createAppAuthSession(now = Date.now()) {
+function createAppAuthSession(now = Date.now()) {
   const secret = getAppAuthSecret();
   if (!secret) return null;
 
@@ -128,7 +128,7 @@ export function createAppAuthSession(now = Date.now()) {
   };
 }
 
-export function parseCookieHeader(header) {
+function parseCookieHeader(header) {
   const cookies = new Map();
 
   for (const entry of String(header || '').split(';')) {
@@ -185,7 +185,7 @@ export function isAppAuthRequestAuthorized(req, now = Date.now()) {
   return isValidAppAuthSession(getAppAuthCookieValue(req), now);
 }
 
-export function getAppAuthCookieOptions(maxAgeMs = getAppAuthTtlMs()) {
+function getAppAuthCookieOptions(maxAgeMs = getAppAuthTtlMs()) {
   const sameSite = resolveCookieSameSite(process.env.APP_AUTH_COOKIE_SAME_SITE);
   const secure = sameSite === 'none' || getAppPasswordStatus().isProduction;
 

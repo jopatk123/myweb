@@ -25,7 +25,7 @@ function looksLikeMisinterpretedLatin1(str) {
   return hasHighByte;
 }
 
-export function decodeUploadFilename(name) {
+function decodeUploadFilename(name) {
   if (typeof name !== 'string' || name.length === 0) {
     return name;
   }

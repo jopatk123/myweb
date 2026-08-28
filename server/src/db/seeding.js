@@ -8,7 +8,7 @@ import logger from '../utils/logger.js';
 
 const seedLogger = logger.child('Seeding');
 
-export const BUILTIN_APPS = BUILTIN_APP_DEFINITIONS.map(app => ({
+const BUILTIN_APPS = BUILTIN_APP_DEFINITIONS.map(app => ({
   name: app.name,
   slug: app.slug,
   description: app.description,
