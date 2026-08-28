@@ -25,3 +25,11 @@ export const MESSAGE_IMAGE_MAX_COUNT = 5;
  * 最终以服务端校验为准。
  */
 export const MESSAGE_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
+
+/**
+ * 文件管理器单文件上传大小默认上限（1 GiB，前后端一致）。
+ * 服务端实际限制可经 FILE_MAX_UPLOAD_SIZE 环境变量覆盖
+ * （见 server/src/constants/limits.js 的 DEFAULT_FILE_MAX_SIZE），
+ * 此处为前端上传前预检用的默认镜像值，最终以服务端校验为准。
+ */
+export const FILE_UPLOAD_MAX_SIZE = 1024 * 1024 * 1024;

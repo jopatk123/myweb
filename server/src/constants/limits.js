@@ -10,6 +10,7 @@ export { MESSAGE_CONTENT_MAX_LENGTH } from '../../../shared/constants.js';
 import {
   MESSAGE_IMAGE_MAX_COUNT,
   MESSAGE_IMAGE_MAX_SIZE,
+  FILE_UPLOAD_MAX_SIZE,
 } from '../../../shared/constants.js';
 
 // 保持对外的再导出，既有消费方继续从 limits.js 引用
@@ -25,8 +26,8 @@ export const DEFAULT_WALLPAPER_MAX_SIZE = 500 * 1024 * 1024;
 
 // ─── 文件管理器 ───────────────────────────────────────────────────────────────
 
-/** 文件单文件最大上传尺寸默认值（1 GiB）*/
-export const DEFAULT_FILE_MAX_SIZE = 1024 * 1024 * 1024;
+/** 文件单文件最大上传尺寸默认值（1 GiB，复用共享常量避免前后端漂移）*/
+export const DEFAULT_FILE_MAX_SIZE = FILE_UPLOAD_MAX_SIZE;
 
 // ─── 留言板图片 ───────────────────────────────────────────────────────────────
 

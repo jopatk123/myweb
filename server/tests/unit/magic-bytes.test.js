@@ -516,6 +516,38 @@ describe('validateArchiveMagicBytes', () => {
       expect(result.valid).toBe(false);
       expect(result.detectedMime).toBeNull();
     });
+
+    it('扩展名为 .tar 且 MIME 为 octet-stream 时启用 ustar 校验（避免误拒）', async () => {
+      const header = new Array(262).fill(0x00);
+      header[257] = 0x75; // u
+      header[258] = 0x73; // s
+      header[259] = 0x74; // t
+      header[260] = 0x61; // a
+      header[261] = 0x72; // r
+      fsMock.default.open.mockResolvedValue(makeFdMock(header));
+
+      const result = await validateArchiveMagicBytes(
+        '/fake/archive.tar',
+        'application/octet-stream',
+        'archive.tar'
+      );
+
+      expect(result.valid).toBe(true);
+      expect(result.detectedMime).toBe('application/x-tar');
+    });
+
+    it('扩展名为 .tar 但内容无 ustar 标识时仍应拒绝', async () => {
+      const header = new Array(262).fill(0x41);
+      fsMock.default.open.mockResolvedValue(makeFdMock(header));
+
+      const result = await validateArchiveMagicBytes(
+        '/fake/fake.tar',
+        'application/octet-stream',
+        'fake.tar'
+      );
+
+      expect(result.valid).toBe(false);
+    });
   });
 
   describe('恶意文件检测', () => {
@@ -684,5 +716,25 @@ describe('assertValidUploadedFile', () => {
     await expect(
       assertValidUploadedFile('/fake/doc.pdf', '', 'doc.pdf')
     ).resolves.toBe('application/pdf');
+  });
+
+  it('octet-stream MIME 的 .tar 按扩展名走 archive 校验并放行合法内容', async () => {
+    // 客户端常以 application/octet-stream 发送 tar 文件，
+    // 依赖扩展名归类 + ustar 校验，而非直接误拒
+    const header = new Array(262).fill(0x00);
+    header[257] = 0x75; // u
+    header[258] = 0x73; // s
+    header[259] = 0x74; // t
+    header[260] = 0x61; // a
+    header[261] = 0x72; // r
+    fsMock.default.open.mockResolvedValue(makeFdMock(header));
+
+    await expect(
+      assertValidUploadedFile(
+        '/fake/a.tar',
+        'application/octet-stream',
+        'a.tar'
+      )
+    ).resolves.toBe('application/x-tar');
   });
 });

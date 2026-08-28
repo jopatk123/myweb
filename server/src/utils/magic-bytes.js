@@ -240,9 +240,15 @@ export async function assertValidImageFile(filePath, declaredMime) {
  *
  * @param {string} filePath 文件磁盘绝对路径
  * @param {string} declaredMime 声明的 MIME 类型
+ * @param {string} [originalName] 原始文件名（.tar 扩展名时同样启用 ustar 校验，
+ *   避免客户端以 application/octet-stream 发送 tar 文件被误拒）
  * @returns {Promise<{ valid: boolean; detectedMime: string | null }>}
  */
-export async function validateArchiveMagicBytes(filePath, declaredMime) {
+export async function validateArchiveMagicBytes(
+  filePath,
+  declaredMime,
+  originalName = ''
+) {
   let header;
   try {
     // tar 的 ustar 标识在 offset 257，至少读 262 字节
@@ -266,8 +272,12 @@ export async function validateArchiveMagicBytes(filePath, declaredMime) {
     }
   }
 
-  // tar：仅在声明 MIME 为 tar 时才校验（ustar 标识在 offset 257，读取成本较高）
-  if (declaredMime === 'application/x-tar') {
+  // tar：声明 MIME 为 tar 或扩展名为 .tar 时才校验
+  // （ustar 标识在 offset 257，读取成本较高；且 tar 常被客户端按
+  //   application/octet-stream 发送，仅靠 MIME 判断会误拒合法文件）
+  const isTar =
+    declaredMime === 'application/x-tar' || /\.tar$/i.test(originalName || '');
+  if (isTar) {
     if (matchesSignature(header, TAR_SIGNATURE.offset, TAR_SIGNATURE.bytes)) {
       return { valid: true, detectedMime: TAR_SIGNATURE.mime };
     }
@@ -308,7 +318,8 @@ export async function assertValidUploadedFile(
   ) {
     const { valid, detectedMime } = await validateArchiveMagicBytes(
       filePath,
-      declaredMime
+      declaredMime,
+      originalName
     );
     if (!valid) {
       const err = new Error(

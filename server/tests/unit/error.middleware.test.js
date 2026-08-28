@@ -118,6 +118,22 @@ describe('errorHandler middleware', () => {
     );
   });
 
+  it('handles LIMIT_FILE_COUNT multer error', () => {
+    const { req, res, next } = createMockReqRes();
+    const err = new Error('Too many files');
+    err.code = 'LIMIT_FILE_COUNT';
+
+    errorHandler(err, req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 400,
+        message: '单次上传文件数量超出限制',
+      })
+    );
+  });
+
   it('handles UNSUPPORTED_FILE_TYPE error', () => {
     const { req, res, next } = createMockReqRes();
     const err = new Error('Unsupported');

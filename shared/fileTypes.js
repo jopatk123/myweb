@@ -302,6 +302,8 @@ export const EXTENSION_TYPE_MAP = {
 export const BLOCKED_EXECUTABLE_EXTENSIONS = new Set([
   '.html',
   '.htm',
+  '.xhtml',
+  '.xht',
   '.svg',
   '.js',
   '.mjs',

@@ -35,6 +35,9 @@ export default function errorHandler(err, req, res, _next) {
   if (err.code === 'LIMIT_FILE_SIZE') {
     status = 400;
     message = '文件大小超出限制';
+  } else if (err.code === 'LIMIT_FILE_COUNT') {
+    status = 400;
+    message = '单次上传文件数量超出限制';
   } else if (err.code === 'UNSUPPORTED_FILE_TYPE') {
     status = 400;
     message = '不支持的文件类型';

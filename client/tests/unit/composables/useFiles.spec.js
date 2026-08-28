@@ -205,4 +205,41 @@ describe('useFiles composable', () => {
 
     stop();
   });
+
+  it('fail-fast: aborts remaining queue when a file fails and refreshes list', async () => {
+    const files = ['a', 'b', 'c', 'd', 'e'].map(
+      name => new File([name], `${name}.txt`, { type: 'text/plain' })
+    );
+
+    // 第一个文件立即失败；其余模拟真实 in-flight 请求（挂起直到 abort）
+    let firstRejected = false;
+    apiMocks.upload.mockImplementation((_files, _onProgress, signal) => {
+      if (!firstRejected) {
+        firstRejected = true;
+        return Promise.reject(new Error('不支持的文件类型'));
+      }
+      return new Promise((_resolve, reject) => {
+        signal?.addEventListener('abort', () =>
+          reject(Object.assign(new Error('canceled'), { code: 'ERR_CANCELED' }))
+        );
+      });
+    });
+    apiMocks.list.mockResolvedValue({
+      code: 200,
+      success: true,
+      data: { files: [], pagination: { total: 0 } },
+    });
+
+    const { upload, error: errorRef } = mountUseFiles();
+
+    // 并发 3：索引 0/1/2 立即被认领，0 失败后应中止队列（3/4 不再上传）
+    await expect(upload(files)).rejects.toThrow('不支持的文件类型');
+
+    expect(apiMocks.upload).toHaveBeenCalledTimes(3);
+    expect(errorRef.value).toBe('不支持的文件类型');
+    // 失败批次中可能有已成功文件，应刷新列表
+    expect(apiMocks.list).toHaveBeenCalled();
+
+    stop();
+  });
 });

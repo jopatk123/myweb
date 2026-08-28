@@ -1,4 +1,5 @@
 import { BaseModel, escapeLikePattern } from './base.model.js';
+import { FILE_CATEGORIES } from '../../../shared/fileTypes.js';
 
 /**
  * files 表数据访问层
@@ -29,19 +30,8 @@ export class FileModel extends BaseModel {
     search = null,
     includeDeleted = false,
   } = {}) {
-    const allowedTypes = new Set([
-      'image',
-      'video',
-      'audio',
-      'word',
-      'excel',
-      'ppt',
-      'pdf',
-      'text',
-      'code',
-      'archive',
-      'other',
-    ]);
+    // 类型过滤白名单直接取自 shared 单一真相源，避免与 FILE_CATEGORIES 漂移
+    const allowedTypes = new Set(Object.values(FILE_CATEGORIES));
 
     const safePage = Math.max(1, Number(page) || 1);
     const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));

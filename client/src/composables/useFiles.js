@@ -191,15 +191,24 @@ export function useFiles({
         await fetchList();
       }
     } catch (e) {
-      if (
+      const cancelled =
         controller.signal.aborted ||
         e?.name === 'AbortError' ||
-        e?.code === 'ERR_CANCELED'
-      ) {
+        e?.code === 'ERR_CANCELED';
+      if (cancelled) {
         // 用户主动取消，不视为错误
         isCancelled.value = true;
       } else {
+        // 单个文件失败：中止剩余 worker（fail-fast），
+        // 避免其余文件在后台静默续传导致 UI 状态与真实进度不一致
+        controller.abort();
         lastError.value = e;
+        // 批次中部分文件可能已上传成功，刷新列表保持数据一致
+        // （刷新失败不掩盖原始上传错误；先刷新再写 error，
+        //   避免 fetchList 内部重置 error 时清掉本次失败提示）
+        if (!isDisposed) {
+          await fetchList().catch(() => {});
+        }
         error.value = e.message || '上传失败';
         throw e;
       }

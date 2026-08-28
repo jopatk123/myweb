@@ -133,6 +133,22 @@ async function cleanupFiles(files) {
 }
 
 /**
+ * 归一化 multer 错误语义
+ *
+ * multer 的 .array(field, maxCount) 超出数量上限时抛出 LIMIT_UNEXPECTED_FILE，
+ * 与"字段名错误"共用同一错误码。此处按 field 区分：
+ * - field === 'file'（期望字段）：实为超出单次上传数量，改写为 LIMIT_FILE_COUNT
+ * - 其他 field：真正的字段名错误，保持原语义
+ */
+function normalizeMulterUploadError(err, _req, _res, next) {
+  if (err?.code === 'LIMIT_UNEXPECTED_FILE' && err.field === 'file') {
+    err.code = 'LIMIT_FILE_COUNT';
+    err.message = '单次上传文件数量超出限制';
+  }
+  next(err);
+}
+
+/**
  * 创建文件路由并注入 db
  */
 export function createFileRoutes(db) {
@@ -143,6 +159,7 @@ export function createFileRoutes(db) {
   router.post(
     '/upload',
     upload.array('file', MAX_UPLOAD_FILES),
+    normalizeMulterUploadError,
     async (req, res, next) => {
       try {
         const baseUrl = resolveRequestBaseUrl(req);
