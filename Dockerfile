@@ -1,5 +1,7 @@
 # =================== 构建阶段：客户端 ===================
-FROM node:20-alpine AS client-builder
+# Node >= 22：better-sqlite3 v13 的官方 prebuild 仅支持 Node >= 22，
+# 在 Node 20 上加载会直接 SIGSEGV（崩溃重启循环，表现为端口无服务）
+FROM node:22-alpine AS client-builder
 
 ARG USE_LOCAL_CLIENT=0
 
@@ -37,7 +39,7 @@ RUN if [ "$USE_LOCAL_CLIENT" = "0" ]; then \
     fi
 
 # =================== 构建阶段：服务端依赖 ===================
-FROM node:20-alpine AS server-deps
+FROM node:22-alpine AS server-deps
 
 ARG SKIP_SERVER_NPM_INSTALL=0
 
@@ -72,7 +74,7 @@ RUN if [ "$SKIP_SERVER_NPM_INSTALL" = "0" ]; then \
     fi
 
 # =================== 运行时阶段 ===================
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 
 # 安装运行期依赖：dumb-init 用于信号处理；ffmpeg 供音频转码/压缩功能使用；
 # tzdata 供 TZ 环境变量解析时区名（下班计时器依赖服务器本地日期聚合统计）
