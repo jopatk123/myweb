@@ -90,6 +90,62 @@ describe('application auth guard', () => {
     await agent.get('/api/apps').expect(401);
   });
 
+  test('https requests receive Secure cookie via X-Forwarded-Proto', async () => {
+    // app 设置了 trust proxy=loopback，supertest 走 loopback，可模拟代理后的 HTTPS
+    const res = await request(app)
+      .post('/api/auth/verify')
+      .set('X-Forwarded-Proto', 'https')
+      .send({ password: 'secret123' })
+      .expect(200);
+
+    expect(res.headers['set-cookie']).toEqual(
+      expect.arrayContaining([expect.stringContaining('Secure')])
+    );
+  });
+
+  test('production plain-http login sets cookie without Secure so sessions persist', async () => {
+    // 回归：生产模式曾无条件给 Cookie 加 Secure，纯 HTTP 部署下浏览器会
+    // 丢弃该 Cookie，表现为每次刷新都要求重新输入密码
+    const originalPassword = process.env.APP_PASSWORD;
+    const originalSecret = process.env.APP_AUTH_SECRET;
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.APP_PASSWORD = 'secret123';
+    process.env.APP_AUTH_SECRET = 'test-signing-secret';
+    process.env.NODE_ENV = 'production';
+
+    let isolatedDb;
+    try {
+      const { app: isolatedApp, db } = await createApp({
+        dbPath: ':memory:',
+        seedBuiltinApps: false,
+        silentDbLogs: true,
+      });
+      isolatedDb = db;
+
+      const res = await request(isolatedApp)
+        .post('/api/auth/verify')
+        .send({ password: 'secret123' })
+        .expect(200);
+
+      const setCookie = res.headers['set-cookie'][0];
+      expect(setCookie).toContain('myweb_auth=');
+      expect(setCookie).not.toMatch(/\bSecure\b/i);
+    } finally {
+      await isolatedDb?.close?.();
+      if (originalSecret === undefined) {
+        delete process.env.APP_AUTH_SECRET;
+      } else {
+        process.env.APP_AUTH_SECRET = originalSecret;
+      }
+      if (originalPassword === undefined) {
+        delete process.env.APP_PASSWORD;
+      } else {
+        process.env.APP_PASSWORD = originalPassword;
+      }
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
   test('blocks protected routes with 503 when production signing secret is missing', async () => {
     const originalSecret = process.env.APP_AUTH_SECRET;
     process.env.APP_PASSWORD = 'secret123';

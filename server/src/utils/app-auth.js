@@ -185,9 +185,14 @@ export function isAppAuthRequestAuthorized(req, now = Date.now()) {
   return isValidAppAuthSession(getAppAuthCookieValue(req), now);
 }
 
-function getAppAuthCookieOptions(maxAgeMs = getAppAuthTtlMs()) {
+function getAppAuthCookieOptions(maxAgeMs = getAppAuthTtlMs(), req = null) {
   const sameSite = resolveCookieSameSite(process.env.APP_AUTH_COOKIE_SAME_SITE);
-  const secure = sameSite === 'none' || getAppPasswordStatus().isProduction;
+  // Secure 属性必须与真实传输协议一致：仅 HTTPS 请求才可携带（req.secure，
+  // 配合 app 的 trust proxy=loopback 可正确解析反向代理的 X-Forwarded-Proto）。
+  // 若在生产模式无条件加 Secure，纯 HTTP 部署下浏览器会直接丢弃该 Cookie，
+  // 表现为每次刷新都要求重新输入密码。
+  // SameSite=None 按现代浏览器规范必须 Secure，无法降级。
+  const secure = sameSite === 'none' || Boolean(req?.secure);
 
   return {
     httpOnly: true,
@@ -206,11 +211,11 @@ export function setAppAuthCookie(res, now = Date.now()) {
   res.cookie(
     APP_AUTH_COOKIE_NAME,
     session.value,
-    getAppAuthCookieOptions(maxAge)
+    getAppAuthCookieOptions(maxAge, res?.req)
   );
   return session;
 }
 
 export function clearAppAuthCookie(res) {
-  res.clearCookie(APP_AUTH_COOKIE_NAME, getAppAuthCookieOptions(0));
+  res.clearCookie(APP_AUTH_COOKIE_NAME, getAppAuthCookieOptions(0, res?.req));
 }
