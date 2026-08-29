@@ -61,7 +61,19 @@ const pinoOptions = {
 let destination = undefined;
 if (appEnv.log.toFile) {
   const logFile = appEnv.log.file || path.join(baseLogDir, 'server.log');
-  destination = pino.destination({ dest: logFile, sync: false });
+  // 用 fs.openSync 预先同步打开句柄再交给 pino：pino.destination 直接传路径时
+  // 会异步 open，短生命周期进程（如 knex migrate CLI 成功后立即 process.exit）
+  // 会在句柄就绪前触发 exit 钩子的 flushSync，抛出
+  // "sonic boom is not ready yet" 导致迁移命令误报失败。
+  try {
+    destination = pino.destination({
+      fd: fs.openSync(logFile, 'a'),
+      sync: false,
+    });
+  } catch {
+    // 日志文件系统不可写时回退 stdout，保证进程可启动
+    destination = undefined;
+  }
 }
 
 const pinoInstance = destination
