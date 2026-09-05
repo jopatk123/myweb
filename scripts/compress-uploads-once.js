@@ -1,7 +1,11 @@
 /* 一次性维护脚本：压缩体积异常的上传图片（在容器内执行）
- * - apps/icons/*.png（>100KB）：等比缩到最大边 256px（桌面显示 64px，256 已含 retina 余量）
+ * - apps/icons/*.png（>100KB）：等比缩到最大边 256px（桌面显示 64px，256 已含 retina 余量），
+ *   输出 PNG 保留透明通道（palette 与 RGBA 双方案取更小者）
  * - wallpapers/*.jpg（>300KB）：保持分辨率，mozjpeg q82 视觉无损重编码
  * - 仅当压缩后体积更小时替换；壁纸同步更新 DB 的 file_size 字段
+ *
+ * 注意：sharp 的格式方法是"链式覆盖"语义，.png() 后再 .jpeg() 会输出 JPEG
+ * （曾因此误将 PNG 图标压成 JPEG 丢失透明，已修复：按输入格式显式分支）。
  */
 const sharp = require('sharp');
 const fs = require('fs');
@@ -12,33 +16,39 @@ const ICON_DIR = '/app/server/uploads/apps/icons';
 const WALLPAPER_DIR = '/app/server/uploads/wallpapers';
 const DB_PATH = '/app/server/data/myweb.db';
 
-async function compressOne(src, opts) {
-  const buf = await sharp(src)
-    .resize({
-      width: opts.maxWidth,
-      height: opts.maxWidth,
-      fit: 'inside',
-      withoutEnlargement: true,
-    })
-    .png(opts.png || undefined)
-    .jpeg(opts.jpeg || undefined)
+/** 图标压缩：256px PNG，palette 与 RGBA 双方案取更小者，透明无损 */
+async function compressIcon(src) {
+  const base = sharp(src).resize(256, 256, {
+    fit: 'inside',
+    withoutEnlargement: true,
+  });
+  const paletteBuf = await base
+    .clone()
+    .png({ palette: true, quality: 95, compressionLevel: 9 })
     .toBuffer();
-  const origSize = fs.statSync(src).size;
-  return { buffer: buf, origSize, newSize: buf.length };
+  const rgbaBuf = await base.clone().png({ compressionLevel: 9 }).toBuffer();
+  return paletteBuf.length <= rgbaBuf.length ? paletteBuf : rgbaBuf;
+}
+
+/** 壁纸压缩：保持分辨率，JPEG q82 重编码 */
+async function compressWallpaper(src) {
+  return sharp(src)
+    .resize(20000, 20000, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 82, mozjpeg: true })
+    .toBuffer();
 }
 
 async function main() {
   const db = new Database(DB_PATH);
   const results = [];
 
-  // 1. 图标：>100KB 的 PNG 缩到 256px
+  // 1. 图标：>100KB 的 PNG 缩到 256px（透明保留）
   for (const f of fs.readdirSync(ICON_DIR).filter(x => x.endsWith('.png'))) {
     const p = path.join(ICON_DIR, f);
     if (fs.statSync(p).size <= 100 * 1024) continue;
-    const { buffer, origSize, newSize } = await compressOne(p, {
-      maxWidth: 256,
-      png: { palette: true, quality: 90, compressionLevel: 9 },
-    });
+    const buffer = await compressIcon(p);
+    const origSize = fs.statSync(p).size;
+    const newSize = buffer.length;
     if (newSize < origSize) {
       fs.writeFileSync(p, buffer);
       results.push({ type: 'icon', file: f, origSize, newSize });
@@ -54,10 +64,9 @@ async function main() {
     .filter(x => /\.jpe?g$/i.test(x))) {
     const p = path.join(WALLPAPER_DIR, f);
     if (fs.statSync(p).size <= 300 * 1024) continue;
-    const { buffer, origSize, newSize } = await compressOne(p, {
-      maxWidth: 20000,
-      jpeg: { quality: 82, mozjpeg: true },
-    });
+    const buffer = await compressWallpaper(p);
+    const origSize = fs.statSync(p).size;
+    const newSize = buffer.length;
     if (newSize < origSize) {
       fs.writeFileSync(p, buffer);
       origTotal += origSize;

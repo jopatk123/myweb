@@ -5,6 +5,7 @@ import { parseEnvByteSize } from '../utils/env.js';
 import { APP_ICONS_DIR } from '../utils/upload-path.js';
 import { createUploader, imageOnlyFilter } from '../utils/uploader.js';
 import { assertValidImageFile } from '../utils/magic-bytes.js';
+import { optimizeIconFile } from '../utils/image-optimize.js';
 import { validateBody } from '../dto/common.js';
 import {
   bulkVisibleSchema,
@@ -87,6 +88,24 @@ export function createAppRoutes(db) {
           });
         });
         return next(err);
+      }
+
+      // 就地压缩：超大图标（如 1024px+ 的 PNG）缩到 256px 并重编码，
+      // 输出保持原格式（透明无损）；失败仅告警并保留原图，不阻断上传。
+      try {
+        const result = await optimizeIconFile(f.path);
+        if (result.optimized) {
+          iconLogger.info('图标已压缩', {
+            filename: f.filename,
+            originalSize: result.originalSize,
+            newSize: result.newSize,
+          });
+        }
+      } catch (error) {
+        iconLogger.warn('图标压缩失败，保留原图', {
+          filename: f.filename,
+          error: error?.message || error,
+        });
       }
 
       try {

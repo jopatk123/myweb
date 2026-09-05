@@ -102,6 +102,7 @@
 
 - **数据库**：`server/data/myweb.db`（SQLite + Knex），使用 `npm run db:setup -w server` 初始化。
 - **上传目录**：`server/uploads/{files,wallpapers,apps,message-images}`，Docker volumes `myweb-data`, `myweb-uploads`, `myweb-logs` 保持持久。
+- **图标上传压缩**：应用图标上传后服务端就地压缩（`server/src/utils/image-optimize.js`）——等比缩至最大边 256px，输出保持原格式（PNG 透明无损，palette/RGBA 双方案取更小；JPEG q82；WEBP q85；GIF/ICO/BMP/TIFF 原样保留），仅当压缩后更小时替换。
 - **API 文档**：`server/openapi.yaml`（Spectral 校验结果输出到 `contract-report.json`）。
 
 ## 缓存策略
