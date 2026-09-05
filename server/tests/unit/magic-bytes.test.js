@@ -11,8 +11,10 @@ import { jest } from '@jest/globals';
 jest.unstable_mockModule('fs/promises', () => ({
   default: {
     open: jest.fn(),
+    readFile: jest.fn(),
   },
   open: jest.fn(),
+  readFile: jest.fn(),
 }));
 
 const fsMock = await import('fs/promises');
@@ -22,6 +24,8 @@ const {
   assertValidImageFile,
   validateArchiveMagicBytes,
   assertValidUploadedFile,
+  looksLikeSvgMarkup,
+  svgMarkupIsUnsafe,
 } = await import('../../src/utils/magic-bytes.js');
 
 /**
@@ -275,6 +279,40 @@ describe('validateImageMagicBytes', () => {
       expect(result.detectedMime).toBeNull();
     });
   });
+
+  describe('SVG', () => {
+    it('allowSvg 时识别 <svg 开头的文件', async () => {
+      const header = Buffer.from(
+        '<svg xmlns="http://www.w3.org/2000/svg"></svg>'
+      );
+      fsMock.default.open.mockResolvedValue(makeFdMock([...header]));
+
+      const result = await validateImageMagicBytes(
+        '/fake/icon.svg',
+        'image/svg+xml',
+        {
+          allowSvg: true,
+        }
+      );
+
+      expect(result.valid).toBe(true);
+      expect(result.detectedMime).toBe('image/svg+xml');
+    });
+
+    it('默认不允许 SVG', async () => {
+      const header = Buffer.from(
+        '<svg xmlns="http://www.w3.org/2000/svg"></svg>'
+      );
+      fsMock.default.open.mockResolvedValue(makeFdMock([...header]));
+
+      const result = await validateImageMagicBytes(
+        '/fake/icon.svg',
+        'image/svg+xml'
+      );
+
+      expect(result.valid).toBe(false);
+    });
+  });
 });
 
 describe('assertValidImageFile', () => {
@@ -314,6 +352,51 @@ describe('assertValidImageFile', () => {
     await expect(
       assertValidImageFile('/unreadable.jpg', 'image/jpeg')
     ).rejects.toThrow();
+  });
+
+  it('允许 SVG 且内容安全时返回 image/svg+xml', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect /></svg>';
+    fsMock.default.open.mockResolvedValue(makeFdMock([...Buffer.from(svg)]));
+    fsMock.default.readFile.mockResolvedValue(svg);
+
+    await expect(
+      assertValidImageFile('/ok.svg', 'image/svg+xml', { allowSvg: true })
+    ).resolves.toBe('image/svg+xml');
+  });
+
+  it('拒绝含 script 的 SVG', async () => {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
+    fsMock.default.open.mockResolvedValue(makeFdMock([...Buffer.from(svg)]));
+    fsMock.default.readFile.mockResolvedValue(svg);
+
+    await expect(
+      assertValidImageFile('/evil.svg', 'image/svg+xml', { allowSvg: true })
+    ).rejects.toMatchObject({
+      status: 422,
+      code: 'UNSAFE_SVG',
+    });
+  });
+});
+
+describe('looksLikeSvgMarkup / svgMarkupIsUnsafe', () => {
+  it('accepts xml declaration before svg', () => {
+    expect(
+      looksLikeSvgMarkup(
+        '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"></svg>'
+      )
+    ).toBe(true);
+  });
+
+  it('rejects php disguised as xml', () => {
+    expect(looksLikeSvgMarkup('<?php echo 1;')).toBe(false);
+  });
+
+  it('flags script handlers as unsafe', () => {
+    expect(svgMarkupIsUnsafe('<svg onload="alert(1)"></svg>')).toBe(true);
+    expect(
+      svgMarkupIsUnsafe('<svg xmlns="http://www.w3.org/2000/svg"></svg>')
+    ).toBe(false);
   });
 });
 

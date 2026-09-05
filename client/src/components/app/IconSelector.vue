@@ -32,7 +32,7 @@
     <div v-if="activeTab === 'upload'" class="upload-section">
       <input
         type="file"
-        accept="image/*"
+        :accept="APP_ICON_ACCEPT"
         @change="onFileSelected"
         ref="fileInput"
         class="file-input"
@@ -51,11 +51,14 @@
 </template>
 
 <script setup>
-  import { ref, watch } from 'vue';
+  import { ref, watch, onUnmounted } from 'vue';
   import {
     BUILTIN_APP_DEFINITIONS,
     getBuiltinAppPublicIconPath,
   } from '@shared/builtin-apps.js';
+  import { APP_ICON_ACCEPT } from '@shared/app-icons.js';
+  import { validateAppIconFile } from '@/utils/appIconFile.js';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
 
   const props = defineProps({
     modelValue: String, // 当前选中的图标路径或文件名
@@ -136,6 +139,19 @@
     }
   );
 
+  const { showError } = useGlobalToast();
+
+  function revokePreviewUrl() {
+    try {
+      if (objectUrl.value) {
+        URL.revokeObjectURL(objectUrl.value);
+        objectUrl.value = '';
+      }
+    } catch (error) {
+      void error;
+    }
+  }
+
   function selectPresetIcon(icon) {
     selectedIcon.value = icon.path;
     uploadedIcon.value = '';
@@ -146,25 +162,26 @@
     emit('select-file', null);
   }
 
-  async function onFileSelected(e) {
+  function onFileSelected(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    // 仅本地预览与上抛文件，由父组件在提交时执行上传
-    try {
-      if (objectUrl.value) {
-        URL.revokeObjectURL(objectUrl.value);
-        objectUrl.value = '';
-      }
-    } catch (error) {
-      void error;
+    const check = validateAppIconFile(file);
+    if (!check.ok) {
+      showError(check.message);
+      if (fileInput.value) fileInput.value.value = '';
+      return;
     }
+    revokePreviewUrl();
     objectUrl.value = URL.createObjectURL(file);
     uploadedIcon.value = objectUrl.value;
     selectedIcon.value = uploadedIcon.value;
     emit('select-file', file);
   }
 
-  // 当上传成功后，父组件会更新 iconFilename
+  onUnmounted(() => {
+    revokePreviewUrl();
+  });
+
   defineExpose({
     reset() {
       selectedIcon.value = '';
@@ -173,14 +190,7 @@
       if (fileInput.value) {
         fileInput.value.value = '';
       }
-      try {
-        if (objectUrl.value) {
-          URL.revokeObjectURL(objectUrl.value);
-          objectUrl.value = '';
-        }
-      } catch (error) {
-        void error;
-      }
+      revokePreviewUrl();
     },
   });
 </script>

@@ -104,6 +104,9 @@ paths:
   /api/apps/icons/upload:
     $ref: './openapi/paths/apps.yaml#/iconUpload'
 
+  /api/apps/icons/{filename}:
+    $ref: './openapi/paths/apps.yaml#/iconByFilename'
+
   /api/apps/groups/all:
     $ref: './openapi/paths/apps.yaml#/groupsAll'
 

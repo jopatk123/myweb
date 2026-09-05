@@ -204,8 +204,10 @@ iconUpload:
     summary: Upload custom app icon
     description: |
       Upload one custom icon file for app creation or editing.
-      仅支持 JPEG / PNG / GIF / WebP / BMP / TIFF / AVIF / ICO，
-      通过 MIME 过滤 + 魔数双重校验；不支持 SVG（SVG 无可靠的 magic bytes）。
+      支持 JPEG / PNG / GIF / WebP / BMP / TIFF / AVIF / ICO / SVG。
+      通过 MIME 过滤 + 魔数双重校验（SVG 额外校验文档结构并拒绝含脚本的内容）。
+      服务端会就地压缩栅格图（最大边 256px），并按实际内容对齐扩展名；
+      AVIF/HEIC 会转为 PNG。压缩失败保留原图，不阻断上传。
       大小受 APP_ICON_MAX_UPLOAD_SIZE 限制（默认 5MB）。
     tags:
       - Apps
@@ -227,12 +229,36 @@ iconUpload:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                filename:
-                  type: string
+              $ref: '../components/schemas/app.yaml#/AppIconUploadResponse'
       '400':
         description: Invalid file type or size exceeded
+      '422':
+        description: File content does not match a supported image type
+
+iconByFilename:
+  delete:
+    summary: Delete an unreferenced uploaded app icon
+    description: |
+      删除 uploads/apps/icons 中尚未被任何未删除应用引用的图标文件。
+      用于创建/更新失败后的客户端回滚；若文件仍被引用则返回 409。
+    tags:
+      - Apps
+    parameters:
+      - in: path
+        name: filename
+        required: true
+        schema:
+          type: string
+        description: 已上传图标的文件名（仅 basename）
+    responses:
+      '200':
+        description: Deleted
+      '400':
+        description: Invalid filename
+      '404':
+        description: Icon file not found
+      '409':
+        description: Icon is still referenced by an app
 
 groupsAll:
   get:

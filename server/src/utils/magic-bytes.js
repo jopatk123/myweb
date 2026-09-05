@@ -158,17 +158,49 @@ function matchesSignature(buffer, offset, expectedBytes) {
   return expectedBytes.every((byte, i) => buffer[offset + i] === byte);
 }
 
+const SVG_UNSAFE_PATTERN =
+  /<script[\s>/]|<\/script>|javascript:|<foreignObject[\s>/]|\son\w+\s*=/i;
+
+/**
+ * 判断文本是否为 SVG 文档开头（允许 XML 声明 / DOCTYPE / 注释）。
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function looksLikeSvgMarkup(text) {
+  const stripped = String(text || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/^<\?xml\b[^?]*\?>\s*/i, '')
+    .replace(/^<!DOCTYPE\b[^>]*>\s*/i, '')
+    .replace(/^(?:<!--[\s\S]*?-->\s*)+/i, '')
+    .trimStart();
+  return /^<svg[\s>]/i.test(stripped);
+}
+
+/**
+ * SVG 内含脚本或可执行嵌入时视为不安全（图标仅用于 <img>，仍做纵深防御）。
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function svgMarkupIsUnsafe(text) {
+  return SVG_UNSAFE_PATTERN.test(String(text || ''));
+}
+
 /**
  * 验证文件是否为有效图片（通过魔数检测）
  *
  * @param {string} filePath 文件在磁盘上的绝对路径
  * @param {string} [declaredMime] 请求声明的 MIME 类型（可选，用于附加日志）
+ * @param {{ allowSvg?: boolean }} [options]
  * @returns {Promise<{ valid: boolean; detectedMime: string | null }>}
  */
-export async function validateImageMagicBytes(filePath, _declaredMime) {
+export async function validateImageMagicBytes(
+  filePath,
+  _declaredMime,
+  { allowSvg = false } = {}
+) {
   let header;
   try {
-    header = await readFileHeader(filePath, 16);
+    header = await readFileHeader(filePath, allowSvg ? 1024 : 16);
   } catch (err) {
     // fail-closed：文件不存在或读取失败时一律判为无效，避免绕过魔数校验
     if (err && err.code === 'ENOENT') {
@@ -207,6 +239,10 @@ export async function validateImageMagicBytes(filePath, _declaredMime) {
     return { valid: true, detectedMime: sig.mime };
   }
 
+  if (allowSvg && looksLikeSvgMarkup(header.toString('utf8'))) {
+    return { valid: true, detectedMime: 'image/svg+xml' };
+  }
+
   return { valid: false, detectedMime: null };
 }
 
@@ -215,12 +251,18 @@ export async function validateImageMagicBytes(filePath, _declaredMime) {
  *
  * @param {string} filePath 文件磁盘路径
  * @param {string} [declaredMime] 声称的 MIME 类型
+ * @param {{ allowSvg?: boolean }} [options]
  * @throws {Error} 当文件不是有效图片时抛出
  */
-export async function assertValidImageFile(filePath, declaredMime) {
+export async function assertValidImageFile(
+  filePath,
+  declaredMime,
+  { allowSvg = false } = {}
+) {
   const { valid, detectedMime } = await validateImageMagicBytes(
     filePath,
-    declaredMime
+    declaredMime,
+    { allowSvg }
   );
 
   if (!valid) {
@@ -230,6 +272,16 @@ export async function assertValidImageFile(filePath, declaredMime) {
     err.status = 422;
     err.code = 'INVALID_FILE_CONTENT';
     throw err;
+  }
+
+  if (detectedMime === 'image/svg+xml') {
+    const content = await fs.readFile(filePath, 'utf8');
+    if (svgMarkupIsUnsafe(content)) {
+      const err = new Error('SVG 含有不安全内容，已拒绝');
+      err.status = 422;
+      err.code = 'UNSAFE_SVG';
+      throw err;
+    }
   }
 
   return detectedMime;

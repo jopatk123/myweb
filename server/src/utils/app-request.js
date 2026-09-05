@@ -36,6 +36,10 @@ export async function validateAppPayload(
     payload.group_id = null;
   }
 
+  if (payload.icon_filename === '') {
+    payload.icon_filename = null;
+  }
+
   return payload;
 }
 

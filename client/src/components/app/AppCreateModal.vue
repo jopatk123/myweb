@@ -3,7 +3,7 @@
     <div class="modal">
       <div class="modal-header">
         <div class="title">新增自定义应用</div>
-        <button class="close" @click="close">✖</button>
+        <button class="close" @click="close" :disabled="submitting">✖</button>
       </div>
       <div class="modal-body">
         <div class="form-row">
@@ -28,8 +28,16 @@
           </div>
         </div>
         <div class="actions">
-          <button class="btn btn-primary" @click="submit">创建</button>
-          <button class="btn" @click="close">取消</button>
+          <button
+            class="btn btn-primary"
+            @click="submit"
+            :disabled="submitting"
+          >
+            {{ submitting ? '创建中...' : '创建' }}
+          </button>
+          <button class="btn" @click="close" :disabled="submitting">
+            取消
+          </button>
         </div>
       </div>
     </div>
@@ -38,9 +46,8 @@
 
 <script setup>
   import { ref, watch } from 'vue';
-  import { useGlobalToast } from '@/composables/useGlobalToast.js';
   import IconSelector from './IconSelector.vue';
-  import { apiFetch } from '@/api/httpClient.js';
+  import { useAppIconSubmit } from '@/composables/useAppIconSubmit.js';
 
   const props = defineProps({
     show: Boolean,
@@ -60,17 +67,24 @@
   const form = ref({ ...initialFormState });
   const selectedIconPath = ref('');
   const iconSelectorRef = ref(null);
-  const pendingFile = ref(null); // 延迟上传的本地文件
-  const { showError, showInfo } = useGlobalToast();
+  const {
+    pendingFile,
+    submitting,
+    showInfo,
+    showError,
+    validateTargetUrl,
+    discardUnreferencedIcon,
+    resolveIconFields,
+  } = useAppIconSubmit();
 
   watch(
     () => props.show,
     newVal => {
       if (newVal) {
-        // Reset form when modal opens
         form.value = { ...initialFormState, groupId: props.groupId };
         selectedIconPath.value = '';
         pendingFile.value = null;
+        submitting.value = false;
         if (iconSelectorRef.value) {
           iconSelectorRef.value.reset();
         }
@@ -79,10 +93,13 @@
   );
 
   const close = () => {
+    if (submitting.value) return;
     emit('update:show', false);
   };
 
   const submit = async () => {
+    if (submitting.value) return;
+
     const payload = {
       ...form.value,
       name: form.value.name.trim(),
@@ -97,65 +114,35 @@
       showInfo('请填写名称');
       return;
     }
-    if (!payload.targetUrl) {
-      showInfo('请填写URL');
+    if (!validateTargetUrl(payload.targetUrl)) {
       return;
     }
 
-    // 前端 URL 校验：确保是可解析的 URL 且协议为 http/https，友好提示错误
+    submitting.value = true;
+    let uploadedFilename = null;
     try {
-      const parsed = new URL(payload.targetUrl);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        showInfo('URL 必须以 http:// 或 https:// 开头');
-        return;
+      const iconFields = await resolveIconFields({
+        selectedIconPath: selectedIconPath.value,
+        existingIconFilename: form.value.iconFilename,
+      });
+      uploadedFilename = iconFields.uploadedFilename;
+      if (iconFields.iconFilename) {
+        payload.iconFilename = iconFields.iconFilename;
       }
-    } catch {
-      showInfo('URL 格式不正确，请输入有效的 URL，例如：https://example.com');
-      return;
-    }
-
-    // 如果选择了预选图标且还未有上传文件名
-    if (
-      selectedIconPath.value &&
-      !form.value.iconFilename &&
-      !pendingFile.value
-    ) {
-      const iconPath = selectedIconPath.value;
-      const filename = iconPath.split('/').pop();
-      payload.presetIcon = filename;
-    }
-
-    // 若存在延迟上传的本地文件，则先上传获取 filename
-    // 注意：之前用 form.value.icon_filename（snake_case）做判断是 bug
-    // — form.value 的字段是 camelCase 的 iconFilename，snake_case 永远 undefined
-    if (pendingFile.value && !form.value.iconFilename) {
-      try {
-        const formData = new FormData();
-        formData.append('file', pendingFile.value);
-        const resp = await apiFetch('/apps/icons/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const json = await resp.json();
-        if (resp.ok && json?.data?.filename) {
-          payload.iconFilename = json.data.filename;
-        } else {
-          showError(json?.message || '上传失败');
-          return;
-        }
-      } catch (error) {
-        console.error('Icon upload failed:', error);
-        showError('图标上传失败');
-        return;
+      if (iconFields.presetIcon) {
+        payload.presetIcon = iconFields.presetIcon;
       }
+      emit('submit', payload);
+    } catch (error) {
+      await discardUnreferencedIcon(uploadedFilename);
+      showError(error?.message || '图标上传失败');
+    } finally {
+      submitting.value = false;
     }
-
-    emit('submit', payload);
   };
 
   function onSelectLocalFile(file) {
     pendingFile.value = file || null;
-    // 选择自定义文件后，清空预选图标路径，避免二者并存
     if (file) selectedIconPath.value = '';
   }
 </script>
@@ -194,6 +181,11 @@
     background: none;
     border: none;
     cursor: pointer;
+  }
+  .close:disabled,
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
   .form-row {
     display: flex;

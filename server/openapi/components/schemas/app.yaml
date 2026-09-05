@@ -155,7 +155,7 @@ AppIconUploadResponse:
   properties:
     filename:
       type: string
-      description: 上传后的图标文件名（UUID + 原扩展名）
+      description: 上传后的图标文件名（UUID + 与内容对齐的扩展名）
   required:
     - filename
   additionalProperties: false

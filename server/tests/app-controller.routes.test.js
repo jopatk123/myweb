@@ -438,4 +438,93 @@ describe('AppController - icon upload', () => {
     expect(res.body.data.filename).toBeDefined();
     expect(res.body.data.path).toMatch(/^\/uploads\/apps\/icons\//);
   });
+
+  test('POST /api/apps/icons/upload accepts SVG', async () => {
+    const svg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>'
+    );
+    const res = await request(app)
+      .post('/api/apps/icons/upload')
+      .attach('file', svg, {
+        filename: 'icon.svg',
+        contentType: 'image/svg+xml',
+      })
+      .expect(201);
+    expect(res.body.data.filename).toMatch(/\.svg$/);
+  });
+
+  test('POST /api/apps/icons/upload rejects SVG with script', async () => {
+    const svg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+    );
+    const res = await request(app)
+      .post('/api/apps/icons/upload')
+      .attach('file', svg, {
+        filename: 'evil.svg',
+        contentType: 'image/svg+xml',
+      })
+      .expect(422);
+    expect(res.body.message).toMatch(/不安全/);
+  });
+
+  test('DELETE /api/apps/icons/:filename removes unreferenced upload', async () => {
+    const pngBuffer = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+      0x49, 0x48, 0x44, 0x52,
+    ]);
+    const upload = await request(app)
+      .post('/api/apps/icons/upload')
+      .attach('file', pngBuffer, {
+        filename: 'icon.png',
+        contentType: 'image/png',
+      })
+      .expect(201);
+    const filename = upload.body.data.filename;
+
+    await request(app).delete(`/api/apps/icons/${filename}`).expect(200);
+    await expect(
+      fs.access(path.join(testAppIconDir, filename))
+    ).rejects.toThrow();
+  });
+
+  test('DELETE /api/apps/icons/:filename returns 409 when referenced', async () => {
+    const pngBuffer = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+      0x49, 0x48, 0x44, 0x52,
+    ]);
+    const upload = await request(app)
+      .post('/api/apps/icons/upload')
+      .attach('file', pngBuffer, {
+        filename: 'icon.png',
+        contentType: 'image/png',
+      })
+      .expect(201);
+    const filename = upload.body.data.filename;
+
+    await request(app)
+      .post('/api/apps')
+      .send({
+        name: '带图标应用',
+        targetUrl: 'https://example.com',
+        iconFilename: filename,
+      })
+      .expect(201);
+
+    const res = await request(app)
+      .delete(`/api/apps/icons/${filename}`)
+      .expect(409);
+    expect(res.body.code).toBe(409);
+  });
+
+  test('POST /api/apps rejects iconFilename that is not on disk', async () => {
+    const res = await request(app)
+      .post('/api/apps')
+      .send({
+        name: '无文件图标',
+        targetUrl: 'https://example.com',
+        iconFilename: 'missing-file.png',
+      })
+      .expect(400);
+    expect(res.body.message).toMatch(/不存在|不合法/);
+  });
 });

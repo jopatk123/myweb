@@ -1,5 +1,8 @@
 import request from 'supertest';
 import { createApp } from '../src/appFactory.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { APP_ICONS_DIR } from '../src/utils/upload-path.js';
 
 let app;
 let db;
@@ -172,19 +175,43 @@ describe('Apps routes - update app', () => {
       targetUrl: 'https://example.com',
     });
 
+    await fs.mkdir(APP_ICONS_DIR, { recursive: true });
+    const iconPath = path.join(APP_ICONS_DIR, 'custom-icon.png');
+    await fs.writeFile(iconPath, 'x');
+    try {
+      const res = await request(app)
+        .put(`/api/apps/${id}`)
+        .send({
+          name: '更新应用',
+          icon_filename: 'custom-icon.png',
+        })
+        .expect(200);
+
+      expect(res.body.code).toBe(200);
+      const row = db
+        .prepare('SELECT icon_filename FROM apps WHERE id = ?')
+        .get(id);
+      expect(row.icon_filename).toBe('custom-icon.png');
+    } finally {
+      await fs.unlink(iconPath).catch(() => {});
+    }
+  });
+
+  it('rejects update when icon_filename is not on disk', async () => {
+    const id = insertApp({
+      name: '测试应用',
+      slug: 'test-app-missing-icon',
+      targetUrl: 'https://example.com',
+    });
+
     const res = await request(app)
       .put(`/api/apps/${id}`)
       .send({
         name: '更新应用',
-        icon_filename: 'custom-icon.png', // 直接提供图标文件名
+        icon_filename: 'not-on-disk.png',
       })
-      .expect(200);
+      .expect(400);
 
-    expect(res.body.code).toBe(200);
-    const row = db
-      .prepare('SELECT icon_filename FROM apps WHERE id = ?')
-      .get(id);
-    // 应该更新为新的图标文件名
-    expect(row.icon_filename).toBe('custom-icon.png');
+    expect(res.body.message).toMatch(/不存在|不合法/);
   });
 });

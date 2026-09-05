@@ -361,3 +361,38 @@ test('updateApp keeps icon file when icon_filename unchanged', async () => {
 
   await expect(fs.access(iconPath)).resolves.toBeUndefined();
 });
+
+test('assertStoredIconExists rejects missing files', async () => {
+  await expect(
+    service.assertStoredIconExists('nope.png')
+  ).rejects.toMatchObject({
+    status: 400,
+  });
+});
+
+test('deleteIconIfUnreferenced deletes only unused files', async () => {
+  const iconFilename = 'orphan-icon.png';
+  const iconPath = path.join(service.uploadsDir, iconFilename);
+  await fs.writeFile(iconPath, 'x');
+
+  expect(await service.deleteIconIfUnreferenced(iconFilename)).toBe(true);
+  await expect(fs.access(iconPath)).rejects.toThrow();
+});
+
+test('removeUnreferencedIcon throws 409 when still referenced', async () => {
+  const iconFilename = 'in-use-icon.png';
+  const iconPath = path.join(service.uploadsDir, iconFilename);
+  await fs.writeFile(iconPath, 'x');
+  await service.createApp({
+    name: '占用图标',
+    slug: 'in-use-icon-app',
+    icon_filename: iconFilename,
+  });
+
+  await expect(
+    service.removeUnreferencedIcon(iconFilename)
+  ).rejects.toMatchObject({
+    status: 409,
+  });
+  await expect(fs.access(iconPath)).resolves.toBeUndefined();
+});

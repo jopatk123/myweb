@@ -2,7 +2,10 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import sharp from 'sharp';
-import { optimizeIconFile } from '../../src/utils/image-optimize.js';
+import {
+  optimizeIconFile,
+  finalizeUploadedIcon,
+} from '../../src/utils/image-optimize.js';
 
 /** 生成带透明背景的大尺寸 PNG（模拟典型上传图标） */
 async function createLargeAlphaPng(filePath) {
@@ -113,5 +116,44 @@ describe('optimizeIconFile', () => {
     expect(result.reason).toBe('skip-format');
     const after = await fs.readFile(filePath);
     expect(after.equals(before)).toBe(true);
+  });
+
+  test('AVIF 转为 PNG 并保留透明', async () => {
+    const filePath = path.join(tmpDir, 'icon.avif');
+    await sharp({
+      create: {
+        width: 320,
+        height: 320,
+        channels: 4,
+        background: { r: 10, g: 80, b: 200, alpha: 0.4 },
+      },
+    })
+      .avif({ quality: 50 })
+      .toFile(filePath);
+
+    const result = await optimizeIconFile(filePath);
+
+    expect(result.optimized).toBe(true);
+    expect(result.outputFormat).toBe('png');
+    const meta = await sharp(filePath).metadata();
+    expect(meta.format).toBe('png');
+    expect(meta.hasAlpha).toBe(true);
+  });
+
+  test('finalizeUploadedIcon 将 PNG 内容的 .jpg 文件改名为 .png', async () => {
+    const filePath = path.join(tmpDir, 'misnamed.jpg');
+    await createLargeAlphaPng(filePath);
+
+    const result = await finalizeUploadedIcon(
+      filePath,
+      'misnamed.jpg',
+      'image/png'
+    );
+
+    expect(result.filename).toBe('misnamed.png');
+    await expect(
+      fs.access(path.join(tmpDir, 'misnamed.png'))
+    ).resolves.toBeUndefined();
+    await expect(fs.access(filePath)).rejects.toThrow();
   });
 });

@@ -10,10 +10,17 @@ import {
   deleteAppIconIfExists,
 } from '../utils/app-icon-storage.js';
 import {
+  assertIconFileOnDisk,
+  sanitizeIconFilename,
+  resolveIconFilePath,
+} from '../utils/app-icon-filename.js';
+import {
   NotFoundError,
   ValidationError,
   ForbiddenError,
+  ConflictError,
 } from '../utils/errors.js';
+import fs from 'fs/promises';
 
 const appServiceLogger = logger.child('AppService');
 
@@ -251,6 +258,50 @@ export class AppService {
       });
       throw new Error(`复制预选图标失败: ${error?.message || '未知错误'}`);
     }
+  }
+
+  async assertStoredIconExists(filename) {
+    await assertIconFileOnDisk(this.uploadsDir, filename);
+  }
+
+  /**
+   * 仅当没有任何未删除应用引用时删除图标。
+   * 用于创建/更新失败回滚，不抛错以免覆盖主错误。
+   */
+  async deleteIconIfUnreferenced(filename) {
+    if (!filename) return false;
+    try {
+      const safe = sanitizeIconFilename(filename);
+      const count = this.appModel.countByIconFilename(safe);
+      if (count > 0) return false;
+      return await this.deleteIconFileIfExists(safe);
+    } catch (e) {
+      appServiceLogger.warn('[AppService.deleteIconIfUnreferenced] 失败', {
+        error: e?.message || e,
+      });
+      return false;
+    }
+  }
+
+  /**
+   * 主动删除未引用图标（API）。仍被引用时拒绝，避免误删在用文件。
+   */
+  async removeUnreferencedIcon(filename) {
+    const { filename: safe, filePath } = resolveIconFilePath(
+      this.uploadsDir,
+      filename
+    );
+    const count = this.appModel.countByIconFilename(safe);
+    if (count > 0) {
+      throw new ConflictError('图标仍被应用引用');
+    }
+    try {
+      await fs.access(filePath);
+    } catch {
+      throw new NotFoundError('图标不存在');
+    }
+    await this.deleteIconFileIfExists(safe);
+    return true;
   }
 
   // 删除上传的图标文件（若存在）。安全：仅按文件名删除

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import AppCreateModal from '@/components/app/AppCreateModal.vue';
 
@@ -110,8 +110,7 @@ describe('AppCreateModal - B1 regression: preset icon should not be overridden b
     const buttons = wrapper.findAll('button');
     const submitBtn = buttons.find(b => b.text().trim() === '创建');
     await submitBtn.trigger('click');
-    await nextTick();
-    await nextTick();
+    await flushPromises();
 
     expect(apiFetchMock).toHaveBeenCalledTimes(1);
     const submitEvents = wrapper.emitted('submit');
@@ -119,5 +118,44 @@ describe('AppCreateModal - B1 regression: preset icon should not be overridden b
     const [payload] = submitEvents[0];
     expect(payload.iconFilename).toBe('uploaded-uuid.png');
     expect(payload.presetIcon).toBeUndefined();
+  });
+
+  it('ignores a second click while upload is in flight', async () => {
+    const wrapper = mount(AppCreateModal, {
+      props: { show: true, groupId: null },
+    });
+    const inputs = wrapper.findAll('input');
+    await inputs[0].setValue('MyApp3');
+    await inputs[1].setValue('https://example.com');
+
+    let resolveUpload;
+    apiFetchMock.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveUpload = resolve;
+        })
+    );
+
+    const stub = wrapper.findComponent({ name: 'IconSelector' });
+    stub.vm.$emit(
+      'select-file',
+      new File(['x'], 'upload.png', { type: 'image/png' })
+    );
+    await nextTick();
+
+    const submitBtn = wrapper
+      .findAll('button')
+      .find(b => b.text().includes('创建'));
+    await submitBtn.trigger('click');
+    await nextTick();
+    await submitBtn.trigger('click');
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
+
+    resolveUpload({
+      ok: true,
+      json: async () => ({ data: { filename: 'once.png' } }),
+    });
+    await flushPromises();
+    expect(wrapper.emitted('submit')?.[0]?.[0]?.iconFilename).toBe('once.png');
   });
 });

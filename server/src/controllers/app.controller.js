@@ -46,26 +46,41 @@ export class AppController {
   }
 
   async create(req, res, next) {
+    let rollbackFilename = null;
     try {
       const validatedPayload = await validateAppPayload(req.body, {
         requireName: true,
         normalizeEmptyGroupId: true,
       });
+      if (validatedPayload.icon_filename) {
+        await this.service.assertStoredIconExists(
+          validatedPayload.icon_filename
+        );
+        rollbackFilename = validatedPayload.icon_filename;
+      }
       const payloadWithPresetIcon = await applyPresetIconPayload(
         validatedPayload,
         presetIcon => this.service.copyPresetIcon(presetIcon)
       );
+      if (payloadWithPresetIcon.icon_filename) {
+        rollbackFilename = payloadWithPresetIcon.icon_filename;
+      }
       const app = await this.service.createApp(
         buildCreateAppPayload(payloadWithPresetIcon)
       );
+      rollbackFilename = null;
       res.status(201).json({ code: 201, data: app, message: '创建成功' });
     } catch (error) {
+      if (rollbackFilename) {
+        await this.service.deleteIconIfUnreferenced(rollbackFilename);
+      }
       appCtrlLogger.error('create 错误', error);
       next(error);
     }
   }
 
   async update(req, res, next) {
+    let rollbackFilename = null;
     try {
       const id = Number(req.params.id);
 
@@ -81,17 +96,39 @@ export class AppController {
       const validatedPayload = await validateAppPayload(req.body, {
         requireName: false,
       });
+      if (validatedPayload.icon_filename) {
+        await this.service.assertStoredIconExists(
+          validatedPayload.icon_filename
+        );
+      }
       const payloadWithPresetIcon = await applyPresetIconPayload(
         validatedPayload,
         presetIcon => this.service.copyPresetIcon(presetIcon)
       );
+      const nextIcon = payloadWithPresetIcon.icon_filename;
+      if (nextIcon && nextIcon !== existingApp.icon_filename) {
+        rollbackFilename = nextIcon;
+      }
       const app = await this.service.updateApp(
         id,
         buildUpdateAppPayload(payloadWithPresetIcon)
       );
+      rollbackFilename = null;
       res.json({ code: 200, data: app, message: '更新成功' });
     } catch (error) {
+      if (rollbackFilename) {
+        await this.service.deleteIconIfUnreferenced(rollbackFilename);
+      }
       appCtrlLogger.error('update 错误', error);
+      next(error);
+    }
+  }
+
+  async removeUnreferencedIcon(req, res, next) {
+    try {
+      await this.service.removeUnreferencedIcon(req.params.filename);
+      res.json({ code: 200, message: '已删除' });
+    } catch (error) {
       next(error);
     }
   }

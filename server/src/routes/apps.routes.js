@@ -5,7 +5,8 @@ import { parseEnvByteSize } from '../utils/env.js';
 import { APP_ICONS_DIR } from '../utils/upload-path.js';
 import { createUploader, imageOnlyFilter } from '../utils/uploader.js';
 import { assertValidImageFile } from '../utils/magic-bytes.js';
-import { optimizeIconFile } from '../utils/image-optimize.js';
+import { finalizeUploadedIcon } from '../utils/image-optimize.js';
+import { APP_ICON_MAX_UPLOAD_BYTES } from '../../../shared/app-icons.js';
 import { validateBody } from '../dto/common.js';
 import {
   bulkVisibleSchema,
@@ -24,10 +25,9 @@ export function createAppRoutes(db) {
   const controller = new AppController(db);
 
   // 图标上传配置：保存到 uploads/apps/icons，测试场景可通过 APP_ICON_UPLOAD_DIR 覆盖
-  const DEFAULT_APP_ICON_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MiB
   const APP_ICON_UPLOAD_SIZE = parseEnvByteSize(
     'APP_ICON_MAX_UPLOAD_SIZE',
-    DEFAULT_APP_ICON_UPLOAD_SIZE
+    APP_ICON_MAX_UPLOAD_BYTES
   );
   const APP_ICON_UPLOAD_DIR = process.env.APP_ICON_UPLOAD_DIR || APP_ICONS_DIR;
 
@@ -79,48 +79,59 @@ export function createAppRoutes(db) {
       }
 
       try {
-        await assertValidImageFile(f.path, f.mimetype);
+        const detectedMime = await assertValidImageFile(f.path, f.mimetype, {
+          allowSvg: true,
+        });
+
+        let filename = f.filename;
+        try {
+          const result = await finalizeUploadedIcon(
+            f.path,
+            f.filename,
+            detectedMime
+          );
+          filename = result.filename;
+          if (result.optimizeError) {
+            iconLogger.warn('图标压缩失败，保留原图', {
+              filename,
+              error: result.optimizeError,
+            });
+          } else if (result.optimized) {
+            iconLogger.info('图标已压缩', {
+              filename,
+              originalSize: result.originalSize,
+              newSize: result.newSize,
+            });
+          }
+        } catch (error) {
+          iconLogger.warn('图标压缩或扩展名对齐失败，保留原图', {
+            filename: f.filename,
+            error: error?.message || error,
+          });
+        }
+
+        res.status(201).json({
+          code: 201,
+          data: {
+            filename,
+            path: `/uploads/apps/icons/${filename}`,
+          },
+          message: '上传成功',
+        });
       } catch (err) {
         await fs.unlink(f.path).catch(cleanupErr => {
-          iconLogger.warn('魔数校验失败后清理文件出错', {
+          iconLogger.warn('校验失败后清理文件出错', {
             filename: f.filename,
             error: cleanupErr?.message,
           });
         });
         return next(err);
       }
-
-      // 就地压缩：超大图标（如 1024px+ 的 PNG）缩到 256px 并重编码，
-      // 输出保持原格式（透明无损）；失败仅告警并保留原图，不阻断上传。
-      try {
-        const result = await optimizeIconFile(f.path);
-        if (result.optimized) {
-          iconLogger.info('图标已压缩', {
-            filename: f.filename,
-            originalSize: result.originalSize,
-            newSize: result.newSize,
-          });
-        }
-      } catch (error) {
-        iconLogger.warn('图标压缩失败，保留原图', {
-          filename: f.filename,
-          error: error?.message || error,
-        });
-      }
-
-      try {
-        res.status(201).json({
-          code: 201,
-          data: {
-            filename: f.filename,
-            path: `/uploads/apps/icons/${f.filename}`,
-          },
-          message: '上传成功',
-        });
-      } catch (error) {
-        next(error);
-      }
     }
+  );
+
+  router.delete('/icons/:filename', (req, res, next) =>
+    controller.removeUnreferencedIcon(req, res, next)
   );
 
   // 分组
