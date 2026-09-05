@@ -179,13 +179,17 @@ export class WallpaperModel extends BaseModel {
   setActive(id) {
     const previousActiveId = this.getActiveId();
 
+    // 注意：切换激活仅更新 is_active，不刷新 updated_at。
+    // updated_at 变化曾被前端用作资源 URL 的版本参数（?v=），会导致
+    // 浏览器缓存被反复击穿；且 active 状态已由 wallpaper_runtime_state
+    // 运行时表记录，无需视为记录数据变更。
     this.db.transaction(() => {
       if (previousActiveId && Number(previousActiveId) !== Number(id)) {
         this.db
           .prepare(
             `
               UPDATE wallpapers
-              SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+              SET is_active = 0
               WHERE id = ? AND deleted_at IS NULL
             `
           )
@@ -196,7 +200,7 @@ export class WallpaperModel extends BaseModel {
         .prepare(
           `
             UPDATE wallpapers
-            SET is_active = 1, updated_at = CURRENT_TIMESTAMP
+            SET is_active = 1
             WHERE id = ? AND deleted_at IS NULL
           `
         )
@@ -223,11 +227,12 @@ export class WallpaperModel extends BaseModel {
    * 置空 is_active 并将 runtime_state 单行的 active_wallpaper_id 置 NULL
    */
   _clearActiveStatements(id) {
+    // 与 setActive 同理：active 状态非数据变更，不刷新 updated_at
     this.db
       .prepare(
         `
           UPDATE wallpapers
-          SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+          SET is_active = 0
           WHERE id = ?
         `
       )

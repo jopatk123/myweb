@@ -19,37 +19,24 @@ function getFileExtension(mimeType) {
  * 构造壁纸资源的可访问 URL。
  *  - uploads/ 开头的相对路径直接挂到根上，避免走 API
  *  - 其他情况使用 appEnv.apiBase 拼接
- *  - 默认追加 ?v=<updatedAt> 以避免浏览器缓存
+ *
+ * 不追加版本参数：文件名为上传时生成的 UUID，内容不可变，
+ * URL 天然适合 immutable 长缓存；此前追加的 ?v=<updatedAt> 会因
+ * 激活切换刷新 updated_at 而变化，导致浏览器缓存被反复击穿。
  */
-export function getWallpaperUrl(wallpaper, options = {}) {
+export function getWallpaperUrl(wallpaper) {
   if (!wallpaper) return null;
   const fp = wallpaper.filePath || wallpaper.file_path || '';
 
-  let basePath = '';
   if (fp.startsWith('uploads/')) {
-    basePath = `/${fp}`;
-  } else {
-    const base = appEnv.apiBase || '';
-    const pathPart = String(fp).replace(/^\/+/, '');
-    if (base) {
-      basePath = `${String(base).replace(/\/+$/, '')}/${pathPart}`;
-    } else {
-      basePath = `/${pathPart}`;
-    }
+    return `/${fp}`;
   }
-
-  if (options.addVersion !== false) {
-    const updatedAt = wallpaper.updatedAt || wallpaper.updated_at;
-    if (updatedAt) {
-      const ts = new Date(updatedAt).getTime();
-      if (!Number.isNaN(ts)) {
-        const separator = basePath.includes('?') ? '&' : '?';
-        return `${basePath}${separator}v=${ts}`;
-      }
-    }
+  const base = appEnv.apiBase || '';
+  const pathPart = String(fp).replace(/^\/+/, '');
+  if (base) {
+    return `${String(base).replace(/\/+$/, '')}/${pathPart}`;
   }
-
-  return basePath;
+  return `/${pathPart}`;
 }
 
 /**

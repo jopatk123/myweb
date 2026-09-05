@@ -243,9 +243,15 @@
   fetchCurrentGroup().then(() => {
     ensurePreloaded(2).catch(e => console.warn('[Home] 壁纸预加载失败', e));
   });
+  // stale-while-revalidate：localStorage 缓存仅用于首屏快速渲染，
+  // 服务器活跃壁纸到达后必须覆盖一次，否则换设备/清库后旧缓存永不校正。
+  // 仅首次同步生效，避免竞态覆盖用户随后手动选择的壁纸。
+  let serverWallpaperSynced = false;
   fetchActiveWallpaper()
     .then(() => {
-      if (!current.value && activeWallpaper.value) {
+      if (serverWallpaperSynced) return;
+      serverWallpaperSynced = true;
+      if (activeWallpaper.value) {
         current.value = activeWallpaper.value;
       }
     })

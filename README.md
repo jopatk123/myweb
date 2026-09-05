@@ -109,8 +109,10 @@
 - **前端构建产物**（`/assets/*`，Vite 内容 hash 文件名）：`public, max-age=31536000, immutable` 一年长缓存，内容变更由 hash 文件名保证 URL 变化。
 - **`index.html` 与 SPA 路由 fallback**：`no-cache`，每次经 ETag 协商校验，发版后立即生效（由新版 index.html 引用新的 hash 资源完成版本更替）。
 - **`/uploads` 上传资源**：`private, max-age=30天, immutable`（`UPLOADS_CACHE_MAX_AGE` 可调，设 `0` 禁用并返回 `no-store`）。
-- **壁纸缩略图 API**：`private, max-age=30天, immutable` + 弱 ETag/304 协商缓存。
+- **壁纸原图 URL**：文件名为上传时生成的 UUID（内容寻址），URL 不携带版本参数，稳定命中 immutable 缓存；激活切换等非数据变更不会刷新 `updated_at`。
+- **壁纸缩略图 API**：`private, max-age=30天, immutable` + 弱 ETag/304 协商缓存；URL 版本参数绑定文件名而非 `updated_at`。
 - **API（`/api/*`）**：`no-store`，不缓存（缩略图等自带缓存头的路由在其 handler 内覆盖）。
+- **反向代理约定**：Nginx 等反代层**不要**对静态扩展名配置 `expires`/`add_header Cache-Control` 覆盖——这会覆盖应用的 `private` 头（鉴权资源被标记 public）、把 `/assets` 一年缓存降级，并产生双 `Cache-Control` 头。缓存头统一由应用层输出。
 
 ## 测试与验证
 

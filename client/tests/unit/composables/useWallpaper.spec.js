@@ -120,7 +120,7 @@ describe('useWallpaper composable', () => {
 });
 
 describe('useWallpaper - getWallpaperUrl formatting', () => {
-  it('should handle different filePath formats', () => {
+  it('should handle different filePath formats without version params', () => {
     const { getWallpaperUrl } = useWallpaper();
 
     const cases = [
@@ -135,8 +135,10 @@ describe('useWallpaper - getWallpaperUrl formatting', () => {
     ];
 
     cases.forEach(({ input, expected }) => {
-      const url = getWallpaperUrl(input, { addVersion: false });
+      const url = getWallpaperUrl(input);
+      // 文件名 UUID 不可变，URL 不携带 ?v= 版本参数，保证 immutable 缓存稳定命中
       expect(url).toContain(expected);
+      expect(url).not.toMatch(/[?&]v=/);
     });
   });
 });

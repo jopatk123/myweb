@@ -75,6 +75,15 @@ export default [
     },
   },
   {
+    files: ['scripts/**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.es2021,
+      },
+    },
+  },
+  {
     files: [
       '**/vite.config.{js,mjs}',
       '**/jest.config.{js,mjs}',

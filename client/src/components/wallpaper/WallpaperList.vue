@@ -183,12 +183,12 @@
     params.set('w', '320');
     params.set('format', 'webp');
 
-    const updatedAt = wallpaper.updatedAt || wallpaper.updated_at;
-    if (updatedAt) {
-      const ts = new Date(updatedAt).getTime();
-      if (!Number.isNaN(ts)) {
-        params.set('v', String(ts));
-      }
+    // 版本参数绑定文件名（UUID 内容寻址）：仅当记录实际换绑新文件时变化。
+    // 不能用 updated_at：激活切换会刷新它，导致缩略图缓存被反复击穿。
+    const filename =
+      wallpaper.filename || wallpaper.filePath || wallpaper.file_path;
+    if (filename) {
+      params.set('v', filename);
     }
 
     const basePath = `/api/wallpapers/${wallpaper.id}/thumbnail`;
