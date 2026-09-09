@@ -103,6 +103,7 @@
       type: Object,
       default: () => ({ page: 1, totalPages: 0, total: 0 }),
     },
+    sendSuccessToken: { type: Number, default: 0 },
   });
 
   defineEmits(['retry', 'request-delete', 'request-load-more']);
@@ -115,6 +116,8 @@
   let copyFeedbackTimeout = null;
   // 加载更多期间不触发自动滚动到底部
   let suppressAutoScroll = false;
+  // 追踪等待滚动的图片数量
+  let pendingImages = 0;
 
   // 用于判断是否为"新增消息"场景（而非加载更多 / 删除）
   const lastMessageId = computed(
@@ -138,6 +141,45 @@
     } catch {
       el.scrollTop = el.scrollHeight;
     }
+  };
+
+  const isNearBottom = () => {
+    const el = getListElement();
+    if (!el) return false;
+    const threshold = 100;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+  };
+
+  const scheduleScrollAfterImages = () => {
+    // 查找最后一条消息中的所有图片
+    const el = getListElement();
+    if (!el) return;
+
+    const images = el.querySelectorAll('.message-item:last-child img');
+    if (images.length === 0) return;
+
+    pendingImages = images.length;
+    let scrolled = false;
+
+    const checkAndScroll = () => {
+      pendingImages--;
+      if (pendingImages <= 0 && !scrolled) {
+        scrolled = true;
+        // 使用 requestAnimationFrame 确保在重绘后滚动
+        requestAnimationFrame(() => {
+          scrollToBottom('smooth');
+        });
+      }
+    };
+
+    images.forEach(img => {
+      if (img.complete) {
+        checkAndScroll();
+      } else {
+        img.addEventListener('load', checkAndScroll, { once: true });
+        img.addEventListener('error', checkAndScroll, { once: true });
+      }
+    });
   };
 
   const canCopyMessage = message => {
@@ -227,13 +269,31 @@
   // - 长度增加且 lastId 变化（新增一条最新消息）
   // - 加载更多时长度增加但 lastId 不变（suppressAutoScroll 也兜底）
   // - 删除消息时长度减少，不滚动
+  // - WebSocket 接收新消息时，只在用户已在底部附近时才滚动
   watch([messagesLength, lastMessageId], ([newLen, newId], [oldLen, oldId]) => {
     if (suppressAutoScroll || props.isSearching) return;
     if (newLen <= (oldLen ?? 0)) return;
     if (newId === oldId) return;
     if (isUserScrolling) return;
+    // 只在用户已在底部附近时才自动滚动（避免打断用户阅读历史消息）
+    if (!isNearBottom()) return;
     scrollToBottom('smooth');
   });
+
+  // 用户主动发送消息时，强制滚动到底部
+  watch(
+    () => props.sendSuccessToken,
+    (newToken, oldToken) => {
+      if (newToken > 0 && newToken !== oldToken) {
+        // 使用 nextTick 确保 DOM 已更新
+        nextTick(() => {
+          scrollToBottom('smooth');
+          // 如果新消息包含图片，等待图片加载后再次滚动
+          scheduleScrollAfterImages();
+        });
+      }
+    }
+  );
 </script>
 
 <style scoped>

@@ -19,6 +19,7 @@ const baseProps = {
   formatTime: () => '刚刚',
   isSearching: false,
   searchQuery: '',
+  sendSuccessToken: 0,
 };
 
 const setupClipboardMock = () => {
