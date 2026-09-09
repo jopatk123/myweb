@@ -24,6 +24,11 @@ vi.mock('@/composables/useWindowManager.js', () => ({
 
 vi.mock('@/apps/registry.js', () => ({
   getAppComponentBySlug: () => null,
+  getAppMetaBySlug: () => ({
+    slug: 'message-board',
+    name: '留言板',
+    preferredSize: { width: 530, height: 800 },
+  }),
 }));
 
 import { useMessageBoardAutoOpen } from '@/composables/useMessageBoardAutoOpen.js';
@@ -95,7 +100,13 @@ describe('useMessageBoardAutoOpen', () => {
 
     expect(windowMocks.createWindow).toHaveBeenCalledTimes(1);
     expect(windowMocks.createWindow).toHaveBeenCalledWith(
-      expect.objectContaining({ appSlug: 'message-board', activate: false })
+      expect.objectContaining({
+        appSlug: 'message-board',
+        activate: false,
+        title: '留言板',
+        width: 530,
+        height: 800,
+      })
     );
   });
 

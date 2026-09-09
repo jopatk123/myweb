@@ -48,8 +48,8 @@
 <style scoped>
   .image-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 6px;
     max-width: 100%;
   }
 
@@ -69,8 +69,8 @@
     transition:
       transform 0.2s,
       box-shadow 0.2s;
-    min-height: 80px;
-    max-height: 240px;
+    min-height: 64px;
+    max-height: 180px;
   }
 
   .image-item:hover {
@@ -81,7 +81,7 @@
   .image-item img {
     width: 100%;
     height: 100%;
-    max-height: 240px;
+    max-height: 180px;
     object-fit: cover;
     display: block;
   }

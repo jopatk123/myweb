@@ -4,7 +4,7 @@
 import { onMounted, onScopeDispose, defineAsyncComponent } from 'vue';
 import { useWebSocket } from './useWebSocket.js';
 import { useWindowManager } from './useWindowManager.js';
-import { getAppComponentBySlug } from '@/apps/registry.js';
+import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
 import { messageBoardState } from '@/store/messageBoardState.js';
 
 const messageBoardComponent =
@@ -41,12 +41,16 @@ export function useMessageBoardAutoOpen() {
         }
       }
     } else {
-      createWindow({
-        component: messageBoardComponent,
-        title: '💬 留言板',
-        appSlug: 'message-board',
+      const preferred = getAppMetaBySlug('message-board')?.preferredSize || {
         width: 530,
         height: 800,
+      };
+      createWindow({
+        component: messageBoardComponent,
+        title: '留言板',
+        appSlug: 'message-board',
+        width: preferred.width,
+        height: preferred.height,
         props: {},
         storageKey: 'message-board:pos',
         activate: options.activate,

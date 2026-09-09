@@ -10,42 +10,43 @@
       :is-searching="isSearching"
       @update:search-query="setSearchQuery"
       @toggle-settings="showSettings = !showSettings"
-      @close="$emit('close')"
     />
 
-    <MessageBoardSettings
-      v-if="showSettings"
-      v-model="tempSettings"
-      :generate-random-color="generateRandomColor"
-      @request-clear="showClearConfirm = true"
-      @save="saveSettings"
-      @cancel="cancelSettings"
-    />
+    <div class="board-body">
+      <MessageList
+        :messages="messages"
+        :loading="loading"
+        :loading-more="loadingMore"
+        :has-messages="hasMessages"
+        :error="error"
+        :is-searching="isSearching"
+        :search-query="searchQuery"
+        :list-ref="messageListRef"
+        :deleting-message-id="deletingMessageId"
+        :can-load-more="canLoadMore"
+        :format-time="formatTime"
+        :send-success-token="sendSuccessToken"
+        @request-delete="promptDeleteMessage"
+        @request-load-more="handleLoadMore"
+        @retry="fetchMessages()"
+      />
 
-    <MessageList
-      :messages="messages"
-      :loading="loading"
-      :loading-more="loadingMore"
-      :has-messages="hasMessages"
-      :error="error"
-      :is-searching="isSearching"
-      :search-query="searchQuery"
-      :list-ref="messageListRef"
-      :deleting-message-id="deletingMessageId"
-      :can-load-more="canLoadMore"
-      :pagination="pagination"
-      :format-time="formatTime"
-      :send-success-token="sendSuccessToken"
-      @request-delete="promptDeleteMessage"
-      @request-load-more="handleLoadMore"
-      @retry="fetchMessages()"
-    />
+      <MessageInput
+        :sending="sending"
+        :send-success-token="sendSuccessToken"
+        @send="onSend"
+      />
 
-    <MessageInput
-      :sending="sending"
-      :send-success-token="sendSuccessToken"
-      @send="onSend"
-    />
+      <MessageBoardSettings
+        v-if="showSettings"
+        class="settings-overlay"
+        v-model="tempSettings"
+        :generate-random-color="generateRandomColor"
+        @request-clear="showClearConfirm = true"
+        @save="saveSettings"
+        @cancel="cancelSettings"
+      />
+    </div>
 
     <ConfirmDialog
       :visible="showClearConfirm"
@@ -79,9 +80,6 @@
   import MessageList from './MessageList.vue';
   import MessageInput from './MessageInput.vue';
   import ConfirmDialog from './ConfirmDialog.vue';
-
-  // 组件事件
-  defineEmits(['close']);
 
   // 使用留言板功能
   const {
@@ -262,7 +260,22 @@
     flex-direction: column;
     height: 100%;
     background: white;
-    border-radius: 8px;
     overflow: hidden;
+  }
+
+  .board-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .settings-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    overflow-y: auto;
+    box-shadow: none;
   }
 </style>

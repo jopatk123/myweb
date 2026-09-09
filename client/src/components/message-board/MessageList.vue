@@ -23,12 +23,8 @@
         :disabled="loadingMore"
         @click="$emit('request-load-more')"
       >
-        {{ loadingMore ? '加载中...' : '加载更多历史留言' }}
+        {{ loadingMore ? '加载中...' : '加载更早留言' }}
       </button>
-      <span class="pagination-meta">
-        第 {{ pagination.page }} / {{ pagination.totalPages }} 页 · 共
-        {{ pagination.total }} 条
-      </span>
     </div>
 
     <div v-for="message in messages" :key="message.id" class="message-item">
@@ -65,7 +61,9 @@
             </button>
           </div>
         </div>
-        <div class="message-text">{{ message.content }}</div>
+        <div v-if="message.content" class="message-text">
+          {{ message.content }}
+        </div>
         <ImagePreview
           v-if="message.images && message.images.length > 0"
           :images="message.images"
@@ -99,10 +97,6 @@
     searchQuery: { type: String, default: '' },
     deletingMessageId: { type: Number, default: null },
     canLoadMore: { type: Boolean, default: false },
-    pagination: {
-      type: Object,
-      default: () => ({ page: 1, totalPages: 0, total: 0 }),
-    },
     sendSuccessToken: { type: Number, default: 0 },
   });
 
@@ -300,10 +294,11 @@
   .message-list {
     flex: 1;
     overflow-y: auto;
-    padding: 14px;
+    padding: 8px 10px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 8px;
+    min-height: 0;
     scroll-behavior: smooth;
   }
 
@@ -313,7 +308,7 @@
     text-align: center;
     color: #868e96;
     font-size: 13px;
-    padding: 24px;
+    padding: 20px 12px;
   }
 
   .error {
@@ -321,15 +316,14 @@
   }
 
   .retry-btn {
-    margin-left: 10px;
-    padding: 6px 12px;
+    margin-left: 8px;
+    padding: 4px 10px;
     background: #fa5252;
     color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     cursor: pointer;
-    font-size: 13px;
-    transition: background-color 0.2s;
+    font-size: 12px;
   }
 
   .retry-btn:hover {
@@ -338,30 +332,21 @@
 
   .load-more-bar {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 0 4px;
-    border-bottom: 1px dashed #e9ecef;
-    margin-bottom: 4px;
+    justify-content: center;
+    padding: 2px 0 4px;
   }
 
   .load-more-btn {
-    padding: 6px 16px;
-    background: #edf8ff;
+    padding: 3px 12px;
+    background: transparent;
     color: #1864ab;
-    border: 1px solid #d0ebff;
-    border-radius: 999px;
+    border: none;
     cursor: pointer;
     font-size: 12px;
-    transition:
-      background-color 0.2s,
-      border-color 0.2s;
   }
 
   .load-more-btn:hover:not(:disabled) {
-    background: #d0ebff;
-    border-color: #74c0fc;
+    text-decoration: underline;
   }
 
   .load-more-btn:disabled {
@@ -369,63 +354,74 @@
     opacity: 0.6;
   }
 
-  .pagination-meta {
-    font-size: 11px;
-    color: #adb5bd;
-  }
-
   .message-item {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     align-items: flex-start;
   }
 
   .message-avatar {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .message-content {
     flex: 1;
     min-width: 0;
-    max-width: 90%;
+    max-width: 92%;
   }
 
   .message-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 4px;
+    gap: 8px;
+    min-height: 20px;
+    margin-bottom: 2px;
   }
 
   .message-meta {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    align-items: baseline;
+    gap: 6px;
     min-width: 0;
   }
 
   .message-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     flex-shrink: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s;
+  }
+
+  .message-item:hover .message-actions,
+  .message-item:focus-within .message-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (hover: none) {
+    .message-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
   }
 
   .author-name {
     font-weight: 600;
     color: #343a40;
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .message-time {
@@ -433,24 +429,36 @@
     color: #adb5bd;
   }
 
-  .delete-btn {
+  .delete-btn,
+  .copy-btn {
     flex-shrink: 0;
-    border: 1px solid #ffd8d8;
-    background: #fff5f5;
-    color: #c92a2a;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-size: 12px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
     cursor: pointer;
-    transition:
-      background-color 0.2s,
-      border-color 0.2s,
-      color 0.2s;
+  }
+
+  .copy-btn {
+    color: #1864ab;
+  }
+
+  .copy-btn:hover:not(:disabled) {
+    background: #edf8ff;
+  }
+
+  .copy-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .delete-btn {
+    color: #c92a2a;
   }
 
   .delete-btn:hover:not(:disabled) {
-    background: #ffe3e3;
-    border-color: #ffa8a8;
+    background: #fff5f5;
   }
 
   .delete-btn:disabled {
@@ -458,59 +466,32 @@
     opacity: 0.7;
   }
 
-  .copy-btn {
-    flex-shrink: 0;
-    border: 1px solid #d0ebff;
-    background: #edf8ff;
-    color: #1864ab;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    transition:
-      background-color 0.2s,
-      border-color 0.2s,
-      color 0.2s;
-  }
-
-  .copy-btn:hover:not(:disabled) {
-    background: #d0ebff;
-    border-color: #74c0fc;
-  }
-
-  .copy-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.45;
-  }
-
   .message-text {
     display: inline-block;
     color: #212529;
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.45;
     word-wrap: break-word;
     white-space: pre-wrap;
     background-color: #f1f3f5;
-    padding: 8px 14px;
-    border-radius: 0 14px 14px 14px;
-    margin-top: 2px;
+    padding: 5px 10px;
+    border-radius: 0 10px 10px 10px;
   }
 
-  /* 滚动条样式 */
   .message-list::-webkit-scrollbar {
-    width: 6px;
+    width: 5px;
   }
 
   .message-list::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: transparent;
   }
 
   .message-list::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: #ced4da;
     border-radius: 3px;
   }
 
   .message-list::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
+    background: #adb5bd;
   }
 </style>

@@ -6,6 +6,7 @@ import { useWindowManager } from './useWindowManager.js';
 import { messageAPI } from '@/api/message.js';
 import { useWebSocket } from './useWebSocket.js';
 import { syncAutoOpenEnabled } from '@/store/messageBoardState.js';
+import { getAppMetaBySlug } from '@/apps/registry.js';
 
 export function useMessageBoard() {
   const messages = ref([]);
@@ -72,13 +73,17 @@ export function useMessageBoard() {
         return;
       }
 
+      const preferred = getAppMetaBySlug('message-board')?.preferredSize || {
+        width: 530,
+        height: 800,
+      };
       createWindow({
         component: () =>
           import('@/components/message-board/MessageBoardWindow.vue'),
-        title: '💬 留言板',
+        title: '留言板',
         appSlug: 'message-board',
-        width: 400,
-        height: 600,
+        width: preferred.width,
+        height: preferred.height,
         props: {},
         storageKey: 'message-board:pos',
         activate: false,

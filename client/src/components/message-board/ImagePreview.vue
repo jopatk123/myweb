@@ -132,7 +132,7 @@
 
 <style scoped>
   .image-preview {
-    margin-top: 8px;
+    margin-top: 4px;
   }
 
   /* 保存成功提示样式 */

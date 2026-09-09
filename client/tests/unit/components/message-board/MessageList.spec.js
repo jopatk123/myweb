@@ -36,6 +36,19 @@ describe('MessageList', () => {
     vi.restoreAllMocks();
   });
 
+  it('shows a compact load-more control without pagination chrome', () => {
+    const { getByRole, queryByText } = render(MessageList, {
+      props: {
+        ...baseProps,
+        canLoadMore: true,
+        loadingMore: false,
+      },
+    });
+
+    expect(getByRole('button', { name: '加载更早留言' })).toBeInTheDocument();
+    expect(queryByText(/第 .* 页/)).toBeNull();
+  });
+
   it('emits request-delete when delete button is clicked', async () => {
     const { getByRole, emitted } = render(MessageList, {
       props: {

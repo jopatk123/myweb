@@ -1,46 +1,39 @@
 <template>
   <div class="message-board-header">
-    <div class="header-top">
-      <div class="header-left">
-        <h3>💬 留言板</h3>
-        <span class="online-status" :class="statusClass">
-          {{ statusText }}
-        </span>
-      </div>
-      <div class="header-right">
-        <button
-          @click="$emit('toggle-settings')"
-          class="settings-btn"
-          title="设置"
-        >
-          ⚙️
-        </button>
-        <button @click="$emit('close')" class="close-btn" title="关闭">
-          ✕
-        </button>
-      </div>
+    <div class="search-input">
+      <input
+        :value="searchQuery"
+        type="search"
+        placeholder="搜索留言或作者"
+        aria-label="搜索留言或作者"
+        @input="$emit('update:search-query', $event.target.value)"
+      />
+      <button
+        v-if="searchQuery"
+        type="button"
+        class="clear-btn"
+        title="清除搜索"
+        aria-label="清除搜索"
+        @click="$emit('update:search-query', '')"
+      >
+        ✕
+      </button>
     </div>
-    <div class="header-search">
-      <div class="search-input">
-        <input
-          :value="searchQuery"
-          type="text"
-          placeholder="搜索留言内容或作者"
-          @input="$emit('update:search-query', $event.target.value)"
-        />
-        <button
-          v-if="searchQuery"
-          class="clear-btn"
-          title="清除搜索"
-          @click="$emit('update:search-query', '')"
-        >
-          ✕
-        </button>
-      </div>
-      <span v-if="isSearching" class="search-meta">
-        {{ loading ? '搜索中...' : `共 ${searchCount} 条` }}
-      </span>
-    </div>
+    <span v-if="isSearching" class="search-meta">
+      {{ loading ? '搜索中...' : `${searchCount} 条` }}
+    </span>
+    <span class="online-status" :class="statusClass" :title="statusText">
+      {{ statusText }}
+    </span>
+    <button
+      type="button"
+      class="settings-btn"
+      title="设置"
+      aria-label="打开设置"
+      @click="$emit('toggle-settings')"
+    >
+      ⚙️
+    </button>
   </div>
 </template>
 
@@ -57,19 +50,15 @@
     isSearching: { type: Boolean, default: false },
   });
 
-  defineEmits(['toggle-settings', 'close', 'update:search-query']);
+  defineEmits(['toggle-settings', 'update:search-query']);
 
-  // 连接状态文案与样式：
-  // - 已连接：绿色
-  // - 重连中：黄色（reconnectAttempts > 0 且未超上限）
-  // - 已断开：灰色（重连次数超上限，或从未连上）
   const statusText = computed(() => {
     if (props.isConnected) return '已连接';
     if (
       props.reconnectAttempts > 0 &&
       props.reconnectAttempts < props.maxReconnectAttempts
     ) {
-      return `重连中 ${props.reconnectAttempts}/${props.maxReconnectAttempts}`;
+      return `重连 ${props.reconnectAttempts}/${props.maxReconnectAttempts}`;
     }
     return '未连接';
   });
@@ -87,40 +76,79 @@
 <style scoped>
   .message-board-header {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 10px 14px 8px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
     background: #fff;
     border-bottom: 1px solid #e9ecef;
+    flex-shrink: 0;
   }
 
-  .header-top {
+  .search-input {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .search-input input {
+    width: 100%;
+    height: 28px;
+    padding: 0 24px 0 8px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #f8f9fa;
+    transition:
+      border-color 0.15s,
+      background-color 0.15s,
+      box-shadow 0.15s;
+  }
+
+  .search-input input:focus {
+    outline: none;
+    border-color: #4dabf7;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.18);
+  }
+
+  .search-input .clear-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #868e96;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
+    font-size: 11px;
+    padding: 0;
   }
 
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  .search-input .clear-btn:hover {
+    color: #495057;
   }
 
-  .header-left h3 {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    color: #343a40;
+  .search-meta {
+    font-size: 11px;
+    color: #868e96;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .online-status {
     font-size: 11px;
     font-weight: 500;
     color: #868e96;
-    padding: 2px 8px;
-    border-radius: 12px;
+    padding: 1px 7px;
+    border-radius: 10px;
     background: #f1f3f5;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .online-status.connected {
@@ -138,91 +166,24 @@
     background: #fff5f5;
   }
 
-  .header-right {
-    display: flex;
-    gap: 8px;
-  }
-
-  .settings-btn,
-  .close-btn {
+  .settings-btn {
     background: transparent;
     border: none;
-    font-size: 15px;
+    font-size: 14px;
     cursor: pointer;
-    padding: 4px;
+    padding: 0;
     width: 28px;
     height: 28px;
     border-radius: 6px;
-    transition: all 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #495057;
+    flex-shrink: 0;
   }
 
-  .settings-btn:hover,
-  .close-btn:hover {
+  .settings-btn:hover {
     background: #f1f3f5;
     color: #212529;
-  }
-
-  .close-btn:hover {
-    background: #ffe3e3;
-    color: #fa5252;
-  }
-
-  .header-search {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .search-input {
-    position: relative;
-    flex: 1;
-  }
-
-  .search-input input {
-    width: 100%;
-    padding: 6px 26px 6px 10px;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 12px;
-    background: #f8f9fa;
-    transition: all 0.2s;
-  }
-
-  .search-input input:focus {
-    outline: none;
-    border-color: #4dabf7;
-    background: #fff;
-    box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.2);
-  }
-
-  .search-input .clear-btn {
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
-    border: none;
-    background: transparent;
-    color: #868e96;
-    cursor: pointer;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .search-input .clear-btn:hover {
-    color: #495057;
-  }
-
-  .search-meta {
-    font-size: 12px;
-    color: #868e96;
-    white-space: nowrap;
   }
 </style>

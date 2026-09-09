@@ -108,7 +108,7 @@
 
 <style scoped>
   .settings-panel {
-    padding: 16px;
+    padding: 12px 14px;
     background: #f8f9fa;
     border-bottom: 1px solid #e9ecef;
   }
@@ -117,7 +117,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     gap: 4px;
   }
 
@@ -126,7 +126,7 @@
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     color: #495057;
     min-width: 80px;
   }
@@ -139,10 +139,12 @@
 
   .setting-item input[type='text'] {
     flex: 1;
-    padding: 6px 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 5px 8px;
     border: 1px solid #ced4da;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .color-picker {
@@ -195,8 +197,8 @@
   }
 
   .danger-zone {
-    margin-top: 20px;
-    padding: 16px;
+    margin-top: 14px;
+    padding: 10px 12px;
     border: 1px solid #dc3545;
     border-radius: 6px;
     background: #fff5f5;

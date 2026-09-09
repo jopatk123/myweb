@@ -1,14 +1,11 @@
 <template>
   <div class="message-board-window" @contextmenu.stop>
-    <MessageBoard @close="$emit('close')" />
+    <MessageBoard />
   </div>
 </template>
 
 <script setup>
   import MessageBoard from './MessageBoard.vue';
-
-  // 组件事件
-  defineEmits(['close']);
 </script>
 
 <style scoped>
