@@ -35,6 +35,7 @@
       :can-load-more="canLoadMore"
       :pagination="pagination"
       :format-time="formatTime"
+      :send-success-token="sendSuccessToken"
       @request-delete="promptDeleteMessage"
       @request-load-more="handleLoadMore"
       @retry="fetchMessages()"
@@ -140,9 +141,6 @@
       }
       await sendMessage(text, uploadedImages, imageType);
       sendSuccessToken.value++;
-      nextTick(() => {
-        scrollToBottom();
-      });
     } catch {
       // 错误已在组合式函数中处理
     }
@@ -218,13 +216,6 @@
       const newScrollHeight = listEl.scrollHeight;
       listEl.scrollTop = prevScrollTop + (newScrollHeight - prevScrollHeight);
     });
-  };
-
-  // 滚动到底部
-  const scrollToBottom = () => {
-    if (messageListRef.value) {
-      messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
-    }
   };
 
   // 保存设置
