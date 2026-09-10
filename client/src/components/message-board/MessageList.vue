@@ -468,10 +468,11 @@
 
   .message-text {
     display: inline-block;
+    max-width: 100%;
     color: #212529;
     font-size: 13px;
     line-height: 1.45;
-    word-wrap: break-word;
+    overflow-wrap: anywhere;
     white-space: pre-wrap;
     background-color: #f1f3f5;
     padding: 5px 10px;
