@@ -74,7 +74,7 @@ export function useMessageBoard() {
       }
 
       const preferred = getAppMetaBySlug('message-board')?.preferredSize || {
-        width: 530,
+        width: 610,
         height: 800,
       };
       createWindow({

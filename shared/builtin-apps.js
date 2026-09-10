@@ -29,7 +29,7 @@ export const BUILTIN_APP_DEFINITIONS = [
     description: '用于站内留言与通知展示',
     iconFilename: 'message-board-128.svg',
     visible: false,
-    preferredSize: { width: 530, height: 800 },
+    preferredSize: { width: 610, height: 800 },
   },
 ];
 

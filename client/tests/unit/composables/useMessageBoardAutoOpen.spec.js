@@ -27,7 +27,7 @@ vi.mock('@/apps/registry.js', () => ({
   getAppMetaBySlug: () => ({
     slug: 'message-board',
     name: '留言板',
-    preferredSize: { width: 530, height: 800 },
+    preferredSize: { width: 610, height: 800 },
   }),
 }));
 
@@ -104,7 +104,7 @@ describe('useMessageBoardAutoOpen', () => {
         appSlug: 'message-board',
         activate: false,
         title: '留言板',
-        width: 530,
+        width: 610,
         height: 800,
       })
     );
