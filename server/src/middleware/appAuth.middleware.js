@@ -4,6 +4,7 @@ import {
   getAppAuthCookieValue,
   isValidAppAuthSession,
 } from '../utils/app-auth.js';
+import { isAgentAuthRequestAuthorized } from '../utils/agent-auth.js';
 
 export function createAppAuthGuard() {
   return (req, res, next) => {
@@ -32,8 +33,14 @@ export function createAppAuthGuard() {
       });
     }
 
+    // 检查人工会话 cookie 认证
     const cookieValue = getAppAuthCookieValue(req);
     if (isValidAppAuthSession(cookieValue)) {
+      return next();
+    }
+
+    // 检查 Agent Bearer token 认证（作为第二认证通道）
+    if (isAgentAuthRequestAuthorized(req)) {
       return next();
     }
 

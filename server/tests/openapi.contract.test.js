@@ -178,6 +178,9 @@ describe('OpenAPI contract: documented operations match implemented routes', () 
     expect(root.components?.securitySchemes?.appSession?.name).toBe(
       'myweb_auth'
     );
-    expect(root.security).toEqual([{ appSession: [] }]);
+    expect(root.components?.securitySchemes?.agentBearer?.scheme).toBe(
+      'bearer'
+    );
+    expect(root.security).toEqual([{ appSession: [] }, { agentBearer: [] }]);
   });
 });

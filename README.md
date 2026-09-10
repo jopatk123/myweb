@@ -48,6 +48,97 @@
 - 访问 cookie 的签名密钥由 `APP_AUTH_SECRET` 控制；**生产环境必须单独配置**，不要复用 `APP_PASSWORD`。
 - 验证通过后后端会写入 `HttpOnly` 访问 cookie，默认有效期 30 天，到期后需再次输入密码。
 
+## Agent API 认证（机器/脚本访问）
+
+除了人工通过浏览器登录，MyWeb 还支持通过 Bearer Token 方式供 Agent、脚本或 MCP 服务器访问 API：
+
+### 配置 Agent Token
+
+1. **生成 Token**：
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. **配置环境变量**：在 `.env` 中设置 `AGENT_API_TOKEN`：
+
+   ```env
+   AGENT_API_TOKEN=your_generated_token_here
+   ```
+
+3. **重启后端**以使配置生效。
+
+### 使用 Agent Token 访问 API
+
+使用 `Authorization: Bearer <token>` 头访问受保护的 API：
+
+#### 留言板（Messages）示例
+
+```bash
+# 获取留言列表
+curl -H "Authorization: Bearer your_token" \
+  http://localhost:3000/api/messages
+
+# 创建留言
+curl -X POST \
+  -H "Authorization: Bearer your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"Hello from Agent","authorName":"AI Bot","authorColor":"#3b82f6"}' \
+  http://localhost:3000/api/messages
+
+# 删除留言
+curl -X DELETE \
+  -H "Authorization: Bearer your_token" \
+  http://localhost:3000/api/messages/123
+```
+
+#### 笔记本（Notebook）示例
+
+```bash
+# 获取笔记列表
+curl -H "Authorization: Bearer your_token" \
+  http://localhost:3000/api/notebook
+
+# 创建笔记
+curl -X POST \
+  -H "Authorization: Bearer your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Meeting Notes","description":"Today we discussed...","priority":"high"}' \
+  http://localhost:3000/api/notebook
+
+# 更新笔记
+curl -X PUT \
+  -H "Authorization: Bearer your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Updated Title","description":"Updated content","completed":true}' \
+  http://localhost:3000/api/notebook/456
+
+# 删除笔记
+curl -X DELETE \
+  -H "Authorization: Bearer your_token" \
+  http://localhost:3000/api/notebook/456
+```
+
+### 安全建议
+
+- **保密存储**：Token 具有完整 API 访问权限，应妥善保管，不要提交到代码仓库。
+- **Token 轮换**：定期更换 Token（重新生成并更新 `.env`，然后重启服务）。
+- **访问控制**：当前为单租户设计，一个 Token 拥有所有权限；如需细粒度控制，建议在 Agent 侧实现策略层。
+- **哈希存储**（可选）：可将 Token 以 `sha256:<hex>` 格式存储在 `.env` 中，进一步降低泄漏风险：
+
+  ```bash
+  # 生成哈希
+  node -e "console.log('sha256:' + require('crypto').createHash('sha256').update('your_token').digest('hex'))"
+  ```
+
+  然后将输出（形如 `sha256:abc123...`）配置到 `AGENT_API_TOKEN`，使用时仍用明文 Token。
+
+### 注意事项
+
+- **双通道认证**：人工 cookie 会话和 Agent Bearer Token 两种方式完全独立，可同时使用。
+- **未配置时禁用**：`AGENT_API_TOKEN` 未设置或为空时，Agent 认证通道自动禁用，不影响现有人工登录流程。
+- **限流共享**：Agent 请求与人工请求共享同一限流规则（默认 15 分钟 1000 次/IP），请合理控制调用频率。
+
 ## 目录概览
 
 - `client/`：Vue 3 桌面 Shell，内置 calculator、notebook、work-timer 等应用；composables、components、api、styles 等模块分层。
@@ -80,6 +171,7 @@
 | `FRONTEND_PORT`             | `5173`          | Vite dev 端口                                                                                                     |
 | `APP_PASSWORD`              | 空              | 访问密码；生产环境必须显式配置                                                                                    |
 | `APP_AUTH_SECRET`           | 空              | 访问 cookie 签名密钥；生产环境必须单独配置                                                                        |
+| `AGENT_API_TOKEN`           | 空              | Agent API Bearer Token；未配置时 Agent 认证通道禁用                                                               |
 | `APP_AUTH_TTL_DAYS`         | `30`            | 访问 cookie 有效期（天）                                                                                          |
 | `APP_AUTH_COOKIE_SAME_SITE` | `lax`           | 访问 cookie 的 SameSite 设置                                                                                      |
 | `VITE_API_BASE`             | `/api`          | 前端打包时的 API 前缀；跨域部署时可设为完整 URL                                                                   |
