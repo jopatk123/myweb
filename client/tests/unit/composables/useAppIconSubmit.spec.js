@@ -25,8 +25,9 @@ describe('useAppIconSubmit', () => {
   });
 
   it('uploads pending file and returns filename', async () => {
-    const { useAppIconSubmit } =
-      await import('@/composables/useAppIconSubmit.js');
+    const { useAppIconSubmit } = await import(
+      '@/composables/useAppIconSubmit.js'
+    );
     const { pendingFile, resolveIconFields } = useAppIconSubmit();
     pendingFile.value = new File(['x'], 'a.png', { type: 'image/png' });
     apiFetchMock.mockResolvedValue({
@@ -43,8 +44,9 @@ describe('useAppIconSubmit', () => {
   });
 
   it('uses preset path when no pending file', async () => {
-    const { useAppIconSubmit } =
-      await import('@/composables/useAppIconSubmit.js');
+    const { useAppIconSubmit } = await import(
+      '@/composables/useAppIconSubmit.js'
+    );
     const { resolveIconFields } = useAppIconSubmit();
     const result = await resolveIconFields({
       selectedIconPath: '/apps/icons/browser.svg',
@@ -54,8 +56,9 @@ describe('useAppIconSubmit', () => {
   });
 
   it('discards unreferenced icon via DELETE', async () => {
-    const { useAppIconSubmit } =
-      await import('@/composables/useAppIconSubmit.js');
+    const { useAppIconSubmit } = await import(
+      '@/composables/useAppIconSubmit.js'
+    );
     const { discardUnreferencedIcon } = useAppIconSubmit();
     apiFetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
     await discardUnreferencedIcon('uuid.png');
@@ -66,8 +69,9 @@ describe('useAppIconSubmit', () => {
   });
 
   it('validateTargetUrl rejects non-http urls', async () => {
-    const { useAppIconSubmit } =
-      await import('@/composables/useAppIconSubmit.js');
+    const { useAppIconSubmit } = await import(
+      '@/composables/useAppIconSubmit.js'
+    );
     const { validateTargetUrl } = useAppIconSubmit();
     expect(validateTargetUrl('ftp://x')).toBe(false);
     await nextTick();
