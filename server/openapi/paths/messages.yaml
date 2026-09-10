@@ -71,7 +71,7 @@ list:
             properties:
               content:
                 type: string
-                maxLength: 1000
+                maxLength: 10000
                 nullable: true
               authorName:
                 type: string

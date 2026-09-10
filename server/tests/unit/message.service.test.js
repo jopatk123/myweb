@@ -61,16 +61,16 @@ describe('MessageService', () => {
       ).rejects.toBeInstanceOf(ValidationError);
     });
 
-    test('throws when content exceeds 1000 characters', async () => {
+    test('throws when content exceeds max length', async () => {
       await expect(
         service.sendMessage({
-          content: 'x'.repeat(1001),
+          content: 'x'.repeat(10001),
           sessionId: 'sess-long',
         })
-      ).rejects.toThrow('留言内容不能超过1000字符');
+      ).rejects.toThrow('留言内容不能超过10000字符');
       await expect(
         service.sendMessage({
-          content: 'x'.repeat(1001),
+          content: 'x'.repeat(10001),
           sessionId: 'sess-long',
         })
       ).rejects.toBeInstanceOf(ValidationError);

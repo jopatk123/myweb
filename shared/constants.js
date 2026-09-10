@@ -12,7 +12,10 @@
  */
 
 /** 留言正文最大字符数（前后端一致） */
-export const MESSAGE_CONTENT_MAX_LENGTH = 1000;
+export const MESSAGE_CONTENT_MAX_LENGTH = 10000;
+
+/** 留言列表默认折叠显示的最大行数（仅前端展示） */
+export const MESSAGE_TEXT_COLLAPSED_LINES = 5;
 
 /** 单条留言最多附带图片数量（前后端一致） */
 export const MESSAGE_IMAGE_MAX_COUNT = 5;

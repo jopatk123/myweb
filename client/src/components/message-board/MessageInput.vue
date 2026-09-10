@@ -244,10 +244,10 @@
   .composer-textarea {
     width: 100%;
     min-height: 108px;
-    max-height: 180px;
+    max-height: 280px;
     padding: 8px 10px 4px;
     border: none;
-    resize: none;
+    resize: vertical;
     font-size: 14px;
     line-height: 1.45;
     font-family: inherit;

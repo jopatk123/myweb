@@ -33,8 +33,8 @@ describe('limits constants', () => {
     expect(DEFAULT_MESSAGE_IMAGE_MAX_FILES).toBe(5);
   });
 
-  test('MESSAGE_CONTENT_MAX_LENGTH is 1000', () => {
-    expect(MESSAGE_CONTENT_MAX_LENGTH).toBe(1000);
+  test('MESSAGE_CONTENT_MAX_LENGTH is 10000', () => {
+    expect(MESSAGE_CONTENT_MAX_LENGTH).toBe(10000);
   });
 
   test('MESSAGE_IMAGE_MAX_COUNT is 5', () => {

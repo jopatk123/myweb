@@ -61,9 +61,11 @@
             </button>
           </div>
         </div>
-        <div v-if="message.content" class="message-text">
-          {{ message.content }}
-        </div>
+        <MessageText
+          v-if="message.content"
+          :content="message.content"
+          :force-expanded="isSearching"
+        />
         <ImagePreview
           v-if="message.images && message.images.length > 0"
           :images="message.images"
@@ -84,6 +86,7 @@
   } from 'vue';
   import { useGlobalToast } from '@/composables/useGlobalToast.js';
   import ImagePreview from './ImagePreview.vue';
+  import MessageText from './MessageText.vue';
 
   const props = defineProps({
     messages: { type: Array, required: true },
@@ -464,19 +467,6 @@
   .delete-btn:disabled {
     cursor: wait;
     opacity: 0.7;
-  }
-
-  .message-text {
-    display: inline-block;
-    max-width: 100%;
-    color: #212529;
-    font-size: 13px;
-    line-height: 1.45;
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
-    background-color: #f1f3f5;
-    padding: 5px 10px;
-    border-radius: 0 10px 10px 10px;
   }
 
   .message-list::-webkit-scrollbar {

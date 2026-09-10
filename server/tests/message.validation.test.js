@@ -30,7 +30,7 @@ describe('Message route validation', () => {
     test('rejects content exceeding max length', async () => {
       const res = await request(app)
         .post('/api/messages')
-        .send({ content: 'x'.repeat(5001) });
+        .send({ content: 'x'.repeat(10001) });
       expect(res.status).toBe(400);
       expect(res.body.code).toBe(400);
     });

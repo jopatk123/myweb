@@ -1,6 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import MessageList from '@/components/message-board/MessageList.vue';
+import { measureTextOverflow } from '@/utils/messageTextOverflow.js';
+
+vi.mock('@/utils/messageTextOverflow.js', async importOriginal => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    measureTextOverflow: vi.fn(),
+  };
+});
 
 const baseProps = {
   messages: [
@@ -34,6 +44,7 @@ const setupClipboardMock = () => {
 describe('MessageList', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(measureTextOverflow).mockReturnValue(false);
   });
 
   it('shows a compact load-more control without pagination chrome', () => {
@@ -72,6 +83,29 @@ describe('MessageList', () => {
     });
 
     expect(getByRole('button', { name: '删除中...' })).toBeDisabled();
+  });
+
+  it('auto-expands message text while searching', async () => {
+    vi.mocked(measureTextOverflow).mockReturnValue(true);
+
+    const longContent = '搜索时应完整展示的长留言内容';
+    const { queryByRole, getByText } = render(MessageList, {
+      props: {
+        ...baseProps,
+        messages: [
+          {
+            ...baseProps.messages[0],
+            content: longContent,
+          },
+        ],
+        isSearching: true,
+        searchQuery: '长留言',
+      },
+    });
+    await flushPromises();
+
+    expect(getByText(longContent)).toBeInTheDocument();
+    expect(queryByRole('button', { name: '展开' })).toBeNull();
   });
 
   it('copies message content to the clipboard when copy button is clicked', async () => {
