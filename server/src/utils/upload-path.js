@@ -14,6 +14,11 @@ export const PUBLIC_APP_ICONS_DIR = path.resolve(
   __dirname,
   '../../../client/public/apps/icons'
 );
+/** Vite 构建产物中的预选图标（Docker 运行时仅有 dist，无 client/public） */
+export const DIST_APP_ICONS_DIR = path.resolve(
+  __dirname,
+  '../../../client/dist/apps/icons'
+);
 
 export function toUploadsAbsolutePath(filePath) {
   const candidate = String(filePath || '').trim();
