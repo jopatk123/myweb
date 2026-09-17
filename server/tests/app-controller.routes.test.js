@@ -131,6 +131,29 @@ describe('AppController - create()', () => {
       .expect(201);
     expect(res.body.code).toBe(201);
   });
+
+  test('POST /api/apps with preset_icon copies preset and returns 201', async () => {
+    const res = await request(app)
+      .post('/api/apps')
+      .send({ name: 'GitHub 链接', preset_icon: 'github.svg' })
+      .expect(201);
+
+    expect(res.body.code).toBe(201);
+    expect(res.body.data.iconFilename).toMatch(/\.svg$/i);
+
+    const iconPath = path.join(testAppIconDir, res.body.data.iconFilename);
+    await expect(fs.access(iconPath)).resolves.toBeUndefined();
+  });
+
+  test('POST /api/apps with unknown preset_icon returns 400', async () => {
+    const res = await request(app)
+      .post('/api/apps')
+      .send({ name: '无效预选图标', preset_icon: 'not-a-real-preset.svg' })
+      .expect(400);
+
+    expect(res.body.code).toBe(400);
+    expect(res.body.message).toMatch(/预选图标不存在/);
+  });
 });
 
 describe('AppController - update()', () => {

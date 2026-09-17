@@ -4,7 +4,11 @@ import { generateUniqueSlug } from '../utils/slug.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../utils/logger.js';
-import { APP_ICONS_DIR, PUBLIC_APP_ICONS_DIR } from '../utils/upload-path.js';
+import {
+  APP_ICONS_DIR,
+  PUBLIC_APP_ICONS_DIR,
+  DIST_APP_ICONS_DIR,
+} from '../utils/upload-path.js';
 import {
   copyPresetAppIcon,
   deleteAppIconIfExists,
@@ -15,6 +19,7 @@ import {
   resolveIconFilePath,
 } from '../utils/app-icon-filename.js';
 import {
+  AppError,
   NotFoundError,
   ValidationError,
   ForbiddenError,
@@ -105,6 +110,7 @@ export class AppService {
 
     this.uploadsDir = process.env.APP_ICON_UPLOAD_DIR || APP_ICONS_DIR;
     this.publicIconsDir = PUBLIC_APP_ICONS_DIR;
+    this.distIconsDir = DIST_APP_ICONS_DIR;
 
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
@@ -249,10 +255,14 @@ export class AppService {
       return await copyPresetAppIcon({
         uploadsDir: this.uploadsDir,
         publicIconsDir: this.publicIconsDir,
+        distIconsDir: this.distIconsDir,
         presetIconsDir: this.presetIconsDir,
         presetIconFilename,
       });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       appServiceLogger.error('复制预选图标失败', {
         error: error?.message || error,
       });

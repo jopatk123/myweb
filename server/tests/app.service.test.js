@@ -27,10 +27,12 @@ beforeEach(async () => {
 
   service.uploadsDir = path.join(tempRoot, 'uploads');
   service.publicIconsDir = path.join(tempRoot, 'public');
+  service.distIconsDir = path.join(tempRoot, 'dist');
   service.presetIconsDir = path.join(tempRoot, 'preset');
 
   await fs.mkdir(service.uploadsDir, { recursive: true });
   await fs.mkdir(service.publicIconsDir, { recursive: true });
+  await fs.mkdir(service.distIconsDir, { recursive: true });
   await fs.mkdir(service.presetIconsDir, { recursive: true });
 
   db.prepare('DELETE FROM apps').run();
@@ -132,10 +134,22 @@ test('copyPresetIcon copies from public icons directory', async () => {
   expect(stat.isFile()).toBe(true);
 });
 
-test('copyPresetIcon throws when icon missing', async () => {
-  await expect(service.copyPresetIcon('missing.svg')).rejects.toThrow(
-    '预选图标文件不存在: missing.svg'
-  );
+test('copyPresetIcon throws 400 when icon missing', async () => {
+  await expect(service.copyPresetIcon('missing.svg')).rejects.toMatchObject({
+    status: 400,
+    message: '预选图标不存在: missing.svg',
+  });
+});
+
+test('copyPresetIcon copies from dist icons directory when public is empty', async () => {
+  const sourceIcon = path.join(service.distIconsDir, 'dist-only.svg');
+  await fs.writeFile(sourceIcon, '<svg></svg>');
+
+  const newFilename = await service.copyPresetIcon('dist-only.svg');
+  expect(newFilename).toMatch(/\.svg$/);
+  await expect(
+    fs.access(path.join(service.uploadsDir, newFilename))
+  ).resolves.toBeUndefined();
 });
 
 test('copyPresetIcon does not copy from uploadsDir (Q2 regression)', async () => {
@@ -148,9 +162,12 @@ test('copyPresetIcon does not copy from uploadsDir (Q2 regression)', async () =>
   );
   await fs.writeFile(uploadedIconPath, '<svg></svg>');
 
-  await expect(service.copyPresetIcon('uploaded-by-other.svg')).rejects.toThrow(
-    '预选图标文件不存在: uploaded-by-other.svg'
-  );
+  await expect(
+    service.copyPresetIcon('uploaded-by-other.svg')
+  ).rejects.toMatchObject({
+    status: 400,
+    message: '预选图标不存在: uploaded-by-other.svg',
+  });
 });
 
 test('deleteIconFileIfExists handles existing and missing files', async () => {
