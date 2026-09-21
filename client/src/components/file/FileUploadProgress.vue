@@ -54,7 +54,7 @@
     error: { type: String, default: '' },
   });
 
-  const emit = defineEmits(['close']);
+  const emit = defineEmits(['close', 'cancel']);
 
   const uploadSpeed = ref(0);
   const lastTime = ref(0);
@@ -63,20 +63,23 @@
   const panelVisible = ref(true);
   const MAX_SAMPLES = 5;
 
-  const visible = computed(
-    () => props.uploading && props.progress > 0 && props.progress < 100
-  );
+  const visible = computed(() => props.uploading && props.progress < 100);
 
   const isComplete = computed(() => props.progress === 100 && !props.uploading);
   const hasError = computed(() => !!props.error);
 
   const completedCount = computed(
-    () => props.uploadQueue.filter(item => item.progress === 100).length
+    () =>
+      props.uploadQueue.filter(
+        item => item.status === 'done' || item.progress === 100
+      ).length
   );
 
   const currentIndex = computed(() =>
     props.uploadQueue.findIndex(
-      item => item.progress > 0 && item.progress < 100
+      item =>
+        item.status === 'uploading' ||
+        (item.progress > 0 && item.progress < 100 && item.status !== 'error')
     )
   );
 
@@ -87,12 +90,16 @@
   });
 
   const queueSubtitle = computed(() => {
+    if (props.error) return props.error;
     if (props.uploadQueue.length <= 1) return '';
     return `${completedCount.value}/${props.uploadQueue.length} 个文件`;
   });
 
   const shouldShow = computed(() => {
-    return (visible.value || isComplete.value) && panelVisible.value;
+    return (
+      (visible.value || isComplete.value || hasError.value) &&
+      panelVisible.value
+    );
   });
 
   watch(
@@ -151,8 +158,12 @@
   }
 
   function onClose() {
+    if (props.uploading) {
+      emit('cancel');
+    } else {
+      emit('close');
+    }
     panelVisible.value = false;
-    emit('close');
   }
 </script>
 

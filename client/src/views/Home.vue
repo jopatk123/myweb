@@ -27,6 +27,10 @@
     />
 
     <!-- 文件上传进度面板 -->
+    <div v-if="dragOver" class="desktop-drop-overlay" aria-hidden="true">
+      <p>松开以上传到桌面</p>
+    </div>
+
     <FileUploadProgress
       :uploading="uploading"
       :progress="uploadProgress"
@@ -34,6 +38,8 @@
       :total-bytes="totalBytes"
       :current-file-name="currentFileName"
       :upload-queue="uploadQueue"
+      :error="uploadError"
+      @cancel="onCancelDesktopUpload"
     />
 
     <!-- 浮动控制按钮 -->
@@ -73,7 +79,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, unref, watch, nextTick } from 'vue';
+  import { ref, computed, unref, watch } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { useFiles } from '@/composables/useFiles.js';
   import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
@@ -90,6 +96,7 @@
   import { useDesktopDropZone } from '@/composables/useDesktopDropZone.js';
   import { useDesktopFileActions } from '@/composables/useDesktopFileActions.js';
   import { useDesktopContextMenu } from '@/composables/useDesktopContextMenu.js';
+  import { useGlobalToast } from '@/composables/useGlobalToast.js';
 
   const {
     randomWallpaper,
@@ -116,32 +123,38 @@
   const appIconsRef = ref(null);
   const fileIconsRef = ref(null);
 
+  const { showError, showInfo } = useGlobalToast();
+
   const {
     items: files,
-    fetchList: fetchFiles,
+    fetchAll: fetchDesktopFiles,
     upload,
+    cancelUpload,
     uploading,
     uploadProgress,
     uploadedBytes,
     totalBytes,
     currentFileName,
     uploadQueue,
+    error: uploadError,
     getDownloadUrl,
   } = useFiles();
 
-  async function arrangeDesktopIcons() {
-    const nextColumn = appIconsRef.value?.autoArrange
-      ? await appIconsRef.value.autoArrange(0)
-      : 0;
-
-    await nextTick();
-    await fileIconsRef.value?.autoArrange?.(nextColumn);
+  async function handleDesktopUpload(filesToUpload) {
+    await upload(filesToUpload, { refresh: 'all' });
   }
 
-  async function handleDesktopUpload(filesToUpload) {
-    await upload(filesToUpload);
-    await nextTick();
-    await arrangeDesktopIcons();
+  function onCancelDesktopUpload() {
+    cancelUpload();
+    showInfo('已取消上传');
+  }
+
+  function reportUploadError(error) {
+    const messages =
+      Array.isArray(error?.errors) && error.errors.length
+        ? error.errors
+        : [error?.message || '上传失败'];
+    showError(messages.filter(Boolean).join('；'));
   }
 
   const onRandom = async () => {
@@ -172,9 +185,7 @@
 
   const { dragOver, onDragOver, onDragLeave, onDrop } = useDesktopDropZone({
     upload: handleDesktopUpload,
-    onError: error => {
-      console.warn('[Home] Desktop upload failed', error);
-    },
+    onError: reportUploadError,
   });
 
   const {
@@ -198,7 +209,7 @@
 
   const onFileDeleteSuccess = async () => {
     try {
-      await fetchFiles();
+      await fetchDesktopFiles();
     } catch (error) {
       console.warn('[Home] Refresh after file delete failed', error);
     }
@@ -256,7 +267,7 @@
       }
     })
     .catch(e => console.warn('[Home] 获取活跃壁纸失败', e));
-  fetchFiles().catch(e => console.warn('[Home] 加载文件列表失败', e));
+  fetchDesktopFiles().catch(e => console.warn('[Home] 加载文件列表失败', e));
 
   function onDesktopContextmenu(event) {
     openMenu(event);
@@ -295,6 +306,27 @@
 
   .home.dragover {
     outline: 2px dashed rgba(255, 255, 255, 0.7);
+  }
+
+  .desktop-drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    pointer-events: none;
+  }
+
+  .desktop-drop-overlay p {
+    margin: 0;
+    padding: 16px 28px;
+    border: 2px dashed rgba(255, 255, 255, 0.85);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.45);
+    font-size: 22px;
   }
 
   .desktop-files {

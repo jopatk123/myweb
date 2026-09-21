@@ -45,15 +45,31 @@ describe('FileUploadProgress', () => {
       expect(queryByTestId('upload-progress-panel')).toBeNull();
     });
 
-    it('should not show panel when progress is 0', () => {
-      const { queryByTestId } = render(FileUploadProgress, {
+    it('should show panel when uploading has not reported progress yet', () => {
+      const { getByTestId } = render(FileUploadProgress, {
         props: {
           ...defaultProps,
           progress: 0,
+          uploadedBytes: 0,
         },
       });
 
-      expect(queryByTestId('upload-progress-panel')).toBeNull();
+      expect(getByTestId('upload-progress-panel')).toBeTruthy();
+    });
+
+    it('should show panel when an upload error is present', () => {
+      const { getByTestId, getByText } = render(FileUploadProgress, {
+        props: {
+          ...defaultProps,
+          uploading: false,
+          progress: 40,
+          error: '网络中断',
+        },
+      });
+
+      expect(getByTestId('upload-progress-panel')).toBeTruthy();
+      expect(getByText('上传失败')).toBeTruthy();
+      expect(getByText('网络中断')).toBeTruthy();
     });
 
     it('should show panel when upload is complete (progress 100)', () => {
@@ -134,6 +150,34 @@ describe('FileUploadProgress', () => {
       expect(queryByText('上传队列')).toBeNull();
     });
 
+    it('should show a failed queue item', () => {
+      const { getByText } = render(FileUploadProgress, {
+        props: {
+          ...defaultProps,
+          uploadQueue: [
+            {
+              id: 'queue-1',
+              name: 'ok.txt',
+              size: 10,
+              progress: 100,
+              status: 'done',
+            },
+            {
+              id: 'queue-2',
+              name: 'bad.exe',
+              size: 10,
+              progress: 0,
+              status: 'error',
+              error: '不支持的文件类型',
+            },
+          ],
+        },
+      });
+
+      expect(getByText('失败')).toBeTruthy();
+      expect(getByText('1/2')).toBeTruthy();
+    });
+
     it('should show completed count correctly', () => {
       const { getByText } = render(FileUploadProgress, {
         props: {
@@ -176,7 +220,7 @@ describe('FileUploadProgress', () => {
   });
 
   describe('close button', () => {
-    it('should emit close event when close button clicked', async () => {
+    it('should emit cancel when close is clicked during upload', async () => {
       const { getByTitle, emitted } = render(FileUploadProgress, {
         props: defaultProps,
       });
@@ -184,7 +228,23 @@ describe('FileUploadProgress', () => {
       const closeButton = getByTitle('关闭');
       await fireEvent.click(closeButton);
 
+      expect(emitted().cancel).toBeTruthy();
+      expect(emitted().close).toBeUndefined();
+    });
+
+    it('should emit close when the upload is already finished', async () => {
+      const { getByTitle, emitted } = render(FileUploadProgress, {
+        props: {
+          ...defaultProps,
+          uploading: false,
+          progress: 100,
+        },
+      });
+
+      await fireEvent.click(getByTitle('关闭'));
+
       expect(emitted().close).toBeTruthy();
+      expect(emitted().cancel).toBeUndefined();
     });
 
     it('should hide panel after close button clicked', async () => {
@@ -306,11 +366,12 @@ describe('FileUploadProgress', () => {
       const { getByText } = render(FileUploadProgress, {
         props: {
           ...defaultProps,
-          error: '上传失败',
+          error: '服务器拒绝',
         },
       });
 
       expect(getByText('上传失败')).toBeTruthy();
+      expect(getByText('服务器拒绝')).toBeTruthy();
     });
   });
 

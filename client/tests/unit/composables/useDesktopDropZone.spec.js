@@ -369,6 +369,85 @@ describe('useDesktopDropZone', () => {
     });
   });
 
+  describe('directories and blocked types', () => {
+    it('skips directories and still uploads files', async () => {
+      const { onDrop } = useDesktopDropZone({
+        upload: mockUpload,
+        onError: mockOnError,
+      });
+
+      const file = new File(['test'], 'note.txt', { type: 'text/plain' });
+      const mockEvent = {
+        dataTransfer: {
+          items: [
+            {
+              kind: 'file',
+              webkitGetAsEntry: () => ({
+                isDirectory: true,
+                name: 'photos',
+              }),
+              getAsFile: () => null,
+            },
+            {
+              kind: 'file',
+              webkitGetAsEntry: () => ({ isFile: true, name: 'note.txt' }),
+              getAsFile: () => file,
+            },
+          ],
+        },
+      };
+
+      await onDrop(mockEvent);
+
+      expect(mockOnError).toHaveBeenCalled();
+      expect(mockOnError.mock.calls[0][0].errors[0]).toContain('photos');
+      expect(mockUpload).toHaveBeenCalledWith([file]);
+    });
+
+    it('rejects a directory drop without uploading', async () => {
+      const { onDrop } = useDesktopDropZone({
+        upload: mockUpload,
+        onError: mockOnError,
+      });
+
+      await onDrop({
+        dataTransfer: {
+          items: [
+            {
+              kind: 'file',
+              webkitGetAsEntry: () => ({
+                isDirectory: true,
+                name: 'docs',
+              }),
+              getAsFile: () => null,
+            },
+          ],
+        },
+      });
+
+      expect(mockUpload).not.toHaveBeenCalled();
+      expect(mockOnError).toHaveBeenCalled();
+    });
+
+    it('rejects executable files before upload', async () => {
+      const { onDrop } = useDesktopDropZone({
+        upload: mockUpload,
+        onError: mockOnError,
+      });
+
+      const exe = new File(['MZ'], 'run.exe', {
+        type: 'application/octet-stream',
+      });
+
+      await onDrop({
+        dataTransfer: { files: [exe] },
+      });
+
+      expect(mockUpload).not.toHaveBeenCalled();
+      expect(mockOnError.mock.calls[0][0].message).toContain('run.exe');
+    });
+  });
+
   describe('multiple files', () => {
     it('should handle multiple files', async () => {
       const { onDrop } = useDesktopDropZone({

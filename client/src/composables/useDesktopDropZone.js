@@ -1,5 +1,9 @@
 import { ref } from 'vue';
 import { formatFileSize, UPLOAD_SIZE_LIMITS } from '@/constants/fileTypes.js';
+import {
+  BLOCKED_EXECUTABLE_EXTENSIONS,
+  BLOCKED_EXECUTABLE_MIME_TYPES,
+} from '@shared/fileTypes.js';
 
 /**
  * 桌面拖拽上传区域逻辑
@@ -13,6 +17,47 @@ export function useDesktopDropZone({ upload, onError, maxFileSize } = {}) {
   const MAX_DESKTOP_UPLOAD_SIZE = maxFileSize || UPLOAD_SIZE_LIMITS.DEFAULT; // 默认 1GiB
 
   const toArray = files => Array.from(files || []);
+
+  function isBlockedFile(file) {
+    const mime = String(file?.type || '').toLowerCase();
+    if (mime && BLOCKED_EXECUTABLE_MIME_TYPES.has(mime)) return true;
+
+    const name = String(file?.name || '');
+    const lastDot = name.lastIndexOf('.');
+    if (lastDot !== -1) {
+      const ext = name.slice(lastDot).toLowerCase();
+      if (BLOCKED_EXECUTABLE_EXTENSIONS.has(ext)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * 从拖放数据中分离文件与文件夹。
+   * 优先走 DataTransferItem，以便识别目录；不支持时退回 FileList。
+   */
+  function readDrop(event) {
+    const items = event?.dataTransfer?.items;
+    if (items && items.length) {
+      const files = [];
+      const directories = [];
+      for (const item of Array.from(items)) {
+        if (item.kind && item.kind !== 'file') continue;
+        const entry = item.webkitGetAsEntry?.() || item.getAsEntry?.();
+        if (entry?.isDirectory) {
+          directories.push(entry.name || '未命名文件夹');
+          continue;
+        }
+        const file = item.getAsFile?.();
+        if (file) files.push(file);
+      }
+      return { files, directories };
+    }
+
+    return {
+      files: toArray(event?.dataTransfer?.files),
+      directories: [],
+    };
+  }
 
   function onDragOver(event) {
     // 阻止默认行为以允许 drop
@@ -58,6 +103,11 @@ export function useDesktopDropZone({ upload, onError, maxFileSize } = {}) {
         continue;
       }
 
+      if (isBlockedFile(file)) {
+        errors.push(`不支持的文件类型：${file.name}`);
+        continue;
+      }
+
       valid.push(file);
     }
 
@@ -68,8 +118,11 @@ export function useDesktopDropZone({ upload, onError, maxFileSize } = {}) {
     dragOver.value = false;
     lastError.value = null;
 
-    const droppedFiles = toArray(event?.dataTransfer?.files);
-    if (!droppedFiles.length) return;
+    const { files: droppedFiles, directories } = readDrop(event);
+    const directoryErrors = directories.map(
+      name => `暂不支持上传文件夹：${name}，请拖入文件`
+    );
+    if (!droppedFiles.length && !directoryErrors.length) return;
 
     if (typeof upload !== 'function') {
       console.warn('[useDesktopDropZone] upload function not provided');
@@ -77,9 +130,10 @@ export function useDesktopDropZone({ upload, onError, maxFileSize } = {}) {
     }
 
     // 验证文件
-    const { valid, errors } = validateFiles(droppedFiles);
+    const { valid, errors: fileErrors } = validateFiles(droppedFiles);
+    const errors = [...directoryErrors, ...fileErrors];
 
-    // 如果有验证错误，报告第一个错误
+    // 如果有验证错误，报告全部原因；合法文件仍继续上传
     if (errors.length > 0) {
       const err = new Error(errors[0]);
       err.code = 'DESKTOP_UPLOAD_VALIDATION_ERROR';

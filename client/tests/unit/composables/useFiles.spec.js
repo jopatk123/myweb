@@ -206,23 +206,15 @@ describe('useFiles composable', () => {
     stop();
   });
 
-  it('fail-fast: aborts remaining queue when a file fails and refreshes list', async () => {
+  it('continues the batch when one file fails and reports a summary', async () => {
     const files = ['a', 'b', 'c', 'd', 'e'].map(
       name => new File([name], `${name}.txt`, { type: 'text/plain' })
     );
 
-    // 第一个文件立即失败；其余模拟真实 in-flight 请求（挂起直到 abort）
-    let firstRejected = false;
-    apiMocks.upload.mockImplementation((_files, _onProgress, signal) => {
-      if (!firstRejected) {
-        firstRejected = true;
-        return Promise.reject(new Error('不支持的文件类型'));
+    apiMocks.upload.mockImplementation(async batch => {
+      if (batch[0].name === 'b.txt') {
+        throw new Error('不支持的文件类型');
       }
-      return new Promise((_resolve, reject) => {
-        signal?.addEventListener('abort', () =>
-          reject(Object.assign(new Error('canceled'), { code: 'ERR_CANCELED' }))
-        );
-      });
     });
     apiMocks.list.mockResolvedValue({
       code: 200,
@@ -230,15 +222,122 @@ describe('useFiles composable', () => {
       data: { files: [], pagination: { total: 0 } },
     });
 
-    const { upload, error: errorRef } = mountUseFiles();
+    const { upload, error: errorRef, uploadQueue, stop } = mountUseFiles();
 
-    // 并发 3：索引 0/1/2 立即被认领，0 失败后应中止队列（3/4 不再上传）
-    await expect(upload(files)).rejects.toThrow('不支持的文件类型');
+    await expect(upload(files)).rejects.toThrow(
+      '成功 4 个，失败 1 个：b.txt（不支持的文件类型）'
+    );
 
-    expect(apiMocks.upload).toHaveBeenCalledTimes(3);
-    expect(errorRef.value).toBe('不支持的文件类型');
-    // 失败批次中可能有已成功文件，应刷新列表
+    expect(apiMocks.upload).toHaveBeenCalledTimes(5);
+    expect(errorRef.value).toContain('失败 1 个');
+    expect(uploadQueue.value.find(item => item.name === 'b.txt').status).toBe(
+      'error'
+    );
+    expect(
+      uploadQueue.value.filter(item => item.status === 'done')
+    ).toHaveLength(4);
     expect(apiMocks.list).toHaveBeenCalled();
+
+    stop();
+  });
+
+  it('rejects a second upload while the first batch is still running', async () => {
+    const fileA = new File(['a'], 'a.txt', { type: 'text/plain' });
+    const fileB = new File(['b'], 'b.txt', { type: 'text/plain' });
+    let releaseUpload;
+    apiMocks.upload.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          releaseUpload = resolve;
+        })
+    );
+
+    const { upload, stop } = mountUseFiles();
+    const first = upload([fileA]);
+    await flushPromises();
+
+    await expect(upload([fileB])).rejects.toThrow('已有文件正在上传');
+
+    releaseUpload();
+    await first;
+    stop();
+  });
+
+  it('fetchAll loads every page without changing the paging state', async () => {
+    apiMocks.list
+      .mockResolvedValueOnce({
+        code: 200,
+        success: true,
+        data: {
+          files: [{ id: 1 }],
+          pagination: { total: 2 },
+        },
+      })
+      .mockResolvedValueOnce({
+        code: 200,
+        success: true,
+        data: {
+          files: [{ id: 2 }],
+          pagination: { total: 2 },
+        },
+      });
+
+    const { fetchAll, items, page, limit, stop } = mountUseFiles();
+    await fetchAll();
+
+    expect(apiMocks.list).toHaveBeenNthCalledWith(1, {
+      page: 1,
+      limit: 200,
+      type: undefined,
+      search: undefined,
+    });
+    expect(apiMocks.list).toHaveBeenNthCalledWith(2, {
+      page: 2,
+      limit: 200,
+      type: undefined,
+      search: undefined,
+    });
+    expect(items.value.map(file => file.id)).toEqual([1, 2]);
+    expect(page.value).toBe(1);
+    expect(limit.value).toBe(20);
+
+    stop();
+  });
+
+  it('marks a zero-byte upload as complete', async () => {
+    const empty = new File([], 'empty.txt', { type: 'text/plain' });
+    apiMocks.upload.mockResolvedValue({});
+    apiMocks.list.mockResolvedValue({
+      code: 200,
+      success: true,
+      data: { files: [], pagination: { total: 0 } },
+    });
+
+    const { upload, uploadProgress, stop } = mountUseFiles();
+    await upload([empty]);
+
+    expect(uploadProgress.value).toBe(100);
+    stop();
+  });
+
+  it('refresh all asks the list endpoint for the full page size', async () => {
+    const file = new File(['a'], 'a.txt', { type: 'text/plain' });
+    apiMocks.upload.mockResolvedValue({});
+    apiMocks.list.mockResolvedValue({
+      code: 200,
+      success: true,
+      data: { files: [{ id: 1 }], pagination: { total: 1 } },
+    });
+
+    const { upload, stop } = mountUseFiles();
+    await upload([file], { refresh: 'all' });
+
+    expect(apiMocks.list).toHaveBeenCalledWith({
+      page: 1,
+      limit: 200,
+      type: undefined,
+      search: undefined,
+    });
 
     stop();
   });

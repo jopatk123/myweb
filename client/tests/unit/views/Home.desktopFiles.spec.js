@@ -5,7 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 const filesRef = ref([]);
 const homeMocks = vi.hoisted(() => ({
   uploadMock: vi.fn().mockResolvedValue(),
-  fetchListMock: vi.fn().mockResolvedValue(),
+  fetchAllMock: vi.fn().mockResolvedValue(),
   getDownloadUrlMock: vi.fn(),
   dropZoneOptions: null,
   appAutoArrangeMock: vi.fn().mockResolvedValue(1),
@@ -40,8 +40,10 @@ vi.mock('@/composables/useFiles.js', () => {
   return {
     useFiles: () => ({
       items: filesRef,
-      fetchList: homeMocks.fetchListMock,
+      fetchAll: homeMocks.fetchAllMock,
       upload: homeMocks.uploadMock,
+      cancelUpload: vi.fn(),
+      error: ref(''),
       uploading,
       uploadProgress,
       uploadedBytes,
@@ -233,13 +235,13 @@ describe('Home desktop files filtering', () => {
     wallpaperMocks.fetchCurrentGroupMock.mockClear();
     wallpaperMocks.fetchActiveWallpaperMock.mockClear();
     homeMocks.uploadMock.mockResolvedValue();
-    homeMocks.fetchListMock.mockResolvedValue();
+    homeMocks.fetchAllMock.mockResolvedValue();
     homeMocks.getDownloadUrlMock.mockReset();
     homeMocks.dropZoneOptions = null;
     homeMocks.appAutoArrangeMock.mockClear();
     homeMocks.fileAutoArrangeMock.mockClear();
     homeMocks.uploadMock.mockClear();
-    homeMocks.fetchListMock.mockClear();
+    homeMocks.fetchAllMock.mockClear();
     vi.stubGlobal('localStorage', {
       getItem: vi.fn(() => null),
       setItem: vi.fn(),
@@ -270,16 +272,16 @@ describe('Home desktop files filtering', () => {
     const wrapper = mount(Home);
     await flushPromises();
 
-    const initialCalls = homeMocks.fetchListMock.mock.calls.length;
+    const initialCalls = homeMocks.fetchAllMock.mock.calls.length;
     wrapper.findComponent({ name: 'FileIconsStub' }).vm.$emit('delete-success');
     await flushPromises();
 
-    expect(homeMocks.fetchListMock).toHaveBeenCalledTimes(initialCalls + 1);
+    expect(homeMocks.fetchAllMock).toHaveBeenCalledTimes(initialCalls + 1);
 
     wrapper.unmount();
   });
 
-  it('auto arranges desktop icons after upload succeeds', async () => {
+  it('refreshes the full desktop list after upload and keeps icon positions', async () => {
     const wrapper = mount(Home);
     await flushPromises();
 
@@ -288,11 +290,12 @@ describe('Home desktop files filtering', () => {
     await homeMocks.dropZoneOptions.upload([{ name: 'new-file.txt', size: 1 }]);
     await flushPromises();
 
-    expect(homeMocks.uploadMock).toHaveBeenCalledWith([
-      { name: 'new-file.txt', size: 1 },
-    ]);
-    expect(homeMocks.appAutoArrangeMock).toHaveBeenCalledWith(0);
-    expect(homeMocks.fileAutoArrangeMock).toHaveBeenCalledTimes(1);
+    expect(homeMocks.uploadMock).toHaveBeenCalledWith(
+      [{ name: 'new-file.txt', size: 1 }],
+      { refresh: 'all' }
+    );
+    expect(homeMocks.appAutoArrangeMock).not.toHaveBeenCalled();
+    expect(homeMocks.fileAutoArrangeMock).not.toHaveBeenCalled();
 
     wrapper.unmount();
   });

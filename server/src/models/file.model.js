@@ -34,7 +34,8 @@ export class FileModel extends BaseModel {
     const allowedTypes = new Set(Object.values(FILE_CATEGORIES));
 
     const safePage = Math.max(1, Number(page) || 1);
-    const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
+    // 与 listFilesSchema 的 limit.max(200) 保持一致
+    const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 200));
     const normalizedSearch = (search || '').trim();
 
     const whereClauses = [];

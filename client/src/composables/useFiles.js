@@ -6,11 +6,33 @@ import { createStableId } from '@/utils/stableId.js';
 /** 单批次最大并发上传数 */
 const DEFAULT_CONCURRENCY = 3;
 
+/** 桌面全量拉取时的单页大小，与列表接口 limit 上限一致 */
+const LIST_ALL_PAGE_SIZE = 200;
+
+export const UPLOAD_IN_PROGRESS_MESSAGE = '已有文件正在上传，请稍后再拖入';
+
+function isAbortError(err, signal) {
+  return (
+    signal?.aborted ||
+    err?.name === 'AbortError' ||
+    err?.code === 'ERR_CANCELED'
+  );
+}
+
+function buildUploadFailureMessage(queue) {
+  const doneCount = queue.filter(item => item.status === 'done').length;
+  const failed = queue.filter(item => item.status === 'error');
+  const details = failed
+    .slice(0, 3)
+    .map(item => `${item.name}（${item.error || '上传失败'}）`)
+    .join('，');
+  const suffix = failed.length > 3 ? '…' : '';
+  return `成功 ${doneCount} 个，失败 ${failed.length} 个：${details}${suffix}`;
+}
+
 /**
- * 工作器主循环：从共享索引取下一个文件上传
- *
- * 多个 worker 共享同一个 `sharedIndex` 对象，确保每个文件只被一个 worker 取走。
- * 取消时通过 AbortSignal 通知 axios 中断请求，worker 退出循环。
+ * 工作器主循环：从共享索引取下一个文件上传。
+ * 单个文件失败只记录该条，其余文件继续；取消时中断当前请求并退出循环。
  */
 async function runWorkerLoop(ctx) {
   while (true) {
@@ -21,6 +43,7 @@ async function runWorkerLoop(ctx) {
     ctx.sharedIndex.value = i + 1;
 
     const file = ctx.fileArray[i];
+    ctx.onFileStart(i);
     try {
       await filesApi.upload(
         [file],
@@ -30,17 +53,17 @@ async function runWorkerLoop(ctx) {
         },
         ctx.signal
       );
-      ctx.onFileComplete(i);
-    } catch (err) {
-      if (
-        ctx.signal?.aborted ||
-        err?.name === 'AbortError' ||
-        err?.code === 'ERR_CANCELED'
-      ) {
-        // 用户主动取消，正常退出循环
+      if (ctx.isAborted() || ctx.signal?.aborted) {
+        ctx.onFileCancelled(i);
         break;
       }
-      throw err;
+      ctx.onFileComplete(i);
+    } catch (err) {
+      if (isAbortError(err, ctx.signal)) {
+        ctx.onFileCancelled(i);
+        break;
+      }
+      ctx.onFileError(i, err);
     }
   }
 }
@@ -99,14 +122,64 @@ export function useFiles({
   }
 
   /**
-   * 并发上传多个文件
-   * @param {File[]|File} files
+   * 按页拉全量文件，供桌面展示，不改动当前分页状态。
    */
-  async function upload(files) {
+  async function fetchAll() {
+    if (isDisposed) return;
+    loading.value = true;
+    try {
+      error.value = '';
+      lastError.value = null;
+      let currentPage = 1;
+      let collected = [];
+      let reportedTotal = 0;
+
+      while (currentPage <= 10000) {
+        const raw = await filesApi.list({
+          page: currentPage,
+          limit: LIST_ALL_PAGE_SIZE,
+          type: type.value || undefined,
+          search: (search.value || '').trim() || undefined,
+        });
+        const data = unwrapData(raw);
+        const batch = data.files || [];
+        reportedTotal = data.pagination?.total || 0;
+        collected = collected.concat(batch);
+        if (batch.length === 0 || collected.length >= reportedTotal) break;
+        currentPage += 1;
+      }
+
+      if (!isDisposed) {
+        items.value = collected;
+        total.value = reportedTotal;
+      }
+    } catch (e) {
+      lastError.value = e;
+      error.value = e.message || '加载失败';
+      throw e;
+    } finally {
+      if (!isDisposed) {
+        loading.value = false;
+      }
+    }
+  }
+
+  /**
+   * 并发上传多个文件。单个失败不中止其余文件。
+   * @param {File[]|File} files
+   * @param {{ refresh?: 'page' | 'all' }} [options]
+   */
+  async function upload(files, { refresh = 'page' } = {}) {
     if (isDisposed) return;
     if (uploading.value) {
-      // 已有上传进行中，避免重复触发
-      return;
+      const err = new Error(UPLOAD_IN_PROGRESS_MESSAGE);
+      err.code = 'UPLOAD_IN_PROGRESS';
+      throw err;
+    }
+
+    if (cleanupTimer) {
+      clearTimeout(cleanupTimer);
+      cleanupTimer = null;
     }
 
     uploading.value = true;
@@ -125,6 +198,8 @@ export function useFiles({
       name: file.name,
       size: file.size,
       progress: 0,
+      status: 'pending',
+      error: '',
     }));
 
     // 单批次 AbortController：cancelUpload 或组件卸载时触发
@@ -135,12 +210,29 @@ export function useFiles({
     const fileUploadedBytes = new Array(fileArray.length).fill(0);
     const sharedIndex = { value: 0 };
 
+    const refreshList = () => (refresh === 'all' ? fetchAll() : fetchList());
+
     const updateAggregate = () => {
       const sumBytes = fileUploadedBytes.reduce((a, b) => a + b, 0);
       uploadedBytes.value = sumBytes;
-      uploadProgress.value = totalBytes.value
-        ? Math.round((sumBytes / totalBytes.value) * 100)
-        : 0;
+      if (!totalBytes.value) {
+        const queue = uploadQueue.value;
+        const settled = queue.every(item =>
+          ['done', 'error', 'cancelled'].includes(item.status)
+        );
+        const anyDone = queue.some(item => item.status === 'done');
+        const anyError = queue.some(item => item.status === 'error');
+        uploadProgress.value = settled && anyDone && !anyError ? 100 : 0;
+        return;
+      }
+      uploadProgress.value = Math.round((sumBytes / totalBytes.value) * 100);
+    };
+
+    const onFileStart = i => {
+      if (uploadQueue.value[i]) {
+        uploadQueue.value[i].status = 'uploading';
+      }
+      currentFileName.value = fileArray[i].name;
     };
 
     const onFileProgress = (i, progress) => {
@@ -149,7 +241,6 @@ export function useFiles({
       if (uploadQueue.value[i]) {
         uploadQueue.value[i].progress = progress;
       }
-      // 更新当前正在上传的文件名（取进度非 0/100 的最新一个）
       if (progress > 0 && progress < 100) {
         currentFileName.value = file.name;
       }
@@ -161,8 +252,31 @@ export function useFiles({
       fileUploadedBytes[i] = file.size;
       if (uploadQueue.value[i]) {
         uploadQueue.value[i].progress = 100;
+        uploadQueue.value[i].status = 'done';
       }
       updateAggregate();
+    };
+
+    const onFileError = (i, err) => {
+      if (uploadQueue.value[i]) {
+        uploadQueue.value[i].status = 'error';
+        uploadQueue.value[i].error = err?.message || '上传失败';
+      }
+    };
+
+    const onFileCancelled = i => {
+      const item = uploadQueue.value[i];
+      if (item && item.status !== 'done') {
+        item.status = 'cancelled';
+      }
+    };
+
+    const markUnfinishedCancelled = () => {
+      uploadQueue.value.forEach(item => {
+        if (item.status === 'pending' || item.status === 'uploading') {
+          item.status = 'cancelled';
+        }
+      });
     };
 
     try {
@@ -176,8 +290,11 @@ export function useFiles({
         fileArray,
         sharedIndex,
         isAborted: () => isDisposed || controller.signal.aborted,
+        onFileStart,
         onFileProgress,
         onFileComplete,
+        onFileError,
+        onFileCancelled,
         signal: controller.signal,
       };
 
@@ -187,31 +304,44 @@ export function useFiles({
       }
       await Promise.all(workers);
 
-      if (!isDisposed && !controller.signal.aborted) {
-        await fetchList();
+      if (controller.signal.aborted || isDisposed) {
+        markUnfinishedCancelled();
+        if (!isDisposed) isCancelled.value = true;
+        const anyDone = uploadQueue.value.some(item => item.status === 'done');
+        if (anyDone && !isDisposed) {
+          await refreshList().catch(() => {});
+        }
+        return;
+      }
+
+      if (!isDisposed) {
+        await refreshList().catch(() => {});
+      }
+
+      const failed = uploadQueue.value.filter(item => item.status === 'error');
+      if (failed.length) {
+        const failure = new Error(buildUploadFailureMessage(uploadQueue.value));
+        failure.code = 'UPLOAD_PARTIAL_FAILURE';
+        failure.failures = failed;
+        lastError.value = failure;
+        error.value = failure.message;
+        throw failure;
       }
     } catch (e) {
-      const cancelled =
-        controller.signal.aborted ||
-        e?.name === 'AbortError' ||
-        e?.code === 'ERR_CANCELED';
-      if (cancelled) {
-        // 用户主动取消，不视为错误
-        isCancelled.value = true;
-      } else {
-        // 单个文件失败：中止剩余 worker（fail-fast），
-        // 避免其余文件在后台静默续传导致 UI 状态与真实进度不一致
-        controller.abort();
-        lastError.value = e;
-        // 批次中部分文件可能已上传成功，刷新列表保持数据一致
-        // （刷新失败不掩盖原始上传错误；先刷新再写 error，
-        //   避免 fetchList 内部重置 error 时清掉本次失败提示）
-        if (!isDisposed) {
-          await fetchList().catch(() => {});
-        }
-        error.value = e.message || '上传失败';
+      if (e?.code === 'UPLOAD_PARTIAL_FAILURE') {
         throw e;
       }
+      if (isAbortError(e, controller.signal) || isDisposed) {
+        markUnfinishedCancelled();
+        if (!isDisposed) isCancelled.value = true;
+        return;
+      }
+      lastError.value = e;
+      if (!isDisposed) {
+        await refreshList().catch(() => {});
+      }
+      error.value = e.message || '上传失败';
+      throw e;
     } finally {
       if (!isDisposed) {
         uploading.value = false;
@@ -227,6 +357,7 @@ export function useFiles({
           totalBytes.value = 0;
           currentFileName.value = '';
           uploadQueue.value = [];
+          error.value = '';
           cleanupTimer = null;
         }, 2000);
       }
@@ -293,6 +424,7 @@ export function useFiles({
     lastError,
     isCancelled,
     fetchList,
+    fetchAll,
     upload,
     cancelUpload,
     remove,

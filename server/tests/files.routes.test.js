@@ -111,7 +111,7 @@ describe('Files API routes', () => {
     }
   });
 
-  test('clamps pagination limit to 100', async () => {
+  test('accepts pagination limit up to 200', async () => {
     // Seed a dummy record directly
     const insert = db.prepare(`
       INSERT INTO files (original_name, stored_name, file_path, mime_type, file_size, type_category, file_url)
@@ -127,13 +127,12 @@ describe('Files API routes', () => {
       null
     );
 
-    // Joi 验证最大 limit 为 200，底层 model 会再钳到 100
     const res = await request(app)
       .get('/api/files')
       .query({ limit: 200 })
       .expect(200);
 
-    expect(res.body.data.pagination.limit).toBeLessThanOrEqual(100);
+    expect(res.body.data.pagination.limit).toBe(200);
     expect(res.body.data.pagination.total).toBeGreaterThanOrEqual(1);
   });
 

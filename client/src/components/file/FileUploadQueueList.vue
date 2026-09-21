@@ -16,16 +16,20 @@
         :key="item.id || item.name || index"
         :class="{
           current: index === currentIndex,
-          completed: item.progress === 100,
-          waiting: item.progress === 0 && index !== currentIndex,
+          completed: item.status === 'done' || item.progress === 100,
+          waiting:
+            (item.status === 'pending' || item.progress === 0) &&
+            index !== currentIndex &&
+            item.status !== 'error' &&
+            item.status !== 'cancelled',
+          failed: item.status === 'error',
+          cancelled: item.status === 'cancelled',
         }"
       >
         <span class="item-status">
-          {{
-            item.progress === 100 ? '✓' : index === currentIndex ? '⬆' : '○'
-          }}
+          {{ queueStatusIcon(item, index) }}
         </span>
-        <div class="item-name" :title="item.name">
+        <div class="item-name" :title="item.error || item.name">
           {{ displayItemName(item.name) }}
         </div>
         <div class="item-progress">
@@ -35,7 +39,7 @@
               :style="{ width: item.progress + '%' }"
             ></div>
           </div>
-          <span class="item-text">{{ item.progress }}%</span>
+          <span class="item-text">{{ queueStatusText(item) }}</span>
         </div>
       </div>
     </div>
@@ -54,6 +58,20 @@
 
   function displayItemName(name) {
     return truncateFileName(name, props.nameLength);
+  }
+
+  function queueStatusIcon(item, index) {
+    if (item.status === 'error') return '!';
+    if (item.status === 'cancelled') return '–';
+    if (item.status === 'done' || item.progress === 100) return '✓';
+    if (index === props.currentIndex) return '⬆';
+    return '○';
+  }
+
+  function queueStatusText(item) {
+    if (item.status === 'error') return '失败';
+    if (item.status === 'cancelled') return '已取消';
+    return `${item.progress}%`;
   }
 </script>
 
@@ -174,6 +192,18 @@
 
   .queue-item.completed .item-fill {
     background: linear-gradient(90deg, #4ade80, #22c55e);
+  }
+
+  .queue-item.failed {
+    background: #fef2f2;
+  }
+
+  .queue-item.failed .item-text {
+    color: #b91c1c;
+  }
+
+  .queue-item.cancelled {
+    opacity: 0.55;
   }
 
   .item-text {
