@@ -12,6 +12,16 @@ import {
   clearPendingStops,
 } from './storage.js';
 
+// 队列排空后同步持久化：清空期间可能又有新条目入队（如中途掉线），
+// 直接 clear 会把这些新条目从 localStorage 抹掉，刷新后永久丢失
+function persistDrainedQueue(queue, save, clear) {
+  if (queue.length === 0) {
+    clear();
+    return;
+  }
+  save(queue);
+}
+
 // 心跳机制管理
 export class HeartbeatManager {
   constructor() {
@@ -113,7 +123,11 @@ export class HeartbeatManager {
           throw error;
         }
       }
-      clearPendingStarts();
+      persistDrainedQueue(
+        this.pendingStarts,
+        savePendingStarts,
+        clearPendingStarts
+      );
     } catch (error) {
       console.warn('刷新待发送工作会话失败:', error);
       // 如果 start 队列处理失败，则不继续 heartbeats
@@ -129,7 +143,11 @@ export class HeartbeatManager {
       for (const h of pending) {
         await worktimerApi.heartbeat(h.sessionId, h.incrementMs, h.lastUpdate);
       }
-      clearPendingHeartbeats();
+      persistDrainedQueue(
+        this.pendingHeartbeats,
+        savePendingHeartbeats,
+        clearPendingHeartbeats
+      );
     } catch (error) {
       console.warn('刷新待发送工作心跳失败:', error);
       // 恢复队列以便重试
@@ -154,7 +172,7 @@ export class HeartbeatManager {
         return;
       }
     }
-    clearPendingStops();
+    persistDrainedQueue(this.pendingStops, savePendingStops, clearPendingStops);
   }
 
   async sendHeartbeat(

@@ -88,7 +88,7 @@
                 }}</span>
               </td>
               <td class="file-size">
-                {{ formatFileSize(f.fileSize || f.file_size) }}
+                {{ formatFileSize(f.fileSize ?? f.file_size) }}
               </td>
               <td class="file-type">
                 <span class="type-badge">{{

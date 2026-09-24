@@ -1,5 +1,5 @@
 <template>
-  <div class="message-list" ref="internalListRef" :ref="listRef">
+  <div class="message-list" ref="internalListRef">
     <div v-if="loading && !hasMessages" class="loading">加载中...</div>
 
     <div v-if="error" class="error">
@@ -94,7 +94,10 @@
     loadingMore: { type: Boolean, default: false },
     hasMessages: { type: Boolean, required: true },
     error: { type: [String, Object], default: '' },
-    listRef: { type: [Function, Object], default: null },
+    // 父组件接收滚动容器元素的回调（挂载时回传元素，卸载时回传 null）。
+    // 注意：不能用 :ref="listRef" 绑定——静态 ref 与动态 :ref 同名时，
+    // 编译器只保留静态 ref，动态绑定会被静默丢弃。
+    listRef: { type: Function, default: null },
     formatTime: { type: Function, required: true },
     isSearching: { type: Boolean, default: false },
     searchQuery: { type: String, default: '' },
@@ -122,12 +125,8 @@
   );
   const messagesLength = computed(() => props.messages.length);
 
-  const getListElement = () => {
-    return (
-      internalListRef.value ||
-      (typeof props.listRef === 'function' ? props.listRef() : props.listRef)
-    );
-  };
+  // 滚动容器由组件自身持有，父组件需要时通过 props.listRef 回调获取
+  const getListElement = () => internalListRef.value;
 
   const scrollToBottom = async (behavior = 'auto') => {
     await nextTick();
@@ -237,6 +236,8 @@
 
   onMounted(() => {
     const el = getListElement();
+    // 回传滚动容器，供父组件在"加载更多"后恢复滚动位置
+    props.listRef?.(el ?? null);
     if (!el) return;
     el.addEventListener('wheel', onUserScroll, { passive: true });
     el.addEventListener('touchstart', onUserScroll, { passive: true });
@@ -250,6 +251,8 @@
       el.removeEventListener('wheel', onUserScroll);
       el.removeEventListener('touchstart', onUserScroll);
     }
+    // 元素已失效，通知父组件清空引用
+    props.listRef?.(null);
     if (scrollTimeout) clearTimeout(scrollTimeout);
     if (copyFeedbackTimeout) clearTimeout(copyFeedbackTimeout);
   });

@@ -329,4 +329,17 @@ describe('MessageList', () => {
       behavior: 'smooth',
     });
   });
+
+  it('hands the scroll container to the parent via listRef and clears it on unmount', () => {
+    const listRef = vi.fn();
+    const view = render(MessageList, { props: { ...baseProps, listRef } });
+
+    const el = view.container.querySelector('.message-list');
+    expect(el).not.toBeNull();
+    // 父组件依赖这个元素在"加载更多"后恢复滚动位置，回传必须是真实容器
+    expect(listRef).toHaveBeenCalledWith(el);
+
+    view.unmount();
+    expect(listRef).toHaveBeenLastCalledWith(null);
+  });
 });

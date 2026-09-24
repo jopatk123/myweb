@@ -522,5 +522,53 @@ describe('HeartbeatManager', () => {
       expect(localStorage.getItem('work-timer-pending-heartbeats')).toBeNull();
       expect(localStorage.getItem('work-timer-pending-stops')).toBeNull();
     });
+
+    it('重放 start 期间新入队的条目不会被清空持久化抹掉', async () => {
+      const manager = new HeartbeatManager();
+      manager.enqueuePendingStart('s1', '2026-08-29T01:00:00.000Z', '18:00');
+      // 模拟请求返回前又掉线，另一会话的 start 入队
+      worktimerApi.startSession.mockImplementation(async () => {
+        manager.enqueuePendingStart('s2', '2026-08-29T02:00:00.000Z', '18:00');
+      });
+
+      await manager.flushPendingHeartbeats();
+
+      expect(manager.pendingStarts).toEqual([
+        {
+          sessionId: 's2',
+          startIso: '2026-08-29T02:00:00.000Z',
+          targetEndTime: '18:00',
+        },
+      ]);
+      // 持久化必须保留 s2，否则刷新后这条 start 永久丢失
+      expect(
+        JSON.parse(localStorage.getItem('work-timer-pending-starts'))
+      ).toHaveLength(1);
+    });
+
+    it('重放心跳期间新入队的心跳不会被清空持久化抹掉', async () => {
+      const manager = new HeartbeatManager();
+      manager.enqueuePendingHeartbeat('s1', 60000, '2026-08-29T01:10:00.000Z');
+      worktimerApi.heartbeat.mockImplementation(async () => {
+        manager.enqueuePendingHeartbeat(
+          's1',
+          60000,
+          '2026-08-29T01:20:00.000Z'
+        );
+      });
+
+      await manager.flushPendingHeartbeats();
+
+      expect(manager.pendingHeartbeats).toEqual([
+        {
+          sessionId: 's1',
+          incrementMs: 60000,
+          lastUpdate: '2026-08-29T01:20:00.000Z',
+        },
+      ]);
+      expect(
+        JSON.parse(localStorage.getItem('work-timer-pending-heartbeats'))
+      ).toHaveLength(1);
+    });
   });
 });

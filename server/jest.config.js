@@ -21,7 +21,8 @@ export default {
   collectCoverageFrom: ['src/**/*.js', '!src/server.js'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
-  // 阈值锁定当前实测基线（约 91.7/81.1/93.2/92.8），允许小幅波动；
+  // 阈值锁定当前实测基线（语句 91.23 / 分支 80.68 / 函数 92.64 / 行 92.5），
+  // 允许小幅波动；
   // 若新增模块降低覆盖，应优先补测试而非下调阈值。
   coverageThreshold: {
     global: {

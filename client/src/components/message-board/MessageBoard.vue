@@ -111,13 +111,11 @@
 
   // 本地状态
   const showSettings = ref(false);
+  // 滚动容器元素：MessageList 在挂载/卸载时通过函数 ref 回传（挂载回传元素、
+  // 卸载回传 null），供"加载更多后恢复滚动位置"使用
   const messageListRef = ref(null);
-  // MessageList 通过函数 ref 把滚动容器元素回传给父组件。
-  // 注意不能直接传 messageListRef 本身：模板表达式会把它解包成 null（ref 对象丢失），
-  // 导致"加载更多后恢复滚动位置"永远拿不到元素。el === undefined 的调用
-  // （如 MessageList.getListElement 的函数分支探测）不应清空已保存的元素。
   const setListElement = el => {
-    if (el !== undefined) messageListRef.value = el;
+    messageListRef.value = el ?? null;
   };
   const showClearConfirm = ref(false);
   const showDeleteConfirm = ref(false);

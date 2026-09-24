@@ -191,6 +191,16 @@ describe('FileManagement view', () => {
     expect(row.find('.file-icon').text()).toBe('📄');
   });
 
+  it('shows 0 B for zero-byte files instead of the dash fallback', async () => {
+    const { wrapper, mock } = await mountView();
+    mock.state.items.value = [
+      { id: 21, originalName: 'empty.txt', fileSize: 0 },
+    ];
+    await flushPromises();
+
+    expect(wrapper.find('.file-row .file-size').text()).toBe('0 B');
+  });
+
   it('shows the empty state when no files exist', async () => {
     const { wrapper } = await mountView();
 
