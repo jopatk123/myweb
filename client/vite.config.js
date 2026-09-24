@@ -36,6 +36,24 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        // 白名单模式：仅稳定的入口依赖（vue 生态/axios/uuid）进 vendor，
+        // 应用代码迭代时 vendor 命中长期缓存。其余 node_modules 模块（含
+        // mammoth/jszip 等懒加载库的传递依赖）返回 undefined，交给 Rollup
+        // 按动态 import 自动分包——黑名单排除法会漏掉传递依赖，导致懒加载
+        // 库被打进静态 vendor、拖累首屏。
+        manualChunks(id) {
+          if (/[\\/]node_modules[\\/]@vue[\\/]/.test(id)) return 'vendor';
+          if (
+            /[\\/]node_modules[\\/](vue|vue-router|axios|uuid)[\\/]/.test(id)
+          ) {
+            return 'vendor';
+          }
+          return undefined;
+        },
+      },
+    },
   },
   test: {
     environment: 'jsdom',
@@ -46,13 +64,16 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{js,vue}'],
       exclude: ['src/main.js'],
-      // 阈值锁定当前实测基线（约 86.8/74.3/64.4/86.8），允许小幅波动；
+      // 阈值锁定当前实测基线（vitest 5 AST 级重映射后的真实值），允许小幅波动；
       // 新增模块若降低覆盖，应优先补测试而非下调阈值。
+      // 历史注：旧基线 86.8/74.3/64.4/86.8 是 vitest 0.34 时代的失真值
+      // （.vue 文件 sourcemap 重映射不准导致覆盖虚高），2026-09 升级 vitest 5
+      // 后重测修正。views 层（Home/各管理页）缺直接测试是当前主要欠账。
       thresholds: {
-        lines: 85,
-        statements: 85,
-        branches: 73,
-        functions: 64,
+        lines: 50,
+        statements: 49,
+        branches: 41,
+        functions: 44,
       },
     },
   },

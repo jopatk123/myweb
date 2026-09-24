@@ -41,7 +41,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
-    "vitest": "^3.2.7",
+    "vitest": "^5.0.1",
     "vue-eslint-parser": "^10.2.0",
     "yaml": "^2.6.1"
   },
