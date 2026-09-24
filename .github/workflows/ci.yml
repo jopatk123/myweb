@@ -37,11 +37,22 @@ jobs:
       - name: Run server migrations
         run: npm --workspace server run migrate --if-present
 
-      - name: Test backend
-        run: npm run test:server
+      - name: Test backend (coverage gate)
+        # Jest/Vitest 的 coverageThreshold 门禁：低于配置阈值时命令以非零退出，阻断 CI
+        run: npm run test:cov:server
 
-      - name: Test frontend
-        run: npm run test:client
+      - name: Test frontend (coverage gate)
+        run: npm run test:cov:client
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            server/coverage/lcov.info
+            client/coverage/lcov.info
+          if-no-files-found: ignore
 
       - name: Contract check
         run: npm run contract-test --if-present

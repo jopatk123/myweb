@@ -10,11 +10,9 @@ export function useImagePreview() {
       if (image.path.startsWith('uploads/')) {
         return `/${image.path}`;
       }
-      // 其他路径使用API前缀
+      // 其他路径使用API前缀（normalizeApiBase 保证 apiBase 无尾斜杠）
       const apiBase = appEnv.apiBase || '';
-      return apiBase.endsWith('/')
-        ? `${apiBase}${image.path}`
-        : `${apiBase}/${image.path}`;
+      return `${apiBase}/${image.path}`;
     }
     return image.url || image;
   };

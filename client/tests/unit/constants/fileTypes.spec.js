@@ -4,6 +4,7 @@ import {
   MIME_TYPE_MAP,
   EXTENSION_TYPE_MAP,
   FILE_TYPE_ICONS,
+  UPLOAD_SIZE_LIMITS,
   getFileCategory,
   getFileIcon,
   getFileIconByFile,
@@ -12,6 +13,9 @@ import {
   formatUploadSpeed,
   formatRemainingTime,
 } from '@/constants/fileTypes.js';
+import { FILE_CATEGORIES as FILE_CATEGORIES_DIRECT } from '@/constants/fileTypes/categories.js';
+import { MIME_TYPE_MAP as MIME_TYPE_MAP_DIRECT } from '@/constants/fileTypes/mimeMap.js';
+import { EXTENSION_TYPE_MAP as EXTENSION_TYPE_MAP_DIRECT } from '@/constants/fileTypes/extensionMap.js';
 
 describe('fileTypes constants', () => {
   describe('FILE_CATEGORIES', () => {
@@ -298,5 +302,73 @@ describe('formatRemainingTime', () => {
     expect(formatRemainingTime(null)).toBe('');
     expect(formatRemainingTime(undefined)).toBe('');
     expect(formatRemainingTime(Infinity)).toBe('');
+  });
+});
+
+describe('fileTypes barrel re-exports & map integrity', () => {
+  describe('submodule re-export identity', () => {
+    it('categories.js re-exports the shared FILE_CATEGORIES', () => {
+      expect(FILE_CATEGORIES_DIRECT).toBe(FILE_CATEGORIES);
+      expect(FILE_CATEGORIES_DIRECT.OTHER).toBe('other');
+    });
+
+    it('mimeMap.js re-exports the shared MIME_TYPE_MAP', () => {
+      expect(MIME_TYPE_MAP_DIRECT).toBe(MIME_TYPE_MAP);
+    });
+
+    it('extensionMap.js re-exports the shared EXTENSION_TYPE_MAP', () => {
+      expect(EXTENSION_TYPE_MAP_DIRECT).toBe(EXTENSION_TYPE_MAP);
+    });
+  });
+
+  describe('map integrity', () => {
+    const categoryValues = Object.values(FILE_CATEGORIES);
+
+    it('MIME_TYPE_MAP keys are MIME strings and values are valid categories', () => {
+      expect(Object.keys(MIME_TYPE_MAP).length).toBeGreaterThan(20);
+
+      for (const [mime, category] of Object.entries(MIME_TYPE_MAP)) {
+        expect(typeof mime).toBe('string');
+        expect(mime).toContain('/');
+        expect(categoryValues).toContain(category);
+      }
+    });
+
+    it('EXTENSION_TYPE_MAP keys start with a dot and values are valid categories', () => {
+      expect(Object.keys(EXTENSION_TYPE_MAP).length).toBeGreaterThan(30);
+
+      for (const [ext, category] of Object.entries(EXTENSION_TYPE_MAP)) {
+        expect(ext.startsWith('.')).toBe(true);
+        expect(categoryValues).toContain(category);
+      }
+    });
+
+    it('spot-checks representative mappings from each category family', () => {
+      expect(MIME_TYPE_MAP['image/bmp']).toBe(FILE_CATEGORIES.IMAGE);
+      expect(MIME_TYPE_MAP['text/csv']).toBe(FILE_CATEGORIES.EXCEL);
+      expect(MIME_TYPE_MAP['application/gzip']).toBe(FILE_CATEGORIES.ARCHIVE);
+      expect(MIME_TYPE_MAP['text/markdown']).toBe(FILE_CATEGORIES.TEXT);
+
+      expect(EXTENSION_TYPE_MAP['.opus']).toBe(FILE_CATEGORIES.AUDIO);
+      expect(EXTENSION_TYPE_MAP['.md']).toBe(FILE_CATEGORIES.TEXT);
+      expect(EXTENSION_TYPE_MAP['.hpp']).toBe(FILE_CATEGORIES.CODE);
+      expect(EXTENSION_TYPE_MAP['.z']).toBe(FILE_CATEGORIES.ARCHIVE);
+    });
+
+    it('FILE_TYPE_ICONS covers every category', () => {
+      for (const category of categoryValues) {
+        expect(FILE_TYPE_ICONS[category]).toMatch(/^\/apps\/icons\/.+\.svg$/);
+      }
+    });
+  });
+
+  describe('UPLOAD_SIZE_LIMITS', () => {
+    it('exposes byte thresholds for each media family', () => {
+      expect(UPLOAD_SIZE_LIMITS.DEFAULT).toBeGreaterThan(0);
+      expect(UPLOAD_SIZE_LIMITS.IMAGE).toBe(50 * 1024 * 1024);
+      expect(UPLOAD_SIZE_LIMITS.VIDEO).toBe(2 * 1024 * 1024 * 1024);
+      expect(UPLOAD_SIZE_LIMITS.AUDIO).toBe(200 * 1024 * 1024);
+      expect(UPLOAD_SIZE_LIMITS.DOCUMENT).toBe(100 * 1024 * 1024);
+    });
   });
 });

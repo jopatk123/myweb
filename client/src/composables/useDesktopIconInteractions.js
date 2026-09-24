@@ -142,8 +142,10 @@ export default function useDesktopIconInteractions({
   }
 
   function cancelIfNotDrag() {
-    if (!dragState) return;
-    if (!dragState.dragging && dragState.longPressTimer) {
+    // 长按已进入拖拽状态时让位于 onMouseUp：cancelIfNotDrag 先于 onMouseUp 注册，
+    // 若在此处清空 dragState，onMouseUp 的网格吸附（finalizeDragForPositions）将永远不执行
+    if (!dragState || dragState.dragging) return;
+    if (dragState.longPressTimer) {
       clearTimeout(dragState.longPressTimer);
     }
     dragState = null;

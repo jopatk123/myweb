@@ -55,7 +55,7 @@
             />
           </td>
           <td>
-            {{ formatFileSize(wallpaper.fileSize || wallpaper.file_size) }}
+            {{ formatFileSize(wallpaper.fileSize ?? wallpaper.file_size) }}
           </td>
           <td>
             {{ formatDate(wallpaper.createdAt || wallpaper.created_at) }}

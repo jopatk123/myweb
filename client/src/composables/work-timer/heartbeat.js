@@ -98,7 +98,8 @@ export class HeartbeatManager {
     try {
       const starts = (this.pendingStarts || []).slice();
       this.pendingStarts = [];
-      for (const s of starts) {
+      for (let i = 0; i < starts.length; i++) {
+        const s = starts[i];
         try {
           await worktimerApi.startSession(
             s.sessionId,
@@ -106,8 +107,8 @@ export class HeartbeatManager {
             s.targetEndTime
           );
         } catch (error) {
-          // 如果 start 失败，恢复到队列并抛出以停止后续处理
-          this.pendingStarts.unshift(s);
+          // 从失败项起整批恢复，避免同批后续条目丢失
+          this.pendingStarts = starts.slice(i).concat(this.pendingStarts);
           savePendingStarts(this.pendingStarts);
           throw error;
         }
@@ -140,13 +141,15 @@ export class HeartbeatManager {
     // 心跳落库后再结束会话（重放顺序：start → heartbeat → stop）
     const stops = (this.pendingStops || []).slice();
     this.pendingStops = [];
-    for (const s of stops) {
+    for (let i = 0; i < stops.length; i++) {
+      const s = stops[i];
       try {
         // finalIncrementMs 传 null：对应的最终增量已由心跳落库，避免重复累计
         await worktimerApi.stopSession(s.sessionId, s.endTimeIso, null);
       } catch (error) {
         console.warn('刷新待发送工作会话结束请求失败:', error);
-        this.pendingStops.unshift(s);
+        // 从失败项起整批恢复，避免同批后续条目丢失
+        this.pendingStops = stops.slice(i).concat(this.pendingStops);
         savePendingStops(this.pendingStops);
         return;
       }

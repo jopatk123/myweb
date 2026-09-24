@@ -341,4 +341,132 @@ describe('useFiles composable', () => {
 
     stop();
   });
+
+  it('remove refreshes the list on success and reports failures', async () => {
+    apiMocks.delete.mockResolvedValue({ code: 200 });
+    apiMocks.list.mockResolvedValue({
+      code: 200,
+      success: true,
+      data: { files: [{ id: 2 }], pagination: { total: 1 } },
+    });
+
+    const { remove, items, error: errorRef, lastError, stop } = mountUseFiles();
+
+    await remove(1);
+    expect(apiMocks.delete).toHaveBeenCalledWith(1);
+    expect(items.value.map(file => file.id)).toEqual([2]);
+
+    apiMocks.delete.mockRejectedValue(new Error('删除失败'));
+    await expect(remove(1)).rejects.toThrow('删除失败');
+    expect(errorRef.value).toBe('删除失败');
+    expect(lastError.value.message).toBe('删除失败');
+
+    stop();
+  });
+
+  it('stops fetchAll paging when a batch comes back empty', async () => {
+    apiMocks.list
+      .mockResolvedValueOnce({
+        code: 200,
+        success: true,
+        data: { files: [{ id: 1 }], pagination: { total: 99 } },
+      })
+      .mockResolvedValueOnce({
+        code: 200,
+        success: true,
+        data: { files: [], pagination: { total: 99 } },
+      });
+
+    const { fetchAll, items, total, stop } = mountUseFiles();
+    await fetchAll();
+
+    expect(apiMocks.list).toHaveBeenCalledTimes(2);
+    expect(items.value.map(file => file.id)).toEqual([1]);
+    expect(total.value).toBe(99);
+
+    stop();
+  });
+
+  it('normalizes paging setters and delegates download urls', () => {
+    const {
+      setPage,
+      setLimit,
+      setType,
+      setSearch,
+      page,
+      limit,
+      type,
+      search,
+      getDownloadUrl,
+      stop,
+    } = mountUseFiles();
+
+    setPage('abc');
+    expect(page.value).toBe(1);
+    setPage(3);
+    expect(page.value).toBe(3);
+
+    setLimit(0);
+    expect(limit.value).toBe(20);
+    setLimit(50);
+    expect(limit.value).toBe(50);
+
+    setType(null);
+    expect(type.value).toBe('');
+    setSearch(undefined);
+    expect(search.value).toBe('');
+
+    expect(getDownloadUrl(7)).toBe('/api/files/1/download');
+    expect(apiMocks.downloadUrl).toHaveBeenCalledWith(7);
+
+    stop();
+  });
+
+  it('skips all operations after the scope is disposed', async () => {
+    const { fetchList, fetchAll, upload, remove, stop } = mountUseFiles();
+    stop();
+
+    await fetchList();
+    await fetchAll();
+    await upload([new File(['a'], 'a.txt', { type: 'text/plain' })]);
+    await remove(1);
+
+    expect(apiMocks.list).not.toHaveBeenCalled();
+    expect(apiMocks.upload).not.toHaveBeenCalled();
+    expect(apiMocks.delete).not.toHaveBeenCalled();
+  });
+
+  it('accepts a bare File and aborts the batch when the scope disposes', async () => {
+    const file = new File(['abc'], 'solo.txt', { type: 'text/plain' });
+    apiMocks.list.mockResolvedValue({
+      code: 200,
+      success: true,
+      data: { files: [], pagination: { total: 0 } },
+    });
+    apiMocks.upload.mockImplementation(
+      (_files, _onProgress, signal) =>
+        new Promise((_resolve, reject) => {
+          if (signal) {
+            signal.addEventListener('abort', () => {
+              const err = new Error('canceled');
+              err.name = 'AbortError';
+              reject(err);
+            });
+          }
+        })
+    );
+
+    const { upload, isCancelled, uploadQueue, stop } = mountUseFiles();
+    // 裸 File（非数组入参）
+    const uploadPromise = upload(file);
+    await flushPromises();
+
+    stop(); // 组件卸载 → onScopeDispose 中止当前批次
+
+    await expect(uploadPromise).resolves.toBeUndefined();
+    // dispose 触发的取消不翻转 isCancelled（与用户主动取消区分）
+    expect(isCancelled.value).toBe(false);
+    expect(uploadQueue.value[0].status).toBe('cancelled');
+    expect(apiMocks.list).not.toHaveBeenCalled();
+  });
 });

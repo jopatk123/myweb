@@ -21,7 +21,7 @@
         :error="error"
         :is-searching="isSearching"
         :search-query="searchQuery"
-        :list-ref="messageListRef"
+        :list-ref="setListElement"
         :deleting-message-id="deletingMessageId"
         :can-load-more="canLoadMore"
         :format-time="formatTime"
@@ -112,6 +112,13 @@
   // 本地状态
   const showSettings = ref(false);
   const messageListRef = ref(null);
+  // MessageList 通过函数 ref 把滚动容器元素回传给父组件。
+  // 注意不能直接传 messageListRef 本身：模板表达式会把它解包成 null（ref 对象丢失），
+  // 导致"加载更多后恢复滚动位置"永远拿不到元素。el === undefined 的调用
+  // （如 MessageList.getListElement 的函数分支探测）不应清空已保存的元素。
+  const setListElement = el => {
+    if (el !== undefined) messageListRef.value = el;
+  };
   const showClearConfirm = ref(false);
   const showDeleteConfirm = ref(false);
   const pendingDeleteMessage = ref(null);

@@ -64,16 +64,16 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{js,vue}'],
       exclude: ['src/main.js'],
-      // 阈值锁定当前实测基线（vitest 5 AST 级重映射后的真实值），允许小幅波动；
-      // 新增模块若降低覆盖，应优先补测试而非下调阈值。
+      // 阈值锁定当前实测基线（85.55/75.15/81.56/86.85，2026-09 全面补测后），
+      // 允许小幅波动；新增模块若降低覆盖，应优先补测试而非下调阈值。
       // 历史注：旧基线 86.8/74.3/64.4/86.8 是 vitest 0.34 时代的失真值
       // （.vue 文件 sourcemap 重映射不准导致覆盖虚高），2026-09 升级 vitest 5
-      // 后重测修正。views 层（Home/各管理页）缺直接测试是当前主要欠账。
+      // 后重测修正；同月经全面补测（views/composables/组件层）提升至新基线。
       thresholds: {
-        lines: 50,
-        statements: 49,
-        branches: 41,
-        functions: 44,
+        lines: 85,
+        statements: 84,
+        branches: 74,
+        functions: 80,
       },
     },
   },

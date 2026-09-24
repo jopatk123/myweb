@@ -22,6 +22,8 @@
     "test:server": "npm test -w server",
     "test:client": "npm test -w client",
     "test:cov": "npm run test:cov -w server && npm run test:cov -w client",
+    "test:cov:server": "npm run test:cov -w server",
+    "test:cov:client": "npm run test:cov -w client",
     "lint": "eslint \"**/*.{js,vue}\"",
     "lint:fix": "eslint --fix \"**/*.{js,vue}\"",
     "lint:check": "eslint \"**/*.{js,vue}\"",

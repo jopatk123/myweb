@@ -1,7 +1,35 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 import FileIcons from '@/components/desktop/FileIcons.vue';
+
+const NamedContextMenuStub = defineComponent({
+  name: 'ContextMenuStub',
+  props: ['modelValue', 'x', 'y', 'items'],
+  emits: ['select', 'update:modelValue'],
+  template: '<div class="context-menu-stub" />',
+});
+
+const NamedConfirmDialogStub = defineComponent({
+  name: 'ConfirmDialogStub',
+  props: ['modelValue', 'title', 'message'],
+  emits: ['confirm', 'update:modelValue'],
+  template: '<div class="confirm-dialog-stub" />',
+});
+
+const mountFileIcons = async ({ files = [], icons = {} } = {}) => {
+  const wrapper = mount(FileIcons, {
+    props: { files, icons },
+    global: {
+      stubs: {
+        ContextMenu: NamedContextMenuStub,
+        ConfirmDialog: NamedConfirmDialogStub,
+      },
+    },
+  });
+  await nextTick();
+  return wrapper;
+};
 
 const fileMocks = vi.hoisted(() => ({
   getDownloadUrlMock: vi.fn(id => `/api/files/${id}/download`),
@@ -312,6 +340,171 @@ describe('FileIcons', () => {
       expect(wrapper.emitted('delete-success')[0][0]).toEqual({
         file: mockFiles[0],
       });
+    });
+  });
+
+  describe('图标解析与右键菜单动作', () => {
+    afterEach(() => {
+      if (wrapper) {
+        wrapper.unmount();
+        wrapper = null;
+      }
+    });
+
+    it('resolves icons by camelCase/snake_case type with other/default fallbacks', async () => {
+      const files = [
+        { id: 1, typeCategory: 'image' },
+        { id: 2, type_category: 'video' },
+        { id: 3, typeCategory: 'weird' },
+        { id: 4 },
+      ];
+      const vm = await mountFileIcons({
+        files,
+        icons: { image: 'i.svg', video: 'v.svg', other: 'o.svg' },
+      });
+      wrapper = vm;
+
+      expect(
+        wrapper.findAll('img.icon').map(img => img.attributes('src'))
+      ).toEqual(['i.svg', 'v.svg', 'o.svg', 'o.svg']);
+    });
+
+    it('falls back to the default icon when no icon map is provided', async () => {
+      const vm = await mountFileIcons({
+        files: [{ id: 1, typeCategory: 'text' }],
+      });
+      wrapper = vm;
+
+      expect(wrapper.find('img.icon').attributes('src')).toBe(
+        '/apps/icons/file-128.svg'
+      );
+    });
+
+    it('dblclick emits open with the file', async () => {
+      const file = { id: 5, originalName: 'doc.pdf', typeCategory: 'pdf' };
+      const vm = await mountFileIcons({ files: [file] });
+      wrapper = vm;
+
+      await wrapper.find('.icon-item').trigger('dblclick');
+
+      expect(wrapper.emitted('open')[0][0]).toEqual(file);
+    });
+
+    it('preview item only appears for previewable file types', async () => {
+      const files = [
+        { id: 1, typeCategory: 'image', originalName: 'a.png' },
+        { id: 2, typeCategory: 'text', originalName: 'b.txt' },
+      ];
+      const vm = await mountFileIcons({ files });
+      wrapper = vm;
+      const items = wrapper.findAll('.icon-item');
+
+      await items[0].trigger('contextmenu', { clientX: 1, clientY: 2 });
+      let menu = wrapper.findComponent({ name: 'ContextMenuStub' });
+      expect(menu.props('items')[0].key).toBe('preview');
+      expect(menu.props('modelValue')).toBe(true);
+
+      await items[1].trigger('contextmenu', { clientX: 1, clientY: 2 });
+      menu = wrapper.findComponent({ name: 'ContextMenuStub' });
+      expect(menu.props('items').map(i => i.key)).toEqual([
+        'download',
+        'delete',
+      ]);
+    });
+
+    it('download action opens an anchor with file metadata', async () => {
+      const file = { id: 9, originalName: 'a.txt', typeCategory: 'text' };
+      const createElementSpy = vi.spyOn(document, 'createElement');
+      const clickSpy = vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(() => {});
+      const vm = await mountFileIcons({ files: [file] });
+      wrapper = vm;
+
+      await wrapper.find('.icon-item').trigger('contextmenu');
+      wrapper
+        .findComponent({ name: 'ContextMenuStub' })
+        .vm.$emit('select', 'download');
+
+      const anchor = createElementSpy.mock.results
+        .map(result => result.value)
+        .find(el => el && el.tagName === 'A');
+      expect(anchor.href).toContain('/api/files/9/download');
+      expect(anchor.download).toBe('a.txt');
+      expect(anchor.target).toBe('_blank');
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+
+      clickSpy.mockRestore();
+      createElementSpy.mockRestore();
+    });
+
+    it('delete action opens the confirm dialog for the file', async () => {
+      const file = { id: 3, originalName: 'x.png', typeCategory: 'image' };
+      const vm = await mountFileIcons({ files: [file] });
+      wrapper = vm;
+
+      await wrapper.find('.icon-item').trigger('contextmenu');
+      wrapper
+        .findComponent({ name: 'ContextMenuStub' })
+        .vm.$emit('select', 'delete');
+      await nextTick();
+
+      const dialog = wrapper.findComponent({ name: 'ConfirmDialogStub' });
+      expect(dialog.props('modelValue')).toBe(true);
+      expect(dialog.props('message')).toContain('x.png');
+    });
+
+    it('preview action re-emits open with preview flag', async () => {
+      const file = { id: 4, originalName: 'v.mp4', typeCategory: 'video' };
+      const vm = await mountFileIcons({ files: [file] });
+      wrapper = vm;
+
+      await wrapper.find('.icon-item').trigger('contextmenu');
+      wrapper
+        .findComponent({ name: 'ContextMenuStub' })
+        .vm.$emit('select', 'preview');
+
+      expect(wrapper.emitted('open')[0][0]).toMatchObject({
+        id: 4,
+        __preview: true,
+      });
+    });
+
+    it('menu actions are ignored when no file was opened via context menu', async () => {
+      const createElementSpy = vi.spyOn(document, 'createElement');
+      const vm = await mountFileIcons({
+        files: [{ id: 1, originalName: 'a.txt', typeCategory: 'text' }],
+      });
+      wrapper = vm;
+      createElementSpy.mockClear();
+
+      wrapper
+        .findComponent({ name: 'ContextMenuStub' })
+        .vm.$emit('select', 'download');
+      wrapper
+        .findComponent({ name: 'ContextMenuStub' })
+        .vm.$emit('select', 'delete');
+      await nextTick();
+
+      expect(createElementSpy).not.toHaveBeenCalled();
+      expect(
+        wrapper.findComponent({ name: 'ConfirmDialogStub' }).props('modelValue')
+      ).toBe(false);
+      expect(fileMocks.removeMock).not.toHaveBeenCalled();
+      createElementSpy.mockRestore();
+    });
+
+    it('confirm delete without a file does nothing', async () => {
+      const vm = await mountFileIcons({
+        files: [{ id: 1, originalName: 'a.txt', typeCategory: 'text' }],
+      });
+      wrapper = vm;
+
+      wrapper.vm.confirm = { visible: true, file: null };
+      await wrapper.vm.onConfirmDelete();
+
+      expect(fileMocks.removeMock).not.toHaveBeenCalled();
+      expect(wrapper.vm.confirm.visible).toBe(false);
     });
   });
 });

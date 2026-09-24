@@ -1,7 +1,43 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 import AppIcons from '@/components/desktop/AppIcons.vue';
+
+const NamedContextMenuStub = defineComponent({
+  name: 'ContextMenuStub',
+  props: ['modelValue', 'x', 'y', 'items'],
+  emits: ['select', 'update:modelValue'],
+  template: '<div class="context-menu-stub" />',
+});
+
+const mountAppIcons = async ({ apps = [], component = null } = {}) => {
+  const { useApps } = await import('@/composables/useApps.js');
+  const fetchAppsList = vi.fn(async () => apps);
+  const getAppIconUrl = vi.fn(app => `/icons/${app.iconFilename}`);
+  const setVisible = vi.fn();
+  useApps.mockReturnValue({ fetchAppsList, getAppIconUrl, setVisible });
+
+  const { getAppComponentBySlug } = await import('@/apps/registry.js');
+  getAppComponentBySlug.mockReturnValue(component);
+
+  const wrapper = mount(AppIcons, {
+    global: {
+      stubs: {
+        ContextMenu: NamedContextMenuStub,
+      },
+    },
+  });
+  await nextTick();
+  await flushPromises();
+  await nextTick();
+  return {
+    wrapper,
+    fetchAppsList,
+    getAppIconUrl,
+    setVisible,
+    getAppComponentBySlug,
+  };
+};
 
 const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -256,6 +292,253 @@ describe('AppIcons', () => {
       expect(mouseMoveListenerAdded).toBe(false);
 
       addEventListenerSpy.mockRestore();
+    });
+  });
+
+  describe('图标渲染与打开行为', () => {
+    afterEach(() => {
+      if (wrapper) {
+        wrapper.unmount();
+        wrapper = null;
+      }
+    });
+
+    it('icon url falls back: custom filename -> builtin slug -> default icon', async () => {
+      const apps = [
+        {
+          id: 1,
+          name: '自定义',
+          slug: 'custom',
+          iconFilename: 'x.png',
+          isVisible: true,
+        },
+        { id: 2, name: '计算器', slug: 'calculator', isVisible: true },
+        { id: 3, name: '未知', slug: 'nope', isVisible: true },
+      ];
+
+      const { wrapper: vm, getAppIconUrl } = await mountAppIcons({ apps });
+      wrapper = vm;
+
+      const srcs = wrapper
+        .findAll('img.icon')
+        .map(img => img.attributes('src'));
+      expect(srcs[0]).toBe('/icons/x.png');
+      expect(getAppIconUrl).toHaveBeenCalledWith({ iconFilename: 'x.png' });
+      expect(srcs[1]).toBe('/apps/icons/calculator-128.png');
+      expect(srcs[2]).toBe('/apps/icons/file-128.svg');
+    });
+
+    it('renders only visible apps and honors snake_case visibility', async () => {
+      const apps = [
+        { id: 1, name: 'A', slug: 'a', isVisible: false },
+        { id: 2, name: 'B', slug: 'b', is_visible: 0 },
+        { id: 3, name: 'C', slug: 'c', is_visible: 1 },
+      ];
+
+      const { wrapper: vm } = await mountAppIcons({ apps });
+      wrapper = vm;
+
+      const icons = wrapper.findAll('.icon-item');
+      expect(icons).toHaveLength(1);
+      expect(icons[0].attributes('data-id')).toBe('3');
+    });
+
+    it('opens custom target_url in a new window without creating an internal window', async () => {
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+      const apps = [
+        {
+          id: 1,
+          name: '外链',
+          slug: 'ext',
+          target_url: 'https://example.com',
+          isVisible: true,
+        },
+      ];
+
+      const { wrapper: vm, getAppComponentBySlug } = await mountAppIcons({
+        apps,
+      });
+      wrapper = vm;
+
+      await wrapper.find('.icon-item').trigger('dblclick');
+
+      expect(openSpy).toHaveBeenCalledWith(
+        'https://example.com',
+        '_blank',
+        'noopener,noreferrer'
+      );
+      expect(getAppComponentBySlug).not.toHaveBeenCalled();
+    });
+
+    it('activates the existing window when the app is already open', async () => {
+      const apps = [
+        { id: 1, name: '计算器', slug: 'calculator', isVisible: true },
+      ];
+      const { useWindowManager } = await import(
+        '@/composables/useWindowManager.js'
+      );
+      const findWindowByApp = vi.fn(() => ({ id: 7 }));
+      const setActiveWindow = vi.fn();
+      const createWindow = vi.fn();
+      useWindowManager.mockReturnValue({
+        createWindow,
+        findWindowByApp,
+        setActiveWindow,
+      });
+
+      const { wrapper: vm } = await mountAppIcons({ apps, component: {} });
+      wrapper = vm;
+
+      await wrapper.find('.icon-item').trigger('dblclick');
+
+      expect(findWindowByApp).toHaveBeenCalledWith('calculator');
+      expect(setActiveWindow).toHaveBeenCalledWith(7);
+      expect(createWindow).not.toHaveBeenCalled();
+    });
+
+    it('creates a window with preferred size, or skips unregistered apps', async () => {
+      const apps = [
+        { id: 1, name: '计算器', slug: 'calculator', isVisible: true },
+      ];
+      const { useWindowManager } = await import(
+        '@/composables/useWindowManager.js'
+      );
+      const createWindow = vi.fn();
+      useWindowManager.mockReturnValue({
+        createWindow,
+        findWindowByApp: vi.fn(() => null),
+        setActiveWindow: vi.fn(),
+      });
+
+      const component = { render: () => null };
+      const { wrapper: vm, getAppComponentBySlug } = await mountAppIcons({
+        apps,
+        component,
+      });
+      wrapper = vm;
+
+      await wrapper.find('.icon-item').trigger('dblclick');
+
+      expect(getAppComponentBySlug).toHaveBeenCalledWith('calculator');
+      expect(createWindow).toHaveBeenCalledTimes(1);
+      // function props cannot deep-compare; assert identity and remaining fields
+      const [createArgs] = createWindow.mock.calls[0];
+      expect(createArgs.component).toBe(component);
+      expect(createArgs).toMatchObject({
+        title: 'Test App',
+        appSlug: 'calculator',
+        width: 520,
+        height: 400,
+      });
+
+      wrapper.unmount();
+      createWindow.mockClear();
+      const { wrapper: vm2 } = await mountAppIcons({ apps, component: null });
+      wrapper = vm2;
+
+      await wrapper.find('.icon-item').trigger('dblclick');
+
+      expect(createWindow).not.toHaveBeenCalled();
+    });
+
+    it('context menu offers open and visibility toggle based on state', async () => {
+      const apps = [
+        { id: 1, name: '计算器', slug: 'calculator', isVisible: true },
+        { id: 2, name: '隐藏项', slug: 'hidden', is_visible: 0 },
+      ];
+      const { useWindowManager } = await import(
+        '@/composables/useWindowManager.js'
+      );
+      const createWindow = vi.fn();
+      useWindowManager.mockReturnValue({
+        createWindow,
+        findWindowByApp: vi.fn(() => null),
+        setActiveWindow: vi.fn(),
+      });
+
+      const { wrapper: vm } = await mountAppIcons({ apps, component: {} });
+      wrapper = vm;
+
+      await wrapper.find('.icon-item').trigger('contextmenu', {
+        clientX: 30,
+        clientY: 40,
+      });
+
+      const menu = wrapper.findComponent({ name: 'ContextMenuStub' });
+      expect(menu.props('modelValue')).toBe(true);
+      expect(menu.props('items')).toEqual([
+        { key: 'open', label: '打开' },
+        { key: 'toggleVisible', label: '隐藏' },
+      ]);
+      expect(menu.props('x')).toBe(30);
+      expect(menu.props('y')).toBe(40);
+
+      menu.vm.$emit('select', 'open');
+      expect(createWindow).toHaveBeenCalledTimes(1);
+    });
+
+    it('menu toggle visible persists and refreshes the list', async () => {
+      const apps = [
+        { id: 1, name: '计算器', slug: 'calculator', isVisible: true },
+      ];
+      const {
+        wrapper: vm,
+        fetchAppsList,
+        setVisible,
+      } = await mountAppIcons({
+        apps,
+        component: {},
+      });
+      wrapper = vm;
+
+      await wrapper.find('.icon-item').trigger('contextmenu');
+      await wrapper
+        .findComponent({ name: 'ContextMenuStub' })
+        .vm.$emit('select', 'toggleVisible');
+      await flushPromises();
+
+      expect(setVisible).toHaveBeenCalledWith(1, false);
+      expect(fetchAppsList).toHaveBeenCalledTimes(2);
+    });
+
+    it('menu toggle visible swallows persistence failures', async () => {
+      const apps = [
+        { id: 1, name: '计算器', slug: 'calculator', isVisible: true },
+      ];
+      const { wrapper: vm, setVisible } = await mountAppIcons({
+        apps,
+        component: {},
+      });
+      wrapper = vm;
+      setVisible.mockRejectedValueOnce(new Error('保存失败'));
+
+      await wrapper.find('.icon-item').trigger('contextmenu');
+      await wrapper
+        .findComponent({ name: 'ContextMenuStub' })
+        .vm.$emit('select', 'toggleVisible');
+      await flushPromises();
+
+      expect(
+        wrapper.findComponent({ name: 'ContextMenuStub' }).props('items')
+      ).toHaveLength(2);
+    });
+
+    it('menu select is a no-op before any context menu was opened', async () => {
+      const apps = [
+        { id: 1, name: '计算器', slug: 'calculator', isVisible: true },
+      ];
+      const { wrapper: vm, setVisible } = await mountAppIcons({
+        apps,
+        component: {},
+      });
+      wrapper = vm;
+
+      await wrapper
+        .findComponent({ name: 'ContextMenuStub' })
+        .vm.$emit('select', 'open');
+
+      expect(setVisible).not.toHaveBeenCalled();
+      expect(wrapper.emitted('select')).toBeUndefined();
     });
   });
 });

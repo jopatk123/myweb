@@ -152,6 +152,7 @@ curl -X DELETE \
 - `npm run build`, `npm start`：构建并运行生产后端。后端 `build` 通过 `server/scripts/build-check.js` 对所有源文件做 `node --check` 语法校验，并校验 `openapi.yaml` 顶部声明；不再是 `echo` 占位。
 - `npm run lint`, `npm run lint:fix`, `npm run format`, `npm run format:check`：ESLint 检查/修复、Prettier 格式化与校验（CI 会运行 `format:check`，提交前请确保通过）。
 - `npm test -w client`, `npm test -w server`：Vitest/Jest 单元测试。
+- `npm run test:cov`：两端跑覆盖率并执行门禁（低于 `client/vite.config.js` / `server/jest.config.js` 中配置的阈值时命令失败）；`test:cov:server` / `test:cov:client` 分别单独执行。CI 的 Test 步骤即使用这两个命令作为覆盖率门禁。
 - `npm run contract-test`：校验 `server/openapi.yaml` 并检查关键路由契约覆盖。
 - `npm run migrate -w server`, `npm run seed -w server`：数据库迁移与初始化。
 - `npm run cleanup:message-images -w server`：清理 `server/uploads/message-images/` 中未被任何留言引用的孤儿图片。默认 dry-run 仅打印，加 `-- --apply` 实际删除。建议通过 cron 每日低峰期运行。
@@ -211,6 +212,8 @@ curl -X DELETE \
 ## 测试与验证
 
 - `npm test -w client` / `npm test -w server`，可加 `test:cov` 查看覆盖率。
+- **覆盖率门禁**：client（Vitest，阈值见 `client/vite.config.js`）与 server（Jest，阈值见 `server/jest.config.js`）均配置了全局覆盖率阈值；CI 中 Test 步骤直接跑 `test:cov:server` / `test:cov:client`，不达标即失败并阻断合并，同时上传 lcov 报告为 artifact。
+- **棘轮策略**：阈值锁定当前实测基线，只升不降——新增代码若拉低覆盖率，应优先补测试而非下调阈值。
 - `npm run contract-test` 先执行 Spectral 校验，再跑一组关键路由契约测试；Spectral 报告写入 `contract-report.json`。
 
 ---

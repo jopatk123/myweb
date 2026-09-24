@@ -4,6 +4,14 @@ import { flushPromises } from '@vue/test-utils';
 import MessageList from '@/components/message-board/MessageList.vue';
 import { measureTextOverflow } from '@/utils/messageTextOverflow.js';
 
+const toast = vi.hoisted(() => ({ showError: null }));
+
+vi.mock('@/composables/useGlobalToast.js', async () => {
+  const state = { showError: vi.fn(), showSuccess: vi.fn(), showInfo: vi.fn() };
+  toast.showError = state.showError;
+  return { useGlobalToast: () => state };
+});
+
 vi.mock('@/utils/messageTextOverflow.js', async importOriginal => {
   const actual = await importOriginal();
   return {
@@ -11,6 +19,14 @@ vi.mock('@/utils/messageTextOverflow.js', async importOriginal => {
     measureTextOverflow: vi.fn(),
   };
 });
+
+vi.mock('@/components/message-board/ImagePreview.vue', () => ({
+  default: {
+    name: 'ImagePreviewStub',
+    props: ['images'],
+    template: '<div class="image-preview-stub">图片 {{ images.length }}</div>',
+  },
+}));
 
 const baseProps = {
   messages: [
@@ -44,6 +60,7 @@ const setupClipboardMock = () => {
 describe('MessageList', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    toast.showError.mockClear();
     vi.mocked(measureTextOverflow).mockReturnValue(false);
   });
 
@@ -121,5 +138,195 @@ describe('MessageList', () => {
     await fireEvent.click(getByRole('button', { name: '复制' }));
 
     expect(writeText).toHaveBeenCalledWith('测试留言');
+  });
+
+  it('shows transient copied feedback after a successful copy', async () => {
+    vi.useFakeTimers();
+    try {
+      setupClipboardMock();
+      const { getByRole, queryByRole } = render(MessageList, {
+        props: baseProps,
+      });
+
+      await fireEvent.click(getByRole('button', { name: '复制' }));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(getByRole('button', { name: '已复制' })).toBeInTheDocument();
+      vi.advanceTimersByTime(1300);
+      await Promise.resolve();
+      expect(queryByRole('button', { name: '已复制' })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows an error toast when copying fails', async () => {
+    setupClipboardMock().mockRejectedValue(new Error('denied'));
+    const { getByRole } = render(MessageList, { props: baseProps });
+
+    await fireEvent.click(getByRole('button', { name: '复制' }));
+    await flushPromises();
+
+    expect(toast.showError).toHaveBeenCalledWith(
+      '复制失败，请手动选择文本后复制'
+    );
+  });
+
+  it('disables copy for messages without text content', () => {
+    const { getByRole } = render(MessageList, {
+      props: {
+        ...baseProps,
+        messages: [{ ...baseProps.messages[0], content: '' }],
+      },
+    });
+
+    expect(getByRole('button', { name: '复制' })).toBeDisabled();
+  });
+
+  it('renders the image preview block only for messages with images', () => {
+    const withImages = render(MessageList, {
+      props: {
+        ...baseProps,
+        messages: [
+          { ...baseProps.messages[0], images: [{ id: 9, path: 'a.png' }] },
+        ],
+      },
+    });
+    expect(
+      withImages.container.querySelector('.image-preview-stub')
+    ).not.toBeNull();
+    withImages.unmount();
+
+    const withoutImages = render(MessageList, { props: baseProps });
+    expect(
+      withoutImages.container.querySelector('.image-preview-stub')
+    ).toBeNull();
+  });
+
+  it('shows the loading placeholder only before messages arrive', () => {
+    const initial = render(MessageList, {
+      props: { ...baseProps, loading: true, hasMessages: false, messages: [] },
+    });
+    expect(initial.getByText('加载中...')).toBeInTheDocument();
+    initial.unmount();
+
+    const refreshing = render(MessageList, {
+      props: { ...baseProps, loading: true },
+    });
+    expect(refreshing.queryByText('加载中...')).toBeNull();
+  });
+
+  it('shows an error banner with a working retry button', async () => {
+    const { getByText, getByRole, emitted } = render(MessageList, {
+      props: { ...baseProps, error: '网络异常' },
+    });
+
+    expect(getByText('网络异常')).toBeInTheDocument();
+    await fireEvent.click(getByRole('button', { name: '重试' }));
+
+    expect(emitted().retry).toHaveLength(1);
+  });
+
+  it('distinguishes empty states between search and normal mode', () => {
+    const searching = render(MessageList, {
+      props: {
+        ...baseProps,
+        hasMessages: false,
+        messages: [],
+        isSearching: true,
+        searchQuery: 'alice',
+      },
+    });
+    expect(
+      searching.getByText(/没有找到与“alice”相关的留言/)
+    ).toBeInTheDocument();
+    searching.unmount();
+
+    const normal = render(MessageList, {
+      props: { ...baseProps, hasMessages: false, messages: [] },
+    });
+    expect(normal.getByText('还没有留言，来发第一条吧！')).toBeInTheDocument();
+  });
+
+  it('emits request-load-more and disables the control while loading', async () => {
+    const idle = render(MessageList, {
+      props: { ...baseProps, canLoadMore: true, loadingMore: false },
+    });
+    await fireEvent.click(idle.getByRole('button', { name: '加载更早留言' }));
+    expect(idle.emitted()['request-load-more']).toHaveLength(1);
+    idle.unmount();
+
+    const busy = render(MessageList, {
+      props: { ...baseProps, canLoadMore: true, loadingMore: true },
+    });
+    const btn = busy.getByRole('button', { name: '加载中...' });
+    expect(btn).toBeDisabled();
+  });
+
+  const mockScrollMetrics = el => {
+    el.scrollTo = vi.fn();
+    Object.defineProperty(el, 'scrollHeight', {
+      value: 500,
+      configurable: true,
+    });
+    Object.defineProperty(el, 'clientHeight', {
+      value: 400,
+      configurable: true,
+    });
+    return el;
+  };
+
+  const newIncomingMessage = {
+    id: 2,
+    authorName: 'Bob',
+    authorColor: '#00ff00',
+    content: '新消息',
+    createdAt: '2026-04-06T11:00:00.000Z',
+    images: [],
+  };
+
+  it('auto-scrolls to bottom when a new message arrives near the bottom', async () => {
+    const view = render(MessageList, { props: baseProps });
+    const el = mockScrollMetrics(view.container.querySelector('.message-list'));
+
+    await view.rerender({
+      messages: [...baseProps.messages, newIncomingMessage],
+    });
+    await flushPromises();
+
+    expect(el.scrollTo).toHaveBeenCalledWith({
+      top: 500,
+      behavior: 'smooth',
+    });
+  });
+
+  it('suppresses auto-scroll while the user is scrolling', async () => {
+    const view = render(MessageList, { props: baseProps });
+    const el = mockScrollMetrics(view.container.querySelector('.message-list'));
+
+    await fireEvent.wheel(el);
+    await view.rerender({
+      messages: [...baseProps.messages, newIncomingMessage],
+    });
+    await flushPromises();
+
+    // 挂载时的初始滚动是 behavior: 'auto'，新消息触发的 smooth 滚动应被抑制
+    expect(el.scrollTo).not.toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: 'smooth' })
+    );
+  });
+
+  it('forces a scroll to bottom when the send succeeds', async () => {
+    const view = render(MessageList, { props: baseProps });
+    const el = mockScrollMetrics(view.container.querySelector('.message-list'));
+
+    await view.rerender({ sendSuccessToken: 1 });
+    await flushPromises();
+
+    expect(el.scrollTo).toHaveBeenCalledWith({
+      top: 500,
+      behavior: 'smooth',
+    });
   });
 });
