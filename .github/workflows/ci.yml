@@ -28,8 +28,10 @@ jobs:
         continue-on-error: true
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Lint
-        run: npm run lint --if-present
+      - name: Lint (含单文件行数门禁)
+        # `npm run lint` 除常规规则外，还通过 local/max-lines-error 强制单文件有效行数 <= 1000
+        # （超过 800 行为 warning，超过 1000 行以 error 退出并阻断 CI）
+        run: npm run lint
 
       - name: Format check
         run: npm run format:check
