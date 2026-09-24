@@ -24,6 +24,10 @@ beforeEach(async () => {
   await fs.rm(tempRoot, { recursive: true, force: true });
 });
 
+afterAll(async () => {
+  await fs.rm(tempRoot, { recursive: true, force: true });
+});
+
 test('copyPresetAppIcon resolves icon from dist when public is empty (Docker layout)', async () => {
   const dirs = await setupDirs();
   await fs.writeFile(path.join(dirs.distIconsDir, 'github.svg'), '<svg></svg>');

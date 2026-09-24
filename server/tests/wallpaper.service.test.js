@@ -27,6 +27,15 @@ const MINIMAL_PNG = Buffer.from([
   0x48, 0x44, 0x52,
 ]);
 
+/**
+ * 合法 1x1 灰色 PNG（全部 chunk CRC 校验通过）。
+ * 不可使用网上流传的坏 CRC 版本：libvips 升级后严格校验会拒绝解码。
+ */
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWM4ceIEAAS0AllDM6z2AAAAAElFTkSuQmCC',
+  'base64'
+);
+
 const tempDir = path.join(WALLPAPERS_DIR, 'tmp-wallpapers');
 
 let db;
@@ -349,10 +358,7 @@ test('getWallpaperThumbnail returns 400 when file path is outside uploads root',
 
 test('getWallpaperThumbnail supports png and unsupported format fallback', async () => {
   const srcPath = path.join(tempDir, 'thumb-source.png');
-  const tinyPng = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Zk4QAAAAASUVORK5CYII=',
-    'base64'
-  );
+  const tinyPng = TINY_PNG;
   await fs.writeFile(srcPath, tinyPng);
 
   const created = await service.uploadWallpaper({
@@ -416,10 +422,7 @@ test('deleteWallpaper handles thumbnail cache read/unlink errors', async () => {
 
 test('getWallpaperThumbnail concurrent requests generate thumbnail only once', async () => {
   const srcPath = path.join(tempDir, 'concurrent-thumb.png');
-  const tinyPng = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Zk4QAAAAASUVORK5CYII=',
-    'base64'
-  );
+  const tinyPng = TINY_PNG;
   await fs.writeFile(srcPath, tinyPng);
 
   const created = await service.uploadWallpaper({
@@ -450,10 +453,7 @@ test('getWallpaperThumbnail concurrent requests generate thumbnail only once', a
 
 test('getWallpaperThumbnail cleans up partial cache file on generation error', async () => {
   const srcPath = path.join(tempDir, 'fail-gen.png');
-  const tinyPng = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Zk4QAAAAASUVORK5CYII=',
-    'base64'
-  );
+  const tinyPng = TINY_PNG;
   await fs.writeFile(srcPath, tinyPng);
 
   const created = await service.uploadWallpaper({

@@ -185,6 +185,15 @@ export async function createApp(options = {}) {
       },
     })
   );
+  // /uploads 未命中静态文件时直接 404，禁止落入 SPA fallback——
+  // 否则缺失的图片/文件会以 200 返回 index.html，掩盖真实错误
+  app.use('/uploads', (req, res) => {
+    res.status(404).json({
+      code: 404,
+      message: 'Not Found',
+      path: req.originalUrl,
+    });
+  });
 
   const db =
     providedDb ||

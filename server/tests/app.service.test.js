@@ -17,7 +17,8 @@ beforeAll(async () => {
   service = new AppService(db);
 });
 
-afterAll(() => {
+afterAll(async () => {
+  await fs.rm(tempRoot, { recursive: true, force: true });
   closeTestDatabase(db);
 });
 
