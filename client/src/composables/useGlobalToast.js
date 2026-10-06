@@ -6,15 +6,18 @@ const toastState = reactive({
   type: 'info',
   duration: 2200,
   key: 0,
+  action: null,
 });
 
-function showToast(message, type = 'info', duration = 2200) {
+function showToast(message, type = 'info', duration = 2200, action = null) {
   if (!message) return;
 
   toastState.key += 1;
   toastState.message = message;
   toastState.type = type;
   toastState.duration = duration;
+  toastState.action =
+    action && typeof action.onClick === 'function' ? action : null;
   toastState.visible = true;
 }
 

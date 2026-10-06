@@ -9,6 +9,14 @@ const noteSchema = Joi.object({
   completed: Joi.boolean().optional(),
 });
 
+const bulkDeleteSchema = Joi.object({
+  ids: Joi.array()
+    .items(Joi.number().integer().positive())
+    .min(1)
+    .max(200)
+    .required(),
+});
+
 export class NotebookNoteController {
   constructor(db) {
     this.service = new NotebookNoteService(db);
@@ -77,6 +85,18 @@ export class NotebookNoteController {
       const id = Number(req.params.id);
       this.service.remove(id);
       res.json({ code: 200, message: '删除成功' });
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  async bulkRemove(req, res, next) {
+    try {
+      const { ids } = await bulkDeleteSchema.validateAsync(req.body, {
+        convert: true,
+      });
+      const deleted = this.service.removeMany(ids);
+      res.json({ code: 200, data: { deleted }, message: '批量删除成功' });
     } catch (e) {
       next(e);
     }

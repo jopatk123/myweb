@@ -5,6 +5,7 @@ const notebookApiMock = {
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
+  bulkRemove: vi.fn(),
 };
 
 vi.mock('@/api/notebook.js', () => ({
@@ -151,7 +152,56 @@ describe('useNotebook', () => {
     expect(state.notes.value[0].updatedAt).toBe('2025-06-02T08:30:00.000Z');
   });
 
-  it('keeps offline-created local notes after the server data loads', async () => {
+  it('pushes offline-created local notes to the server on the next load', async () => {
+    localStorage.setItem(
+      'notebook-notes',
+      JSON.stringify([
+        {
+          id: 'offline-1',
+          title: '离线新增',
+          description: '离线描述',
+          category: 'work',
+          completed: true,
+          priority: 'high',
+          createdAt: '2025-06-03T10:00:00Z',
+          updatedAt: '2025-06-03T10:00:00Z',
+        },
+      ])
+    );
+    notebookApiMock.list.mockResolvedValue({
+      code: 200,
+      data: { items: [], total: 0 },
+    });
+    notebookApiMock.create.mockResolvedValue({
+      code: 201,
+      data: {
+        id: 2,
+        title: '离线新增',
+        description: '离线描述',
+        category: 'work',
+        priority: 'high',
+        completed: 1,
+        created_at: '2025-06-03 10:00:00',
+        updated_at: '2025-06-03 10:00:00',
+      },
+    });
+
+    const state = await createState();
+    await state.initializeData();
+
+    expect(notebookApiMock.create).toHaveBeenCalledWith({
+      title: '离线新增',
+      description: '离线描述',
+      category: 'work',
+      priority: 'high',
+      completed: true,
+    });
+    // 本地字符串 id 记录被服务端行替换，不产生重复
+    expect(state.notes.value).toHaveLength(1);
+    expect(state.notes.value[0]).toMatchObject({ id: 2, title: '离线新增' });
+  });
+
+  it('keeps offline-created notes locally when the create push fails', async () => {
     localStorage.setItem(
       'notebook-notes',
       JSON.stringify([
@@ -165,46 +215,27 @@ describe('useNotebook', () => {
           createdAt: '2025-06-03T10:00:00Z',
           updatedAt: '2025-06-03T10:00:00Z',
         },
-        {
-          id: 1,
-          title: '服务端旧版',
-          description: '',
-          completed: false,
-          priority: 'low',
-          createdAt: '2025-06-01T10:00:00Z',
-          updatedAt: '2025-06-01T10:00:00Z',
-        },
       ])
     );
     notebookApiMock.list.mockResolvedValue({
       code: 200,
-      data: {
-        items: [
-          {
-            id: 1,
-            title: '服务端新版',
-            completed: 0,
-            priority: 'low',
-            created_at: '2025-06-01 10:00:00',
-            updated_at: '2025-06-01 10:00:00',
-          },
-        ],
-        total: 1,
-      },
+      data: { items: [], total: 0 },
     });
+    notebookApiMock.create.mockRejectedValue(new Error('network down'));
 
     const state = await createState();
     await state.initializeData();
+    state.stopServerRecovery();
 
     expect(state.serverReady.value).toBe(true);
-    // 离线新增的笔记被保留，而不是被服务器数据覆盖丢弃
-    expect(state.notes.value.map(note => note.title)).toEqual([
-      '离线新增',
-      '服务端新版',
-    ]);
+    expect(state.notes.value).toHaveLength(1);
+    expect(state.notes.value[0]).toMatchObject({
+      id: 'offline-1',
+      title: '离线新增',
+    });
   });
 
-  it('prefers the local mirror edit when it is newer than the server row', async () => {
+  it('pushes newer local edits to the server on the next load', async () => {
     localStorage.setItem(
       'notebook-notes',
       JSON.stringify([
@@ -234,6 +265,64 @@ describe('useNotebook', () => {
         total: 1,
       },
     });
+    notebookApiMock.update.mockResolvedValue({
+      code: 200,
+      data: {
+        id: 1,
+        title: '离线编辑后的标题',
+        completed: 0,
+        created_at: '2025-06-01 10:00:00',
+        updated_at: '2025-06-05 10:00:00',
+      },
+    });
+
+    const state = await createState();
+    await state.initializeData();
+
+    expect(notebookApiMock.update).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ title: '离线编辑后的标题' })
+    );
+    expect(state.notes.value[0].title).toBe('离线编辑后的标题');
+    // 镜像以服务端返回行覆盖，避免下次加载重复推送
+    const mirror = JSON.parse(localStorage.getItem('notebook-notes'));
+    expect(mirror[0].title).toBe('离线编辑后的标题');
+    expect(new Date(mirror[0].updatedAt).toISOString()).toBe(
+      '2025-06-05T10:00:00.000Z'
+    );
+  });
+
+  it('keeps the local version when the edit push fails on network', async () => {
+    localStorage.setItem(
+      'notebook-notes',
+      JSON.stringify([
+        {
+          id: 1,
+          title: '离线编辑后的标题',
+          description: '',
+          completed: false,
+          priority: 'medium',
+          createdAt: '2025-06-01T10:00:00Z',
+          updatedAt: '2025-06-05T10:00:00Z',
+        },
+      ])
+    );
+    notebookApiMock.list.mockResolvedValue({
+      code: 200,
+      data: {
+        items: [
+          {
+            id: 1,
+            title: '服务端旧标题',
+            completed: 0,
+            created_at: '2025-06-01 10:00:00',
+            updated_at: '2025-06-01 10:00:00',
+          },
+        ],
+        total: 1,
+      },
+    });
+    notebookApiMock.update.mockRejectedValue(new Error('network down'));
 
     const state = await createState();
     await state.initializeData();
@@ -292,6 +381,7 @@ describe('useNotebook', () => {
 
     const state = await createState();
     await state.initializeData();
+    state.stopServerRecovery();
 
     expect(state.serverReady.value).toBe(false);
     expect(state.error.value).toBe('服务器暂不可用，已切换到本地笔记');
@@ -307,6 +397,7 @@ describe('useNotebook', () => {
       description: '离线保存',
       priority: 'high',
     });
+    state.stopServerRecovery();
 
     expect(state.serverReady.value).toBe(false);
     expect(state.error.value).toBe('保存失败，已切换到本地模式');
@@ -391,6 +482,7 @@ describe('useNotebook', () => {
     // 网络异常时回退：退出服务端模式并继续删除本地
     notebookApiMock.remove.mockRejectedValueOnce(new Error('network down'));
     await expect(state.deleteNote(1)).resolves.toBe(true);
+    state.stopServerRecovery();
     expect(state.serverReady.value).toBe(false);
     expect(state.error.value).toBe('删除时网络异常，已同步本地结果');
     expect(state.notes.value).toEqual([]);
@@ -441,6 +533,7 @@ describe('useNotebook', () => {
     state.notes.value = [makeNote(3)];
     notebookApiMock.update.mockRejectedValueOnce(new Error('network down'));
     await expect(state.toggleNoteStatus(3)).resolves.toBe(true);
+    state.stopServerRecovery();
     expect(state.serverReady.value).toBe(false);
     expect(state.notes.value[0].completed).toBe(true);
     expect(state.error.value).toBe('状态更新失败，已切换到本地模式');
@@ -464,6 +557,215 @@ describe('useNotebook', () => {
     );
     expect(state.notes.value[0].title).toBe('更新后的标题');
     expect(state.notes.value[0].completed).toBe(true);
+  });
+
+  it('replaces the offline note instead of duplicating it when edited while online', async () => {
+    notebookApiMock.create.mockResolvedValue({
+      code: 201,
+      data: {
+        id: 42,
+        title: '编辑后的离线笔记',
+        description: '',
+        category: '',
+        priority: 'high',
+        completed: 0,
+        created_at: '2025-06-01 10:00:00',
+        updated_at: '2025-06-01 10:00:00',
+      },
+    });
+
+    const state = await createState();
+    state.notes.value = [{ ...makeNote('local-note-id'), title: '离线笔记' }];
+
+    await expect(
+      state.saveNote(
+        { title: '编辑后的离线笔记', priority: 'high' },
+        { id: 'local-note-id', title: '离线笔记', completed: false }
+      )
+    ).resolves.toBe(true);
+
+    // 旧的字符串 id 记录被移除，只剩服务端新行
+    expect(state.notes.value).toHaveLength(1);
+    expect(state.notes.value[0]).toMatchObject({
+      id: 42,
+      title: '编辑后的离线笔记',
+    });
+  });
+
+  it('records a tombstone when a server note is deleted offline and pushes it on the next load', async () => {
+    localStorage.setItem('notebook-deleted-ids', JSON.stringify([1]));
+    notebookApiMock.remove.mockResolvedValue({ code: 200 });
+    notebookApiMock.list.mockResolvedValue({
+      code: 200,
+      data: {
+        items: [
+          {
+            id: 1,
+            title: '服务端仍存在的笔记',
+            completed: 0,
+            created_at: '2025-06-01 10:00:00',
+            updated_at: '2025-06-01 10:00:00',
+          },
+        ],
+        total: 1,
+      },
+    });
+
+    const state = await createState();
+    await state.initializeData();
+
+    expect(notebookApiMock.remove).toHaveBeenCalledWith(1);
+    // 回传成功后笔记不复活，墓碑清空
+    expect(state.notes.value).toEqual([]);
+    expect(JSON.parse(localStorage.getItem('notebook-deleted-ids'))).toEqual(
+      []
+    );
+  });
+
+  it('keeps the tombstone hidden when the deletion push fails on network', async () => {
+    localStorage.setItem('notebook-deleted-ids', JSON.stringify([1]));
+    notebookApiMock.remove.mockRejectedValue(new Error('network down'));
+    notebookApiMock.list.mockResolvedValue({
+      code: 200,
+      data: {
+        items: [
+          {
+            id: 1,
+            title: '服务端仍存在的笔记',
+            completed: 0,
+            created_at: '2025-06-01 10:00:00',
+            updated_at: '2025-06-01 10:00:00',
+          },
+        ],
+        total: 1,
+      },
+    });
+
+    const state = await createState();
+    await state.initializeData();
+
+    expect(state.notes.value).toEqual([]);
+    expect(JSON.parse(localStorage.getItem('notebook-deleted-ids'))).toEqual([
+      1,
+    ]);
+  });
+
+  it('deleteNote records a tombstone when falling back after a network failure', async () => {
+    notebookApiMock.remove.mockRejectedValue(new Error('network down'));
+
+    const state = await createState();
+    state.notes.value = [makeNote(1)];
+
+    await expect(state.deleteNote(1)).resolves.toBe(true);
+    state.stopServerRecovery();
+
+    expect(state.notes.value).toEqual([]);
+    expect(JSON.parse(localStorage.getItem('notebook-deleted-ids'))).toEqual([
+      1,
+    ]);
+  });
+
+  it('deleteNotes bulk-removes server notes and returns the removed ids', async () => {
+    notebookApiMock.bulkRemove.mockResolvedValue({
+      code: 200,
+      data: { deleted: 2 },
+    });
+
+    const state = await createState();
+    state.notes.value = [
+      makeNote(1),
+      { ...makeNote(2), completed: true },
+      { ...makeNote('local-1'), completed: true },
+    ];
+
+    const removed = await state.deleteNotes([1, 2, 'local-1']);
+
+    expect(notebookApiMock.bulkRemove).toHaveBeenCalledWith([1, 2]);
+    // 服务端笔记走批量接口，字符串 id 本地删除
+    expect(notebookApiMock.remove).not.toHaveBeenCalled();
+    expect(removed).toEqual([1, 2, 'local-1']);
+    expect(state.notes.value).toEqual([]);
+  });
+
+  it('deleteNotes falls back to per-note local deletion when the bulk request fails', async () => {
+    notebookApiMock.bulkRemove.mockRejectedValue(new Error('network down'));
+
+    const state = await createState();
+    state.notes.value = [makeNote(1), makeNote(2)];
+
+    const removed = await state.deleteNotes([1, 2]);
+    state.stopServerRecovery();
+
+    expect(removed).toEqual([1, 2]);
+    expect(state.notes.value).toEqual([]);
+    // 已回退本地模式：不再请求单条删除接口，改为记录墓碑待联网回传
+    expect(notebookApiMock.remove).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem('notebook-deleted-ids'))).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it('deleteNotes reports API rejection without local deletion', async () => {
+    const apiError = new Error('ids 无效');
+    apiError.name = 'ApiError';
+    apiError.payload = { code: 400, message: 'ids 无效' };
+    notebookApiMock.bulkRemove.mockRejectedValue(apiError);
+
+    const state = await createState();
+    state.notes.value = [makeNote(1)];
+
+    const removed = await state.deleteNotes([1]);
+
+    expect(removed).toEqual([]);
+    expect(state.notes.value).toHaveLength(1);
+    expect(state.error.value).toBe('ids 无效');
+  });
+
+  it('restoreNote recreates the note with its completion state preserved', async () => {
+    notebookApiMock.create.mockResolvedValue({
+      code: 201,
+      data: { ...makeNote(9), completed: 1, title: '撤销的笔记' },
+    });
+
+    const state = await createState();
+    await state.restoreNote({
+      title: '撤销的笔记',
+      description: '',
+      category: '',
+      priority: 'medium',
+      completed: true,
+    });
+
+    expect(notebookApiMock.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '撤销的笔记', completed: true })
+    );
+    expect(state.notes.value[0].completed).toBe(true);
+  });
+
+  it('recovers server mode automatically after the connection returns', async () => {
+    vi.useFakeTimers();
+    try {
+      notebookApiMock.list.mockRejectedValueOnce(new Error('network down'));
+      notebookApiMock.list.mockResolvedValue({
+        code: 200,
+        data: { items: [], total: 0 },
+      });
+
+      const state = await createState();
+      await state.initializeData();
+
+      expect(state.serverReady.value).toBe(false);
+      expect(state.error.value).toBe('服务器暂不可用，已切换到本地笔记');
+
+      // 30s 后探活成功：自动恢复在线模式并重新加载
+      await vi.advanceTimersByTimeAsync(30000);
+
+      expect(state.serverReady.value).toBe(true);
+      expect(state.error.value).toBe(null);
+      expect(state.loading.value).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('loadNotes reports API rejections without falling back to local data', async () => {

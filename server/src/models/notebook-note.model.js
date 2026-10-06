@@ -110,4 +110,14 @@ export class NotebookNoteModel {
   delete(id) {
     return this.db.prepare('DELETE FROM notebook_notes WHERE id = ?').run(id);
   }
+
+  /** 批量删除：单条 DELETE ... IN 语句本身原子，返回实际删除行数 */
+  deleteMany(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    const placeholders = ids.map(() => '?').join(', ');
+    const res = this.db
+      .prepare(`DELETE FROM notebook_notes WHERE id IN (${placeholders})`)
+      .run(...ids);
+    return res.changes;
+  }
 }

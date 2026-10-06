@@ -8,6 +8,9 @@ export function createNotebookNotesRoutes(db) {
   router.get('/', (req, res, next) => controller.list(req, res, next));
   router.get('/:id(\\d+)', (req, res, next) => controller.get(req, res, next));
   router.post('/', (req, res, next) => controller.create(req, res, next));
+  router.post('/bulk-delete', (req, res, next) =>
+    controller.bulkRemove(req, res, next)
+  );
   router.put('/:id(\\d+)', (req, res, next) =>
     controller.update(req, res, next)
   );

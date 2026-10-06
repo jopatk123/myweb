@@ -3,7 +3,8 @@
     <input
       v-model="quickAddText"
       type="text"
-      placeholder="快速添加待办事项..."
+      placeholder="快速添加：输入 ! 设为高优先级，// 后写描述"
+      title="语法：! 前缀设为高优先级；标题后输入 // 描述内容"
       class="quick-add-input"
       @keyup.enter="handleQuickAdd"
       @focus="quickAddFocused = true"
@@ -12,10 +13,22 @@
     <button
       v-if="quickAddText.trim() || quickAddFocused"
       class="quick-add-btn"
-      @click="handleQuickAdd"
+      aria-label="添加"
       :disabled="!quickAddText.trim() || submitting"
+      @click="handleQuickAdd"
     >
-      ➕
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        width="16"
+        height="16"
+        aria-hidden="true"
+      >
+        <path d="M12 5v14M5 12h14" />
+      </svg>
     </button>
   </div>
 </template>
@@ -116,7 +129,7 @@
 
     .quick-add-input {
       padding: 6px 10px;
-      font-size: 13px;
+      font-size: 16px;
     }
 
     .quick-add-btn {

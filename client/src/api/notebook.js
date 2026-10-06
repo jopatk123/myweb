@@ -15,4 +15,7 @@ export const notebookApi = {
   remove(id) {
     return api.delete(`/notebook/${id}`);
   },
+  bulkRemove(ids) {
+    return api.post('/notebook/bulk-delete', { ids });
+  },
 };

@@ -123,4 +123,30 @@ describe('NotebookNoteService database integration', () => {
     const list = service.list();
     expect(list.total).toBe(0);
   });
+
+  test('remove throws 404 error when note does not exist', () => {
+    try {
+      service.remove(9999);
+      throw new Error('should have thrown');
+    } catch (error) {
+      expect(error.message).toBe('笔记不存在');
+      expect(error.status).toBe(404);
+    }
+  });
+
+  test('removeMany deletes the given ids and reports the count', () => {
+    const first = service.create({ title: '批量1' });
+    const second = service.create({ title: '批量2' });
+    service.create({ title: '保留' });
+
+    const deleted = service.removeMany([first.id, second.id, 999999]);
+
+    expect(deleted).toBe(2);
+    expect(service.list().total).toBe(1);
+  });
+
+  test('removeMany returns 0 for empty or invalid input', () => {
+    expect(service.removeMany([])).toBe(0);
+    expect(service.removeMany(null)).toBe(0);
+  });
 });

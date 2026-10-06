@@ -1,25 +1,43 @@
 <template>
   <div class="notebook-header">
-    <h2 class="header-title">📔 笔记本</h2>
-    <div class="header-stats">
-      <div class="stat-item">
-        <span class="stat-label">总计</span>
-        <span class="stat-value">{{ totalCount }}</span>
+    <div class="header-top">
+      <h2 class="header-title">笔记本</h2>
+      <div class="header-stats">
+        <div class="stat-item">
+          <span class="stat-label">总计</span>
+          <span class="stat-value">{{ totalCount }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">待办</span>
+          <span class="stat-value pending">{{ pendingCount }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">已完成</span>
+          <span class="stat-value completed">{{ completedCount }}</span>
+        </div>
       </div>
-      <div class="stat-item">
-        <span class="stat-label">待办</span>
-        <span class="stat-value pending">{{ pendingCount }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">已完成</span>
-        <span class="stat-value completed">{{ completedCount }}</span>
-      </div>
+    </div>
+    <div
+      v-if="totalCount > 0"
+      class="header-progress"
+      role="progressbar"
+      aria-label="完成进度"
+      :aria-valuenow="progressPercent"
+      aria-valuemin="0"
+      aria-valuemax="100"
+    >
+      <div
+        class="header-progress-fill"
+        :style="{ width: `${progressPercent}%` }"
+      ></div>
     </div>
   </div>
 </template>
 
 <script setup>
-  defineProps({
+  import { computed } from 'vue';
+
+  const props = defineProps({
     totalCount: {
       type: Number,
       default: 0,
@@ -33,18 +51,30 @@
       default: 0,
     },
   });
+
+  const progressPercent = computed(() =>
+    props.totalCount > 0
+      ? Math.round((props.completedCount / props.totalCount) * 100)
+      : 0
+  );
 </script>
 
 <style scoped>
   .notebook-header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
     color: white;
     margin-bottom: 8px;
-    gap: 12px;
     flex-shrink: 0;
     text-align: left;
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
   }
 
   .header-title {
@@ -72,7 +102,6 @@
     border-radius: 8px;
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    min-width: auto;
   }
 
   .stat-label {
@@ -97,6 +126,20 @@
     color: #4ade80;
   }
 
+  .header-progress {
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+  }
+
+  .header-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    transition: width 0.3s ease;
+  }
+
   @media (max-width: 768px) {
     .header-title {
       font-size: 1.1rem;
@@ -105,10 +148,6 @@
     .header-stats {
       gap: 6px;
       flex-wrap: wrap;
-    }
-
-    .stat-item {
-      padding: 4px 8px;
     }
 
     .stat-value {

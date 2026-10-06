@@ -182,13 +182,14 @@ describe('NotebookNoteController', () => {
       );
     });
 
-    test('returns success even when note does not exist (delete silently proceeds)', async () => {
+    test('returns 404 through next when note does not exist', async () => {
       req.params = { id: '999999' };
       await controller.remove(req, res, next);
-      // service.remove runs DELETE without throwing on non-existent id
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ code: 200 })
+      // service.remove 对不存在的笔记抛 NotFoundError，由错误中间件转为 404
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({ message: '笔记不存在' })
       );
+      expect(res.json).not.toHaveBeenCalled();
     });
 
     test('calls next on unexpected error', async () => {
@@ -197,6 +198,35 @@ describe('NotebookNoteController', () => {
       });
       req.params = { id: '1' };
       await controller.remove(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+    });
+  });
+
+  describe('bulkRemove()', () => {
+    test('deletes the given ids and returns the deleted count', async () => {
+      const created1 = controller.service.create({ title: '批量1' });
+      const created2 = controller.service.create({ title: '批量2' });
+
+      req.body = { ids: [created1.id, created2.id, 999999] };
+      await controller.bulkRemove(req, res, next);
+
+      expect(res.json).toHaveBeenCalledWith({
+        code: 200,
+        data: { deleted: 2 },
+        message: '批量删除成功',
+      });
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    test('rejects invalid ids payloads through next', async () => {
+      req.body = { ids: [] };
+      await controller.bulkRemove(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+      expect(res.json).not.toHaveBeenCalled();
+
+      next.mockClear();
+      req.body = {};
+      await controller.bulkRemove(req, res, next);
       expect(next).toHaveBeenCalledWith(expect.any(Error));
     });
   });

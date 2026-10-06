@@ -1,9 +1,13 @@
 import { ref, computed, watch } from 'vue';
 
+const PRIORITY_WEIGHT = { high: 0, medium: 1, low: 2 };
+
 export function useNotebookFilters(notes, displayLimit, resetDisplayLimit) {
   const searchQuery = ref('');
   const filterStatus = ref('all');
   const filterCategory = ref('all');
+  const filterPriority = ref('all');
+  const sortBy = ref('updated');
 
   const normalizedSearchQuery = computed(() =>
     searchQuery.value.trim().toLowerCase()
@@ -47,6 +51,10 @@ export function useNotebookFilters(notes, displayLimit, resetDisplayLimit) {
       result = result.filter(note => note.category === filterCategory.value);
     }
 
+    if (filterPriority.value !== 'all') {
+      result = result.filter(note => note.priority === filterPriority.value);
+    }
+
     if (normalizedSearchQuery.value) {
       result = result.filter(note => {
         const title = note.title?.toLowerCase() || '';
@@ -60,8 +68,22 @@ export function useNotebookFilters(notes, displayLimit, resetDisplayLimit) {
     }
 
     return result.sort((left, right) => {
+      // 已完成笔记始终沉底，不随排序方式变化
       if (left.completed !== right.completed) {
         return left.completed ? 1 : -1;
+      }
+
+      if (sortBy.value === 'priority') {
+        const diff =
+          (PRIORITY_WEIGHT[left.priority] ?? 1) -
+          (PRIORITY_WEIGHT[right.priority] ?? 1);
+        if (diff !== 0) return diff;
+      } else if (sortBy.value === 'title') {
+        const diff = (left.title || '').localeCompare(
+          right.title || '',
+          'zh-Hans-CN'
+        );
+        if (diff !== 0) return diff;
       }
 
       return (
@@ -80,19 +102,41 @@ export function useNotebookFilters(notes, displayLimit, resetDisplayLimit) {
     return allFilteredNotes.value.length > displayLimit.value;
   });
 
-  watch([searchQuery, filterStatus, filterCategory], () => {
-    if (typeof resetDisplayLimit === 'function') {
-      resetDisplayLimit();
+  const hasActiveFilters = computed(
+    () =>
+      normalizedSearchQuery.value !== '' ||
+      filterStatus.value !== 'all' ||
+      filterCategory.value !== 'all' ||
+      filterPriority.value !== 'all'
+  );
+
+  function clearFilters() {
+    searchQuery.value = '';
+    filterStatus.value = 'all';
+    filterCategory.value = 'all';
+    filterPriority.value = 'all';
+  }
+
+  watch(
+    [searchQuery, filterStatus, filterCategory, filterPriority, sortBy],
+    () => {
+      if (typeof resetDisplayLimit === 'function') {
+        resetDisplayLimit();
+      }
     }
-  });
+  );
 
   return {
     searchQuery,
     filterStatus,
     filterCategory,
+    filterPriority,
+    sortBy,
     availableCategories,
     filteredNotes,
     filteredTotal,
     hasMoreNotes,
+    hasActiveFilters,
+    clearFilters,
   };
 }

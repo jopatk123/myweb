@@ -7,7 +7,7 @@
         :note="note"
         :compact-view="compactView"
         @edit="$emit('edit', note)"
-        @delete="$emit('delete', note.id)"
+        @delete="$emit('delete', note)"
         @toggle-status="$emit('toggleStatus', note.id)"
       />
     </div>
@@ -55,22 +55,16 @@
   }
 
   .list-container::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--nb-scrollbar-track, rgba(255, 255, 255, 0.1));
     border-radius: 3px;
   }
 
   .list-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--nb-scrollbar-thumb, rgba(255, 255, 255, 0.3));
     border-radius: 3px;
   }
 
   .list-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
-  }
-
-  @media (max-width: 768px) {
-    .list-container {
-      max-height: 300px;
-    }
+    background: var(--nb-scrollbar-thumb-hover, rgba(255, 255, 255, 0.5));
   }
 </style>

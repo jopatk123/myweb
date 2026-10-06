@@ -7,7 +7,15 @@
       role="status"
       aria-live="polite"
     >
-      {{ message }}
+      <span class="toast-message">{{ message }}</span>
+      <button
+        v-if="action"
+        type="button"
+        class="toast-action"
+        @click="handleAction"
+      >
+        {{ action.text }}
+      </button>
     </div>
   </transition>
 </template>
@@ -20,8 +28,10 @@
     message: { type: String, default: '' },
     type: { type: String, default: 'success' },
     duration: { type: Number, default: 2000 },
+    // { text: string, onClick: () => void } —— 可选操作按钮（如"撤销"）
+    action: { type: Object, default: null },
   });
-  const emit = defineEmits(['update:modelValue', 'close']);
+  const emit = defineEmits(['update:modelValue', 'close', 'action']);
 
   const visibleInternal = ref(props.modelValue);
   let timeoutId = null;
@@ -33,14 +43,23 @@
     }
   };
 
+  const close = () => {
+    visibleInternal.value = false;
+    emit('update:modelValue', false);
+    emit('close');
+  };
+
   const autoHide = () => {
     clearTimer();
-    timeoutId = setTimeout(() => {
-      visibleInternal.value = false;
-      emit('update:modelValue', false);
-      emit('close');
-    }, props.duration);
+    timeoutId = setTimeout(close, props.duration);
   };
+
+  function handleAction() {
+    clearTimer();
+    emit('action');
+    props.action?.onClick?.();
+    close();
+  }
 
   watch(
     () => props.modelValue,
@@ -79,6 +98,9 @@
     z-index: 1200;
     max-width: min(420px, calc(100vw - 32px));
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16);
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
   .toast-success {
     color: #065f46;
@@ -96,6 +118,27 @@
     color: #1d4ed8;
     background: rgba(59, 130, 246, 0.1);
     border: 1px solid rgba(59, 130, 246, 0.18);
+  }
+
+  .toast-message {
+    word-break: break-word;
+  }
+
+  .toast-action {
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .toast-action:hover {
+    opacity: 0.75;
   }
 
   .fade-enter-active,

@@ -140,6 +140,9 @@ paths:
   /api/notebook:
     $ref: './openapi/paths/notebook.yaml#/list'
 
+  /api/notebook/bulk-delete:
+    $ref: './openapi/paths/notebook.yaml#/bulkDelete'
+
   /api/notebook/{id}:
     $ref: './openapi/paths/notebook.yaml#/byId'
 

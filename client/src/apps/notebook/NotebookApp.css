@@ -1,4 +1,22 @@
 .notebook-app {
+  /* 笔记本主题变量：子组件统一消费，避免硬编码色散落各处 */
+  --nb-surface: rgba(255, 255, 255, 0.95);
+  --nb-surface-strong: #ffffff;
+  --nb-surface-muted: #fafafa;
+  --nb-text-primary: #2d3748;
+  --nb-text-secondary: #4a5568;
+  --nb-text-muted: #a0aec0;
+  --nb-border: #e2e8f0;
+  --nb-accent: #667eea;
+  --nb-danger: #ef4444;
+  --nb-success: #22c55e;
+  --nb-warning: #f59e0b;
+  --nb-radius: 8px;
+  --nb-category-bg: #edf2f7;
+  --nb-scrollbar-track: rgba(255, 255, 255, 0.1);
+  --nb-scrollbar-thumb: rgba(255, 255, 255, 0.3);
+  --nb-scrollbar-thumb-hover: rgba(255, 255, 255, 0.5);
+
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -9,8 +27,8 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   min-width: 0;
-  min-height: 500px;
-  max-height: 90vh;
+  min-height: 0;
+  max-height: 100%;
 }
 
 .notebook-container {
@@ -34,6 +52,7 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .notebook-status-banner {
@@ -60,10 +79,49 @@
   border-color: rgba(43, 134, 197, 0.24);
 }
 
+/* 新建/编辑表单以覆盖层呈现，保留列表上下文 */
+.form-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(45, 55, 72, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.form-overlay .notebook-form {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.notebook-form-enter-active,
+.notebook-form-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.notebook-form-enter-active .notebook-form,
+.notebook-form-leave-active .notebook-form {
+  transition: transform 0.2s ease;
+}
+
+.notebook-form-enter-from,
+.notebook-form-leave-to {
+  opacity: 0;
+}
+
+.notebook-form-enter-from .notebook-form,
+.notebook-form-leave-to .notebook-form {
+  transform: translateY(12px);
+}
+
 @media (max-width: 768px) {
   .notebook-app {
     padding: 12px;
-    min-width: 320px;
+    min-width: 0;
   }
 
   .notebook-container {

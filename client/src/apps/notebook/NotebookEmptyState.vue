@@ -1,16 +1,22 @@
 <template>
   <div class="empty-state">
-    <!-- 简化空状态：移除大图与冗余说明，保留标题和新建按钮以腾出列表空间 -->
     <div class="empty-content compact">
       <h3 class="empty-title">
         {{ emptyTitle }}
       </h3>
       <button
-        v-if="!hasNotes"
+        v-if="hasNotes && hasFilters"
+        class="btn btn-secondary"
+        @click="$emit('clearFilters')"
+      >
+        清除筛选条件
+      </button>
+      <button
+        v-else-if="!hasNotes"
         class="btn btn-primary"
         @click="$emit('addNote')"
       >
-        ➕ 新建笔记
+        新建笔记
       </button>
     </div>
   </div>
@@ -24,19 +30,23 @@
       type: Boolean,
       default: false,
     },
+    hasFilters: {
+      type: Boolean,
+      default: false,
+    },
     searchQuery: {
       type: String,
       default: '',
     },
   });
 
-  defineEmits(['addNote']);
+  defineEmits(['addNote', 'clearFilters']);
 
   const emptyTitle = computed(() => {
     if (!props.hasNotes) {
       return '还没有笔记';
     }
-    if (props.searchQuery) {
+    if (props.searchQuery || props.hasFilters) {
       return '没有找到匹配的笔记';
     }
     return '没有符合条件的笔记';
@@ -56,30 +66,21 @@
   .empty-content {
     text-align: center;
     max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
   }
 
   .empty-content.compact {
     max-width: 100%;
   }
 
-  .empty-icon {
-    font-size: 4rem;
-    margin-bottom: 16px;
-    opacity: 0.7;
-  }
-
   .empty-title {
-    margin: 0 0 12px 0;
+    margin: 0;
     font-size: 1.4rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.9);
-  }
-
-  .empty-message {
-    margin: 0 0 24px 0;
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.7);
-    line-height: 1.5;
   }
 
   .btn {
@@ -106,14 +107,20 @@
     background: linear-gradient(45deg, #22c55e, #16a34a);
   }
 
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
   @media (max-width: 768px) {
     .empty-state {
       min-height: 100px;
       padding: 15px 12px;
-    }
-
-    .empty-icon {
-      font-size: 3rem;
     }
 
     .empty-title {

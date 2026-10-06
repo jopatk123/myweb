@@ -6,8 +6,9 @@
 
     <form @submit.prevent="handleSubmit" class="form-content">
       <div class="form-group">
-        <label class="form-label">标题 *</label>
+        <label class="form-label" for="notebook-title-input">标题 *</label>
         <input
+          id="notebook-title-input"
           v-model="formData.title"
           type="text"
           placeholder="请输入标题..."
@@ -18,8 +19,9 @@
       </div>
 
       <div class="form-group is-description">
-        <label class="form-label">描述</label>
+        <label class="form-label" for="notebook-description-input">描述</label>
         <textarea
+          id="notebook-description-input"
           v-model="formData.description"
           placeholder="请输入详细描述..."
           class="form-textarea"
@@ -29,18 +31,33 @@
 
       <div class="form-row">
         <div class="form-group flex-1">
-          <label class="form-label">分类</label>
+          <label class="form-label" for="notebook-category-input">分类</label>
           <input
+            id="notebook-category-input"
             v-model="formData.category"
             type="text"
             placeholder="例如：工作 / 生活（可留空）"
             class="form-input"
             maxlength="50"
+            list="notebook-category-options"
           />
+          <datalist id="notebook-category-options">
+            <option
+              v-for="category in categories"
+              :key="category"
+              :value="category"
+            />
+          </datalist>
         </div>
         <div class="form-group flex-1">
-          <label class="form-label">优先级</label>
-          <select v-model="formData.priority" class="form-select">
+          <label class="form-label" for="notebook-priority-select"
+            >优先级</label
+          >
+          <select
+            id="notebook-priority-select"
+            v-model="formData.priority"
+            class="form-select"
+          >
             <option value="low">低</option>
             <option value="medium">中</option>
             <option value="high">高</option>
@@ -75,6 +92,10 @@
     note: {
       type: Object,
       default: null,
+    },
+    categories: {
+      type: Array,
+      default: () => [],
     },
   });
 
@@ -135,7 +156,7 @@
 
 <style scoped>
   .notebook-form {
-    background: var(--bg-color, #ffffff);
+    background: var(--nb-surface-strong, #ffffff);
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 16px;
@@ -155,13 +176,13 @@
   .form-header {
     margin-bottom: 16px;
     text-align: left;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--nb-border, #eee);
     padding-bottom: 12px;
   }
 
   .form-header h3 {
     margin: 0;
-    color: #333;
+    color: var(--nb-text-primary, #333);
     font-size: 1.25rem;
     font-weight: 600;
   }
@@ -200,7 +221,7 @@
 
   .form-label {
     font-weight: 500;
-    color: #555;
+    color: var(--nb-text-secondary, #555);
     font-size: 14px;
   }
 
@@ -208,19 +229,20 @@
   .form-textarea,
   .form-select {
     padding: 10px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--nb-border, #ddd);
     border-radius: 8px;
     font-size: 14px;
     transition: all 0.2s ease;
-    background: #fafafa;
+    background: var(--nb-surface-muted, #fafafa);
+    color: var(--nb-text-primary, #2d3748);
   }
 
   .form-input:focus,
   .form-textarea:focus,
   .form-select:focus {
     outline: none;
-    border-color: #667eea;
-    background: white;
+    border-color: var(--nb-accent, #667eea);
+    background: var(--nb-surface-strong, white);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
 
@@ -242,7 +264,7 @@
     justify-content: flex-end;
     margin-top: 12px;
     padding-top: 16px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--nb-border, #eee);
   }
 
   .btn {
@@ -260,6 +282,19 @@
 
   .btn:hover:not(:disabled) {
     transform: translateY(-1px);
+  }
+
+  @media (max-width: 768px) {
+    .form-input,
+    .form-textarea,
+    .form-select {
+      font-size: 16px;
+    }
+
+    .form-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
   }
 
   .btn:disabled {

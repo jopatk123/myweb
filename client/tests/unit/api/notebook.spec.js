@@ -86,6 +86,17 @@ describe('notebook API', () => {
     expect(clientMock.delete).toHaveBeenCalledWith('/notebook/n9');
   });
 
+  it('posts ids when bulk removing notes', async () => {
+    const { notebookApi } = await loadNotebookApi();
+    clientMock.post.mockResolvedValue({ data: { deleted: 2 } });
+
+    await notebookApi.bulkRemove([1, 2, 3]);
+
+    expect(clientMock.post).toHaveBeenCalledWith('/notebook/bulk-delete', {
+      ids: [1, 2, 3],
+    });
+  });
+
   it('propagates backend errors to the caller', async () => {
     const { notebookApi } = await loadNotebookApi();
     const error = new Error('notebook unavailable');

@@ -5,6 +5,7 @@
     :message="toastState.message"
     :type="toastState.type"
     :duration="toastState.duration"
+    :action="toastState.action"
   />
 </template>
 

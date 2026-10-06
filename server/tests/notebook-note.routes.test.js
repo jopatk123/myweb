@@ -173,8 +173,44 @@ describe('Notebook routes', () => {
       expect(row).toBeUndefined();
     });
 
-    it('is idempotent for missing notes', async () => {
-      await request(app).delete('/api/notebook/999999').expect(200);
+    it('returns 404 for missing notes to stay consistent with get/update', async () => {
+      const res = await request(app).delete('/api/notebook/999999').expect(404);
+      expect(res.body.message).toBe('笔记不存在');
+    });
+  });
+
+  describe('POST /api/notebook/bulk-delete', () => {
+    it('deletes the given ids and reports the deleted count', async () => {
+      const id1 = insertNote({ title: '批量1', completed: 1 });
+      const id2 = insertNote({ title: '批量2', completed: 1 });
+      insertNote({ title: '保留', completed: 0 });
+
+      const res = await request(app)
+        .post('/api/notebook/bulk-delete')
+        .send({ ids: [id1, id2, 999999] })
+        .expect(200);
+
+      expect(res.body).toMatchObject({
+        code: 200,
+        message: '批量删除成功',
+      });
+      expect(res.body.data.deleted).toBe(2);
+      const remaining = db.prepare('SELECT title FROM notebook_notes').all();
+      expect(remaining).toEqual([{ title: '保留' }]);
+    });
+
+    it('rejects invalid payloads with 400', async () => {
+      await request(app)
+        .post('/api/notebook/bulk-delete')
+        .send({ ids: [] })
+        .expect(400);
+
+      await request(app)
+        .post('/api/notebook/bulk-delete')
+        .send({ ids: ['a', 'b'] })
+        .expect(400);
+
+      await request(app).post('/api/notebook/bulk-delete').send({}).expect(400);
     });
   });
 });

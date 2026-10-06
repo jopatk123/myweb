@@ -113,10 +113,17 @@ curl -X PUT \
   -d '{"title":"Updated Title","description":"Updated content","completed":true}' \
   http://localhost:3000/api/notebook/456
 
-# 删除笔记
+# 删除笔记（不存在时返回 404）
 curl -X DELETE \
   -H "Authorization: Bearer your_token" \
   http://localhost:3000/api/notebook/456
+
+# 批量删除笔记（幂等，返回实际删除行数）
+curl -X POST \
+  -H "Authorization: Bearer your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"ids":[456,789]}' \
+  http://localhost:3000/api/notebook/bulk-delete
 ```
 
 ### 安全建议

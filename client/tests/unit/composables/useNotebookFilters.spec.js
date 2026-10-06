@@ -223,4 +223,114 @@ describe('useNotebookFilters', () => {
 
     expect(filteredTotal.value).toBe(2);
   });
+
+  it('filters by priority', async () => {
+    const notes = createNotes();
+    notes.value[0].priority = 'high';
+    notes.value[1].priority = 'low';
+    const displayLimit = ref(100);
+    const { filteredNotes, filterPriority } = useNotebookFilters(
+      notes,
+      displayLimit,
+      vi.fn()
+    );
+
+    filterPriority.value = 'high';
+    await nextTick();
+
+    expect(filteredNotes.value.map(note => note.id)).toEqual([1]);
+  });
+
+  it('sorts by priority with high first while keeping completed last', async () => {
+    const notes = createNotes();
+    notes.value[0].priority = 'low';
+    notes.value[1].priority = 'high';
+    notes.value[4].priority = 'medium';
+    const displayLimit = ref(100);
+    const { filteredNotes, sortBy } = useNotebookFilters(
+      notes,
+      displayLimit,
+      vi.fn()
+    );
+
+    sortBy.value = 'priority';
+    await nextTick();
+
+    // 未完成在前：high(2) → medium(5) → low(1)；已完成的 3、4 沉底
+    expect(filteredNotes.value.map(note => note.id)).toEqual([2, 5, 1, 3, 4]);
+  });
+
+  it('sorts by title using locale-aware comparison', async () => {
+    const notes = createNotes();
+    const displayLimit = ref(100);
+    const { filteredNotes, sortBy } = useNotebookFilters(
+      notes,
+      displayLimit,
+      vi.fn()
+    );
+
+    sortBy.value = 'title';
+    await nextTick();
+
+    // 待办组内按标题排序，已完成组沉底后同样按标题排序
+    const pendingTitles = filteredNotes.value
+      .filter(note => !note.completed)
+      .map(note => note.title);
+    const completedTitles = filteredNotes.value
+      .filter(note => note.completed)
+      .map(note => note.title);
+    expect(pendingTitles).toEqual(
+      [...pendingTitles].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+    );
+    expect(completedTitles).toEqual(
+      [...completedTitles].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+    );
+    expect(filteredNotes.value.slice(-2).map(note => note.completed)).toEqual([
+      true,
+      true,
+    ]);
+  });
+
+  it('resets display limit when priority filter or sort changes', async () => {
+    const { filterPriority, sortBy, resetDisplayLimit } = setup();
+
+    filterPriority.value = 'high';
+    await nextTick();
+    sortBy.value = 'title';
+    await nextTick();
+
+    expect(resetDisplayLimit).toHaveBeenCalledTimes(2);
+  });
+
+  it('hasActiveFilters reflects every filter dimension and clearFilters resets them', async () => {
+    const {
+      searchQuery,
+      filterStatus,
+      filterCategory,
+      filterPriority,
+      hasActiveFilters,
+      clearFilters,
+    } = setup();
+
+    expect(hasActiveFilters.value).toBe(false);
+
+    filterPriority.value = 'high';
+    await nextTick();
+    expect(hasActiveFilters.value).toBe(true);
+
+    searchQuery.value = '测试';
+    filterStatus.value = 'pending';
+    filterCategory.value = 'work';
+    await nextTick();
+    expect(hasActiveFilters.value).toBe(true);
+
+    clearFilters();
+    await nextTick();
+
+    expect(hasActiveFilters.value).toBe(false);
+    expect(searchQuery.value).toBe('');
+    expect(filterStatus.value).toBe('all');
+    expect(filterCategory.value).toBe('all');
+    expect(filterPriority.value).toBe('all');
+  });
 });
