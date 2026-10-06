@@ -259,6 +259,13 @@
     outline: none;
   }
 
+  @media (max-width: 768px) {
+    .composer-textarea {
+      font-size: 16px;
+      min-height: 72px;
+    }
+  }
+
   .composer-toolbar {
     display: flex;
     justify-content: space-between;

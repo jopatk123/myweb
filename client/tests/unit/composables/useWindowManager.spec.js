@@ -2,7 +2,7 @@
  * useWindowManager composable 单元测试
  * 覆盖窗口的创建、关闭、激活、最小化、最大化等全部管理功能
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { effectScope, markRaw } from 'vue';
 import {
   useWindowManager,
@@ -153,6 +153,47 @@ describe('useWindowManager — 最小化 / 恢复', () => {
     expect(win.minimized).toBe(false);
     expect(win.visible).toBe(true);
     expect(activeWindowId.value).toBe(win.id);
+  });
+});
+
+describe('useWindowManager — 窄屏窗口', () => {
+  const originalWidth = window.innerWidth;
+  const originalHeight = window.innerHeight;
+
+  function setViewport(width, height) {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: width,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: height,
+    });
+  }
+
+  afterEach(() => {
+    setViewport(originalWidth, originalHeight);
+  });
+
+  it('窄屏创建窗口时夹紧尺寸并默认最大化', () => {
+    setViewport(390, 700);
+    const { createWindow } = useWindowManager();
+    const win = createWindow({ width: 650, height: 800, title: '笔记本' });
+
+    expect(win.maximized).toBe(true);
+    expect(win.width).toBe(374);
+    expect(win.height).toBe(636);
+  });
+
+  it('窄屏恢复窗口时保留最大化', () => {
+    setViewport(390, 700);
+    const { createWindow, minimizeWindow, restoreWindow } = useWindowManager();
+    const win = createWindow({ title: '留言板' });
+    minimizeWindow(win.id);
+    restoreWindow(win.id);
+
+    expect(win.minimized).toBe(false);
+    expect(win.maximized).toBe(true);
   });
 });
 

@@ -6,7 +6,7 @@
     @dblclick="$emit('doubleclick')"
   >
     <div class="window-title">{{ title }}</div>
-    <div class="window-controls">
+    <div class="window-controls" @pointerdown.stop>
       <button
         class="control-btn minimize"
         type="button"
@@ -129,5 +129,13 @@
 
   .window-header.active .control-btn:hover {
     background: rgba(255, 255, 255, 0.3);
+  }
+
+  @media (max-width: 768px) {
+    .control-btn {
+      width: 36px;
+      height: 36px;
+      font-size: 14px;
+    }
   }
 </style>

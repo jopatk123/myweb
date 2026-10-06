@@ -4,7 +4,11 @@
       v-for="(image, index) in images"
       :key="getImageKey(image, index)"
       class="image-item"
-      @click="$emit('image-click', index)"
+      @click="onImageClick($event, index)"
+      @pointerdown="onImagePointerDown($event, image, index)"
+      @pointermove="imageLongPress.onPointerMove"
+      @pointerup="imageLongPress.onPointerUp"
+      @pointercancel="imageLongPress.onPointerCancel"
       @contextmenu.prevent="$emit('context-menu', $event, image, index)"
     >
       <img
@@ -23,7 +27,9 @@
 </template>
 
 <script setup>
+  import { onBeforeUnmount, ref } from 'vue';
   import { useImagePreview } from '@/composables/useImagePreview';
+  import { createLongPress } from '@/utils/longPress.js';
 
   defineProps({
     images: {
@@ -32,7 +38,28 @@
     },
   });
 
-  defineEmits(['image-click', 'context-menu']);
+  const emit = defineEmits(['image-click', 'context-menu']);
+
+  const pressedImage = ref(null);
+  const imageLongPress = createLongPress(event => {
+    const current = pressedImage.value;
+    if (!current) return;
+    emit('context-menu', event, current.image, current.index);
+  });
+
+  function onImagePointerDown(event, image, index) {
+    pressedImage.value = { image, index };
+    imageLongPress.onPointerDown(event);
+  }
+
+  function onImageClick(event, index) {
+    if (imageLongPress.consumeClick(event)) return;
+    emit('image-click', index);
+  }
+
+  onBeforeUnmount(() => {
+    imageLongPress.dispose();
+  });
 
   const { getImageUrl, onImageLoad, onImageError } = useImagePreview();
 

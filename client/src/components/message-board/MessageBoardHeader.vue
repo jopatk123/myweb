@@ -186,4 +186,16 @@
     background: #f1f3f5;
     color: #212529;
   }
+
+  @media (max-width: 768px) {
+    .search-input input {
+      height: 36px;
+      font-size: 16px;
+    }
+
+    .settings-btn {
+      width: 36px;
+      height: 36px;
+    }
+  }
 </style>

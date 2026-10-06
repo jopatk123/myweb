@@ -70,6 +70,10 @@
   import AppWindowHeader from '@/components/desktop/AppWindowHeader.vue';
   import { useDraggableModal } from '@/composables/useDraggableModal.js';
   import { useAppWindowResize } from '@/composables/useAppWindowResize.js';
+  import {
+    MAXIMIZED_WINDOW_HEIGHT,
+    MAXIMIZED_WINDOW_WIDTH,
+  } from '@/utils/narrowViewport.js';
 
   const props = defineProps({
     window: {
@@ -94,9 +98,11 @@
   const windowStyle = computed(() => {
     const baseStyle = {
       zIndex: windowRef.value.zIndex,
-      width: windowRef.value.maximized ? '100vw' : `${windowRef.value.width}px`,
+      width: windowRef.value.maximized
+        ? MAXIMIZED_WINDOW_WIDTH
+        : `${windowRef.value.width}px`,
       height: windowRef.value.maximized
-        ? '100vh'
+        ? MAXIMIZED_WINDOW_HEIGHT
         : `${windowRef.value.height}px`,
       ...modalStyle.value,
     };
@@ -228,5 +234,24 @@
     transform: scale(0);
     opacity: 0;
     transition: all 0.3s ease;
+  }
+
+  @media (max-width: 768px) {
+    .app-window {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .window-body {
+      flex: 1;
+      height: auto;
+      min-height: 0;
+      padding: 8px;
+    }
+
+    .window-footer-drag,
+    .resize-handle {
+      display: none;
+    }
   }
 </style>

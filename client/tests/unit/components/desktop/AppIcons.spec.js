@@ -343,6 +343,52 @@ describe('AppIcons', () => {
       expect(icons[0].attributes('data-id')).toBe('3');
     });
 
+    it('opens an app on a single click when the viewport is narrow', async () => {
+      const originalWidth = window.innerWidth;
+      const originalHeight = window.innerHeight;
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: 390,
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: 700,
+      });
+
+      try {
+        const apps = [
+          { id: 1, name: '计算器', slug: 'calculator', isVisible: true },
+        ];
+        const { useWindowManager } = await import(
+          '@/composables/useWindowManager.js'
+        );
+        const createWindow = vi.fn();
+        useWindowManager.mockReturnValue({
+          createWindow,
+          findWindowByApp: vi.fn(() => null),
+          setActiveWindow: vi.fn(),
+        });
+
+        const component = { render: () => null };
+        const { wrapper: vm } = await mountAppIcons({ apps, component });
+        wrapper = vm;
+
+        await wrapper.find('.icon-item').trigger('click');
+
+        expect(createWindow).toHaveBeenCalledTimes(1);
+        expect(createWindow.mock.calls[0][0].appSlug).toBe('calculator');
+      } finally {
+        Object.defineProperty(window, 'innerWidth', {
+          configurable: true,
+          value: originalWidth,
+        });
+        Object.defineProperty(window, 'innerHeight', {
+          configurable: true,
+          value: originalHeight,
+        });
+      }
+    });
+
     it('opens custom target_url in a new window without creating an internal window', async () => {
       const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
       const apps = [

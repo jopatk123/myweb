@@ -12,9 +12,13 @@
       class="icon-item"
       :class="{ selected: selectedId === app.id || selectedIds.has(app.id) }"
       :data-id="app.id"
-      @click="onClick(app)"
+      @click="onIconClick(app, $event)"
       @dblclick="onDblClick(app)"
       @mousedown="onMouseDown(app, $event)"
+      @pointerdown="onIconPointerDown(app, $event)"
+      @pointermove="iconLongPress.onPointerMove"
+      @pointerup="iconLongPress.onPointerUp"
+      @pointercancel="iconLongPress.onPointerCancel"
       @contextmenu.prevent.stop="onContextMenu(app, $event)"
       @dragstart.prevent
       @dragover.prevent
@@ -37,13 +41,15 @@
 </template>
 
 <script setup>
-  import { ref, computed, onMounted } from 'vue';
+  import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
   import { getBuiltinAppPublicIconPath } from '@shared/builtin-apps.js';
   import { useApps } from '@/composables/useApps.js';
   import { getAppComponentBySlug, getAppMetaBySlug } from '@/apps/registry.js';
   import { useWindowManager } from '@/composables/useWindowManager.js';
   import ContextMenu from '@/components/common/ContextMenu.vue';
   import useDesktopIconInteractions from '@/composables/useDesktopIconInteractions.js';
+  import { createLongPress } from '@/utils/longPress.js';
+  import { isNarrowViewport } from '@/utils/narrowViewport.js';
 
   const { fetchAppsList, getAppIconUrl, setVisible } = useApps();
   const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
@@ -121,8 +127,31 @@
   }
 
   function onDblClick(app) {
+    if (isNarrowViewport()) return;
     open(app);
   }
+
+  function onIconClick(app, event) {
+    if (iconLongPress.consumeClick(event)) return;
+    onClick(app);
+    if (isNarrowViewport()) open(app);
+  }
+
+  const pressedApp = ref(null);
+  const iconLongPress = createLongPress(event => {
+    const app = pressedApp.value;
+    if (!app) return;
+    onContextMenu(app, event);
+  });
+
+  function onIconPointerDown(app, event) {
+    pressedApp.value = app;
+    iconLongPress.onPointerDown(event);
+  }
+
+  onBeforeUnmount(() => {
+    iconLongPress.dispose();
+  });
 
   // 右键菜单
   const menu = ref({ visible: false, x: 0, y: 0, app: null, items: [] });
@@ -182,6 +211,8 @@
     gap: 4px;
     cursor: default;
     user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
   }
   .icon-item.selected .label {
     background: rgba(255, 255, 255, 0.2);

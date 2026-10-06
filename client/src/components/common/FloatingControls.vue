@@ -81,8 +81,8 @@
 
   @media (max-width: 768px) {
     .floating-controls {
-      bottom: 20px;
-      right: 20px;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      right: calc(12px + env(safe-area-inset-right, 0px));
     }
 
     .control-btn {

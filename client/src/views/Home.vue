@@ -6,6 +6,10 @@
     @dragleave="onDragLeave"
     @drop.prevent="onDrop"
     @contextmenu.prevent="onDesktopContextmenu"
+    @pointerdown="onDesktopPointerDown"
+    @pointermove="desktopLongPress.onPointerMove"
+    @pointerup="desktopLongPress.onPointerUp"
+    @pointercancel="desktopLongPress.onPointerCancel"
     @mousedown="onDesktopMouseDown"
     @mousemove="onDesktopMouseMove"
     @mouseup="onDesktopMouseUp"
@@ -79,7 +83,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, unref, watch } from 'vue';
+  import { ref, computed, unref, watch, onBeforeUnmount } from 'vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import { useFiles } from '@/composables/useFiles.js';
   import WallpaperBackground from '@/components/wallpaper/WallpaperBackground.vue';
@@ -97,6 +101,10 @@
   import { useDesktopFileActions } from '@/composables/useDesktopFileActions.js';
   import { useDesktopContextMenu } from '@/composables/useDesktopContextMenu.js';
   import { useGlobalToast } from '@/composables/useGlobalToast.js';
+  import { createLongPress } from '@/utils/longPress.js';
+
+  const DESKTOP_LONG_PRESS_IGNORE =
+    '.icon-item, .app-window, .floating-controls, .ctx-root, .taskbar, button, a, input, textarea, select, label';
 
   const {
     randomWallpaper,
@@ -269,15 +277,30 @@
     .catch(e => console.warn('[Home] 获取活跃壁纸失败', e));
   fetchDesktopFiles().catch(e => console.warn('[Home] 加载文件列表失败', e));
 
+  const desktopLongPress = createLongPress(event => {
+    openMenu(event);
+  });
+
   function onDesktopContextmenu(event) {
     openMenu(event);
   }
+
+  function onDesktopPointerDown(event) {
+    const target = event.target;
+    if (target?.closest?.(DESKTOP_LONG_PRESS_IGNORE)) return;
+    desktopLongPress.onPointerDown(event);
+  }
+
+  onBeforeUnmount(() => {
+    desktopLongPress.dispose();
+  });
 
   function onDesktopMenuSelect(key) {
     handleSelect(key);
   }
 
   function onDesktopMouseDown(event) {
+    if (desktopLongPress.consumeClick(event)) return;
     closeMenu();
     selectionOnMouseDown(event);
   }
@@ -301,7 +324,9 @@
   .home {
     position: relative;
     min-height: 100vh;
+    min-height: 100dvh;
     width: 100%;
+    -webkit-touch-callout: none;
   }
 
   .home.dragover {
@@ -395,8 +420,8 @@
   /* 响应式设计 */
   @media (max-width: 768px) {
     .floating-controls {
-      bottom: 20px;
-      right: 20px;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      right: calc(12px + env(safe-area-inset-right, 0px));
     }
 
     .control-btn {

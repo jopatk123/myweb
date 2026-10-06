@@ -127,6 +127,23 @@ describe('AppWindow', () => {
     expect(emitted().activate[0][0]).toBe(windowData.id);
   });
 
+  it('keeps a maximized window above the taskbar and safe area', () => {
+    const windowData = createWindow({ maximized: true });
+    const { container } = render(AppWindow, {
+      props: {
+        window: windowData,
+        isActive: true,
+      },
+    });
+
+    const root = container.querySelector('.app-window');
+    expect(root.classList.contains('maximized')).toBe(true);
+    expect(root.style.left).toBe('0px');
+    expect(root.style.top).toBe('0px');
+    expect(root.style.width).not.toBe('520px');
+    expect(root.style.height).not.toBe('400px');
+  });
+
   it('shows fallback message when component is missing', () => {
     const windowData = createWindow({ component: null });
     const { getByText } = render(AppWindow, {

@@ -12,9 +12,13 @@
       class="icon-item"
       :class="{ selected: selectedId === f.id || selectedIds.has(f.id) }"
       :data-id="f.id"
-      @click="onClick(f)"
+      @click="onIconClick(f, $event)"
       @dblclick="onDblClick(f)"
       @mousedown="onMouseDown(f, $event)"
+      @pointerdown="onIconPointerDown(f, $event)"
+      @pointermove="iconLongPress.onPointerMove"
+      @pointerup="iconLongPress.onPointerUp"
+      @pointercancel="iconLongPress.onPointerCancel"
       @contextmenu.prevent.stop="onContextMenu(f, $event)"
       @dragstart.prevent
       @dragover.prevent
@@ -42,11 +46,13 @@
 </template>
 
 <script setup>
-  import { ref, toRef } from 'vue';
+  import { ref, toRef, onBeforeUnmount } from 'vue';
   import ContextMenu from '@/components/common/ContextMenu.vue';
   import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
   import { useFiles } from '@/composables/useFiles.js';
   import useDesktopIconInteractions from '@/composables/useDesktopIconInteractions.js';
+  import { createLongPress } from '@/utils/longPress.js';
+  import { isNarrowViewport } from '@/utils/narrowViewport.js';
 
   const props = defineProps({
     files: { type: Array, default: () => [] },
@@ -78,8 +84,31 @@
   }
 
   function onDblClick(file) {
+    if (isNarrowViewport()) return;
     emit('open', file);
   }
+
+  function onIconClick(file, event) {
+    if (iconLongPress.consumeClick(event)) return;
+    onClick(file);
+    if (isNarrowViewport()) emit('open', file);
+  }
+
+  const pressedFile = ref(null);
+  const iconLongPress = createLongPress(event => {
+    const file = pressedFile.value;
+    if (!file) return;
+    onContextMenu(file, event);
+  });
+
+  function onIconPointerDown(file, event) {
+    pressedFile.value = file;
+    iconLongPress.onPointerDown(event);
+  }
+
+  onBeforeUnmount(() => {
+    iconLongPress.dispose();
+  });
 
   const menu = ref({ visible: false, x: 0, y: 0, file: null, items: [] });
   function onContextMenu(file, e) {
@@ -156,6 +185,8 @@
     gap: 4px;
     cursor: default;
     user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
   }
   .icon-item.selected .label {
     background: rgba(255, 255, 255, 0.2);

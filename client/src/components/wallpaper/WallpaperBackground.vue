@@ -209,8 +209,8 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100dvh;
     z-index: -1;
     overflow: hidden;
   }
@@ -258,24 +258,12 @@
     }
   }
 
-  /* 响应式背景 */
+  /* 窄屏用 cover 裁切铺满，避免 100% 100% 把壁纸拉变形；scroll 避开 iOS 对 fixed 背景的问题 */
   @media (max-width: 768px) {
     .user-wallpaper {
       background-attachment: scroll;
-      background-size: 100% 100%;
-    }
-  }
-
-  /* 确保在所有设备上都能铺满 */
-  @media (orientation: portrait) {
-    .user-wallpaper {
-      background-size: 100% 100%;
-    }
-  }
-
-  @media (orientation: landscape) {
-    .user-wallpaper {
-      background-size: 100% 100%;
+      background-size: cover;
+      background-position: center;
     }
   }
 </style>

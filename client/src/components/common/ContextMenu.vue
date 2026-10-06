@@ -176,4 +176,13 @@
     background: rgba(220, 38, 38, 0.25);
     color: #fecaca;
   }
+
+  @media (max-width: 768px) {
+    .ctx-item {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 10px 16px;
+    }
+  }
 </style>

@@ -3,6 +3,10 @@ import {
   windowManagerState,
   resetWindowManagerState as resetWindowManagerStateFromStore,
 } from '@/store/windowManagerState.js';
+import {
+  fitWindowToViewport,
+  isNarrowViewport,
+} from '@/utils/narrowViewport.js';
 
 const { windows, activeWindowId, nextWindowId, baseZIndex } =
   windowManagerState;
@@ -30,6 +34,11 @@ export function useWindowManager(options = {}) {
       options.storageKey || `window:${options.appSlug || windowId}:${windowId}`
     );
 
+    const fitted = fitWindowToViewport(
+      options.width || 520,
+      options.height || 400
+    );
+
     const window = reactive({
       id: windowId,
       // 将组件标记为非响应式，避免 Vue 将组件对象转换为 reactive，
@@ -37,13 +46,13 @@ export function useWindowManager(options = {}) {
       component: options.component ? markRaw(options.component) : null,
       title: options.title || '应用窗口',
       appSlug: options.appSlug || '',
-      width: options.width || 520,
-      height: options.height || 400,
+      width: fitted.width,
+      height: fitted.height,
       x: null, // 将由 useDraggableModal / 拖拽逻辑管理
       y: null,
       zIndex: baseZIndex.value + windowId,
       minimized: false,
-      maximized: false,
+      maximized: options.maximized ?? fitted.maximized,
       visible: true,
       storageKey,
       // 可选 props，将被传递给渲染组件
@@ -70,8 +79,13 @@ export function useWindowManager(options = {}) {
     const window = windows.value.find(w => w.id === windowId);
     if (window) {
       window.minimized = false;
-      window.maximized = false;
       window.visible = true;
+      // 窄屏重新显示时保持铺满，避免按桌面尺寸把窗口推出屏幕
+      if (isNarrowViewport()) {
+        window.maximized = true;
+      } else {
+        window.maximized = false;
+      }
       // 不调用 setActiveWindow， 保持当前活动窗口不变
     }
   }
@@ -137,8 +151,10 @@ export function useWindowManager(options = {}) {
     const window = windows.value.find(w => w.id === windowId);
     if (window) {
       window.minimized = false;
-      window.maximized = false;
       window.visible = true;
+      if (!isNarrowViewport()) {
+        window.maximized = false;
+      }
       setActiveWindow(windowId);
     }
   }
