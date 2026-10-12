@@ -15,6 +15,74 @@ function getFileExtension(mimeType) {
   return MIME_TO_EXTENSION[mimeType] || 'bin';
 }
 
+/** 点击后立刻 revoke 会让部分浏览器还没开始保存就把 blob 释放掉。 */
+const DOWNLOAD_URL_REVOKE_DELAY_MS = 1000;
+
+function sanitizeDownloadName(fileName, fallback) {
+  const base = String(fileName || '')
+    .split(/[\\/]/)
+    .pop()
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f]/g, '')
+    .trim();
+  if (!base || base === '.' || base === '..') return fallback;
+  return base;
+}
+
+function resolveDownloadFilename(ids, blob, fileName) {
+  if (ids.length !== 1) {
+    return `wallpapers_${Date.now()}.zip`;
+  }
+  const fallback = `wallpaper_${ids[0]}.${getFileExtension(blob.type)}`;
+  const safeName = sanitizeDownloadName(fileName, '');
+  if (!safeName) return fallback;
+  if (/\.[A-Za-z0-9]{1,8}$/.test(safeName)) return safeName;
+  const ext = getFileExtension(blob.type);
+  return ext === 'bin' ? safeName : `${safeName}.${ext}`;
+}
+
+function triggerBlobDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_REVOKE_DELAY_MS);
+}
+
+function readBlobText(blob) {
+  if (typeof blob.text === 'function') return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
+async function describeDownloadError(err) {
+  const payload = err?.payload;
+  const isBlob =
+    payload instanceof Blob ||
+    (payload &&
+      typeof payload.size === 'number' &&
+      typeof payload.slice === 'function');
+  if (!isBlob) return err;
+  try {
+    const json = JSON.parse(await readBlobText(payload));
+    if (json?.message) {
+      const wrapped = new Error(json.message);
+      wrapped.cause = err;
+      return wrapped;
+    }
+  } catch {
+    // 错误体不是 JSON 时保留拦截器给出的原始错误
+  }
+  return err;
+}
+
 /**
  * 构造壁纸资源的可访问 URL。
  *  - uploads/ 开头的相对路径直接挂到根上，避免走 API
@@ -43,22 +111,24 @@ export function getWallpaperUrl(wallpaper) {
  * 触发壁纸下载（单张直链或多张 ZIP）。
  * 调用方需自行处理 error.value，本函数仅抛出原始错误。
  */
-export async function downloadWallpapers(ids) {
-  const blob = await wallpaperApi.downloadWallpapers(ids);
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-
-  if (ids.length === 1) {
-    link.download = `wallpaper_${ids[0]}.${getFileExtension(blob.type)}`;
-  } else {
-    link.download = `wallpapers_${new Date().getTime()}.zip`;
+export async function downloadWallpapers(ids, options = {}) {
+  const { onProgress, fileName } = options;
+  let blob;
+  try {
+    blob = onProgress
+      ? await wallpaperApi.downloadWallpapers(ids, {
+          onDownloadProgress: event => {
+            onProgress({
+              loaded: Number(event?.loaded) || 0,
+              total: Number(event?.total) || 0,
+            });
+          },
+        })
+      : await wallpaperApi.downloadWallpapers(ids);
+  } catch (err) {
+    throw await describeDownloadError(err);
   }
 
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-
+  triggerBlobDownload(blob, resolveDownloadFilename(ids, blob, fileName));
   return true;
 }

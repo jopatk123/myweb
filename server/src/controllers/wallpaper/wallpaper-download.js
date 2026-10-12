@@ -19,6 +19,26 @@ function sanitizeZipEntryName(name, fallback) {
   return base || fallback;
 }
 
+/** 同名文件在 zip 里会互相覆盖，追加序号保留每一张。 */
+function allocateZipEntryName(name, usedNames) {
+  if (!usedNames.has(name)) {
+    usedNames.add(name);
+    return name;
+  }
+  const dot = name.lastIndexOf('.');
+  const hasExt = dot > 0;
+  const base = hasExt ? name.slice(0, dot) : name;
+  const ext = hasExt ? name.slice(dot) : '';
+  let index = 2;
+  let candidate = `${base} (${index})${ext}`;
+  while (usedNames.has(candidate)) {
+    index += 1;
+    candidate = `${base} (${index})${ext}`;
+  }
+  usedNames.add(candidate);
+  return candidate;
+}
+
 /**
  * 生成符合 RFC 6266 的 Content-Disposition 头值。
  * - 使用 filename*=UTF-8'' 确保非 ASCII 文件名正确传递
@@ -70,6 +90,7 @@ export async function streamWallpaperDownload(res, wallpapers) {
 
   // 多张：先校验全部路径合法性，再开始流式打包
   const archiveEntries = [];
+  const usedNames = new Set();
   for (const wallpaper of wallpapers) {
     const filePath = toUploadsAbsolutePath(wallpaper.file_path);
     if (!filePath) {
@@ -79,9 +100,12 @@ export async function streamWallpaperDownload(res, wallpapers) {
     if (existsSync(filePath)) {
       archiveEntries.push({
         filePath,
-        name: sanitizeZipEntryName(
-          wallpaper.original_name,
-          `wallpaper_${wallpaper.id}`
+        name: allocateZipEntryName(
+          sanitizeZipEntryName(
+            wallpaper.original_name,
+            `wallpaper_${wallpaper.id}`
+          ),
+          usedNames
         ),
       });
     } else {
@@ -103,7 +127,9 @@ export async function streamWallpaperDownload(res, wallpapers) {
     `attachment; filename*=UTF-8''wallpapers_${Date.now()}.zip`
   );
 
-  const archive = archiver('zip', { zlib: { level: 6 } });
+  // 壁纸已是 JPEG/PNG/WebP，再做 deflate 几乎不减小体积，却会让用户干等打包完成。
+  // STORE 只做归档，浏览器可以更快开始收到数据。
+  const archive = archiver('zip', { store: true });
 
   archive.on('error', err => {
     downloadLogger.error('Archive error', err);

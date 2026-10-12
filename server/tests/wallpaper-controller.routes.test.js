@@ -380,6 +380,69 @@ describe('WallpaperController - downloadWallpapers()', () => {
     await fs.rm(diskPath2, { force: true });
   });
 
+  test('stores images without recompression and keeps duplicate names', async () => {
+    const filename1 = `zip-store-1-${Date.now()}.jpg`;
+    const filename2 = `zip-store-2-${Date.now()}.jpg`;
+    const diskPath1 = path.join(WALLPAPERS_DIR, filename1);
+    const diskPath2 = path.join(WALLPAPERS_DIR, filename2);
+    await fs.writeFile(diskPath1, Buffer.from('zip-image-data-1'));
+    await fs.writeFile(diskPath2, Buffer.from('zip-image-data-2'));
+
+    const id1 = insertWallpaper({
+      filename: filename1,
+      originalName: 'same.jpg',
+      filePath: `uploads/wallpapers/${filename1}`,
+      mimeType: 'image/jpeg',
+    });
+    const id2 = insertWallpaper({
+      filename: filename2,
+      originalName: 'same.jpg',
+      filePath: `uploads/wallpapers/${filename2}`,
+      mimeType: 'image/jpeg',
+    });
+
+    const res = await request(app)
+      .post('/api/wallpapers/download')
+      .send({ ids: [id1, id2] })
+      .buffer(true)
+      .parse((incoming, callback) => {
+        const chunks = [];
+        incoming.on('data', chunk => chunks.push(chunk));
+        incoming.on('end', () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    const entries = [];
+    const zip = res.body;
+    let offset = 0;
+    while (offset + 30 <= zip.length) {
+      if (zip.readUInt32LE(offset) !== 0x04034b50) {
+        offset += 1;
+        continue;
+      }
+      const flags = zip.readUInt16LE(offset + 6);
+      const method = zip.readUInt16LE(offset + 8);
+      const compressedSize = zip.readUInt32LE(offset + 18);
+      const nameLength = zip.readUInt16LE(offset + 26);
+      const extraLength = zip.readUInt16LE(offset + 28);
+      const name = zip
+        .subarray(offset + 30, offset + 30 + nameLength)
+        .toString('utf8');
+      entries.push({ name, method });
+      const headerEnd = offset + 30 + nameLength + extraLength;
+      offset = flags & 0x08 ? headerEnd + 1 : headerEnd + compressedSize;
+    }
+
+    expect(entries.map(entry => entry.name).sort()).toEqual([
+      'same (2).jpg',
+      'same.jpg',
+    ]);
+    expect(entries.every(entry => entry.method === 0)).toBe(true);
+
+    await fs.rm(diskPath1, { force: true });
+    await fs.rm(diskPath2, { force: true });
+  });
+
   test('download returns 500 when service throws', async () => {
     jest
       .spyOn(WallpaperService.prototype, 'getWallpapersByIds')

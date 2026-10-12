@@ -14,6 +14,8 @@
     <!-- 顶部 -->
     <WallpaperHeader
       :selected-count="selectedIds.length"
+      :downloading="downloading"
+      :download-status="downloadStatus"
       @upload-wallpaper="showUploadModal = true"
       @open-bulk-upload="showBulkUploadModal = true"
       @bulk-delete="handleBulkDelete"
@@ -100,7 +102,7 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, computed } from 'vue';
+  import { ref, onMounted, onUnmounted, computed } from 'vue';
   import AdminLayout from '@/components/common/AdminLayout.vue';
   import { useWallpaper } from '@/composables/useWallpaper.js';
   import PaginationControls from '@/components/common/PaginationControls.vue';
@@ -150,6 +152,8 @@
   const showEditModal = ref(false);
   const editingWallpaper = ref(null);
   const bulkMoveLoading = ref(false);
+  const downloading = ref(false);
+  const downloadStatus = ref('');
   const keyword = ref('');
   const selectedIds = ref([]);
   const siderVisible = ref(false);
@@ -194,19 +198,72 @@
     }
   };
 
-  // 下载壁纸
+  let detachDownloadGuard = () => {};
+
+  const armDownloadGuard = () => {
+    const onBeforeUnload = event => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    detachDownloadGuard = () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      detachDownloadGuard = () => {};
+    };
+  };
+
+  onUnmounted(() => {
+    detachDownloadGuard();
+  });
+
+  const formatDownloadSize = bytes => {
+    const size = Number(bytes) || 0;
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const wallpaperFileName = id => {
+    const wallpaper = (wallpapers.value || []).find(
+      item => String(item.id) === String(id)
+    );
+    if (!wallpaper) return '';
+    return (
+      wallpaper.originalName || wallpaper.original_name || wallpaper.name || ''
+    );
+  };
+
+  // 下载壁纸。多张会先在服务端打包，完成前浏览器不会弹出保存框。
   const handleDownload = async () => {
-    if (selectedIds.value.length === 0) return;
+    if (selectedIds.value.length === 0 || downloading.value) return;
+
+    const ids = [...selectedIds.value];
+    const count = ids.length;
+    const packing = count > 1;
+    downloading.value = true;
+    downloadStatus.value = packing
+      ? `正在打包 ${count} 张壁纸，文件较多时需要一些时间，请勿关闭页面`
+      : '正在准备下载，请稍候…';
+    armDownloadGuard();
 
     try {
-      await downloadWallpapers(selectedIds.value);
-      showSuccess(
-        selectedIds.value.length === 1
-          ? '壁纸已下载'
-          : `${selectedIds.value.length} 张壁纸已打包下载`
-      );
+      await downloadWallpapers(ids, {
+        fileName: count === 1 ? wallpaperFileName(ids[0]) : '',
+        onProgress: ({ loaded }) => {
+          if (!loaded) return;
+          const received = formatDownloadSize(loaded);
+          downloadStatus.value = packing
+            ? `正在打包 ${count} 张壁纸，已接收 ${received}，请勿关闭页面`
+            : `正在下载，已接收 ${received}…`;
+        },
+      });
+      showSuccess(packing ? `${count} 张壁纸已打包下载` : '壁纸已下载');
     } catch (err) {
       showError(err?.message || '下载失败，请稍后重试');
+    } finally {
+      downloading.value = false;
+      downloadStatus.value = '';
+      detachDownloadGuard();
     }
   };
 

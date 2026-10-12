@@ -36,7 +36,7 @@ vi.mock('@/components/wallpaper/WallpaperHeader.vue', () => ({
   default: {
     name: 'WallpaperHeaderStub',
     template: '<div class="header-stub" />',
-    props: ['selectedCount'],
+    props: ['selectedCount', 'downloading', 'downloadStatus'],
     emits: [
       'upload-wallpaper',
       'open-bulk-upload',
@@ -325,7 +325,10 @@ describe('WallpaperManagement view (bulk & group operations)', () => {
     wrapper.vm.selectedIds = [7];
     header.vm.$emit('download-wallpapers');
     await flushPromises();
-    expect(mock.fns.downloadWallpapers).toHaveBeenCalledWith([7]);
+    expect(mock.fns.downloadWallpapers).toHaveBeenCalledWith(
+      [7],
+      expect.objectContaining({ fileName: '' })
+    );
     expect(toastMocks.showSuccess).toHaveBeenLastCalledWith('壁纸已下载');
 
     wrapper.vm.selectedIds = [7, 8];
@@ -334,6 +337,47 @@ describe('WallpaperManagement view (bulk & group operations)', () => {
     expect(toastMocks.showSuccess).toHaveBeenLastCalledWith(
       '2 张壁纸已打包下载'
     );
+  });
+
+  it('keeps a visible packing status until the download finishes', async () => {
+    const { wrapper, mock } = await mountView();
+    let finish;
+    mock.fns.downloadWallpapers.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finish = resolve;
+        })
+    );
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+    wrapper.vm.selectedIds = [7, 8];
+
+    wrapper
+      .findComponent({ name: 'WallpaperHeaderStub' })
+      .vm.$emit('download-wallpapers');
+    await nextTick();
+
+    const header = wrapper.findComponent({ name: 'WallpaperHeaderStub' });
+    expect(header.props('downloading')).toBe(true);
+    expect(header.props('downloadStatus')).toContain('正在打包 2 张壁纸');
+    expect(header.props('downloadStatus')).toContain('请勿关闭页面');
+    expect(addSpy).toHaveBeenCalledWith('beforeunload', expect.any(Function));
+
+    header.vm.$emit('download-wallpapers');
+    expect(mock.fns.downloadWallpapers).toHaveBeenCalledTimes(1);
+
+    finish();
+    await flushPromises();
+
+    expect(header.props('downloading')).toBe(false);
+    expect(header.props('downloadStatus')).toBe('');
+    expect(removeSpy).toHaveBeenCalledWith(
+      'beforeunload',
+      expect.any(Function)
+    );
+    expect(toastMocks.showSuccess).toHaveBeenCalledWith('2 张壁纸已打包下载');
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
   });
 
   it('download failures surface an error toast', async () => {

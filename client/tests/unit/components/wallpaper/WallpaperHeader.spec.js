@@ -53,6 +53,29 @@ describe('WallpaperHeader', () => {
     );
   });
 
+  it('shows a busy download state and blocks another click', async () => {
+    const wrapper = mount(WallpaperHeader, {
+      props: {
+        selectedCount: 3,
+        downloading: true,
+        downloadStatus: '正在打包 3 张壁纸，请勿关闭页面',
+      },
+    });
+
+    const button = findButton(wrapper, '正在打包');
+    expect(button.attributes('disabled')).toBeDefined();
+    expect(button.attributes('aria-busy')).toBe('true');
+    expect(button.attributes('title')).toBe(
+      '正在准备文件，请稍候，不要重复点击'
+    );
+    expect(wrapper.find('[role="status"]').text()).toContain(
+      '正在打包 3 张壁纸，请勿关闭页面'
+    );
+
+    await button.trigger('click');
+    expect(wrapper.emitted('download-wallpapers')).toBeUndefined();
+  });
+
   it('emits the matching action events on click', async () => {
     const wrapper = mount(WallpaperHeader, { props: { selectedCount: 2 } });
 

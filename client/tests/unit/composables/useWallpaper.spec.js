@@ -191,6 +191,7 @@ describe('useWallpaper - download & group helpers', () => {
     const originalCreateObjectURL = URL.createObjectURL;
     const originalRevokeObjectURL = URL.revokeObjectURL;
     // jsdom 未实现 createObjectURL/revokeObjectURL，直接挂到全局 URL 上
+    vi.useFakeTimers();
     URL.createObjectURL = vi.fn(() => 'blob:test');
     URL.revokeObjectURL = vi.fn();
     const clickSpy = vi
@@ -207,6 +208,8 @@ describe('useWallpaper - download & group helpers', () => {
 
       expect(apiMocks.downloadWallpapers).toHaveBeenCalledWith([5]);
       expect(URL.createObjectURL).toHaveBeenCalled();
+      expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1000);
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test');
       expect(clickSpy).toHaveBeenCalledTimes(1);
 
@@ -214,6 +217,7 @@ describe('useWallpaper - download & group helpers', () => {
       await expect(w.downloadWallpapers([6])).rejects.toThrow('offline');
       expect(w.error.value).toBe('offline');
     } finally {
+      vi.useRealTimers();
       URL.createObjectURL = originalCreateObjectURL;
       URL.revokeObjectURL = originalRevokeObjectURL;
       clickSpy.mockRestore();

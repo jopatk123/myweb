@@ -53,9 +53,9 @@ export function useWallpaper() {
   const hasWallpapers = computed(() => wallpapers.value.length > 0);
   const hasGroups = computed(() => groups.value.length > 0);
 
-  const downloadWallpapers = async ids => {
+  const downloadWallpapers = async (ids, options) => {
     try {
-      return await downloadWallpapersUtil(ids);
+      return await downloadWallpapersUtil(ids, options);
     } catch (err) {
       error.value = err.message || '下载失败';
       throw err;
