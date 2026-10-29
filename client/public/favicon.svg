@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="myweb">
+  <defs>
+    <clipPath id="sq"><rect x="0" y="0" width="64" height="64" rx="14"/></clipPath>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#EEF2FF"/>
+  <g clip-path="url(#sq)">
+    <!-- tiles -->
+    <rect x="10" y="10" width="20" height="20" rx="5" fill="#3B82F6"/>
+    <rect x="34" y="10" width="20" height="20" rx="5" fill="#14B8A6"/>
+    <rect x="10" y="34" width="20" height="20" rx="5" fill="#F59E0B"/>
+    <rect x="34" y="34" width="20" height="20" rx="5" fill="#8B5CF6"/>
+    <!-- glyphs -->
+    <!-- blue: 4-point star -->
+    <path d="M20 13.5 L21.6 18.4 L26.5 20 L21.6 21.6 L20 26.5 L18.4 21.6 L13.5 20 L18.4 18.4 Z" fill="#fff"/>
+    <!-- teal: ring with notch -->
+    <circle cx="44" cy="20" r="5.2" fill="none" stroke="#fff" stroke-width="2.6"/>
+    <path d="M47.8 23.2 A5.2 5.2 0 0 0 46.2 24.6" fill="none" stroke="#EEF2FF" stroke-width="3.2" stroke-linecap="round"/>
+    <!-- amber: rounded square -->
+    <rect x="15.5" y="39.5" width="9" height="9" rx="2.2" fill="#fff"/>
+    <!-- purple: hexagon outline -->
+    <path d="M44 38.2 L48.6 40.8 L48.6 45.2 L44 47.8 L39.4 45.2 L39.4 40.8 Z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+</svg>
