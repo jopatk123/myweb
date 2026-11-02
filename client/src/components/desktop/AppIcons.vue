@@ -50,6 +50,7 @@
   import useDesktopIconInteractions from '@/composables/useDesktopIconInteractions.js';
   import { createLongPress } from '@/utils/longPress.js';
   import { isNarrowViewport } from '@/utils/narrowViewport.js';
+  import { navigateInPlace } from '@/utils/navigate.js';
 
   const { fetchAppsList, getAppIconUrl, setVisible } = useApps();
   const { createWindow, findWindowByApp, setActiveWindow } = useWindowManager();
@@ -92,15 +93,10 @@
   }
 
   function open(app) {
-    // 自定义APP：若存在 target_url，则新窗口打开
+    // 自定义APP：若存在 target_url，则当前页面直接跳转
     if (app.targetUrl || app.target_url) {
-      const url = app.targetUrl || app.target_url;
-      try {
-        window.open(url, '_blank', 'noopener,noreferrer');
-        return;
-      } catch (error) {
-        void error;
-      }
+      navigateInPlace(app.targetUrl || app.target_url);
+      return;
     }
 
     // 检查应用是否已经打开，如果是则激活现有窗口

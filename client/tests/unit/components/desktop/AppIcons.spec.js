@@ -76,6 +76,10 @@ vi.mock('@/apps/registry.js', () => ({
   })),
 }));
 
+vi.mock('@/utils/navigate.js', () => ({
+  navigateInPlace: vi.fn(),
+}));
+
 describe('AppIcons', () => {
   let wrapper;
 
@@ -389,8 +393,8 @@ describe('AppIcons', () => {
       }
     });
 
-    it('opens custom target_url in a new window without creating an internal window', async () => {
-      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    it('navigates custom target_url in the current page without creating an internal window', async () => {
+      const { navigateInPlace } = await import('@/utils/navigate.js');
       const apps = [
         {
           id: 1,
@@ -408,11 +412,7 @@ describe('AppIcons', () => {
 
       await wrapper.find('.icon-item').trigger('dblclick');
 
-      expect(openSpy).toHaveBeenCalledWith(
-        'https://example.com',
-        '_blank',
-        'noopener,noreferrer'
-      );
+      expect(navigateInPlace).toHaveBeenCalledWith('https://example.com');
       expect(getAppComponentBySlug).not.toHaveBeenCalled();
     });
 
