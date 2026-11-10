@@ -1,10 +1,27 @@
 <template>
   <div class="calculator-display">
-    <div class="expression" data-testid="calculator-expression">
+    <div
+      class="expression"
+      data-testid="calculator-expression"
+      aria-hidden="true"
+    >
       {{ expression }}
     </div>
-    <div class="current-display" data-testid="calculator-display">
+    <div
+      class="current-display"
+      data-testid="calculator-display"
+      aria-label="当前输入"
+    >
       {{ display }}
+    </div>
+    <div
+      class="sr-only"
+      data-testid="calculator-announcement"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {{ announcement }}
     </div>
   </div>
 </template>
@@ -16,6 +33,10 @@
       default: '0',
     },
     expression: {
+      type: String,
+      default: '',
+    },
+    announcement: {
       type: String,
       default: '',
     },
@@ -52,11 +73,22 @@
     line-height: 1.2;
     word-wrap: break-word;
     overflow: hidden;
-    /* 防止数字过长撑开布局：使用缩放和省略 */
     white-space: nowrap;
     text-overflow: ellipsis;
     max-width: 100%;
     display: block;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   @media (max-width: 768px) {

@@ -28,6 +28,7 @@
         :is="window.component"
         v-if="window.component"
         v-bind="window.props"
+        :is-window-active="isActive"
       />
       <div v-else class="empty">未找到应用组件</div>
     </div>

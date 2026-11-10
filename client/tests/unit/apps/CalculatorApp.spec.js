@@ -20,10 +20,11 @@ describe('CalculatorApp', () => {
   it('records completed calculations and keeps the current expression visible', async () => {
     const { getByRole, getByTestId, getByLabelText } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['1', '+', '2', '=']);
+    await clickButtons(getByRole, ['1', '加', '2', '等于']);
 
     expect(getByTestId('calculator-display')).toHaveTextContent('3');
     expect(getByTestId('calculator-expression')).toHaveTextContent('1 + 2 =');
+    expect(getByTestId('calculator-announcement')).toHaveTextContent('结果 3');
 
     const historyList = getByLabelText('计算历史');
     expect(within(historyList).getByText('1 + 2')).toBeInTheDocument();
@@ -34,8 +35,8 @@ describe('CalculatorApp', () => {
     const { getByRole, getByLabelText, getByText, queryByLabelText } =
       render(CalculatorApp);
 
-    await clickButtons(getByRole, ['1', '+', '2', '=']);
-    await clickButtons(getByRole, ['4', '×', '5', '=']);
+    await clickButtons(getByRole, ['1', '加', '2', '等于']);
+    await clickButtons(getByRole, ['4', '乘', '5', '等于']);
 
     const historyList = getByLabelText('计算历史');
     const historyItems = within(historyList).getAllByRole('listitem');
@@ -46,7 +47,7 @@ describe('CalculatorApp', () => {
     expect(historyItems[1]).toHaveTextContent('1 + 2');
     expect(historyItems[1]).toHaveTextContent('= 3');
 
-    await fireEvent.click(getByRole('button', { name: '清空' }));
+    await fireEvent.click(getByRole('button', { name: '清空历史' }));
 
     expect(queryByLabelText('计算历史')).not.toBeInTheDocument();
     expect(getByText('暂无记录')).toBeInTheDocument();
@@ -55,29 +56,39 @@ describe('CalculatorApp', () => {
   it('消除浮点运算精度误差（0.1 + 0.2 = 0.3）', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['0', '.', '1', '+', '0', '.', '2', '=']);
+    await clickButtons(getByRole, [
+      '0',
+      '小数点',
+      '1',
+      '加',
+      '0',
+      '小数点',
+      '2',
+      '等于',
+    ]);
 
-    // 未做精度处理时显示 0.30000000000000004，处理后应为 0.3
     expect(getByTestId('calculator-display')).toHaveTextContent('0.3');
   });
 
   it('除以 0 进入错误态，且错误后可直接开始新计算', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['5', '÷', '0', '=']);
+    await clickButtons(getByRole, ['5', '除', '0', '等于']);
 
     expect(getByTestId('calculator-display')).toHaveTextContent('错误');
     expect(getByTestId('calculator-expression')).toHaveTextContent('');
+    expect(getByTestId('calculator-announcement')).toHaveTextContent(
+      '计算错误'
+    );
 
-    // 错误态下按数字应开始全新计算，而不是把 '错误' 当作操作数
-    await clickButtons(getByRole, ['8', '+', '2', '=']);
+    await clickButtons(getByRole, ['8', '加', '2', '等于']);
     expect(getByTestId('calculator-display')).toHaveTextContent('10');
   });
 
   it('取模除数为 0 同样进入错误态', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['5', '%', '0', '=']);
+    await clickButtons(getByRole, ['5', '取模', '0', '等于']);
 
     expect(getByTestId('calculator-display')).toHaveTextContent('错误');
   });
@@ -85,7 +96,7 @@ describe('CalculatorApp', () => {
   it('连续按运算符仅替换运算符，不提前计算（5 + × 3 = 15）', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['5', '+', '×', '3', '=']);
+    await clickButtons(getByRole, ['5', '加', '乘', '3', '等于']);
 
     expect(getByTestId('calculator-display')).toHaveTextContent('15');
     expect(getByTestId('calculator-expression')).toHaveTextContent('5 × 3 =');
@@ -94,7 +105,7 @@ describe('CalculatorApp', () => {
   it('按下 Escape 键清除当前计算', async () => {
     const { getByRole, getByTestId, container } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['5', '+', '3', '=']);
+    await clickButtons(getByRole, ['5', '加', '3', '等于']);
     expect(getByTestId('calculator-display')).toHaveTextContent('8');
 
     const appEl = container.querySelector('.calculator-app');
@@ -102,6 +113,19 @@ describe('CalculatorApp', () => {
 
     expect(getByTestId('calculator-display')).toHaveTextContent('0');
     expect(getByTestId('calculator-expression')).toHaveTextContent('');
+  });
+
+  it('exposes Chinese accessible names and a live result region', () => {
+    const { getByRole, getByLabelText, getByTestId } = render(CalculatorApp);
+
+    expect(getByRole('application', { name: '计算器' })).toBeInTheDocument();
+    expect(getByRole('button', { name: '取模' })).toBeInTheDocument();
+    expect(getByRole('button', { name: '加' })).toBeInTheDocument();
+    expect(getByLabelText('当前输入')).toBeInTheDocument();
+    expect(getByTestId('calculator-announcement')).toHaveAttribute(
+      'aria-live',
+      'polite'
+    );
   });
 });
 
@@ -180,41 +204,50 @@ describe('CalculatorApp keyboard and clipboard', () => {
     expect(getByTestId('calculator-display')).toHaveTextContent('-3.5');
   });
 
+  it('粘贴后可继续追加数字', async () => {
+    const { getByRole, getByTestId, container } = render(CalculatorApp);
+    const appEl = getAppEl(container);
+
+    await pasteText(appEl, '42');
+    await clickButtons(getByRole, ['3']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('423');
+  });
+
   it('内存操作：M+ / M- 累计、MR 取回、MC 清零', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['5', 'M+']);
-    await clickButtons(getByRole, ['MR']);
+    await clickButtons(getByRole, ['5', '内存加']);
+    await clickButtons(getByRole, ['读取内存']);
     expect(getByTestId('calculator-display')).toHaveTextContent('5');
 
-    await clickButtons(getByRole, ['3', 'M-']);
-    await clickButtons(getByRole, ['MR']);
+    await clickButtons(getByRole, ['3', '内存减']);
+    await clickButtons(getByRole, ['读取内存']);
     expect(getByTestId('calculator-display')).toHaveTextContent('2');
 
-    await clickButtons(getByRole, ['MC']);
-    await clickButtons(getByRole, ['MR']);
+    await clickButtons(getByRole, ['清除内存']);
+    await clickButtons(getByRole, ['读取内存']);
     expect(getByTestId('calculator-display')).toHaveTextContent('0');
   });
 
   it('错误态下退格等同清除，且内存与等号操作被忽略', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['5', '÷', '0', '=']);
+    await clickButtons(getByRole, ['5', '除', '0', '等于']);
     expect(getByTestId('calculator-display')).toHaveTextContent('错误');
 
-    await clickButtons(getByRole, ['⌫']);
+    await clickButtons(getByRole, ['退格']);
     expect(getByTestId('calculator-display')).toHaveTextContent('0');
 
-    await clickButtons(getByRole, ['5', '÷', '0', '=']);
-    await clickButtons(getByRole, ['M+']);
-    await clickButtons(getByRole, ['MR']);
+    await clickButtons(getByRole, ['5', '除', '0', '等于']);
+    await clickButtons(getByRole, ['内存加']);
+    await clickButtons(getByRole, ['读取内存']);
     expect(getByTestId('calculator-display')).toHaveTextContent('错误');
   });
 
   it('没有运算符时按等号不改变显示', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['5', '=']);
+    await clickButtons(getByRole, ['5', '等于']);
     expect(getByTestId('calculator-display')).toHaveTextContent('5');
     expect(getByTestId('calculator-expression')).toHaveTextContent('');
   });
@@ -222,36 +255,211 @@ describe('CalculatorApp keyboard and clipboard', () => {
   it('结果后输入小数点从 0. 开始新操作数', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['1', '+', '2', '=', '.']);
+    await clickButtons(getByRole, ['1', '加', '2', '等于', '小数点']);
     expect(getByTestId('calculator-display')).toHaveTextContent('0.');
   });
 
   it('取模与减法路径正确（10 % 3 = 1）', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['1', '0', '%', '3', '=']);
+    await clickButtons(getByRole, ['1', '0', '取模', '3', '等于']);
     expect(getByTestId('calculator-display')).toHaveTextContent('1');
   });
 
   it('连续按运算符时表达式实时更新为最新符号', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['5', '+', '×']);
+    await clickButtons(getByRole, ['5', '加', '乘']);
     expect(getByTestId('calculator-expression')).toHaveTextContent('5 ×');
     expect(getByTestId('calculator-display')).toHaveTextContent('5');
 
-    await clickButtons(getByRole, ['3', '=']);
+    await clickButtons(getByRole, ['3', '等于']);
     expect(getByTestId('calculator-display')).toHaveTextContent('15');
   });
 
   it('新计算开始后上一次的表达式被清空', async () => {
     const { getByRole, getByTestId } = render(CalculatorApp);
 
-    await clickButtons(getByRole, ['1', '+', '2', '=']);
+    await clickButtons(getByRole, ['1', '加', '2', '等于']);
     expect(getByTestId('calculator-expression')).toHaveTextContent('1 + 2 =');
 
     await clickButtons(getByRole, ['3']);
     expect(getByTestId('calculator-expression')).toHaveTextContent('');
     expect(getByTestId('calculator-display')).toHaveTextContent('3');
+  });
+});
+
+describe('CalculatorApp precision, range, and editing', () => {
+  const pasteText = async (appEl, text) => {
+    const event = new Event('paste', { bubbles: true, cancelable: true });
+    event.clipboardData = { getData: () => text };
+    appEl.dispatchEvent(event);
+    await Promise.resolve();
+  };
+
+  it('keeps IEEE intermediates so 1 ÷ 3 × 3 = 1', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, ['1', '除', '3', '乘', '3', '等于']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('1');
+  });
+
+  it('rounds memory recall with the same 15-digit display rule', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, [
+      '0',
+      '小数点',
+      '1',
+      '内存加',
+      '0',
+      '小数点',
+      '2',
+      '内存加',
+      '读取内存',
+    ]);
+
+    expect(getByTestId('calculator-display')).toHaveTextContent('0.3');
+  });
+
+  it('ignores a 16th integer digit so display stays a safe integer', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(
+      getByRole,
+      Array.from({ length: 16 }, () => '9')
+    );
+    expect(getByTestId('calculator-display')).toHaveTextContent('9'.repeat(15));
+
+    await clickButtons(getByRole, ['减', '1', '等于']);
+    expect(getByTestId('calculator-display')).toHaveTextContent(
+      '999999999999998'
+    );
+  });
+
+  it('rejects pasted integers that cannot round-trip through Number', async () => {
+    const { getByTestId, container } = render(CalculatorApp);
+    const appEl = container.querySelector('.calculator-app');
+
+    await pasteText(appEl, '9'.repeat(16));
+    expect(getByTestId('calculator-display')).toHaveTextContent('0');
+  });
+
+  it('lets backspace edit a completed result instead of replacing it', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, ['1', '5', '加', '1', '等于', '退格', '2']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('12');
+  });
+
+  it('does not rewrite the left operand when backspacing after an operator', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, ['1', '2', '加', '退格', '3', '等于']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('15');
+  });
+
+  it('does not slice scientific notation into an illegal fragment', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, [
+      '0',
+      '小数点',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '1',
+      '除',
+      '1',
+      '0',
+      '等于',
+    ]);
+    expect(getByTestId('calculator-display')).toHaveTextContent('1e-7');
+
+    await clickButtons(getByRole, ['退格']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('0');
+
+    await clickButtons(getByRole, ['2']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('2');
+  });
+
+  it('starts a new decimal instead of appending a dot to scientific notation', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, [
+      '0',
+      '小数点',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '1',
+      '除',
+      '1',
+      '0',
+      '等于',
+      '退格',
+      '小数点',
+    ]);
+    expect(getByTestId('calculator-display')).toHaveTextContent('0.');
+  });
+
+  it('clears an isolated minus when backspacing a negative result', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, ['1', '减', '2', '等于']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('-1');
+
+    await clickButtons(getByRole, ['退格']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('0');
+
+    await clickButtons(getByRole, ['退格', '3']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('3');
+  });
+
+  it('keeps editing a negative magnitude until the sign would be leftover', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, ['0', '减', '1', '2', '等于', '退格']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('-1');
+  });
+
+  it('resets huge exponential results instead of editing the exponent string', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, [
+      '1',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '乘',
+      '1',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '等于',
+    ]);
+    expect(getByTestId('calculator-display')).toHaveTextContent('1e+21');
+
+    await clickButtons(getByRole, ['退格', '8']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('8');
   });
 });

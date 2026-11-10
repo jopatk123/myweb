@@ -125,6 +125,35 @@ describe('ensureBuiltinApps', () => {
     db.close();
   });
 
+  test('refreshes builtin description when the shared definition changes', () => {
+    const db = createSeedingDb();
+
+    db.prepare(
+      `INSERT INTO apps (name, slug, description, icon_filename, is_visible, is_builtin, deleted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      '计算器',
+      'calculator',
+      '科学计算器，支持基本运算和内存功能',
+      'calculator-128.png',
+      1,
+      1,
+      null
+    );
+
+    ensureBuiltinApps(db);
+
+    const calculator = db
+      .prepare('SELECT description FROM apps WHERE slug = ?')
+      .get('calculator');
+
+    expect(calculator.description).toBe(
+      '四则计算器，支持加减乘除、取模和内存功能'
+    );
+
+    db.close();
+  });
+
   test('handles db errors without throwing', () => {
     mockWarn.mockClear();
     const badDb = {
