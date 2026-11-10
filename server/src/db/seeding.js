@@ -99,7 +99,7 @@ export function ensureBuiltinApps(db) {
         params.push(b.icon_filename);
       }
 
-      if (!row.description && b.description) {
+      if (b.description && row.description !== b.description) {
         patch.push('description = ?');
         params.push(b.description);
       }

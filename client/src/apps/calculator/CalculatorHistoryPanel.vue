@@ -9,6 +9,7 @@
         v-if="entries.length"
         type="button"
         class="history-clear"
+        aria-label="清空历史"
         @click="$emit('clear-history')"
       >
         清空
@@ -86,6 +87,15 @@
       background 0.2s,
       color 0.2s;
     white-space: nowrap;
+  }
+
+  .history-clear:focus {
+    outline: none;
+  }
+
+  .history-clear:focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
   }
 
   .history-clear:hover {

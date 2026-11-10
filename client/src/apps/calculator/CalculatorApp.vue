@@ -1,10 +1,22 @@
 <template>
-  <!-- 键盘/粘贴事件绑定在根元素上：事件仅会来自计算器内部（自身或后代元素），
-       天然不会劫持外部按键，因此无需额外焦点守卫 -->
-  <div class="calculator-app" @keydown="onKeyDown" @paste="onPaste">
-    <!-- 左侧：主计算器区域 -->
+  <!-- 按键只在计算器根节点（或其后代）获得焦点时生效，不监听 document，
+       因此不会抢走其他窗口或输入框的按键。窗口激活时再把焦点收回到本应用。 -->
+  <div
+    ref="appEl"
+    class="calculator-app"
+    tabindex="0"
+    role="application"
+    aria-label="计算器"
+    @keydown="onKeyDown"
+    @paste="onPaste"
+    @pointerdown="onAppPointerDown"
+  >
     <div class="calculator-main">
-      <CalculatorDisplay :display="display" :expression="expression" />
+      <CalculatorDisplay
+        :display="display"
+        :expression="expression"
+        :announcement="announcement"
+      />
 
       <CalculatorKeypad
         @number="handleNumber"
@@ -17,7 +29,6 @@
       />
     </div>
 
-    <!-- 右侧：历史记录侧边栏 -->
     <CalculatorHistoryPanel
       :entries="calculationHistory"
       @clear-history="clearCalculationHistory"
@@ -26,39 +37,59 @@
 </template>
 
 <script setup>
-  import { ref } from 'vue';
+  import { nextTick, onMounted, ref, watch } from 'vue';
   import CalculatorDisplay from './CalculatorDisplay.vue';
   import CalculatorHistoryPanel from './CalculatorHistoryPanel.vue';
   import CalculatorKeypad from './CalculatorKeypad.vue';
+  import {
+    canAppendDigit,
+    formatNumber,
+    isEditableElement,
+    parseDisplay,
+    parsePastedNumber,
+    performCalculation,
+  } from './calculatorMath.js';
 
-  // 计算器状态
+  const props = defineProps({
+    isWindowActive: {
+      type: Boolean,
+      default: true,
+    },
+  });
+
+  const appEl = ref(null);
   const display = ref('0');
   const expression = ref('');
+  const announcement = ref('');
   const calculationHistory = ref([]);
   const historyEntryId = ref(0);
   const memory = ref(0);
   const previousValue = ref(null);
   const operator = ref(null);
   const waitingForOperand = ref(false);
-  // 错误状态（除以 0、结果溢出等），置位后所有计算操作被忽略，直到开始新输入
   const isError = ref(false);
-  // 标记当前 display 是否为刚输入完成的操作数：
-  // 连续按运算符时若为 false 则仅替换运算符，避免 5 + × 被误算成 5+5
   const operandJustEntered = ref(false);
+  // 当前操作数的 IEEE 值：计算结果保留全精度，展示层再格式化
+  const currentValue = ref(0);
   const MAX_HISTORY_ENTRIES = 50;
 
+  function setTypedDisplay(next) {
+    display.value = next;
+    currentValue.value = parseDisplay(next);
+  }
+
+  function announce(message) {
+    announcement.value = message;
+  }
+
   function handlePasteEvent(pasteText) {
-    // 仅接受纯数字（允许小数点和负号）
-    const trimmed = pasteText.trim();
-    if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
-      // 将粘贴的数替换当前 display
-      display.value = trimmed;
-      waitingForOperand.value = true;
-      isError.value = false;
-      operandJustEntered.value = true;
-      return true;
-    }
-    return false;
+    const parsed = parsePastedNumber(pasteText);
+    if (!parsed) return false;
+    isError.value = false;
+    operandJustEntered.value = true;
+    waitingForOperand.value = false;
+    setTypedDisplay(parsed.display);
+    return true;
   }
 
   function onPaste(e) {
@@ -70,7 +101,9 @@
   }
 
   function onKeyDown(e) {
-    // 处理 Ctrl+V 的情况在 paste 事件中处理，这里处理其他按键
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isEditableElement(e.target) && e.target !== appEl.value) return;
+
     const key = e.key;
     if (/^[0-9]$/.test(key)) {
       e.preventDefault();
@@ -90,7 +123,6 @@
       return;
     }
 
-    // Escape / Delete 清除，对齐常见计算器键盘习惯
     if (key === 'Escape' || key === 'Delete') {
       e.preventDefault();
       handleClear();
@@ -116,41 +148,40 @@
     if (opMap[key]) {
       e.preventDefault();
       handleOperator(opMap[key]);
-      return;
     }
   }
 
-  // 处理数字输入
   function handleNumber(num) {
     isError.value = false;
     operandJustEntered.value = true;
+    if (!canAppendDigit(display.value, num, waitingForOperand.value)) {
+      return;
+    }
     if (waitingForOperand.value) {
-      display.value = num;
+      setTypedDisplay(num);
       waitingForOperand.value = false;
       if (previousValue.value === null && operator.value === null) {
         expression.value = '';
       }
     } else {
-      display.value = display.value === '0' ? num : display.value + num;
+      setTypedDisplay(display.value === '0' ? num : display.value + num);
     }
   }
 
-  // 处理运算符
   function handleOperator(op) {
     if (isError.value) return;
 
-    // 连续按运算符：仅替换当前运算符，不提前触发计算
     if (
       !operandJustEntered.value &&
       previousValue.value !== null &&
       operator.value !== null
     ) {
       operator.value = op;
-      expression.value = `${previousValue.value} ${getOperatorSymbol(op)}`;
+      expression.value = `${formatOperand(previousValue.value)} ${getOperatorSymbol(op)}`;
       return;
     }
 
-    const inputValue = parseFloat(display.value);
+    const inputValue = currentValue.value;
 
     if (previousValue.value === null) {
       previousValue.value = inputValue;
@@ -161,20 +192,19 @@
         operator.value
       );
       if (!commitResult(result)) return;
-      previousValue.value = result;
+      previousValue.value = currentValue.value;
     }
 
     waitingForOperand.value = true;
     operator.value = op;
     operandJustEntered.value = false;
-    expression.value = `${previousValue.value} ${getOperatorSymbol(op)}`;
+    expression.value = `${formatOperand(previousValue.value)} ${getOperatorSymbol(op)}`;
   }
 
-  // 处理等号
   function handleEquals() {
     if (isError.value) return;
 
-    const inputValue = parseFloat(display.value);
+    const inputValue = currentValue.value;
 
     if (previousValue.value === null || operator.value === null) {
       return;
@@ -185,80 +215,104 @@
       inputValue,
       operator.value
     );
-    const completedExpression = `${previousValue.value} ${getOperatorSymbol(operator.value)} ${inputValue}`;
+    const completedExpression = `${formatOperand(previousValue.value)} ${getOperatorSymbol(operator.value)} ${formatOperand(inputValue)}`;
 
     if (!commitResult(result)) return;
 
-    display.value = String(result);
     expression.value = `${completedExpression} =`;
-    appendHistoryEntry(completedExpression, String(result));
+    appendHistoryEntry(completedExpression, display.value);
+    announce(`结果 ${display.value}`);
     previousValue.value = null;
     operator.value = null;
     waitingForOperand.value = true;
     operandJustEntered.value = false;
   }
 
-  // 处理清除
   function handleClear() {
     display.value = '0';
+    currentValue.value = 0;
     expression.value = '';
     previousValue.value = null;
     operator.value = null;
     waitingForOperand.value = false;
     isError.value = false;
     operandJustEntered.value = false;
+    announce('已清除');
   }
 
-  // 处理小数点
   function handleDecimal() {
     isError.value = false;
     operandJustEntered.value = true;
     if (waitingForOperand.value) {
-      display.value = '0.';
+      setTypedDisplay('0.');
       waitingForOperand.value = false;
     } else if (display.value.indexOf('.') === -1) {
-      display.value += '.';
+      setTypedDisplay(`${display.value}.`);
     }
   }
 
-  // 处理退格
   function handleBackspace() {
-    // 错误态下退格等同于清除，避免对 '错误' 文本做无意义的字符删除
     if (isError.value) {
       handleClear();
       return;
     }
+
+    // 运算符后仍在等待第二操作数：不要改写左边已确认的操作数
+    if (waitingForOperand.value && operator.value !== null) {
+      return;
+    }
+
+    // 等号/内存召回之后：进入编辑当前显示，使后续数字追加而不是整段替换
+    if (waitingForOperand.value) {
+      waitingForOperand.value = false;
+    }
+
     operandJustEntered.value = true;
     if (display.value.length === 1) {
-      display.value = '0';
+      setTypedDisplay('0');
     } else {
-      display.value = display.value.slice(0, -1);
+      setTypedDisplay(display.value.slice(0, -1));
     }
   }
 
-  // 处理内存操作
   function handleMemory(action) {
     if (isError.value) return;
 
-    const currentValue = parseFloat(display.value);
+    const operand = currentValue.value;
 
     switch (action) {
-      case 'MC': // Memory Clear
+      case 'MC':
         memory.value = 0;
+        announce('内存已清除');
         break;
-      case 'MR': // Memory Recall
-        display.value = String(memory.value);
+      case 'MR': {
+        const shown = formatNumber(memory.value);
+        if (shown === null) {
+          enterErrorState();
+          return;
+        }
+        display.value = shown;
+        currentValue.value = memory.value;
         waitingForOperand.value = true;
         operandJustEntered.value = true;
+        isError.value = false;
+        announce(`读取内存 ${shown}`);
         break;
-      case 'M+': // Memory Add
-        memory.value += currentValue;
+      }
+      case 'M+': {
+        const next = memory.value + operand;
+        if (!Number.isFinite(next)) return;
+        memory.value = next;
         waitingForOperand.value = true;
         break;
-      case 'M-': // Memory Subtract
-        memory.value -= currentValue;
+      }
+      case 'M-': {
+        const next = memory.value - operand;
+        if (!Number.isFinite(next)) return;
+        memory.value = next;
         waitingForOperand.value = true;
         break;
+      }
     }
   }
 
@@ -278,57 +332,38 @@
     ].slice(0, MAX_HISTORY_ENTRIES);
   }
 
-  // 执行计算
-  // 浮点运算可能出现精度误差（如 0.1+0.2=0.30000000000000004），
-  // 通过 Math.round 取整到 10 位小数以消除误差，同时保留足够精度。
-  function roundResult(value) {
-    if (!Number.isFinite(value)) return value;
-    return Math.round(value * 1e10) / 1e10;
+  function formatOperand(value) {
+    return formatNumber(value) ?? String(value);
   }
 
-  // 提交计算结果：结果非法（除以 0、溢出等）时进入错误态并返回 false
+  function enterErrorState() {
+    isError.value = true;
+    display.value = '错误';
+    currentValue.value = 0;
+    expression.value = '';
+    previousValue.value = null;
+    operator.value = null;
+    waitingForOperand.value = true;
+    operandJustEntered.value = false;
+    announce('计算错误');
+  }
+
   function commitResult(result) {
     if (!Number.isFinite(result)) {
-      isError.value = true;
-      display.value = '错误';
-      expression.value = '';
-      previousValue.value = null;
-      operator.value = null;
-      waitingForOperand.value = true;
-      operandJustEntered.value = false;
+      enterErrorState();
       return false;
     }
-    display.value = String(result);
+    const shown = formatNumber(result);
+    if (shown === null) {
+      enterErrorState();
+      return false;
+    }
+    currentValue.value = result;
+    display.value = shown;
+    isError.value = false;
     return true;
   }
 
-  function performCalculation(a, b, op) {
-    let result;
-    switch (op) {
-      case '+':
-        result = a + b;
-        break;
-      case '-':
-        result = a - b;
-        break;
-      case '*':
-        result = a * b;
-        break;
-      case '/':
-        // 除以 0 得 Infinity/NaN，由 commitResult 统一转为错误态
-        result = a / b;
-        break;
-      case '%':
-        // 取模除数为 0 得 NaN，由 commitResult 统一转为错误态
-        result = a % b;
-        break;
-      default:
-        result = b;
-    }
-    return roundResult(result);
-  }
-
-  // 获取运算符符号
   function getOperatorSymbol(op) {
     const symbols = {
       '+': '+',
@@ -339,6 +374,34 @@
     };
     return symbols[op] || op;
   }
+
+  function tryFocusCalculator() {
+    const root = appEl.value;
+    if (!root || typeof root.focus !== 'function') return;
+    const active = document.activeElement;
+    if (active && root.contains(active) && active !== root) return;
+    root.focus();
+  }
+
+  function onAppPointerDown(e) {
+    if (e.target.closest('button')) return;
+    tryFocusCalculator();
+  }
+
+  watch(
+    () => props.isWindowActive,
+    active => {
+      if (active) {
+        nextTick(() => tryFocusCalculator());
+      }
+    }
+  );
+
+  onMounted(() => {
+    if (props.isWindowActive) {
+      nextTick(() => tryFocusCalculator());
+    }
+  });
 </script>
 
 <style scoped>
@@ -355,6 +418,13 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     min-width: 0;
+    outline: none;
+  }
+
+  .calculator-app:focus-visible {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.2),
+      0 0 0 3px rgba(255, 255, 255, 0.7);
   }
 
   .calculator-main {

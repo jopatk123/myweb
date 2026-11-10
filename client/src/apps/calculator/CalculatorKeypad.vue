@@ -1,68 +1,210 @@
 <template>
-  <div class="calculator-keypad">
-    <!-- 第一行：内存操作 -->
+  <div class="calculator-keypad" role="group" aria-label="计算器按键">
     <div class="keypad-row">
-      <button class="key memory-key" @click="$emit('memory', 'MC')">MC</button>
-      <button class="key memory-key" @click="$emit('memory', 'MR')">MR</button>
-      <button class="key memory-key" @click="$emit('memory', 'M+')">M+</button>
-      <button class="key memory-key" @click="$emit('memory', 'M-')">M-</button>
+      <button
+        type="button"
+        class="key memory-key"
+        aria-label="清除内存"
+        @click="$emit('memory', 'MC')"
+      >
+        MC
+      </button>
+      <button
+        type="button"
+        class="key memory-key"
+        aria-label="读取内存"
+        @click="$emit('memory', 'MR')"
+      >
+        MR
+      </button>
+      <button
+        type="button"
+        class="key memory-key"
+        aria-label="内存加"
+        @click="$emit('memory', 'M+')"
+      >
+        M+
+      </button>
+      <button
+        type="button"
+        class="key memory-key"
+        aria-label="内存减"
+        @click="$emit('memory', 'M-')"
+      >
+        M-
+      </button>
     </div>
 
-    <!-- 第二行：清除和退格 -->
     <div class="keypad-row">
-      <button class="key function-key" @click="$emit('clear')">C</button>
-      <button class="key function-key" @click="$emit('backspace')">⌫</button>
-      <button class="key operator-key" @click="$emit('operator', '%')">
+      <button
+        type="button"
+        class="key function-key"
+        aria-label="清除"
+        @click="$emit('clear')"
+      >
+        C
+      </button>
+      <button
+        type="button"
+        class="key function-key"
+        aria-label="退格"
+        @click="$emit('backspace')"
+      >
+        ⌫
+      </button>
+      <button
+        type="button"
+        class="key operator-key"
+        aria-label="取模"
+        @click="$emit('operator', '%')"
+      >
         %
       </button>
-      <button class="key operator-key" @click="$emit('operator', '/')">
+      <button
+        type="button"
+        class="key operator-key"
+        aria-label="除"
+        @click="$emit('operator', '/')"
+      >
         ÷
       </button>
     </div>
 
-    <!-- 第三行：7-9 -->
     <div class="keypad-row">
-      <button class="key number-key" @click="$emit('number', '7')">7</button>
-      <button class="key number-key" @click="$emit('number', '8')">8</button>
-      <button class="key number-key" @click="$emit('number', '9')">9</button>
-      <button class="key operator-key" @click="$emit('operator', '*')">
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="7"
+        @click="$emit('number', '7')"
+      >
+        7
+      </button>
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="8"
+        @click="$emit('number', '8')"
+      >
+        8
+      </button>
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="9"
+        @click="$emit('number', '9')"
+      >
+        9
+      </button>
+      <button
+        type="button"
+        class="key operator-key"
+        aria-label="乘"
+        @click="$emit('operator', '*')"
+      >
         ×
       </button>
     </div>
 
-    <!-- 第四行：4-6 -->
     <div class="keypad-row">
-      <button class="key number-key" @click="$emit('number', '4')">4</button>
-      <button class="key number-key" @click="$emit('number', '5')">5</button>
-      <button class="key number-key" @click="$emit('number', '6')">6</button>
-      <button class="key operator-key" @click="$emit('operator', '-')">
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="4"
+        @click="$emit('number', '4')"
+      >
+        4
+      </button>
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="5"
+        @click="$emit('number', '5')"
+      >
+        5
+      </button>
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="6"
+        @click="$emit('number', '6')"
+      >
+        6
+      </button>
+      <button
+        type="button"
+        class="key operator-key"
+        aria-label="减"
+        @click="$emit('operator', '-')"
+      >
         −
       </button>
     </div>
 
-    <!-- 第五行：1-3 -->
     <div class="keypad-row">
-      <button class="key number-key" @click="$emit('number', '1')">1</button>
-      <button class="key number-key" @click="$emit('number', '2')">2</button>
-      <button class="key number-key" @click="$emit('number', '3')">3</button>
-      <button class="key operator-key" @click="$emit('operator', '+')">
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="1"
+        @click="$emit('number', '1')"
+      >
+        1
+      </button>
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="2"
+        @click="$emit('number', '2')"
+      >
+        2
+      </button>
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="3"
+        @click="$emit('number', '3')"
+      >
+        3
+      </button>
+      <button
+        type="button"
+        class="key operator-key"
+        aria-label="加"
+        @click="$emit('operator', '+')"
+      >
         +
       </button>
     </div>
 
-    <!-- 第六行：0和小数点 -->
     <div class="keypad-row">
-      <button class="key number-key zero-key" @click="$emit('number', '0')">
+      <button
+        type="button"
+        class="key number-key zero-key"
+        aria-label="0"
+        @click="$emit('number', '0')"
+      >
         0
       </button>
-      <button class="key number-key" @click="$emit('decimal')">.</button>
-      <button class="key equals-key" @click="$emit('equals')">=</button>
+      <button
+        type="button"
+        class="key number-key"
+        aria-label="小数点"
+        @click="$emit('decimal')"
+      >
+        .
+      </button>
+      <button
+        type="button"
+        class="key equals-key"
+        aria-label="等于"
+        @click="$emit('equals')"
+      >
+        =
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-  // 定义事件
   defineEmits([
     'number',
     'operator',
@@ -96,7 +238,17 @@
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
+  }
+
+  .key:focus {
     outline: none;
+  }
+
+  .key:focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.9);
+    z-index: 1;
   }
 
   .key:hover {

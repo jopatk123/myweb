@@ -2,7 +2,7 @@ export const BUILTIN_APP_DEFINITIONS = [
   {
     slug: 'calculator',
     name: '计算器',
-    description: '科学计算器，支持基本运算和内存功能',
+    description: '四则计算器，支持加减乘除、取模和内存功能',
     iconFilename: 'calculator-128.png',
     visible: true,
     preferredSize: { width: 620, height: 560 },
