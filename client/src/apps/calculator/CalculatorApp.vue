@@ -42,7 +42,9 @@
   import CalculatorHistoryPanel from './CalculatorHistoryPanel.vue';
   import CalculatorKeypad from './CalculatorKeypad.vue';
   import {
-    canAppendDigit,
+    appendDecimal,
+    appendDigit,
+    backspaceOperand,
     formatNumber,
     isEditableElement,
     parseDisplay,
@@ -74,8 +76,11 @@
   const MAX_HISTORY_ENTRIES = 50;
 
   function setTypedDisplay(next) {
+    const parsed = parseDisplay(next);
+    if (parsed === null) return false;
     display.value = next;
-    currentValue.value = parseDisplay(next);
+    currentValue.value = parsed;
+    return true;
   }
 
   function announce(message) {
@@ -154,17 +159,13 @@
   function handleNumber(num) {
     isError.value = false;
     operandJustEntered.value = true;
-    if (!canAppendDigit(display.value, num, waitingForOperand.value)) {
-      return;
-    }
-    if (waitingForOperand.value) {
-      setTypedDisplay(num);
-      waitingForOperand.value = false;
-      if (previousValue.value === null && operator.value === null) {
-        expression.value = '';
-      }
-    } else {
-      setTypedDisplay(display.value === '0' ? num : display.value + num);
+    const next = appendDigit(display.value, num, waitingForOperand.value);
+    if (next === null) return;
+    const wasWaiting = waitingForOperand.value;
+    if (!setTypedDisplay(next)) return;
+    waitingForOperand.value = false;
+    if (wasWaiting && previousValue.value === null && operator.value === null) {
+      expression.value = '';
     }
   }
 
@@ -243,12 +244,9 @@
   function handleDecimal() {
     isError.value = false;
     operandJustEntered.value = true;
-    if (waitingForOperand.value) {
-      setTypedDisplay('0.');
-      waitingForOperand.value = false;
-    } else if (display.value.indexOf('.') === -1) {
-      setTypedDisplay(`${display.value}.`);
-    }
+    const next = appendDecimal(display.value, waitingForOperand.value);
+    if (!setTypedDisplay(next)) return;
+    waitingForOperand.value = false;
   }
 
   function handleBackspace() {
@@ -268,11 +266,7 @@
     }
 
     operandJustEntered.value = true;
-    if (display.value.length === 1) {
-      setTypedDisplay('0');
-    } else {
-      setTypedDisplay(display.value.slice(0, -1));
-    }
+    setTypedDisplay(backspaceOperand(display.value));
   }
 
   function handleMemory(action) {

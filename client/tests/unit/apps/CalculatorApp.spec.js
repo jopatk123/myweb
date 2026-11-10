@@ -358,4 +358,108 @@ describe('CalculatorApp precision, range, and editing', () => {
     await clickButtons(getByRole, ['1', '2', '加', '退格', '3', '等于']);
     expect(getByTestId('calculator-display')).toHaveTextContent('15');
   });
+
+  it('does not slice scientific notation into an illegal fragment', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, [
+      '0',
+      '小数点',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '1',
+      '除',
+      '1',
+      '0',
+      '等于',
+    ]);
+    expect(getByTestId('calculator-display')).toHaveTextContent('1e-7');
+
+    await clickButtons(getByRole, ['退格']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('0');
+
+    await clickButtons(getByRole, ['2']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('2');
+  });
+
+  it('starts a new decimal instead of appending a dot to scientific notation', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, [
+      '0',
+      '小数点',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '1',
+      '除',
+      '1',
+      '0',
+      '等于',
+      '退格',
+      '小数点',
+    ]);
+    expect(getByTestId('calculator-display')).toHaveTextContent('0.');
+  });
+
+  it('clears an isolated minus when backspacing a negative result', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, ['1', '减', '2', '等于']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('-1');
+
+    await clickButtons(getByRole, ['退格']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('0');
+
+    await clickButtons(getByRole, ['退格', '3']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('3');
+  });
+
+  it('keeps editing a negative magnitude until the sign would be leftover', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, ['0', '减', '1', '2', '等于', '退格']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('-1');
+  });
+
+  it('resets huge exponential results instead of editing the exponent string', async () => {
+    const { getByRole, getByTestId } = render(CalculatorApp);
+
+    await clickButtons(getByRole, [
+      '1',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '乘',
+      '1',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '0',
+      '等于',
+    ]);
+    expect(getByTestId('calculator-display')).toHaveTextContent('1e+21');
+
+    await clickButtons(getByRole, ['退格', '8']);
+    expect(getByTestId('calculator-display')).toHaveTextContent('8');
+  });
 });
